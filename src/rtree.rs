@@ -40,7 +40,7 @@ impl RTreeOptions {
     }
 
     pub fn set_reinsertion_count(mut self, reinsertion_count: usize) -> RTreeOptions {
-        assert!(self.min_size > reinsertion_count);
+        // assert!(self.min_size > reinsertion_count);
         self.reinsertion_count = reinsertion_count;
         self
     }
@@ -167,6 +167,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
 
     fn insert(&mut self, t: RTreeNode<T>, state: &mut InsertionState) -> InsertionResult<T> {
+        // Adjust own mbr - the element will most likely become a child of this node
         self.update_mbr_with_element(&t.mbr());
         if t.depth() + 1 == self.depth {
             // Force insertion into this node
@@ -195,9 +196,11 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     fn resolve_overflow(&mut self, state: &mut InsertionState) -> InsertionResult<T> {
         if self.children.len() > self.options.max_size {
             if state.did_reinsert(self.depth) {
+                // We did already reinsert on that level - split this node
                 let offsplit = self.split();
                 InsertionResult::Split(offsplit)
             } else {
+                // We didn't attempt to reinsert yet - give it a try
                 state.mark_reinsertion(self.depth);
                 let reinsertion_nodes = self.reinsert();
                 InsertionResult::Reinsert(reinsertion_nodes)
@@ -284,7 +287,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
 
     fn choose_subtree(&mut self, node: &RTreeNode<T>) -> &mut DirectoryNodeData<T> {
-        assert!(self.depth >= 2, "Cannot choose subtree if all children are leaves");
+        assert!(self.depth >= 2, "Cannot choose subtree on this level");
         let insertion_mbr = node.mbr();
         let mut inclusion_count = 0;
         let mut min_area = Float::infinity();
@@ -529,6 +532,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
     }
 }
 
+#[derive(Clone)]
 struct DirectoryNodeData<T> where T: SpatialObject {
     bounding_box: BoundingRect<T::Scalar>,
     children: Box<Vec<RTreeNode<T>>>,
@@ -536,11 +540,13 @@ struct DirectoryNodeData<T> where T: SpatialObject {
     options: Arc<RTreeOptions>,
 }
 
+#[derive(Clone)]
 enum RTreeNode<T> where T: SpatialObject {
     Leaf(T),
     DirectoryNode(DirectoryNodeData<T>),
 }
 
+#[derive(Clone)]
 pub struct RTree<T> where T: SpatialObject {
     root: DirectoryNodeData<T>,
     size: usize,
