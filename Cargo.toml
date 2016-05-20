@@ -1,0 +1,18 @@
+[package]
+name = "rtree"
+version = "0.1.0"
+authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
+
+[dependencies]
+cgmath = "0.7.0"
+num = "0.1.30"
+
+[dev-dependencies]
+rand = "0.3.13"
+time = "0.1"
+
+[profile.bench]
+opt-level = 3
+debug = true
+lto = false
+debug-assertions = false
