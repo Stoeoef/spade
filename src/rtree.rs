@@ -4,7 +4,7 @@ use traits::{SpatialObject};
 use num::{Float, zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
-use std::cell::{RefCell, Ref};
+use std::cell::{RefCell, RefMut};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct RTreeOptions {
@@ -154,12 +154,19 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         result
     }
 
+    #[inline]
     fn update_mbr(&mut self) {
         // Mark the bb as dirty
         *self.bounding_box.borrow_mut() = None;
     }
 
+    #[inline]
+    fn update_mbr_with_element(&mut self, element_bb: &BoundingRect<T::Scalar>) {
+        self.mbr().add_rect(element_bb);
+    }
+
     fn insert(&mut self, t: RTreeNode<T>, state: &mut InsertionState) -> InsertionResult<T> {
+        self.update_mbr_with_element(&t.mbr());
         if t.depth() + 1 == self.depth {
             // Force insertion into this node
             self.add_children(vec![t]);
@@ -167,8 +174,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         }
         let expand = {
             let mut follow = self.choose_subtree(&t);
-            let result = follow.insert(t, state);
-            result
+            follow.insert(t, state)
         };
         match expand {
             InsertionResult::Split(child) => {
@@ -176,10 +182,12 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                 self.add_children(vec![child]);
                 self.resolve_overflow(state)
             },
-            other => {
+            result @ InsertionResult::Reinsert(_) => {
+                // Reinsertion can shrink the mbr
                 self.update_mbr();
-                other
+                result
             },
+            complete => complete,
         }
     }
 
@@ -187,7 +195,6 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         if self.children.len() > self.options.max_size {
             if state.did_reinsert(self.depth) {
                 let offsplit = self.split();
-                self.update_mbr();
                 InsertionResult::Split(offsplit)
             } else {
                 state.mark_reinsertion(self.depth);
@@ -233,7 +240,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         result
     }
 
-    fn mbr(&self) -> Ref<BoundingRect<T::Scalar>> {
+    fn mbr(&self) -> RefMut<BoundingRect<T::Scalar>> {
         {
             let mut mut_ref = self.bounding_box.borrow_mut();
             if mut_ref.is_none() {
@@ -244,7 +251,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                 *mut_ref = Some(rect);
             }
         }
-        Ref::map(self.bounding_box.borrow(), |b| b.as_ref().unwrap())
+        RefMut::map(self.bounding_box.borrow_mut(), |b| b.as_mut().unwrap())
     }
 
 
@@ -351,9 +358,8 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         }
     }
 
-    fn add_children<I>(&mut self, new_children: I) where I: IntoIterator<Item=RTreeNode<T>> {
-        self.children.extend(new_children);
-        self.update_mbr();
+    fn add_children(&mut self, mut new_children: Vec<RTreeNode<T>>) {
+        self.children.append(&mut new_children);
     }
 
     fn nearest_neighbor(&self, point: &Vector2<T::Scalar>, 
@@ -637,11 +643,16 @@ mod tests {
     use primitives::SimpleTriangle;
     use cgmath::{Vector2, EuclideanVector};
     use num::Float;
+    use rand::{XorShiftRng, SeedableRng};
     use rand::distributions::{Range, IndependentSample};
 
     fn random_points(size: u32) -> Vec<Vector2<f64>> {
+        random_points_with_seed(size, [2, 31, 244, 22])
+    }
+
+    fn random_points_with_seed(size: u32, seed: [u32; 4]) -> Vec<Vector2<f64>> {
         const SIZE: f32 = 1000.;
-        let mut rng = ::rand::thread_rng();
+        let mut rng = XorShiftRng::from_seed(seed);
         let range = Range::new(-SIZE as f64 / 2., SIZE as f64 / 2.);
         let mut points = Vec::new();
         for _ in 0 .. size {
@@ -682,8 +693,8 @@ mod tests {
 
     #[test]
     fn test_lookup() {
-        let (tree, points) = create_random_tree(1000);
-        let sample_points = random_points(100);
+        let (tree, points) = create_random_tree(10000);
+        let sample_points = random_points_with_seed(1000, [2, 1, 0, 3]);
         for sample_point in &sample_points {
             assert!(!tree.lookup(sample_point).is_some());
         }
@@ -694,8 +705,8 @@ mod tests {
 
     #[test]
     fn test_lookup_and_remove() {
-        let (mut tree, points) = create_random_tree(1000);
-        let sample_points = random_points(100);
+        let (mut tree, points) = create_random_tree(10000);
+        let sample_points = random_points_with_seed(1000, [2, 3, 0, 22991]);
         for sample_point in &sample_points {
             assert!(!tree.lookup_and_remove(sample_point).is_some());
         }

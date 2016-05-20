@@ -16,3 +16,9 @@ opt-level = 3
 debug = true
 lto = false
 debug-assertions = false
+
+[profile.release]
+opt-level = 3
+debug = true
+lto = false
+debug-assertions = false

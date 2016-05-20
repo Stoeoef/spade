@@ -1,5 +1,6 @@
 use cgmath::{Vector2, BaseFloat, EuclideanVector};
 use num::{Float, zero, cast};
+use misc::{fmin, fmax, fclamp};
 
 #[derive(Clone, PartialEq)]
 pub struct BoundingRect<S: BaseFloat> {
@@ -7,27 +8,8 @@ pub struct BoundingRect<S: BaseFloat> {
     upper: Vector2<S>,
 }
 
-// A call to l.min(r) does not seem to be inlined, thus we define it ourselves
-// This does improve performance significantly, especially for larger node sizes
-#[inline]
-fn fmin<'a, S: BaseFloat>(l: &'a S, r: &'a S) -> &'a S {
-    if l < r {
-        l
-    } else {
-        r
-    }
-}
-
-#[inline]
-fn fmax<'a, S: BaseFloat>(l: &'a S, r: &'a S) -> &'a S {
-    if l > r {
-        l
-    } else {
-        r
-    }
-}
-
 impl <S: BaseFloat> BoundingRect<S> {
+    #[inline]
     pub fn new() -> BoundingRect<S> {
         BoundingRect {
             lower: Vector2::new(Float::infinity(), Float::infinity()),
@@ -67,15 +49,18 @@ impl <S: BaseFloat> BoundingRect<S> {
     
     #[inline]
     pub fn contains_rect(&self, rect: &BoundingRect<S>) -> bool {
-        self.contains_point(&rect.lower()) && self.contains_point(&rect.upper())
+        let rl = rect.lower();
+        let ru = rect.upper();
+        self.lower.x <= rl.x && self.lower.y <= rl.y
+            && self.upper.x >= ru.x && self.upper.y >= ru.y
     }
 
     #[inline]
     pub fn add_point(&mut self, point: &Vector2<S>) {
-        self.lower = Vector2::new(self.lower.x.min(point.x), 
-                                  self.lower.y.min(point.y));
-        self.upper = Vector2::new(self.upper.x.max(point.x),
-                                  self.upper.y.max(point.y));
+        self.lower = Vector2::new(*fmin(&self.lower.x, &point.x),
+                                  *fmin(&self.lower.y, &point.y));
+        self.upper = Vector2::new(*fmax(&self.upper.x, &point.x),
+                                  *fmax(&self.upper.y, &point.y));
     }
 
     #[inline]
@@ -88,12 +73,12 @@ impl <S: BaseFloat> BoundingRect<S> {
 
     pub fn area(&self) -> S {
         let diag = self.upper - self.lower;
-        (diag.x * diag.y).max(zero())
+        *fmax(&(diag.x * diag.y), &zero())
     }
 
     pub fn half_margin(&self) -> S {
         let diag = self.upper - self.lower;
-        (diag.x + diag.y).max(zero())
+        *fmax(&(diag.x + diag.y), &zero())
     }
 
     pub fn center(&self) -> Vector2<S> {
@@ -102,18 +87,18 @@ impl <S: BaseFloat> BoundingRect<S> {
 
     pub fn intersect(&self, other: &BoundingRect<S>) -> BoundingRect<S> {
         BoundingRect {
-            lower: Vector2::new(self.lower.x.max(other.lower.x), 
-                                self.lower.y.max(other.lower.y)),
-            upper: Vector2::new(self.upper.x.min(other.upper.x),
-                                self.upper.y.min(other.upper.y)),
+            lower: Vector2::new(*fmax(&self.lower.x, &other.lower.x),
+                                *fmax(&self.lower.y, &other.lower.y)),
+            upper: Vector2::new(*fmin(&self.upper.x, &other.upper.x),
+                                *fmin(&self.upper.y, &other.upper.y)),
         }
     }
 
     pub fn min_dist(&self, point: &Vector2<S>) -> S {
         let l = self.lower();
         let u = self.upper();
-        let x = u.x.min(point.x.max(l.x));
-        let y = u.y.min(point.y.max(l.y));
+        let x = *fclamp(&l.x, &u.x, &point.x);
+        let y = *fclamp(&l.y, &u.y, &point.y);
         (Vector2::new(x, y) - point).length2()
     }
 
