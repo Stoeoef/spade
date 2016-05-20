@@ -4,7 +4,6 @@ use traits::{SpatialObject};
 use num::{Float, zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
-use std::cell::{RefCell, RefMut};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct RTreeOptions {
@@ -133,7 +132,7 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T> where T: SpatialObject {
 impl <T> DirectoryNodeData<T> where T: SpatialObject {
     fn new(depth: usize, options: Arc<RTreeOptions>) -> DirectoryNodeData<T> {
         DirectoryNodeData {
-            bounding_box: RefCell::new(None),
+            bounding_box: BoundingRect::new(),
             children: Box::new(Vec::with_capacity(options.max_size + 1)),
             options: options,
             depth: depth,
@@ -145,7 +144,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         let missing = options.max_size + 1 - children.len();
         children.reserve_exact(missing);
         let mut result = DirectoryNodeData {
-            bounding_box: RefCell::new(None),
+            bounding_box: BoundingRect::new(),
             children: children,
             depth: depth,
             options: options
@@ -156,13 +155,15 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
 
     #[inline]
     fn update_mbr(&mut self) {
-        // Mark the bb as dirty
-        *self.bounding_box.borrow_mut() = None;
+        self.bounding_box = BoundingRect::new();
+        for child in self.children.iter() {
+            self.bounding_box.add_rect(&child.mbr());
+        }
     }
 
     #[inline]
     fn update_mbr_with_element(&mut self, element_bb: &BoundingRect<T::Scalar>) {
-        self.mbr().add_rect(element_bb);
+        self.bounding_box.add_rect(element_bb);
     }
 
     fn insert(&mut self, t: RTreeNode<T>, state: &mut InsertionState) -> InsertionResult<T> {
@@ -240,24 +241,8 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         result
     }
 
-    fn mbr(&self) -> RefMut<BoundingRect<T::Scalar>> {
-        {
-            let mut mut_ref = self.bounding_box.borrow_mut();
-            if mut_ref.is_none() {
-                let mut rect = BoundingRect::new();
-                for child in self.children.iter() {
-                    rect.add_rect(&child.mbr());
-                }
-                *mut_ref = Some(rect);
-            }
-        }
-        RefMut::map(self.bounding_box.borrow_mut(), |b| b.as_mut().unwrap())
-    }
-
-
-
     fn reinsert(&mut self) -> Vec<RTreeNode<T>> {
-        let center = self.mbr().center();
+        let center = self.bounding_box.center();
         // Sort with increasing order so we can use Vec::split_off
         self.children.sort_by(|l, r| {
             let l_center = l.mbr().center();
@@ -392,7 +377,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
 
     pub fn lookup_and_remove(&mut self, point: &Vector2<T::Scalar>) -> Option<T> {
-        let contains = self.mbr().contains_point(point);
+        let contains = self.bounding_box.contains_point(point);
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
                                                    Box::new(Vec::new()));
@@ -426,7 +411,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
     
     pub fn lookup(&self, point: &Vector2<T::Scalar>) -> Option<&T> {
-        if self.mbr().contains_point(point) {
+        if self.bounding_box.contains_point(point) {
             for child in self.children.iter() {
                 match child {
                     &RTreeNode::DirectoryNode(ref data) => {
@@ -450,7 +435,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
 impl <'a, T> DirectoryNodeData<T> where T: SpatialObject + PartialEq {
 
     pub fn remove(&mut self, obj: &T) -> bool {
-        let contains = self.mbr().contains_rect(&obj.mbr());
+        let contains = self.bounding_box.contains_rect(&obj.mbr());
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
                                                    Box::new(Vec::new()));
@@ -523,7 +508,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
 
     pub fn mbr(&self) -> BoundingRect<T::Scalar> {
         match self {
-            &RTreeNode::DirectoryNode(ref data) => data.mbr().clone(),
+            &RTreeNode::DirectoryNode(ref data) => data.bounding_box.clone(),
             &RTreeNode::Leaf(ref t) => t.mbr(),
         }
     }
@@ -545,7 +530,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
 }
 
 struct DirectoryNodeData<T> where T: SpatialObject {
-    bounding_box: RefCell<Option<BoundingRect<T::Scalar>>>,
+    bounding_box: BoundingRect<T::Scalar>,
     children: Box<Vec<RTreeNode<T>>>,
     depth: usize,
     options: Arc<RTreeOptions>,
