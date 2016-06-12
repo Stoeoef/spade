@@ -1,79 +1,72 @@
-use cgmath::{BaseFloat, Vector2, Vector, EuclideanVector, one, zero};
-use num::traits::Zero;
+use cgmath::{BaseNum, Vector2, zero};
+use cgmath::conv::array2;
+use num::{Bounded, Signed};
 use boundingvolume::BoundingRect;
+use misc::{length2};
 
+pub trait RTreeNum: BaseNum + Bounded + Signed { }
+
+impl <S> RTreeNum for S where S: BaseNum + Bounded + Signed {}
+
+/// Describes objects that can be located by r-trees.
+///
+/// See the `primitives` module for some basic implementations.
+/// # Example
+/// ```
+/// use rtree::{SpatialObject, BoundingRect};
+/// 
+/// struct Circle {
+///  radius: f32,
+///  origin: [f32; 2],
+/// }
+/// 
+/// impl SpatialObject for Circle {
+///   type Scalar = f32;
+///
+///   fn mbr(&self) -> BoundingRect<f32> {
+///     let (x, y) = (self.origin[0], self.origin[1]);
+///     let r = self.radius;
+///     BoundingRect::from_corners(&[x - r, y - r], &[x + r, y + r])
+///   }
+///
+///   fn distance(&self, point: [f32; 2]) -> f32 {
+///     let dx = self.origin[0] - point[0];
+///     let dy = self.origin[1] - point[1];
+///     ((dx * dx + dy * dy).sqrt() - self.radius).max(0.)
+///   }
+/// }
+/// ```
 pub trait SpatialObject {
-    type Scalar: BaseFloat;
+    type Scalar: RTreeNum;
+
+    /// Returns the object's minimal bounding rectangle.
+    ///
+    /// The minimal bounding rectangle is the smallest axis aligned rectangle that completely
+    // contains the object.
+    /// <b>Note:</b> The rectangle must be as small as possible, otherwise some queries
+    /// might fail.
     fn mbr(&self) -> BoundingRect<Self::Scalar>;
 
-    fn distance2(&self, point: &Vector2<Self::Scalar>) -> Self::Scalar {
-        self.mbr().min_dist(point)
-    }
+    /// Returns the distance from the object's contour.
+    /// Note that this is not necessarily the euclidean distance,
+    /// this functions result's will only be used for comparison.
+    /// Returns zero if the point is contained within the object.
+    fn distance(&self, point: [Self::Scalar; 2]) -> Self::Scalar;
 
-    fn contains(&self, point: &Vector2<Self::Scalar>) -> bool {
-        self.distance2(point) == zero()
-    }
-}
-
-pub trait SpatialEdge : SpatialObject {
-
-    fn from(&self) -> Vector2<Self::Scalar>;
-    fn to(&self) -> Vector2<Self::Scalar>;
-
-    fn nearest_point(&self, point: &Vector2<Self::Scalar>) -> Vector2<Self::Scalar> {
-        let (p1, p2) = (self.from(), self.to());
-        let dir = p2 - p1;
-        let s: Self::Scalar = (point - p1).dot(dir) / dir.length2();
-        if Self::Scalar::zero() < s && s < one() {
-            p1 + dir * s
-        } else {
-            if s <= zero() {
-                p1
-            } else {
-                p2
-            }
-        }
-    }
-
-    /**
-     * Returns a value smaller than zero if point is on the right side of this edge,
-     * zero if c is on the edge and a positive value if point is to the left.
-     **/
-    fn signed_side(&self, point: &Vector2<Self::Scalar>) -> Self::Scalar {
-        let (ref a, ref b) = (self.from(), self.to());
-        (b.x - a.x) * (point.y - a.y) - (b.y - a.y)  * (point.x - a.x)
-    }
-
-    fn is_on_right_side(&self, point: &Vector2<Self::Scalar>) -> bool {
-        self.signed_side(point) < zero()
-    }
-
-    fn is_on_left_side(&self, point: &Vector2<Self::Scalar>) -> bool {
-        self.signed_side(point) > zero()
+    /// Returns true if a given point is contained in this object.
+    fn contains(&self, point: [Self::Scalar; 2]) -> bool {
+        self.distance(point) == zero()
     }
 }
 
-
-pub trait PointObject : SpatialObject {
-    fn position(&self) -> Vector2<Self::Scalar>;
-}
-
-
-impl <S: BaseFloat> PointObject for Vector2<S> {
-
-    fn position(&self) -> Vector2<S> {
-        self.clone()
-    }
-}
-
-impl <S: BaseFloat> SpatialObject for Vector2<S> {
+impl <S: RTreeNum> SpatialObject for Vector2<S> {
     type Scalar = S;
     fn mbr(&self) -> BoundingRect<S> {
-        BoundingRect::from_point(self.position())
+        BoundingRect::from_point(array2(*self))
     }
 
-    fn distance2(&self, point: &Vector2<S>) -> S {
-        // Overwrite default implementation since this will be faster
-        (point - self.position()).length2()
+    fn distance(&self, point: [Self::Scalar; 2]) -> S {
+        let point: Vector2<_> = point.into();
+        length2(&(point - *self))
     }
 }

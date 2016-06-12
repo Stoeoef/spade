@@ -1,13 +1,18 @@
+#[macro_use]
+extern crate glium;
+
+extern crate rand;
 extern crate rtree;
 extern crate cgmath;
 extern crate time;
-extern crate rand;
+
+mod utils;
 
 use rtree::{RTree, RTreeOptions};
+use utils::*;
 use time::Duration;
-use rand::{SeedableRng, XorShiftRng};
-use rand::distributions::{Range, IndependentSample};
 use cgmath::Vector2;
+use cgmath::conv::array2;
 use std::cmp::{min, max};
 use std::path::Path;
 use std::fs::File;
@@ -15,21 +20,22 @@ use std::io::{Write, stdout};
 
 
 fn main() {
-    // run_insertion_over_time_bench();
-    // run_insertion_with_different_parameters_bench();
+    run_insertion_over_time_bench();
+    run_insertion_with_different_parameters_bench();
     run_lookup_with_different_parameters_bench();
+    run_lookup_with_different_fill_levels_bench();
 }
 
 fn run_insertion_over_time_bench() {
     let max_sizes = [5, 6, 7, 8, 9, 10, 16];
-    const NUM_VERTICES: usize = 1000000;
+    const NUM_VERTICES: usize = 2000000;
     const CHUNK_SIZE: usize = NUM_VERTICES / 300;
-    const NUM_ITERATIONS: usize = 2;
+    const NUM_ITERATIONS: usize = 4;
 
     let mut result_file = File::create(&Path::new("rtree_insertion_over_time.dat")).unwrap();
     write!(result_file, "# max_size num_vertices time\n").unwrap();
 
-    let points = random_points(NUM_VERTICES, [2, 2, 31123, 998]);
+    let points = random_points_with_seed::<f32>(NUM_VERTICES, [2, 2, 31123, 998]);
     for max_size in max_sizes.iter() {
         let min_size = (*max_size as f32 * 0.45) as usize;
         let reinsertion_count = (min_size as f32 * 0.8) as usize;
@@ -56,14 +62,13 @@ fn run_insertion_over_time_bench() {
                 total += time;
             }
             print!(".");
-            stdout().flush().unwrap();
         }
         write!(result_file, "\"max_size = {}\"\n", max_size).unwrap();
         for (i, time) in times.iter().enumerate() {
             if *time == i64::max_value() {
                 continue;
             }
-            write!(result_file, "{} {}\n", i * CHUNK_SIZE, time).unwrap();
+            write!(result_file, "{} {}\n", i * CHUNK_SIZE, time / CHUNK_SIZE as i64).unwrap();
         }
         write!(result_file, "\n\n").unwrap();
         println!("\n Total time: {}", total / NUM_ITERATIONS as i64);
@@ -71,16 +76,14 @@ fn run_insertion_over_time_bench() {
 }
 
 fn run_lookup_with_different_parameters_bench() {
-    // let max_sizes = [6, 8, 10, 20, 40, 80, 150];
-    // let reinsertion_counts = [0.1, 0.3, 0.7];
-    let max_sizes = [6];
-    let reinsertion_counts = [0.3];
+    let max_sizes = [6, 8, 10, 20, 40, 80, 150];
+    let reinsertion_counts = [0.1, 0.3, 0.7];
 
     const NUM_START_VERTICES: usize = 200000;
     const NUM_LOOKUP_VERTICES: usize = 400000;
 
-    let points = random_points(NUM_START_VERTICES, [3, 1, 4, 1]);
-    let lookup_points = random_points(NUM_LOOKUP_VERTICES, [312, 330, 9, 931]);
+    let points = random_points_with_seed(NUM_START_VERTICES, [3, 1, 4, 1]);
+    let lookup_points = random_points_with_seed(NUM_LOOKUP_VERTICES, [312, 330, 9, 931]);
     let mut result_file = File::create(
         &Path::new("rtree_lookup_with_different_parameters.dat")).unwrap();
 
@@ -99,7 +102,7 @@ fn run_lookup_with_different_parameters_bench() {
                 start_tree.insert(point);
             }
             let time = bench(&start_tree, &lookup_points, |t, p| {
-                if t.lookup(&p).is_some() { println!("don't optimize me away"); } })
+                if t.lookup(array2(p)).is_some() { println!("don't optimize me away"); } })
                 .num_milliseconds();
             println!("Time: {:?} ms", time);
             write!(result_file, "{} {} {}\n", max_size, reinsertion_count_factor, time).unwrap();
@@ -114,8 +117,8 @@ fn run_insertion_with_different_parameters_bench() {
 
     const NUM_START_VERTICES: usize = 200000;
     const NUM_INSERTION_VERTICES: usize = 200000;
-    let start_vertices = random_points(NUM_START_VERTICES, [3, 1, 4, 1]);
-    let insertion_vertices = random_points(NUM_INSERTION_VERTICES, [4556, 99821, 2156126, 22]);
+    let start_vertices = random_points_with_seed(NUM_START_VERTICES, [3, 1, 4, 1]);
+    let insertion_vertices = random_points_with_seed(NUM_INSERTION_VERTICES, [4556, 99821, 2156126, 22]);
 
     let mut result_file = File::create(
         &Path::new("rtree_insertion_with_different_parameters.dat")).unwrap();
@@ -148,18 +151,46 @@ fn run_insertion_with_different_parameters_bench() {
     }
 }
 
-fn random_points(size: usize, seed: [u32; 4]) -> Vec<Vector2<f64>> {
-    const SIZE: f32 = 1000.;
+fn run_lookup_with_different_fill_levels_bench() {
+    const MAX_VERTICES: usize = 4000000;
+    const NUM_LOOKUPS: usize = 40000;
+    const NUM_STEPS: usize = 100;
+    const CHUNK_SIZE: usize = MAX_VERTICES / NUM_STEPS;
 
-    let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-SIZE as f64 / 2., SIZE as f64 / 2.);
-    let mut points = Vec::with_capacity(size);
-    for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng);
-        let y = range.ind_sample(&mut rng);
-        points.push(Vector2::new(x, y));
+    let max_sizes = [5, 6, 7, 8, 10usize];
+    let vertices = random_points_with_seed::<f32>(MAX_VERTICES, [3, 1, 4, 1]);
+    let lookup_points = random_points_with_seed(NUM_LOOKUPS, [2000, 1443, 2448, 99]);
+    let mut result_file = File::create(
+        &Path::new("rtree_lookup_with_different_fill_levels.dat")).unwrap();
+    for max_size in max_sizes.iter().cloned() {
+        let min_size = (max_size as f32 * 0.45) as usize;
+        let reinsertion_count = (max_size as f32 * 0.3) as usize;
+        let options = RTreeOptions::new()
+                .set_max_size(max_size)
+                .set_min_size(min_size)
+                .set_reinsertion_count(reinsertion_count);
+        println!("Running new benchmark...");
+        println!("Options: {:?}", options);
+        write!(result_file, "\"max_size = {}\"\n", max_size).unwrap();
+        let mut tree = options.build();
+        for chunk in vertices.chunks(CHUNK_SIZE) {
+            print!(".");
+            stdout().flush().unwrap();
+            for vertex in chunk.iter().cloned() {
+                tree.insert(vertex);
+            }
+            let time = Duration::span(|| {
+                for point in lookup_points.iter().cloned() {
+                    if let Some(_) = tree.lookup(array2(point)) {
+                        println!("Don't optimize me away");
+                    }
+                }
+            }).num_nanoseconds().unwrap();
+            write!(result_file, "{} {}\n", tree.size(), time / NUM_LOOKUPS as i64).unwrap();
+        }
+        write!(result_file, "\n\n").unwrap();
+        println!("");
     }
-    points
 }
 
 fn bench<F>(start_tree: &RTree<Vector2<f64>>, points: &Vec<Vector2<f64>>, f: F) -> Duration 

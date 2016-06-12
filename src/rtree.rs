@@ -1,10 +1,13 @@
-use cgmath::{Vector2, EuclideanVector};
+use cgmath::{Vector2, InnerSpace, PartialOrd};
+use cgmath::conv::array2;
 use std::sync::Arc;
 use traits::{SpatialObject};
-use num::{Float, zero};
+use num::{Bounded, zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
+use misc::length2;
 
+#[doc(hidden)]
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct RTreeOptions {
     max_size: usize,
@@ -18,6 +21,7 @@ impl Default for RTreeOptions {
     }
 }
 
+#[doc(hidden)]
 impl RTreeOptions {
     pub fn new() -> RTreeOptions {
         RTreeOptions {
@@ -40,12 +44,12 @@ impl RTreeOptions {
     }
 
     pub fn set_reinsertion_count(mut self, reinsertion_count: usize) -> RTreeOptions {
-        // assert!(self.min_size > reinsertion_count);
+        assert!(0 < reinsertion_count && self.max_size > reinsertion_count);
         self.reinsertion_count = reinsertion_count;
         self
     }
 
-    pub fn build<'a, T: SpatialObject>(self) -> RTree<T> {
+    pub fn build<T: SpatialObject>(self) -> RTree<T> {
         RTree::new_with_options(self)
     }
 }
@@ -57,6 +61,7 @@ pub struct RTreeIterator<'a, T> where T: SpatialObject + 'a {
     cur_iterator: Option<Box<RTreeNodeIterator<'a, T>>>,
 }
 
+#[doc(hidden)]
 pub enum RTreeNodeIterator<'a, T> where T: SpatialObject + 'a {
     LeafIterator(Once<&'a T>),
     DirectoryNodeIterator(RTreeIterator<'a, T>),
@@ -130,6 +135,19 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T> where T: SpatialObject {
 }
 
 impl <T> DirectoryNodeData<T> where T: SpatialObject {
+
+    pub fn children(&self) -> &Vec<RTreeNode<T>> {
+        &self.children
+    }
+
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+
+    pub fn mbr(&self) -> BoundingRect<T::Scalar> {
+        self.bounding_box.clone()
+    }
+
     fn new(depth: usize, options: Arc<RTreeOptions>) -> DirectoryNodeData<T> {
         DirectoryNodeData {
             bounding_box: BoundingRect::new(),
@@ -215,7 +233,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         assert!(self.children.len() >= 2);
         // Sort along axis
         self.children.sort_by(|l, r| l.mbr().lower()[axis].partial_cmp(&r.mbr().lower()[axis]).unwrap());
-        let mut best = (Float::infinity(), Float::infinity());
+        let mut best = (Bounded::max_value(), Bounded::max_value());
         let mut best_index = self.options.min_size;
 
         for k in self.options.min_size .. self.children.len() - self.options.min_size + 1 {
@@ -250,7 +268,8 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         self.children.sort_by(|l, r| {
             let l_center = l.mbr().center();
             let r_center = r.mbr().center();
-            (l_center - center).length2().partial_cmp(&(r_center - center).length2()).unwrap()
+            length2(&(l_center - center)).partial_cmp(
+                &length2(&(r_center - center))).unwrap()
         });
         let num_children = self.children.len();
         let result = self.children.split_off(num_children - self.options.reinsertion_count);
@@ -259,7 +278,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
 
     fn get_split_axis(&mut self) -> usize {
-        let mut best_goodness = Float::infinity();
+        let mut best_goodness = Bounded::max_value();
         let mut best_axis = 0;
         for axis in 0 .. 2usize {
             // Sort children along the current axis
@@ -290,7 +309,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         assert!(self.depth >= 2, "Cannot choose subtree on this level");
         let insertion_mbr = node.mbr();
         let mut inclusion_count = 0;
-        let mut min_area = Float::infinity();
+        let mut min_area = Bounded::max_value();
         let mut min_index = 0;
         for (index, child) in self.children.iter().enumerate() {
             let mbr = child.mbr();
@@ -307,7 +326,8 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
             // No inclusion found, subtree depends on overlap and area increase
             let all_leaves = self.depth <= 2;
 
-            let mut min = (Float::infinity(), Float::infinity(), Float::infinity());
+            let mut min = (Bounded::max_value(), 
+                           Bounded::max_value(), Bounded::max_value());
 
             for (index, child1) in self.children.iter().enumerate() {
                 let mbr = child1.mbr();
@@ -354,23 +374,22 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                         mut nearest_distance: T::Scalar) -> Option<&T> {
         let mut nearest = None;
         // Calculate smallest minmax-distance
-        let mut smallest_min_max: T::Scalar = Float::infinity();
+        let mut smallest_min_max: T::Scalar = Bounded::max_value();
         for child in self.children.iter() {
-            smallest_min_max = smallest_min_max.min(child.mbr().min_max_dist(point));
+            smallest_min_max = smallest_min_max.partial_min(child.mbr().min_max_dist2(point));
         }
-        let mut sorted = Vec::with_capacity(self.children.len());
-        sorted.extend(self.children.iter().map(|e| e));
-        sorted.sort_by(|l, r| l.mbr().min_dist(point).partial_cmp(&r.mbr().min_dist(point))
-                       .unwrap());
+        let mut sorted: Vec<_> = self.children.iter().collect();
+        sorted.sort_by(|l, r| l.mbr().min_dist2(point).partial_cmp(
+            &r.mbr().min_dist2(point)).unwrap());
         for child in sorted.iter() {
-            let min_dist = child.mbr().min_dist(point);
+            let min_dist = child.mbr().min_dist2(point);
             if min_dist > smallest_min_max || min_dist > nearest_distance {
                 // Prune this element
                 continue;
             }
             match child.nearest_neighbor(point, nearest_distance) {
                 Some(t) => {
-                    nearest_distance = t.distance2(point);
+                    nearest_distance = t.distance(array2(point.clone())).into();
                     nearest = Some(t);
                 },
                 None => {}
@@ -379,8 +398,42 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         nearest
     }
 
-    pub fn lookup_and_remove(&mut self, point: &Vector2<T::Scalar>) -> Option<T> {
-        let contains = self.bounding_box.contains_point(point);
+    fn nearest_n_neighbors<'a>(&'a self, point: &Vector2<T::Scalar>, n: usize, result: &mut Vec<&'a T>) {
+
+        // let mut sorted: Vec<_> = self.children.iter().collect();
+        // sorted.sort_by(|l, r| l.mbr().min_dist2(point).partial_cmp(
+        //     &r.mbr().min_dist2(point)).unwrap());
+        for child in self.children.iter() {
+        // for child in sorted.iter().cloned() {
+            let min_dist = child.mbr().min_dist2(point);
+            if result.len() == n && min_dist >= result.last().unwrap().distance(array2(point.clone())) {
+                // Prune this element
+                continue;
+            }
+            match child {
+                &RTreeNode::DirectoryNode(ref data) => {
+                    data.nearest_n_neighbors(point, n, result);
+                },
+                &RTreeNode::Leaf(ref t) => {
+                    let distance = t.distance(array2(point.clone()));
+                    if result.len() != n || distance < result.last().unwrap().distance(array2(point.clone())) {
+                        if result.len() == n {
+                            result.pop();
+                        }
+                        let index = match result.binary_search_by(|e| e.distance(array2(point.clone())).partial_cmp(
+                            &distance).unwrap()) {
+                            Ok(index) => index,
+                            Err(index) => index,
+                        };
+                        result.insert(index, t);
+                    }
+                }
+            }
+        }
+    }
+
+    fn lookup_and_remove(&mut self, point: &Vector2<T::Scalar>) -> Option<T> {
+        let contains = self.bounding_box.contains_point(&array2(*point));
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
                                                    Box::new(Vec::new()));
@@ -395,7 +448,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                         }
                     },
                     RTreeNode::Leaf(t) => {
-                        if t.contains(point) {
+                        if t.contains(array2(point.clone())) {
                             result = Some(t);
                         } else {
                             self.children.push(RTreeNode::Leaf(t))
@@ -413,8 +466,8 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         }
     }
     
-    pub fn lookup(&self, point: &Vector2<T::Scalar>) -> Option<&T> {
-        if self.bounding_box.contains_point(point) {
+    fn lookup(&self, point: &Vector2<T::Scalar>) -> Option<&T> {
+        if self.bounding_box.contains_point(&array2(*point)) {
             for child in self.children.iter() {
                 match child {
                     &RTreeNode::DirectoryNode(ref data) => {
@@ -424,7 +477,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                         }
                     },
                     &RTreeNode::Leaf(ref t) => {
-                        if t.contains(point) {
+                        if t.contains(array2(point.clone())) {
                             return Some(t);
                         }
                     }
@@ -433,12 +486,32 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         }
         None
     }
+
+    fn lookup_in_circle<'b>(&'b self, result: &mut Vec<&'b T>, origin: &Vector2<T::Scalar>,
+                        radius2: &T::Scalar)
+    {
+        // Only look at children whose mbr intersects the circle
+        for child in self.children.iter().filter(|c| {
+            let min_dist2 = c.mbr().min_dist2(origin);
+            min_dist2 < *radius2
+        }) {
+            match child {
+                &RTreeNode::DirectoryNode(ref data) =>
+                    data.lookup_in_circle(result, origin, radius2),
+                &RTreeNode::Leaf(ref t) => {
+                    if t.distance(array2(origin.clone())) < *radius2 {
+                        result.push(t);
+                    }
+                },
+            }
+        }
+    }
 }
 
-impl <'a, T> DirectoryNodeData<T> where T: SpatialObject + PartialEq {
+impl <T> DirectoryNodeData<T> where T: SpatialObject + PartialEq {
 
-    pub fn remove(&mut self, obj: &T) -> bool {
-        let contains = self.bounding_box.contains_rect(&obj.mbr());
+    pub fn remove(&mut self, to_remove: &T) -> bool {
+        let contains = self.bounding_box.contains_rect(&to_remove.mbr());
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
                                                    Box::new(Vec::new()));
@@ -446,14 +519,14 @@ impl <'a, T> DirectoryNodeData<T> where T: SpatialObject + PartialEq {
             for child in children.drain(..) {
                 match child {
                     RTreeNode::DirectoryNode(mut data) => {
-                        result = data.remove(obj) | result;
+                        result = data.remove(to_remove) | result;
                         if !data.children.is_empty() {
                             // Don't add a node if it has become empty
                             self.children.push(RTreeNode::DirectoryNode(data));
                         }
                     },
                     RTreeNode::Leaf(t) => {
-                        if t == *obj {
+                        if t == *to_remove {
                             result = true;
                         } else {
                             self.children.push(RTreeNode::Leaf(t))
@@ -502,7 +575,7 @@ impl InsertionState {
 
 impl <T> RTreeNode<T> where T: SpatialObject {
 
-    fn depth(&self) -> usize {
+    pub fn depth(&self) -> usize {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.depth,
             _ => 0
@@ -521,7 +594,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbor(point, nearest_distance),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance2(point);
+                let distance = t.distance(array2(point.clone()));
                 if distance < nearest_distance {
                     Some(t)
                 } else {
@@ -532,31 +605,47 @@ impl <T> RTreeNode<T> where T: SpatialObject {
     }
 }
 
+#[doc(hidden)]
 #[derive(Clone)]
-struct DirectoryNodeData<T> where T: SpatialObject {
+pub struct DirectoryNodeData<T> where T: SpatialObject {
     bounding_box: BoundingRect<T::Scalar>,
     children: Box<Vec<RTreeNode<T>>>,
     depth: usize,
     options: Arc<RTreeOptions>,
 }
 
+#[doc(hidden)]
 #[derive(Clone)]
-enum RTreeNode<T> where T: SpatialObject {
+pub enum RTreeNode<T> where T: SpatialObject {
     Leaf(T),
     DirectoryNode(DirectoryNodeData<T>),
 }
 
+/// A pure rust r*-tree implementation.
+///
+/// Note that the structure does use the [r-star-tree heuristics](https://en.wikipedia.org/wiki/R*_tree), even though it is called
+/// `RTree`.
+/// Allows to insert various objects into the tree and to make some common queries.
 #[derive(Clone)]
 pub struct RTree<T> where T: SpatialObject {
+
     root: DirectoryNodeData<T>,
     size: usize,
 }
 
-impl<'a, T> RTree<T> where T: SpatialObject {
+impl<T> Default for RTree<T> where T: SpatialObject {
+    fn default() -> RTree<T> {
+        RTree::new()
+    }
+}
+
+impl<T> RTree<T> where T: SpatialObject {
+    /// Creates an empty r*-tree.
     pub fn new() -> RTree<T> {
         RTree::new_with_options(Default::default())
     }
 
+    #[doc(hidden)]
     pub fn new_with_options(options: RTreeOptions) -> RTree<T> {
         let options = Arc::new(options);
         RTree {
@@ -565,14 +654,20 @@ impl<'a, T> RTree<T> where T: SpatialObject {
         }
     }
 
+    /// Returns the number of elements contained in this r-tree.
     pub fn size(&self) -> usize {
         self.size
     }
 
+    /// Returns an iterator over all contained elements.
     pub fn iter(&self) -> RTreeIterator<T> {
         RTreeIterator::new(&self.root)
     }
-
+    
+    /// Inserts a new element into the tree.
+    ///
+    /// This will require `O(log(n))` operations on average, where n is the number of elements contained
+    /// in the tree.
     pub fn insert(&mut self, t: T) {
         let mut state = InsertionState::new(self.root.depth + 1);
         let mut insertion_stack = vec![RTreeNode::Leaf(t)];
@@ -601,24 +696,66 @@ impl<'a, T> RTree<T> where T: SpatialObject {
         self.size += 1;
     }
 
-    pub fn lookup_and_remove(&mut self, point: &Vector2<T::Scalar>) -> Option<T> {
-        let result = self.root.lookup_and_remove(point);
+    /// Searches for an element and removes it.
+    ///
+    /// If the given point is contained by one object in the tree, this object is being removed
+    /// and returned. If the point is contained by multiple objects, only one of them is removed and
+    /// returned.
+    pub fn lookup_and_remove(&mut self, query_point: [T::Scalar; 2]) -> Option<T> {
+        let result = self.root.lookup_and_remove(&query_point.into());
         if result.is_some() {
             self.size -= 1;
         }
         result
     }
 
-    pub fn lookup(&self, point: &Vector2<T::Scalar>) -> Option<&T> {
-        self.root.lookup(point)
+    #[doc(hidden)]
+    pub fn root(&self) -> &DirectoryNodeData<T> {
+        &self.root
+    }
+
+    /// Searches for an element at a given position.
+    ///
+    /// If `query_point` is contained by one object in the tree, this object will be returned.
+    /// If multiple objects contain the point, only one of them will be returned.
+    pub fn lookup(&self, point: [T::Scalar; 2]) -> Option<&T> {
+        self.root.lookup(&point.into())
     }
     
-    pub fn nearest_neighbor(&self, point: &Vector2<T::Scalar>) -> Option<&T> {
-        self.root.nearest_neighbor(point, Float::infinity())
+    /// Returns the nearest neighbor.
+    ///
+    /// Returns `None` if the tree is empty.
+    pub fn nearest_neighbor(&self, query_point: [T::Scalar; 2]) -> Option<&T> {
+        self.root.nearest_neighbor(&query_point.into(), Bounded::max_value())
     }
+
+    /// Returns the nearest n neighbors.
+    pub fn nearest_n_neighbors(&self, query_point: [T::Scalar; 2], n: usize) -> Vec<&T> {
+        let mut result = Vec::new();
+        self.root.nearest_n_neighbors(&query_point.into(), n, &mut result);
+        result
+    }
+
+    /// Returns all objects (partially) contained in a circle.
+    ///
+    /// Note that `radius2` is the circle's squared radius, not the actual radius.
+    /// An object is contained if a part of it lies within the circle.
+    pub fn lookup_in_circle(&self, circle_origin: [T::Scalar; 2], radius2: T::Scalar) -> Vec<&T> {
+        let mut result = Vec::new();
+        self.root.lookup_in_circle(&mut result, &circle_origin.into(), &radius2);
+        result
+    }
+    
 }
 
-impl <'a, T> RTree<T> where T: SpatialObject + PartialEq {
+impl <T> RTree<T> where T: SpatialObject + PartialEq {
+
+    /// Removes an object from the tree.
+    ///
+    /// Locates and removes an object from the tree, returning
+    /// `true` if the element could be removed.
+    /// If multiple object's are equal to `to_remove`, only one
+    /// will be deleted.
     pub fn remove(&mut self, obj: &T) -> bool {
         let result = self.root.remove(obj);
         if result {
@@ -632,90 +769,71 @@ impl <'a, T> RTree<T> where T: SpatialObject + PartialEq {
 mod tests {
     use super::{RTree};
     use primitives::SimpleTriangle;
-    use cgmath::{Vector2, EuclideanVector};
+    use cgmath::{Vector2, InnerSpace};
+    use cgmath::conv::{array2};
     use num::Float;
-    use rand::{XorShiftRng, SeedableRng};
-    use rand::distributions::{Range, IndependentSample};
+    use testutils::*;
 
-    fn random_points(size: u32) -> Vec<Vector2<f64>> {
-        random_points_with_seed(size, [2, 31, 244, 22])
+    #[test]
+    fn test_tree_with_integral_vectors() {
+        // This test should compile
+        let mut tree = RTree::new();
+        tree.insert(Vector2::new(13, 37));
+        assert!(tree.lookup([13, 37]).is_some())
     }
 
-    fn random_points_with_seed(size: u32, seed: [u32; 4]) -> Vec<Vector2<f64>> {
-        const SIZE: f32 = 1000.;
-        let mut rng = XorShiftRng::from_seed(seed);
-        let range = Range::new(-SIZE as f64 / 2., SIZE as f64 / 2.);
-        let mut points = Vec::new();
-        for _ in 0 .. size {
-            let x = range.ind_sample(&mut rng);
-            let y = range.ind_sample(&mut rng);
-            points.push(Vector2::new(x, y));
-        }
-        points
-    }
-
-    fn create_random_tree<'a>(size: u32) -> (RTree<Vector2<f64>>, Vec<Vector2<f64>>) {
-        let mut tree: RTree<Vector2<f64>> = RTree::new();
-        
-        let points = random_points(size);
-        for point in points.iter() {
-            tree.insert(point.clone())
-        }
-        (tree, points)
-    }
-        
     #[test]
     fn test_nearest_neighbor() {
-        let (tree, points) = create_random_tree(1000);
-        let sample_points = random_points(100);
+        let (tree, points) = create_random_tree::<f32>(1000, [10, 233, 588812, 411112]);
+        let sample_points = random_points_with_seed(100, [66, 123, 12345, 112]);
         for sample_point in &sample_points {
             let mut nearest = None;
             let mut closest_dist = Float::infinity();
             for point in &points {
-                let new_dist = (point - sample_point).length2();
+                let new_dist = (point - sample_point).magnitude2();
                 if new_dist < closest_dist {
                     closest_dist = new_dist;
                     nearest = Some(point);
                 }
             }
-            assert!(nearest == tree.nearest_neighbor(&sample_point));
+            assert!(nearest == tree.nearest_neighbor(array2(sample_point.clone())));
         }
     }
 
     #[test]
     fn test_lookup() {
-        let (tree, points) = create_random_tree(10000);
+        let (tree, points) = create_random_tree::<f32>(10000, [9, 8, 7, 6]);
         let sample_points = random_points_with_seed(1000, [2, 1, 0, 3]);
         for sample_point in &sample_points {
-            assert!(!tree.lookup(sample_point).is_some());
+            assert!(!tree.lookup(array2(sample_point.clone())).is_some());
         }
         for point in &points {
-            assert!(tree.lookup(point) == Some(point));
+            assert!(tree.lookup(array2(point.clone())) == Some(point));
         }
     }
 
     #[test]
     fn test_lookup_and_remove() {
-        let (mut tree, points) = create_random_tree(10000);
+        let (mut tree, points) = create_random_tree::<f32>(10000, [3141, 59, 26, 53]);
         let sample_points = random_points_with_seed(1000, [2, 3, 0, 22991]);
         for sample_point in &sample_points {
-            assert!(!tree.lookup_and_remove(sample_point).is_some());
+            assert!(!tree.lookup_and_remove(array2(sample_point.clone())).is_some());
         }
 
         // Test if all points are still there
         for point in &points {
-            assert_eq!(tree.lookup(point), Some(point));
+            assert_eq!(tree.lookup(array2(point.clone())), Some(point));
         }
         // Now remove all points
         for point in &points {
-            assert_eq!(tree.lookup_and_remove(point).as_ref(), Some(point));
+            assert_eq!(tree.lookup_and_remove(array2(point.clone())).as_ref(), Some(point));
         }
         assert!(tree.root.children.is_empty());
     }
 
     #[test]
     fn test_remove() {
-        let random_points = random_points(300);
+        let random_points = random_points_with_seed(300, [911, 110, 123, 454]);
         let mut triangles = Vec::with_capacity(100);
         for ps in random_points.chunks(3) {
             let ps = [ps[0], ps[1], ps[2]];
@@ -740,7 +858,7 @@ mod tests {
 
     #[test]
     fn test_iteration() {
-        let (tree, reference_points) = create_random_tree(100);
+        let (tree, reference_points) = create_random_tree::<f32>(100, [1, 10, 100, 1000]);
         // Check if the set of reference points and the points given by
         // iteration are equal
         assert_eq!(tree.iter().count(), 100);
