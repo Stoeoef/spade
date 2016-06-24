@@ -2,6 +2,10 @@
 name = "rtree"
 version = "0.1.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
+license="Apache-2.0"
+description="A pure rust implementation of the r* tree data structure."
+homepage=""
+repository=""
 
 [dependencies]
 cgmath = "0.9.1"
