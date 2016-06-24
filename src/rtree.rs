@@ -69,6 +69,28 @@ impl RTreeOptions {
     }
 }
 
+pub struct NearestNeighborIterator<'a, T> where T: SpatialObject + 'a {
+    next_items: Vec<&'a T>,
+    min_dist: T::Scalar,
+    tree: &'a RTree<T>,
+    query_point: Vector2<T::Scalar>,
+}
+
+// impl <'a, T> Iterator for NearestNeighborIterator<'a, T> where T: SpatialObject + 'a {
+//     type Item = &'a T;    
+    
+//     fn next(&mut self) -> Option<&'a T> {
+//         match self.next_items.pop() {
+//             Some(t) => Some(t),
+//             None => {
+//                 // Get new nearest elements
+//                 self.next_items = self.tree.nearest_neighbors_with_min_dist(
+//                     self.query_point, self.min_dist);
+//                 self.next_items.pop()
+//             },
+//         }
+//     }
+// }
 
 pub struct RTreeIterator<'a, T> where T: SpatialObject + 'a {
     data: &'a DirectoryNodeData<T>,
@@ -413,6 +435,32 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         nearest
     }
 
+    fn nearest_neighbors<'a>(&'a self, point: &Vector2<T::Scalar>,
+                         mut nearest_distance: Option<T::Scalar>, result: &mut Vec<&'a T>) -> Option<T::Scalar> {
+        // Calculate smallest minmax-distance
+        let mut smallest_min_max: T::Scalar = Bounded::max_value();
+        for child in self.children.iter() {
+            smallest_min_max = smallest_min_max.partial_min(child.mbr().min_max_dist2(point));
+        }
+        let mut sorted: Vec<_> = self.children.iter().collect();
+        sorted.sort_by(|l, r| l.mbr().min_dist2(point).partial_cmp(
+            &r.mbr().min_dist2(point)).unwrap());
+        for child in sorted.iter() {
+            let min_dist = child.mbr().min_dist2(point);
+            if min_dist > smallest_min_max || nearest_distance.map(|d| min_dist > d).unwrap_or(false) {
+                // Prune this element
+                continue;
+            }
+            match child.nearest_neighbors(point, nearest_distance, result) {
+                Some(nearest) => {
+                    nearest_distance = Some(nearest);
+                },
+                None => {}
+            }
+        }
+        nearest_distance
+    }
+
     fn nearest_n_neighbors<'a>(&'a self, point: &Vector2<T::Scalar>, n: usize, result: &mut Vec<&'a T>) {
 
         // let mut sorted: Vec<_> = self.children.iter().collect();
@@ -618,6 +666,35 @@ impl <T> RTreeNode<T> where T: SpatialObject {
             }
         }
     }
+
+    fn nearest_neighbors<'a>(&'a self, point: &Vector2<T::Scalar>, nearest_distance: Option<T::Scalar>,
+                         result: &mut Vec<&'a T>) -> Option<T::Scalar> {
+        match self {
+            &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbors(point, nearest_distance, result),
+            &RTreeNode::Leaf(ref t) => {
+                let distance = t.distance(array2(point.clone()));
+                match nearest_distance {
+                    Some(nearest) => {                
+                        if distance <= nearest {
+                            if distance < nearest {
+                                // We've found a new minimum element, remove all other neighbors found so far
+                                result.clear();
+                            }
+                            result.push(t);
+                            Some(distance)
+                        } else {
+                            // This object is not among the nearest neigbors
+                            None
+                        }
+                    },
+                    None => {
+                        result.push(t);
+                        Some(distance)
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -744,6 +821,16 @@ impl<T> RTree<T> where T: SpatialObject {
         self.root.nearest_neighbor(&query_point.into(), Bounded::max_value())
     }
 
+    /// Returns the nearest neighbors of a given point.
+    ///
+    /// All returned values will have the exact same distance from the given query point.
+    /// Returns an empty vector if the tree is empty.
+    pub fn nearest_neighbors(&self, query_point: [T::Scalar; 2]) -> Vec<&T> {
+        let mut result = Vec::new();
+        self.root.nearest_neighbors(&query_point.into(), None, &mut result);
+        result
+    }
+
     /// Returns the nearest n neighbors.
     pub fn nearest_n_neighbors(&self, query_point: [T::Scalar; 2], n: usize) -> Vec<&T> {
         let mut result = Vec::new();
@@ -813,6 +900,22 @@ mod tests {
             }
             assert!(nearest == tree.nearest_neighbor(array2(sample_point.clone())));
         }
+    }
+
+    #[test]
+    fn test_nearest_neighbors() {
+        let mut tree = RTree::new();
+        assert!(tree.nearest_neighbors([1, 0]).is_empty());
+        tree.insert(Vector2::new(1, 0));
+        tree.insert(Vector2::new(0, 1));
+        tree.insert(Vector2::new(-1, 0));
+        tree.insert(Vector2::new(0, -1));
+        tree.insert(Vector2::new(3, 0));
+        tree.insert(Vector2::new(2, 1));
+        tree.insert(Vector2::new(2, -1));
+        assert_eq!(tree.nearest_neighbors([0, 0]).len(), 4);
+        assert_eq!(tree.nearest_neighbors([1, 0]).len(), 1);
+        assert_eq!(tree.nearest_neighbors([2, 0]).len(), 4);
     }
 
     #[test]
