@@ -13,17 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{BaseFloat, Vector2, one};
+use cgmath::{BaseFloat, Vector2};
 use rtree::RTree;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-use num::Bounded;
 use traits::RTreeNum;
 
 pub fn random_points_with_seed<S: BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-one::<S>(), one());
+    let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng);
@@ -40,7 +39,7 @@ pub fn create_random_tree<S: BaseFloat + Rand + SampleRange + RTreeNum>(
     
     let points = random_points_with_seed(size, seed);
     for point in points.iter() {
-        tree.insert(point.clone())
+        tree.insert(*point)
     }
     (tree, points)
 }

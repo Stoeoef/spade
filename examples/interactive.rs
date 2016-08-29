@@ -54,7 +54,7 @@ fn get_tree_edges(tree: &RTree<Vector2<f32>>) -> (Vec<Vertex>, Vec<Vertex>) {
         for child in cur.children().iter() {
             match child {
                 &RTreeNode::Leaf(ref point) => vertices.push(Vertex::new(
-                    array2(point.clone()), array3(vertex_color.clone()))),
+                    array2(*point), array3(vertex_color.clone()))),
                 &RTreeNode::DirectoryNode(ref data) => {
                     to_visit.push(data);
                     push_rectangle(&mut edges, &data.mbr(), &get_color_for_depth(data.depth()));
@@ -77,7 +77,7 @@ fn main() {
     loop {
         let events: Vec<_> = app.display.poll_events().collect();
 
-        let mut dirty = false;    
+        let mut dirty = false;
         for event in events.into_iter() {
             if app.default_handle_event(&event) {
                 return;
@@ -136,15 +136,15 @@ fn main() {
                     match lookup_mode {
                         LookupMode::Nearest => {
                             points.extend(
-                                app.tree.nearest_neighbor(array2(last_point)).iter().cloned());
+                                app.tree.nearest_neighbor(last_point).iter().cloned());
                         },
                         LookupMode::InCircle => {
                             points.extend(app.tree.lookup_in_circle(
-                                array2(last_point), LOOKUP_RADIUS2).iter().cloned());
+                                last_point, LOOKUP_RADIUS2).iter().cloned());
                         },
                         LookupMode::NearestN => {
                             points.extend(app.tree.nearest_n_neighbors(
-                                array2(last_point), N));
+                                last_point, N));
                         },
                     }
                     for point in points.iter().cloned() {

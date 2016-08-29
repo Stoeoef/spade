@@ -13,46 +13,134 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{BaseNum, Vector2, zero};
-use cgmath::conv::array2;
+use cgmath::{BaseNum, BaseFloat, Vector2, Vector3, Vector4, Array, Zero};
 use num::{Bounded, Signed};
+use misc::{min_inline, max_inline};
 use boundingvolume::BoundingRect;
-use misc::{length2};
+use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
 
 pub trait RTreeNum: BaseNum + Bounded + Signed { }
+pub trait RTreeFloat: RTreeNum + BaseFloat { }
 
-impl <S> RTreeNum for S where S: BaseNum + Bounded + Signed {}
+impl <S> RTreeNum for S where S: BaseNum + Bounded + Signed { }
+impl <S> RTreeFloat for S where S: RTreeNum + BaseFloat { }
+
+/// Abstraction over Vectors in different dimensions.
+/// Implement this if you need to use your own vector classes.
+pub trait VectorN where Self: Copy, Self: Clone,
+Self: Add<Self, Output=Self>,
+Self: Sub<Self, Output=Self>,
+Self: Div<<Self as VectorN>::Scalar, Output=Self>,
+Self: Mul<<Self as VectorN>::Scalar, Output=Self>,
+Self: Index<usize, Output=<Self as VectorN>::Scalar>,
+Self: IndexMut<usize, Output=<Self as VectorN>::Scalar>,
+Self: ::std::fmt::Debug,
+Self: PartialEq {
+    type Scalar: RTreeNum;
+
+    /// Creates a new vector with all compoenents set to a certain value.
+    fn from_value(value: Self::Scalar) -> Self;
+
+    /// Creates a new vector with all components initialized to zero.
+    fn new() -> Self {
+        Self::from_value(Self::Scalar::zero())
+    }
+
+    /// The (fixed) number of dimensions of this vector trait.
+    fn dimensions() -> usize;
+
+    /// Applies a binary operation component wise.
+    fn component_wise<F: Fn(Self::Scalar, Self::Scalar) -> Self::Scalar>(&self, rhs: &Self, f: F) -> Self {
+        let mut result = self.clone();
+        for i in 0 .. Self::dimensions() {
+            result[i] = f(self[i], rhs[i]);
+        }
+        result
+    }
+
+    /// Maps an unary operation to all compoenents.
+    fn map<F: Fn(Self::Scalar) -> Self::Scalar>(&self, f: F) -> Self {
+        let mut result = self.clone();
+        for i in 0 .. Self::dimensions() {
+            result[i]  = f(self[i]);
+        }
+        result
+    }
+
+    /// Returns a new vector containing the minimum values of this and another vector (componentwise)
+    fn min_vec(&self, rhs: &Self) -> Self {
+        self.component_wise(rhs, |l, r| min_inline(l, r))
+    }
+
+    /// Returns a new vector containing the maximum values of this and another vector (componentwise)
+    fn max_vec(&self, rhs: &Self) -> Self {
+        self.component_wise(rhs, |l, r| max_inline(l, r))
+    }
+
+    /// Fold operation over all vector components.
+    fn fold<T, F: Fn(T, Self::Scalar) -> T>(&self, mut acc: T, f: F) -> T {
+        for i in 0 .. Self::dimensions() {
+            acc = f(acc, self[i]);
+        }
+        acc
+    }
+
+    /// Checks if a property holds for all components.
+    fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
+        for i in 0 .. Self::dimensions() {
+            if !f(self[i], rhs[i]) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Returns the vector's dot product.
+    fn dot(&self, rhs: &Self) -> Self::Scalar {
+        self.component_wise(rhs, |l, r| l * r).fold(Self::Scalar::zero(), 
+                                                    |acc, val| acc + val)
+    }
+
+    /// Returns the vector's squared length.
+    fn length2(&self) -> Self::Scalar {
+        self.dot(&self)
+    }
+
+}
+
+impl<S: RTreeNum> VectorN for Vector2<S> {
+    type Scalar = S;
+    
+    fn dimensions() -> usize { 2 }
+    fn from_value(value: Self::Scalar) -> Self {
+        Array::from_value(value)
+    }
+}
+
+impl<S: RTreeNum> VectorN for Vector3<S> {
+    type Scalar = S;
+    
+    fn dimensions() -> usize { 3 }
+    fn from_value(value: Self::Scalar) -> Self {
+        Array::from_value(value)
+    }
+}
+
+impl<S: RTreeNum> VectorN for Vector4<S> {
+    type Scalar = S;
+    
+    fn dimensions() -> usize { 4 }
+    fn from_value(value: Self::Scalar) -> Self {
+        Array::from_value(value)
+    }
+}
 
 /// Describes objects that can be located by r-trees.
 ///
-/// See the `primitives` module for some basic implementations.
-/// # Example
-/// ```
-/// use rtree::{SpatialObject, BoundingRect};
-/// 
-/// struct Circle {
-///  radius: f32,
-///  origin: [f32; 2],
-/// }
-/// 
-/// impl SpatialObject for Circle {
-///   type Scalar = f32;
-///
-///   fn mbr(&self) -> BoundingRect<f32> {
-///     let (x, y) = (self.origin[0], self.origin[1]);
-///     let r = self.radius;
-///     BoundingRect::from_corners(&[x - r, y - r], &[x + r, y + r])
-///   }
-///
-///   fn distance(&self, point: [f32; 2]) -> f32 {
-///     let dx = self.origin[0] - point[0];
-///     let dy = self.origin[1] - point[1];
-///     ((dx * dx + dy * dy).sqrt() - self.radius).max(0.)
-///   }
-/// }
-/// ```
+/// See the `primitives` module for some basic implementations which can also serve 
+/// as useful examples for own implementations.
 pub trait SpatialObject {
-    type Scalar: RTreeNum;
+    type Vector: VectorN;
 
     /// Returns the object's minimal bounding rectangle.
     ///
@@ -60,28 +148,40 @@ pub trait SpatialObject {
     // contains the object.
     /// <b>Note:</b> The rectangle must be as small as possible, otherwise some queries
     /// might fail.
-    fn mbr(&self) -> BoundingRect<Self::Scalar>;
+    fn mbr(&self) -> BoundingRect<Self::Vector>;
 
     /// Returns the distance from the object's contour.
     /// Note that this is not necessarily the euclidean distance,
     /// this functions result's will only be used for comparison.
     /// Returns zero if the point is contained within the object.
-    fn distance(&self, point: [Self::Scalar; 2]) -> Self::Scalar;
+    fn distance(&self, point: Self::Vector) -> <Self::Vector as VectorN>::Scalar;
 
     /// Returns true if a given point is contained in this object.
-    fn contains(&self, point: [Self::Scalar; 2]) -> bool {
-        self.distance(point) == zero()
+    fn contains(&self, point: Self::Vector) -> bool {
+        self.distance(point) <= <Self::Vector as VectorN>::Scalar::zero()
     }
 }
 
-impl <S: RTreeNum> SpatialObject for Vector2<S> {
-    type Scalar = S;
-    fn mbr(&self) -> BoundingRect<S> {
-        BoundingRect::from_point(array2(*self))
+pub trait HasPosition {
+    type Vector: VectorN;
+    fn position(&self) -> Self::Vector;
+}
+
+impl <V> HasPosition for V where V: VectorN {
+    type Vector = V;
+    fn position(&self) -> V {
+        *self
+    }
+}
+
+impl <S>  SpatialObject for S where S: HasPosition {
+    type Vector = S::Vector;
+
+    fn mbr(&self) -> BoundingRect<S::Vector> {
+        BoundingRect::from_point(self.position())
     }
 
-    fn distance(&self, point: [Self::Scalar; 2]) -> S {
-        let point: Vector2<_> = point.into();
-        length2(&(point - *self))
+    fn distance(&self, point: S::Vector) -> <S::Vector as VectorN>::Scalar {
+        (self.position() - point).length2()
     }
 }

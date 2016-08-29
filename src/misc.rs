@@ -13,33 +13,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{BaseFloat, BaseNum, Vector2};
+use cgmath::{BaseNum, Vector2};
+use traits::{RTreeNum};
 
 // A call to l.min(r) does not seem to be inlined, thus we define it ourselves
-// This does improve performance significantly, especially for larger node sizes
+// This does improve performance significantly.
 #[inline]
-pub fn fmin<'a, S: BaseFloat>(l: &'a S, r: &'a S) -> &'a S {
-    if l < r {
-        l
+pub fn min_inline<S: RTreeNum>(a: S, b: S) -> S {
+    if a < b {
+        a
     } else {
-        r
+        b
     }
 }
 
 #[inline]
-pub fn fmax<'a, S: BaseFloat>(l: &'a S, r: &'a S) -> &'a S {
-    if l > r {
-        l
+pub fn max_inline<S: RTreeNum>(a: S, b: S) -> S {
+    if a > b {
+        a
     } else {
-        r
+        b
     }
-}
-
-#[inline]
-pub fn clamp<S: BaseNum>(lower: S, upper: S, value: S) -> S {
-    upper.partial_min(lower.partial_max(value))
-}
-
-pub fn length2<S: BaseNum>(vec: &Vector2<S>) -> S {
-    vec.x * vec.x + vec.y * vec.y
 }

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! A rust implementation of two dimensional r*-trees
+//! A rust implementation of n dimensional r*-trees
 //!
 //! [R-trees](https://en.wikipedia.org/wiki/R-tree) provide efficient nearest-neighbor searches for
 //! a set of various objects. [R*-trees](https://en.wikipedia.org/wiki/R*_tree) (&quot;R-Star-Trees&quot;) 
@@ -22,30 +22,38 @@
 //! Instead of linear time complexity, r-trees yield logarithmic complexity
 //! for look-up operations and nearest neighbor queries. Inserting into an r-tree runs in O(log(n)) time on average.
 //! The main data structure is `RTree`. If you want to insert some simple geometric primitives,
-//! consider to take a look at the `primitives` module. If your object is not among those, consider
+//! consider taking a look at the `primitives` module. If your object is not among those, consider
 //! implementing the `SpatialObject` trait.
+//!
+//! Currently, RTree works only with Vectors from [cgmath](https://crates.io/crates/cgmath), thus only
+//! 2, 3 and 4 dimensional vectors can be used.
 //!
 //! # Basic Example
 //!
 //! ```
-//! use rtree::RTree;
-//! use rtree::primitives::SimplePoint;
+//! extern crate cgmath;
+//! extern crate rtree;
 //!
+//! use rtree::RTree;
+//! use cgmath::Vector2;
+//!
+//! fn main() {
 //! let mut rtree = RTree::new();
 //! // Insert two points
-//! rtree.insert(SimplePoint::new([0.5, 0.5f32]));
-//! rtree.insert(SimplePoint::new([1.0, 1.0f32]));
+//! rtree.insert(Vector2::new(0.5, 0.5f32));
+//! rtree.insert(Vector2::new(1.0, 1.0f32));
 //!
-//! if rtree.lookup([0.5, 0.5]).is_some() {
+//! if rtree.lookup(Vector2::new(0.5, 0.5)).is_some() {
 //!   println!("We'fe found a point at [0.5, 0.5]!");
 //! }
 //! 
-//! let nearest = rtree.nearest_neighbor([1.5, 1.5]).unwrap();
+//! let nearest = rtree.nearest_neighbor(Vector2::new(1.5, 1.5)).unwrap();
 //! println!("nearest neighbor at [1.5, 1.5]: {:?}", nearest);
 //!
 //! // Iterate over all elements
 //! for point in rtree.iter() {
 //!   println!("Found point: {:?}", point);
+//! }
 //! }
 //! ```
 
@@ -65,10 +73,8 @@ pub use boundingvolume::*;
 mod rtree;
 mod traits;
 mod boundingvolume;
+mod misc;
 pub mod primitives;
 
 #[cfg(test)]
 mod testutils;
-
-mod misc;
-

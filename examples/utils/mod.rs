@@ -15,7 +15,7 @@
 
 pub mod exampleapplication;
 
-use cgmath::{BaseFloat, Vector2, Vector3, Array, one};
+use cgmath::{BaseFloat, Vector2, Vector3, Array, One};
 use cgmath::conv::*;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
@@ -38,7 +38,7 @@ impl Vertex {
 
 pub fn random_points_with_seed<S: BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-one::<S>(), one());
+    let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng);
@@ -80,10 +80,10 @@ pub fn random_points_with_seed<S: BaseFloat + Rand + SampleRange>(size: usize, s
 // }
 
 
-pub fn push_rectangle(vec: &mut Vec<Vertex>, rect: &BoundingRect<f32>, 
+pub fn push_rectangle(vec: &mut Vec<Vertex>, rect: &BoundingRect<Vector2<f32>>, 
                                     color: &Vector3<f32>) {
-    let v0: Vector2<_> = rect.lower().into();
-    let v2: Vector2<_> = rect.upper().into();
+    let v0: Vector2<_> = rect.lower();
+    let v2: Vector2<_> = rect.upper();
     let v1 = Vector2::new(v2.x, v0.y);
     let v3 = Vector2::new(v0.x, v2.y);
     vec.extend([v0, v1, v1, v2, v2, v3, v3, v0].iter().cloned().map(

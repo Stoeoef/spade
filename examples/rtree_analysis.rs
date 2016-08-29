@@ -27,7 +27,6 @@ use rtree::{RTree, RTreeOptions};
 use utils::*;
 use time::Duration;
 use cgmath::Vector2;
-use cgmath::conv::array2;
 use std::cmp::{min, max};
 use std::path::Path;
 use std::fs::File;
@@ -35,14 +34,16 @@ use std::io::{Write, stdout};
 
 
 fn main() {
-    run_insertion_over_time_bench();
-    run_insertion_with_different_parameters_bench();
-    run_lookup_with_different_parameters_bench();
-    run_lookup_with_different_fill_levels_bench();
+    // run_insertion_over_time_bench();
+    // run_insertion_with_different_parameters_bench();
+    // run_lookup_with_different_parameters_bench();
+    // run_lookup_with_different_fill_levels_bench();
+    run_nearest_neighbor_with_different_fill_levels_bench();
 }
 
 fn run_insertion_over_time_bench() {
-    let max_sizes = [5, 6, 7, 8, 9, 10, 16];
+    // let max_sizes = [5, 6, 7, 8, 9, 10, 16];
+    let max_sizes = [6];
     const NUM_VERTICES: usize = 2000000;
     const CHUNK_SIZE: usize = NUM_VERTICES / 300;
     const NUM_ITERATIONS: usize = 4;
@@ -117,7 +118,7 @@ fn run_lookup_with_different_parameters_bench() {
                 start_tree.insert(point);
             }
             let time = bench(&start_tree, &lookup_points, |t, p| {
-                if t.lookup(array2(p)).is_some() { println!("don't optimize me away"); } })
+                if t.lookup(p).is_some() { println!("don't optimize me away"); } })
                 .num_milliseconds();
             println!("Time: {:?} ms", time);
             write!(result_file, "{} {} {}\n", max_size, reinsertion_count_factor, time).unwrap();
@@ -196,7 +197,49 @@ fn run_lookup_with_different_fill_levels_bench() {
             }
             let time = Duration::span(|| {
                 for point in lookup_points.iter().cloned() {
-                    if let Some(_) = tree.lookup(array2(point)) {
+                    if let Some(_) = tree.lookup(point) {
+                        println!("Don't optimize me away");
+                    }
+                }
+            }).num_nanoseconds().unwrap();
+            write!(result_file, "{} {}\n", tree.size(), time / NUM_LOOKUPS as i64).unwrap();
+        }
+        write!(result_file, "\n\n").unwrap();
+        println!("");
+    }
+}
+
+fn run_nearest_neighbor_with_different_fill_levels_bench() {
+    const MAX_VERTICES: usize = 4000000;
+    const NUM_LOOKUPS: usize = 40000;
+    const NUM_STEPS: usize = 100;
+    const CHUNK_SIZE: usize = MAX_VERTICES / NUM_STEPS;
+
+    let max_sizes = [6usize];
+    let vertices = random_points_with_seed::<f32>(MAX_VERTICES, [3, 1, 4, 1]);
+    let lookup_points = random_points_with_seed(NUM_LOOKUPS, [2000, 1443, 2448, 99]);
+    let mut result_file = File::create(
+        &Path::new("rtree_nearest_neighbor_with_different_fill_levels.dat")).unwrap();
+    for max_size in max_sizes.iter().cloned() {
+        let min_size = (max_size as f32 * 0.45) as usize;
+        let reinsertion_count = (max_size as f32 * 0.3) as usize;
+        let options = RTreeOptions::new()
+                .set_max_size(max_size)
+                .set_min_size(min_size)
+                .set_reinsertion_count(reinsertion_count);
+        println!("Running new benchmark...");
+        println!("Options: {:?}", options);
+        write!(result_file, "\"max_size = {}\"\n", max_size).unwrap();
+        let mut tree = options.build();
+        for chunk in vertices.chunks(CHUNK_SIZE) {
+            print!(".");
+            stdout().flush().unwrap();
+            for vertex in chunk.iter().cloned() {
+                tree.insert(vertex);
+            }
+            let time = Duration::span(|| {
+                for point in lookup_points.iter().cloned() {
+                    if tree.nearest_neighbor(point).is_none() {
                         println!("Don't optimize me away");
                     }
                 }
