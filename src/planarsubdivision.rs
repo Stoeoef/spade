@@ -1,3 +1,18 @@
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
+// refer to the Cargo.toml file at the top-level directory of this distribution.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use traits::{HasPosition, RTreeFloat, VectorN};
 use num::zero;
 use primitives::SimpleEdge;
@@ -50,24 +65,24 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
         index
     }
 
-    pub fn connect(&mut self, from: &FixedVertexHandle, to: &FixedVertexHandle)
+    pub fn connect(&mut self, from: FixedVertexHandle, to: FixedVertexHandle)
         -> FixedEdgeHandle
     {
         assert!(from != to);
         let mut to_index = 0;
         for i in 0 .. 2 {
             let (from, to) = if i == 0 { (from, to) } else { (to, from) };
-            let from_pos = self.handle(&from).position();
-            let to_pos = self.handle(&to).position();
+            let from_pos = self.handle(from).position();
+            let to_pos = self.handle(to).position();
             // Find sector that contains 'to'
             // We must keep the out edges sorted ccw
             let mut sector;
             {
-                let neighbors: Vec<_> = self.handle(&from).fixed_neighbors().collect();
+                let neighbors: Vec<_> = self.handle(from).fixed_neighbors().collect();
                 sector = neighbors.len();
                 for i in 1 .. neighbors.len() {
-                    let cw_pos = self.handle(&neighbors[i - 1]).position();
-                    let ccw_pos = self.handle(&neighbors[i]).position();
+                    let cw_pos = self.handle(neighbors[i - 1]).position();
+                    let ccw_pos = self.handle(neighbors[i]).position();
                     if contained_in_circle_segment(&from_pos, &cw_pos, 
                                                    &ccw_pos, &to_pos) {
                         sector = i;
@@ -83,7 +98,7 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
         FixedEdgeHandle::new(from.clone(), to_index)
     }
     
-    pub fn disconnect(&mut self, v1: &FixedVertexHandle, v2: &FixedVertexHandle)
+    pub fn disconnect(&mut self, v1: FixedVertexHandle, v2: FixedVertexHandle)
         -> bool {
             let v1_index;
             let v2_index;
@@ -98,24 +113,24 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
             true
         }
 
-    fn entry(&self, handle: &FixedVertexHandle)
+    fn entry(&self, handle: FixedVertexHandle)
              -> &VertexEntry<V> {
         &self.vertices[handle.clone()]
     }
 
-    fn entry_option(&self, handle: &FixedVertexHandle)
+    fn entry_option(&self, handle: FixedVertexHandle)
                     -> Option<&VertexEntry<V>> 
     {
-        self.vertices.get(*handle)
+        self.vertices.get(handle)
     }
 
-    pub fn update_vertex(&mut self, handle: &FixedVertexHandle,
+    pub fn update_vertex(&mut self, handle: FixedVertexHandle,
                          vertex: V) {
         assert_eq!(vertex.position(), self.handle(handle).position());
         self.mut_entry(handle).data = vertex;
     }
 
-    fn mut_entry(&mut self, handle: &FixedVertexHandle)
+    fn mut_entry(&mut self, handle: FixedVertexHandle)
              -> &mut VertexEntry<V> {
         &mut self.vertices[handle.clone()]
     }
@@ -129,12 +144,12 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
             let new2 = rev.ccw().to_handle().fix();
             (edge_handle.fix(), rev.fix(), new1, new2)
         };
-        self.mut_entry(&edge.from_handle).neighbors.remove(edge.to_index);
-        self.mut_entry(&rev.from_handle).neighbors.remove(rev.to_index);
-        self.connect(&new1, &new2);
+        self.mut_entry(edge.from_handle).neighbors.remove(edge.to_index);
+        self.mut_entry(rev.from_handle).neighbors.remove(rev.to_index);
+        self.connect(new1, new2);
     }
 
-    pub fn handle(&self, fixed_handle: &FixedVertexHandle)
+    pub fn handle(&self, fixed_handle: FixedVertexHandle)
         -> VertexHandle<V> {
         VertexHandle::new(&self, fixed_handle.clone())
     }
@@ -176,7 +191,7 @@ impl <'a, V: HasPosition> Iterator for AllVerticesIterator<'a, V>
             None
         } else {
             self.cur_vertex += 1;
-            Some(self.subdiv.handle(&(self.cur_vertex - 1)))
+            Some(self.subdiv.handle((self.cur_vertex - 1)))
         }
     }
 }
@@ -205,7 +220,7 @@ impl <'a, V: HasPosition + 'a> Iterator for AllEdgesIterator<'a, V>
     type Item = EdgeHandle<'a, V>;
     
     fn next(&mut self) -> Option<EdgeHandle<'a, V>> {
-        if let Some(cur_entry) = self.subdiv.entry_option(&self.cur_vertex) {
+        if let Some(cur_entry) = self.subdiv.entry_option(self.cur_vertex) {
             if self.cur_vertex_index >= cur_entry.neighbors.len() {
                 self.cur_vertex += 1;
                 self.cur_vertex_index = 0;
@@ -339,13 +354,13 @@ impl <'a, V> PartialEq for EdgeHandle<'a, V> where V: HasPosition + 'a {
 impl <'a, V: HasPosition> EdgeHandle<'a, V> where <V::Vector as VectorN>::Scalar: RTreeFloat {
 
     pub fn from_neighbors(
-        subdiv: &'a PlanarSubdivision<V>, from: &FixedVertexHandle,
-        to: &FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
-        let from_handle = subdiv.handle(&from);
+        subdiv: &'a PlanarSubdivision<V>, from: FixedVertexHandle,
+        to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
+        let from_handle = subdiv.handle(from);
         if let Some(index) = from_handle.fixed_neighbors()
-            .position(|e| e == *to)
+            .position(|e| e == to)
         {
-            Some(EdgeHandle::new(subdiv, *from, index))
+            Some(EdgeHandle::new(subdiv, from, index))
         } else {
             None
         }
@@ -361,12 +376,11 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> where <V::Vector as VectorN>::Scalar
     }
 
     pub fn from_handle(&self) -> VertexHandle<'a, V> {
-        self.subdiv.handle(&self.from_handle)
+        self.subdiv.handle(self.from_handle)
     }
 
     pub fn to_handle(&self) -> VertexHandle<'a, V> {
-        self.subdiv.handle(&self.subdiv.entry(
-            &self.from_handle).neighbors[self.to_index])
+        self.subdiv.handle(self.subdiv.entry(self.from_handle).neighbors[self.to_index])
     }
 
     pub fn ccw_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V>> + 'a> {
@@ -401,7 +415,7 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> where <V::Vector as VectorN>::Scalar
     pub fn rev(&self) -> EdgeHandle<'a, V> {
         let to_handle = self.to_handle().fix();
         EdgeHandle::from_neighbors(
-            &self.subdiv, &to_handle, &self.from_handle)
+            &self.subdiv, to_handle, self.from_handle)
             .expect("Expected symmetrical edge. This is a bug.")
     }
 
@@ -421,18 +435,18 @@ impl <'a, V: HasPosition> VertexHandle<'a, V> where <V::Vector as VectorN>::Scal
     }
 
     pub fn fixed_neighbors(&self) -> Box<Iterator<Item=FixedVertexHandle> + 'a> {
-        let entry: &'a VertexEntry<V> = self.subdiv.entry(&self.fixed);
+        let entry: &'a VertexEntry<V> = self.subdiv.entry(self.fixed);
         Box::new(entry.neighbors.iter().cloned())
     }
 
     pub fn fixed_neighbors_vec(&self) -> &Vec<FixedVertexHandle> {
-        &self.subdiv.entry(&self.fixed).neighbors
+        &self.subdiv.entry(self.fixed).neighbors
     }
 
     pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V>> + 'a> {
-        let entry: &'a VertexEntry<V> = self.subdiv.entry(&self.fixed);
+        let entry: &'a VertexEntry<V> = self.subdiv.entry(self.fixed);
         let subdiv = self.subdiv;
-        Box::new(entry.neighbors.iter().map(move |h| subdiv.handle(h)))
+        Box::new(entry.neighbors.iter().map(move |h| subdiv.handle(*h)))
     }
 
     pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V>> + 'a> {
@@ -444,7 +458,7 @@ impl <'a, V: HasPosition> VertexHandle<'a, V> where <V::Vector as VectorN>::Scal
     }
 
     fn num_neighbors(&self) -> usize {
-        let entry: &'a VertexEntry<V> = self.subdiv.entry(&self.fixed);
+        let entry: &'a VertexEntry<V> = self.subdiv.entry(self.fixed);
         entry.neighbors.len()
     }
 
@@ -458,7 +472,7 @@ impl <'a, V> Deref for VertexHandle<'a, V> where V: HasPosition,
     type Target = V;
 
     fn deref(&self) -> &V {
-        &self.subdiv.entry(&self.fixed).data
+        &self.subdiv.entry(self.fixed).data
     }
 }
 
@@ -477,9 +491,9 @@ mod test {
         let h1 = subdiv.insert_vertex(Vector2::new(0.0f32, 0.0));
         let h2 = subdiv.insert_vertex(Vector2::new(1.0f32, 0.0));
         let h3 = subdiv.insert_vertex(Vector2::new(0.0f32, 1.0));
-        subdiv.connect(&h1, &h2);
-        subdiv.connect(&h2, &h3);
-        subdiv.connect(&h3, &h1);
+        subdiv.connect(h1, h2);
+        subdiv.connect(h2, h3);
+        subdiv.connect(h3, h1);
         (subdiv, h1, h2, h3)
     }
     
@@ -489,7 +503,7 @@ mod test {
         assert_eq!(s.num_vertices(), 0);
         let fixed = s.insert_vertex(Vector2::new(0.0f32, 0.0));
         {
-            let handle = s.handle(&fixed);
+            let handle = s.handle(fixed);
             assert_eq!(handle.fixed_neighbors().count(), 0);
             assert_eq!(s.num_vertices(), 1);
         }
@@ -504,9 +518,9 @@ mod test {
         let vec2 = Vector2::new(0.0f32, 1.0);
         let fixed1 = s.insert_vertex(vec1);
         let fixed2 = s.insert_vertex(vec2);
-        s.connect(&fixed1, &fixed2);
+        s.connect(fixed1, fixed2);
         
-        let (handle1, handle2) = (s.handle(&fixed1), s.handle(&fixed2));
+        let (handle1, handle2) = (s.handle(fixed1), s.handle(fixed2));
         assert_eq!(handle1.fixed_neighbors().collect::<Vec<_>>(),
                    vec![fixed2]);
         assert_eq!(handle2.fixed_neighbors().collect::<Vec<_>>(),
@@ -520,10 +534,10 @@ mod test {
         let vec2 = Vector2::new(0.0f32, 1.0);
         let fixed1 = s.insert_vertex(vec1);
         let fixed2 = s.insert_vertex(vec2);
-        assert!(!s.disconnect(&fixed1, &fixed2));
-        s.connect(&fixed1, &fixed2);
-        assert!(s.disconnect(&fixed1, &fixed2));
-        let (handle1, handle2) = (s.handle(&fixed1), s.handle(&fixed2));
+        assert!(!s.disconnect(fixed1, fixed2));
+        s.connect(fixed1, fixed2);
+        assert!(s.disconnect(fixed1, fixed2));
+        let (handle1, handle2) = (s.handle(fixed1), s.handle(fixed2));
         assert_eq!(handle1.fixed_neighbors().collect::<Vec<_>>(), Vec::new());
         assert_eq!(handle2.fixed_neighbors().collect::<Vec<_>>(), Vec::new());
         
@@ -575,9 +589,9 @@ mod test {
 
         let vs: Vec<_> = vs.into_iter().map(|v| s.insert_vertex(v)).collect();
         for v in vs.iter() {
-            s.connect(&v0, v);
+            s.connect(v0, *v);
         }
-        let neighbors: Vec<_> = s.handle(&v0).fixed_neighbors().collect();
+        let neighbors: Vec<_> = s.handle(v0).fixed_neighbors().collect();
         let positions: Vec<_> = vs.iter()
             .map(|v| neighbors.iter().position(|n| n == v).unwrap()).collect();
         assert!((positions[0] + 1) % 4 == positions[3]);
@@ -591,21 +605,21 @@ mod test {
     fn test_out_edges_count() {
         let (mut subdiv, f1, f2, f3) = create_subdiv_with_triangle();
         {
-            let h1 = subdiv.handle(&f1);
-            let h2 = subdiv.handle(&f2);
-            let h3 = subdiv.handle(&f3);
+            let h1 = subdiv.handle(f1);
+            let h2 = subdiv.handle(f2);
+            let h3 = subdiv.handle(f3);
             assert_eq!(h1.out_edges().count(), 2);
             assert_eq!(h2.out_edges().count(), 2);
             assert_eq!(h3.out_edges().count(), 2);
         }
         let f4 = subdiv.insert_vertex(Vector2::new(1., 1.));
         {
-            let h4 = subdiv.handle(&f4);
+            let h4 = subdiv.handle(f4);
             assert_eq!(h4.out_edges().count(), 0);
         }
-        subdiv.connect(&f1, &f4);
-        let h1 = subdiv.handle(&f1);
-        let h4 = subdiv.handle(&f4);
+        subdiv.connect(f1, f4);
+        let h1 = subdiv.handle(f1);
+        let h4 = subdiv.handle(f4);
         assert_eq!(h1.out_edges().count(), 3);
         assert_eq!(h4.out_edges().count(), 1);
     }
@@ -616,17 +630,17 @@ mod test {
         let f1 = s.insert_vertex(Vector2::new(0f32, 0f32));
         let f2 = s.insert_vertex(Vector2::new(1f32, 0f32));
         let f3 = s.insert_vertex(Vector2::new(0f32, 1f32));
-        s.connect(&f1, &f2);
-        s.connect(&f2, &f3);
-        assert!(EdgeHandle::from_neighbors(&s, &f1, &f3).is_none());
-        assert!(EdgeHandle::from_neighbors(&s, &f3, &f1).is_none());
-        assert!(EdgeHandle::from_neighbors(&s, &f1, &f2).is_some());
-        assert!(EdgeHandle::from_neighbors(&s, &f2, &f1).is_some());
-        assert!(EdgeHandle::from_neighbors(&s, &f1, &f2).is_some());
-        assert!(EdgeHandle::from_neighbors(&s, &f3, &f2).is_some());
-        assert!(EdgeHandle::from_neighbors(&s, &f2, &f3).is_some());
+        s.connect(f1, f2);
+        s.connect(f2, f3);
+        assert!(EdgeHandle::from_neighbors(&s, f1, f3).is_none());
+        assert!(EdgeHandle::from_neighbors(&s, f3, f1).is_none());
+        assert!(EdgeHandle::from_neighbors(&s, f1, f2).is_some());
+        assert!(EdgeHandle::from_neighbors(&s, f2, f1).is_some());
+        assert!(EdgeHandle::from_neighbors(&s, f1, f2).is_some());
+        assert!(EdgeHandle::from_neighbors(&s, f3, f2).is_some());
+        assert!(EdgeHandle::from_neighbors(&s, f2, f3).is_some());
 
-        let edge = EdgeHandle::from_neighbors(&s, &f2, &f3).unwrap();
+        let edge = EdgeHandle::from_neighbors(&s, f2, f3).unwrap();
         assert_eq!(edge.from_handle().fix(), f2);
         assert_eq!(edge.to_handle().fix(), f3);
     }
@@ -634,7 +648,7 @@ mod test {
     #[test]
     fn test_rev_edge() {
         let (subdiv, f1, _, _) = create_subdiv_with_triangle();
-        let h1 = subdiv.handle(&f1);
+        let h1 = subdiv.handle(f1);
         assert_eq!(h1.out_edges().count(), 2);
         for edge in h1.out_edges() {
             let rev_edge = edge.rev();
@@ -652,15 +666,15 @@ mod test {
         let h1 = subdiv.insert_vertex(Vector2::new(-1f32, 1f32));
         let h2 = subdiv.insert_vertex(Vector2::new(1f32, 1f32));
         let h3 = subdiv.insert_vertex(Vector2::new(1f32, -1f32));
-        subdiv.connect(&h0, &h1);
-        subdiv.connect(&h1, &h2);
-        subdiv.connect(&h2, &h3);
-        subdiv.connect(&h3, &h0);
+        subdiv.connect(h0, h1);
+        subdiv.connect(h1, h2);
+        subdiv.connect(h2, h3);
+        subdiv.connect(h3, h0);
 
-        subdiv.connect(&h0, &h2);
-        let edge = EdgeHandle::from_neighbors(&subdiv, &h0, &h2).unwrap().fix();
+        subdiv.connect(h0, h2);
+        let edge = EdgeHandle::from_neighbors(&subdiv, h0, h2).unwrap().fix();
         subdiv.flip_edge_cw(&edge);
-        let flipped = EdgeHandle::from_neighbors(&subdiv, &h1, &h3);
+        let flipped = EdgeHandle::from_neighbors(&subdiv, h1, h3);
         assert!(flipped.is_some());
     }
 
@@ -701,11 +715,11 @@ mod test {
         let h1 = subdiv.insert_vertex(Vector2::new(-1f32, 1f32));
         let h2 = subdiv.insert_vertex(Vector2::new(1f32, 1f32));
         let h3 = subdiv.insert_vertex(Vector2::new(1f32, -1f32));
-        subdiv.connect(&h0, &h1);
-        subdiv.connect(&h1, &h2);
-        subdiv.connect(&h2, &h3);
-        subdiv.connect(&h3, &h0);
-        subdiv.connect(&h0, &h2);
+        subdiv.connect(h0, h1);
+        subdiv.connect(h1, h2);
+        subdiv.connect(h2, h3);
+        subdiv.connect(h3, h0);
+        subdiv.connect(h0, h2);
 
         for i in 0 .. 20 {
             subdiv.insert_vertex(Vector2::new(i as f32, 10.));

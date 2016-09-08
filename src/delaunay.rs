@@ -51,9 +51,9 @@ where V: HasPosition + 'a, <V::Vector as VectorN>::Scalar: RTreeFloat {
             if let Some((h1, h2)) = self.current_neighbors.pop() {
                 let h0 = self.current_index - 1;
                 // Check if these neighbors form a triangle
-                let h0 = s.handle(&h0);
-                let h1 = s.handle(&h1);
-                let h2 = s.handle(&h2);
+                let h0 = s.handle(h0);
+                let h1 = s.handle(h1);
+                let h2 = s.handle(h2);
                 let v0 = h0.position();
                 let v1 = h1.position();
                 let v2 = h2.position();
@@ -68,7 +68,7 @@ where V: HasPosition + 'a, <V::Vector as VectorN>::Scalar: RTreeFloat {
                 if h0 >= self.delaunay.num_vertices() {
                     return None
                 }
-                let neighbors = s.handle(&h0).fixed_neighbors_vec().clone();
+                let neighbors = s.handle(h0).fixed_neighbors_vec().clone();
                 for i in 0 .. neighbors.len() {
                     let h1 = neighbors[i];
                     if h0 < h1 {
@@ -142,18 +142,18 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     
     pub fn lookup(&self, point: V::Vector) -> Option<VertexHandle<V>> {
         let handle = self.points.lookup(point);
-        handle.map(|h| self.s.handle(&h.handle))
+        handle.map(|h| self.s.handle(h.handle))
     }
 
     pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Vector>) -> Vec<VertexHandle<V>> {
         let fixed_handles = self.points.lookup_in_rectangle(rect);
-        fixed_handles.iter().map(|entry| self.s.handle(&entry.handle)).collect()
+        fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
 
     pub fn lookup_in_circle(&self, center: V::Vector, 
                             radius2: <V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V>> {
         let fixed_handles = self.points.lookup_in_circle(center, radius2);
-        fixed_handles.iter().map(|entry| self.s.handle(&entry.handle)).collect()
+        fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
 
     pub fn set_tolerance(&mut self, tolerance: <V::Vector as VectorN>::Scalar) {
@@ -179,7 +179,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     fn initial_insertion(&mut self, t: V) -> Option<FixedVertexHandle> {
         // Used to insert one of the first three points
         let vertices: Vec<_> = self.s.fixed_vertices().collect();
-        if let Some(ref index) = vertices.iter().position(
+        if let Some(index) = vertices.iter().cloned().position(
             |h| self.s.handle(h).position() == t.position()) {
             // Update entry
             self.s.update_vertex(index, t);
@@ -192,9 +192,9 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                     let second = vertices[1];
                     let third = self.s.insert_vertex(t);
                     // Create first triangle
-                    self.s.connect(&first, &second);
-                    self.s.connect(&second, &third);
-                    self.s.connect(&third, &first);
+                    self.s.connect(first, second);
+                    self.s.connect(second, third);
+                    self.s.connect(third, first);
                     Some(third)
                 },
                 _ => panic!("This should not happen."),
@@ -207,7 +207,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     {
         let mut result = Vec::new();
          
-        let first_edge = EdgeHandle::from_neighbors(&self.s, &first_edge.0, &first_edge.1).unwrap();
+        let first_edge = EdgeHandle::from_neighbors(&self.s, first_edge.0, first_edge.1).unwrap();
         let mut last_edge = first_edge.clone();
         result.push(last_edge.from_handle().fix());
         result.push(last_edge.to_handle().fix());
@@ -249,12 +249,12 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         // Make new connections
         let mut illegal_edges = Vec::with_capacity(handles.len() - 1);
         for cur_handle in &handles {
-            self.s.connect(cur_handle, &new_handle);
+            self.s.connect(*cur_handle, new_handle);
         }
         for from_to in handles.windows(2) {
             illegal_edges.push((from_to[0], from_to[1]));
         }
-        self.legalize_edges(illegal_edges, &new_handle);
+        self.legalize_edges(illegal_edges, new_handle);
         new_handle
     }
     
@@ -265,13 +265,13 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         let second_vertex = vertices[1];
         let third_vertex = vertices[2];
 
-        self.s.connect(&first_vertex, &new_handle);
-        self.s.connect(&second_vertex, &new_handle);
-        self.s.connect(&third_vertex, &new_handle);
+        self.s.connect(first_vertex, new_handle);
+        self.s.connect(second_vertex, new_handle);
+        self.s.connect(third_vertex, new_handle);
         let illegal_edges = vec![(first_vertex, second_vertex),
                                  (second_vertex, third_vertex),
                                  (third_vertex, first_vertex)];
-        self.legalize_edges(illegal_edges, &new_handle);
+        self.legalize_edges(illegal_edges, new_handle);
         new_handle
     }
 
@@ -287,7 +287,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         let ccw_handle;
         let ccw_position;
         {
-            let edge_handle = EdgeHandle::from_neighbors(&self.s, &v1, &v2).unwrap();
+            let edge_handle = EdgeHandle::from_neighbors(&self.s, v1, v2).unwrap();
             simple = edge_handle.to_simple_edge();
             let handle = edge_handle.cw().to_handle();
             cw_handle = handle.fix();
@@ -297,27 +297,27 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             ccw_handle = handle.fix();
             ccw_position = handle.position();
         }
-        assert!(self.s.disconnect(&v1, &v2));
+        assert!(self.s.disconnect(v1, v2));
         if simple.approx_is_on_right_side(cw_position, -self.tolerance) {
-            self.s.connect(&cw_handle, &new_handle);
+            self.s.connect(cw_handle, new_handle);
             illegal_edges.push((v1, cw_handle));
             illegal_edges.push((v2, cw_handle));
         }
         if simple.approx_is_on_left_side(ccw_position, -self.tolerance) {
-            self.s.connect(&ccw_handle, &new_handle);
+            self.s.connect(ccw_handle, new_handle);
             illegal_edges.push((v1, ccw_handle));
             illegal_edges.push((v2, ccw_handle));
         }
-        self.s.connect(&v1, &new_handle);
-        self.s.connect(&v2, &new_handle);
+        self.s.connect(v1, new_handle);
+        self.s.connect(v2, new_handle);
  
-        self.legalize_edges(illegal_edges, &new_handle);
+        self.legalize_edges(illegal_edges, new_handle);
         new_handle
     }
 
     fn get_position_in_triangulation(&self, starting_point: FixedVertexHandle, 
                             point: &V::Vector) -> PositionInTriangulation {
-        let mut cur_handle = self.s.handle(&starting_point);
+        let mut cur_handle = self.s.handle(starting_point);
         loop {
             let from_pos = cur_handle.position();
             let (mut sector, cw_handle, ccw_handle);
@@ -325,16 +325,16 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 let neighbors = cur_handle.fixed_neighbors_vec();
                 sector = neighbors.len();
                 for i in 1 .. neighbors.len() {
-                    let cw_pos = self.s.handle(&neighbors[i - 1]).position();
-                    let ccw_pos = self.s.handle(&neighbors[i]).position();
+                    let cw_pos = self.s.handle(neighbors[i - 1]).position();
+                    let ccw_pos = self.s.handle(neighbors[i]).position();
                     if approx_contained_in_circle_segment(
                         &from_pos, &cw_pos, &ccw_pos, point, self.tolerance) {
                         sector = i;
                         break;
                     }
                 }
-                cw_handle = self.s.handle(&neighbors[sector - 1]).clone();
-                ccw_handle = self.s.handle(&neighbors[sector % neighbors.len()]).clone();
+                cw_handle = self.s.handle(neighbors[sector - 1]).clone();
+                ccw_handle = self.s.handle(neighbors[sector % neighbors.len()]).clone();
             }
             let cw_pos = cw_handle.position();
             let ccw_pos = ccw_handle.position();
@@ -396,7 +396,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                     Some(self.insert_on_edge((v1, v2), t))
                 },
                 PositionInTriangulation::OnPoint(vertex) => {
-                    self.s.update_vertex(&vertex, t);
+                    self.s.update_vertex(vertex, t);
                     None
                 },
             }
@@ -409,18 +409,18 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         }
     }
 
-    fn legalize_edges(&mut self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, new_vertex: &FixedVertexHandle) {
+    fn legalize_edges(&mut self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, new_vertex: FixedVertexHandle) {
         let position = self.s.handle(new_vertex).position();
         while let Some((h_from, h_to)) = edges.pop() {
             let (mut h0, mut v0, mut h1, mut v1, h2, v2, edge);
             {
-                let from_handle = self.s.handle(&h_from);
+                let from_handle = self.s.handle(h_from);
                 h0 = h_from;
                 v0 = from_handle.position();
-                let to_handle = self.s.handle(&h_to);
+                let to_handle = self.s.handle(h_to);
                 h1 = h_to;
                 v1 = to_handle.position();
-                let edge_handle = EdgeHandle::from_neighbors(&self.s, &h0, &h1).unwrap();
+                let edge_handle = EdgeHandle::from_neighbors(&self.s, h0, h1).unwrap();
                 let simple = SimpleEdge::new(v0, v1);
                 
                 if simple.is_on_left_side(position) {
@@ -449,9 +449,9 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             if contained_in_circumference(&v0, &v1, &v2, &position) {
                 // The edge is illegal
                 self.s.flip_edge_cw(&edge);
-                debug_assert!(EdgeHandle::from_neighbors(&self.s, &h0, &h2).is_some());
+                debug_assert!(EdgeHandle::from_neighbors(&self.s, h0, h2).is_some());
                 edges.push((h0, h2));
-                debug_assert!(EdgeHandle::from_neighbors(&self.s, &h1, &h2).is_some());
+                debug_assert!(EdgeHandle::from_neighbors(&self.s, h1, h2).is_some());
                 edges.push((h1, h2));
             }
         }
@@ -465,7 +465,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 let ws = self.get_weights(&nns, point);
                 let mut sum = Zero::zero();
                 for (index, fixed_handle) in nns.iter().enumerate() {
-                    let handle = self.s.handle(fixed_handle);
+                    let handle = self.s.handle(*fixed_handle);
                     sum += ws[index] * f(&*handle);
                 }
                 Some(sum)
@@ -477,7 +477,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 None
             }
             PositionInTriangulation::OnPoint(fixed_handle) => {
-                let handle = self.s.handle(&fixed_handle);
+                let handle = self.s.handle(fixed_handle);
                 Some(f(&*handle))
             }
         }
@@ -490,19 +490,19 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
 
         let mut point_cell = Vec::new();
         for (index, cur) in nns.iter().enumerate() {
-            let cur_pos = self.s.handle(cur).position();
-            let next = self.s.handle(&nns[(index + 1) % len]).position();
+            let cur_pos = self.s.handle(*cur).position();
+            let next = self.s.handle(nns[(index + 1) % len]).position();
             let triangle = SimpleTriangle::new([next, cur_pos, point]);
             point_cell.push(triangle.circumcenter());
         }
 
         let mut areas = Vec::new();
 
-        for (index, ref cur) in nns.iter().enumerate() {
-            let cur_pos = self.s.handle(&cur).position();
+        for (index, cur) in nns.iter().enumerate() {
+            let cur_pos = self.s.handle(*cur).position();
             let prev = nns[((index + len) - 1) % len];
             let next = nns[(index + 1) % len];
-            let mut ccw_edge = EdgeHandle::from_neighbors(&self.s, cur, &prev).unwrap();
+            let mut ccw_edge = EdgeHandle::from_neighbors(&self.s, *cur, prev).unwrap();
             let mut polygon = Vec::new();
             polygon.push(point_cell[((index + len) - 1) % len]);
             loop {
@@ -543,13 +543,13 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         while let Some((h_from, h_to)) = edges.pop() {
             let (mut h0, mut v0, mut h1, mut v1, h2, v2);
             {
-                let from_handle = self.s.handle(&h_from);
+                let from_handle = self.s.handle(h_from);
                 h0 = h_from;
                 v0 = from_handle.position();
-                let to_handle = self.s.handle(&h_to);
+                let to_handle = self.s.handle(h_to);
                 h1 = h_to;
                 v1 = to_handle.position();
-                let edge_handle = EdgeHandle::from_neighbors(&self.s, &h0, &h1).unwrap();
+                let edge_handle = EdgeHandle::from_neighbors(&self.s, h0, h1).unwrap();
                 let simple = SimpleEdge::new(v0, v1);
                 
                 if simple.is_on_left_side(position) {
