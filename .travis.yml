@@ -3,6 +3,16 @@ rust:
 - nightly
 - beta
 - stable
+
+sudo: false
+addons:
+    apt:
+        sources:
+            - kubuntu-backports
+        packages:
+            - cmake
+            - libxxf86vm-dev
+
 before_script:
 - |
   pip install 'travis-cargo<0.2' --user &&
