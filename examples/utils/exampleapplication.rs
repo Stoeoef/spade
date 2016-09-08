@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use utils::{Vertex};
-use rtree::{RTree};
+use spade::{RTree};
 use cgmath::{Vector2};
 use glium::{DisplayBuild, Surface, VertexBuffer, Program, Display, DrawParameters};
 use glium::glutin::{Event, ElementState};

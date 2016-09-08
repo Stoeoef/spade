@@ -20,7 +20,7 @@ use cgmath::conv::*;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-use rtree::BoundingRect;
+use spade::BoundingRect;
 
 #[derive(Clone, Copy)]
 pub struct Vertex {

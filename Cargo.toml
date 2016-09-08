@@ -13,9 +13,11 @@ num = "0.1.30"
 nalgebra = "0.9.*"
 
 [dev-dependencies]
-rand = "0.3.13"
-time = "0.1"
-glium = "*"
+rand = "0.3.*"
+time = "0.1.*"
+glium = "0.15.*"
+kiss3d = "0.7.*"
+noise = "0.2.*"
 
 [profile.bench]
 opt-level = 3

@@ -946,10 +946,10 @@ impl<T> RTree<T> where T: SpatialObject {
         result
     }
 
-    // /// Returns all objects (partially) contained in a rectangle
-    // pub fn lookup_in_rectangle(&self, query_rect: &BoundingRect<T::Vector>) -> Vec<&T> {
-    //     panic!("Not yet implemented");
-    // }
+    /// Returns all objects (partially) contained in a rectangle
+    pub fn lookup_in_rectangle(&self, query_rect: &BoundingRect<T::Vector>) -> Vec<&T> {
+        panic!("Not yet implemented");
+    }
 
     // TODO: This doesn't work yet.
     #[doc(hidden)]
