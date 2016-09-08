@@ -1,4 +1,4 @@
-// Copyright 2016 The RTree Developers. For a full listing of the authors,
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
 // refer to the Cargo.toml file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -945,6 +945,11 @@ impl<T> RTree<T> where T: SpatialObject {
         self.root.nearest_n_neighbors(&query_point.into(), n, &mut result);
         result
     }
+
+    // /// Returns all objects (partially) contained in a rectangle
+    // pub fn lookup_in_rectangle(&self, query_rect: &BoundingRect<T::Vector>) -> Vec<&T> {
+    //     panic!("Not yet implemented");
+    // }
 
     // TODO: This doesn't work yet.
     #[doc(hidden)]

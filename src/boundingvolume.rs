@@ -1,4 +1,4 @@
-// Copyright 2016 The RTree Developers. For a full listing of the authors,
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
 // refer to the Cargo.toml file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,4 +1,4 @@
-// Copyright 2016 The RTree Developers. For a full listing of the authors,
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
 // refer to the Cargo.toml file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,8 @@ use num::{Bounded, Signed};
 use misc::{min_inline, max_inline};
 use boundingvolume::BoundingRect;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
+use nalgebra::{Repeat};
+use nalgebra as na;
 
 pub trait RTreeNum: BaseNum + Bounded + Signed { }
 pub trait RTreeFloat: RTreeNum + BaseFloat { }
@@ -135,6 +137,33 @@ impl<S: RTreeNum> VectorN for Vector4<S> {
     }
 }
 
+impl<S: RTreeNum> VectorN for na::Vector2<S> {
+    type Scalar = S;
+    
+    fn dimensions() -> usize { 2 }
+    fn from_value(value: Self::Scalar) -> Self {
+        na::Vector2::repeat(value)
+    }
+}
+
+impl<S: RTreeNum> VectorN for na::Vector3<S> {
+    type Scalar = S;
+    
+    fn dimensions() -> usize { 3 }
+    fn from_value(value: Self::Scalar) -> Self {
+        na::Vector3::repeat(value)
+    }
+}
+
+impl<S: RTreeNum> VectorN for na::Vector4<S> {
+    type Scalar = S;
+    
+    fn dimensions() -> usize { 4 }
+    fn from_value(value: Self::Scalar) -> Self {
+        na::Vector4::repeat(value)
+    }
+}
+
 /// Describes objects that can be located by r-trees.
 ///
 /// See the `primitives` module for some basic implementations which can also serve 
@@ -145,7 +174,7 @@ pub trait SpatialObject {
     /// Returns the object's minimal bounding rectangle.
     ///
     /// The minimal bounding rectangle is the smallest axis aligned rectangle that completely
-    // contains the object.
+    /// contains the object.
     /// <b>Note:</b> The rectangle must be as small as possible, otherwise some queries
     /// might fail.
     fn mbr(&self) -> BoundingRect<Self::Vector>;

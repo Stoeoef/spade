@@ -1,4 +1,4 @@
-// Copyright 2016 The RTree Developers. For a full listing of the authors,
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
 // refer to the Cargo.toml file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{BaseNum, Vector2};
 use traits::{RTreeNum};
 
 // A call to l.min(r) does not seem to be inlined, thus we define it ourselves

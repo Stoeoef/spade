@@ -1,15 +1,16 @@
 [package]
-name = "rtree"
+name = "spade"
 version = "0.1.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 license="Apache-2.0"
-description="A pure rust implementation of the r* tree data structure."
+description="Spatial datastructures like r-trees and delaunay triangulations for rust."
 homepage=""
 repository=""
 
 [dependencies]
-cgmath = "0.10.0"
+cgmath = "0.11.*"
 num = "0.1.30"
+nalgebra = "0.9.*"
 
 [dev-dependencies]
 rand = "0.3.13"

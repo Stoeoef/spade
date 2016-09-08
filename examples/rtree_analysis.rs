@@ -1,4 +1,4 @@
-// Copyright 2016 The RTree Developers. For a full listing of the authors,
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
 // refer to the Cargo.toml file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +17,13 @@
 extern crate glium;
 
 extern crate rand;
-extern crate rtree;
+extern crate spade;
 extern crate cgmath;
 extern crate time;
 
 mod utils;
 
-use rtree::{RTree, RTreeOptions};
+use spade::{RTree, RTreeOptions};
 use utils::*;
 use time::Duration;
 use cgmath::Vector2;

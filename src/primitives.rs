@@ -1,4 +1,4 @@
-// Copyright 2016 The RTree Developers. For a full listing of the authors,
+// Copyright 2016 The Spade Developers. For a full listing of the authors,
 // refer to the Cargo.toml file at the top-level directory of this distribution.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,7 @@
 //! implementing `SpatialObject`.
 
 
-use cgmath::{Vector3, Zero};
+use cgmath::{Vector3, Zero, One};
 use traits::{RTreeFloat, SpatialObject, VectorN};
 use num::{Float, one, zero};
 use boundingvolume::BoundingRect;
@@ -123,6 +123,33 @@ impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat {
 
     pub fn vertices(&self) -> &[V; 3] {
         &self.vertices
+    }
+
+    pub fn area(&self) -> V::Scalar {
+        let one: V::Scalar = One::one();
+        let two = one + one;
+        let a = self.vertices[0];
+        let b = self.vertices[1] - a;
+        let c = self.vertices[2] - a;
+        (b[0] * c[1] - b[1] * c[0]).abs() / two
+    }
+
+    pub fn circumcenter(&self) -> V {
+        let one: V::Scalar = One::one();
+        let two = one + one;
+        let a = self.vertices[0];
+        let b = self.vertices[1] - a;
+        let c = self.vertices[2] - a;
+        // Calculate circumcenter position
+        let d = two * (b[0] * c[1] - c[0] * b[1]);
+        let len_b = b.dot(&b);
+        let len_c = c.dot(&c);
+        let x = (len_b * c[1] - len_c * b[1]) / d;
+        let y = (-len_b * c[0] + len_c * b[0]) / d;
+        let mut result = V::new();
+        result[0] = x;
+        result[1] = y;
+        result + a
     }
 
     pub fn barycentric_interpolation(&self, coord: &V) -> Vector3<V::Scalar> {
