@@ -1,6 +1,7 @@
 extern crate num;
 extern crate cgmath;
 extern crate nalgebra;
+extern crate clamp;
 
 #[cfg(test)]
 extern crate rand;

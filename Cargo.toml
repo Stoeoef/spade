@@ -11,6 +11,7 @@ repository=""
 cgmath = "0.11.*"
 num = "0.1.30"
 nalgebra = "0.9.*"
+clamp = "0.1.*"
 
 [dev-dependencies]
 rand = "0.3.*"

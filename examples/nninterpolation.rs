@@ -84,9 +84,10 @@ fn main() {
 fn get_interpolated_grid(
     delaunay: &DelaunayTriangulation<VectorWithHeight>) -> Vec<(Vector3<f32>, Vector3<f32>)> {
     let mut result = Vec::new();
+    const GRID_SIZE: f64 = SAMPLE_REGION * 1.1;
     const OFFSET: f64 = -0.1;
-    let start = Vector2::new(-SAMPLE_REGION, -SAMPLE_REGION);
-    let step = SAMPLE_REGION * 2. / GRID_SUBDIVISIONS as f64;
+    let start = Vector2::new(-GRID_SIZE, -GRID_SIZE);
+    let step = GRID_SIZE * 2. / GRID_SUBDIVISIONS as f64;
     for x in 0 .. GRID_SUBDIVISIONS {
         for y in 0 .. GRID_SUBDIVISIONS {
             let pos = Vector2::new(x as f64, y as f64);

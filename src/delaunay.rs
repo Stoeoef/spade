@@ -14,8 +14,9 @@
 // limitations under the License.
 
 use cgmath::{SquareMatrix, Vector4, Matrix4, Array, 
-             ElementWise, Zero, One};
+             ElementWise, Zero};
 use cgmath::num_traits::Float;
+use num::{one, zero};
 use traits::{SpatialObject, HasPosition, RTreeFloat, VectorN};
 use rtree::RTree;
 use boundingvolume::BoundingRect;
@@ -102,7 +103,7 @@ V::Scalar: RTreeFloat
     let c1 = Vector4::new(v1[0], v2[0], v3[0], p[0]);
     let c2 = Vector4::new(v1[1], v2[1], v3[1], p[1]);
     let c3 = c1.mul_element_wise(c1) + c2.mul_element_wise(c2);
-    let c4 = Array::from_value(V::Scalar::one());
+    let c4 = Array::from_value(one());
     let matrix = Matrix4::from_cols(c1, c2, c3, c4);
     matrix.determinant() < V::Scalar::zero()
 }
@@ -276,43 +277,41 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         new_handle
     }
 
+    fn get_left_triangle(&self, edge: (FixedVertexHandle, FixedVertexHandle)) 
+                         -> Option<FixedVertexHandle> {
+        let edge = EdgeHandle::from_neighbors(&self.s, edge.0, edge.1).unwrap();
+        let ccw_handle = edge.ccw().to_handle();
+        if edge.to_simple_edge().approx_is_on_left_side(ccw_handle.position(), -self.tolerance) {
+            Some(ccw_handle.fix())
+        } else {
+            None
+        }
+    }
+
+    fn get_right_triangle(&self, edge: (FixedVertexHandle, FixedVertexHandle))
+        -> Option<FixedVertexHandle> {
+        self.get_left_triangle((edge.1, edge.0))
+    }
+
     fn insert_on_edge(&mut self, edge: (FixedVertexHandle, FixedVertexHandle), t: V) -> FixedVertexHandle {
         let new_handle = self.s.insert_vertex(t);
-        let v1 = edge.0;
-        let v2 = edge.1;
-
         let mut illegal_edges = Vec::new();
-        let simple;
-        let cw_handle;
-        let cw_position;
-        let ccw_handle;
-        let ccw_position;
-        {
-            let edge_handle = EdgeHandle::from_neighbors(&self.s, v1, v2).unwrap();
-            simple = edge_handle.to_simple_edge();
-            let handle = edge_handle.cw().to_handle();
-            cw_handle = handle.fix();
-            cw_position = handle.position();
+        let left_handle_opt = self.get_left_triangle(edge);
+        let right_handle_opt = self.get_right_triangle(edge);
+        for handle_opt in &[left_handle_opt, right_handle_opt] {
+            if let &Some(handle) = handle_opt {
+                self.s.connect(handle, new_handle);
+                illegal_edges.push((edge.0, handle));
+                illegal_edges.push((edge.1, handle));
+            }
+        }
 
-            let handle = edge_handle.ccw().to_handle();
-            ccw_handle = handle.fix();
-            ccw_position = handle.position();
-        }
-        assert!(self.s.disconnect(v1, v2));
-        if simple.approx_is_on_right_side(cw_position, -self.tolerance) {
-            self.s.connect(cw_handle, new_handle);
-            illegal_edges.push((v1, cw_handle));
-            illegal_edges.push((v2, cw_handle));
-        }
-        if simple.approx_is_on_left_side(ccw_position, -self.tolerance) {
-            self.s.connect(ccw_handle, new_handle);
-            illegal_edges.push((v1, ccw_handle));
-            illegal_edges.push((v2, ccw_handle));
-        }
-        self.s.connect(v1, new_handle);
-        self.s.connect(v2, new_handle);
+        self.s.connect(edge.0, new_handle);
+        self.s.connect(edge.1, new_handle);
+        assert!(self.s.disconnect(edge.0, edge.1));
  
         self.legalize_edges(illegal_edges, new_handle);
+
         new_handle
     }
 
@@ -371,6 +370,14 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 // The segment forms a reflex angle -> point lies outside convex hull
                 let cw_edge = SimpleEdge::new(from_pos, cw_pos);
                 if cw_edge.approx_is_on_left_side(point, -self.tolerance) {
+                    let ccw_edge = SimpleEdge::new(from_pos, ccw_pos);
+                    if ccw_edge.is_on_right_side(point) {
+                        // Both edges are part of the convex hull, return the closer one
+                        if ccw_edge.distance(point) < cw_edge.distance(point) {
+                            return PositionInTriangulation::OutsideConvexHull(
+                                cur_handle.fix(), ccw_handle.fix());
+                        }
+                    }
                     return PositionInTriangulation::OutsideConvexHull(
                         cur_handle.fix(), cw_handle.fix());
                 } else {
@@ -466,26 +473,50 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
 
     pub fn nn_interpolation<F: Fn(&V) -> <V::Vector as VectorN>::Scalar>(
         &self, point: V::Vector, f: F) -> Option<<V::Vector as VectorN>::Scalar> {
-        match self.get_position_in_triangulation(point) {
-            PositionInTriangulation::InTriangle(vertices) => {
-                let nns = self.get_natural_neighbors(vertices, point);
-                let ws = self.get_weights(&nns, point);
-                let mut sum = Zero::zero();
-                for (index, fixed_handle) in nns.iter().enumerate() {
-                    let handle = self.s.handle(*fixed_handle);
-                    sum += ws[index] * f(&*handle);
-                }
-                Some(sum)
+
+        let interpolate_on_edge = |h0, h1| {
+            let h0 = self.s.handle(h0);
+            let h1 = self.s.handle(h1);
+            let edge = SimpleEdge::new(h0.position(), h1.position());
+            let w1 = ::clamp::clamp(zero(), edge.project_point(point), one());
+            let (f0, f1) = (f(&*h0), f(&*h1));
+            f0 * (one::<<V::Vector as VectorN>::Scalar>() - w1) + f1 * w1
+        };
+
+        let nns = match self.get_position_in_triangulation(point) {
+            PositionInTriangulation::InTriangle(vs) => {
+                self.inspect_flips(vec![(vs[2], vs[0]), (vs[1], vs[2]), (vs[0], vs[1])], point)
             },
-            PositionInTriangulation::OnEdge(_, _) => {
-                panic!("not yet implemented");
+            PositionInTriangulation::OnEdge(h0, h1) => {
+                let left_opt = self.get_left_triangle((h0, h1));
+                let right_opt = self.get_right_triangle((h0, h1));
+                if let (Some(left_handle), Some(right_handle)) = (left_opt, right_opt) {
+                    let mut direct_neighbors = Vec::new();
+                    direct_neighbors.push((left_handle, h0));
+                    direct_neighbors.push((h1, left_handle));
+                    direct_neighbors.push((right_handle, h1));
+                    direct_neighbors.push((h0, right_handle));
+                    self.inspect_flips(direct_neighbors, point)
+                } else {
+                    return Some(interpolate_on_edge(h0, h1))
+                }
+            },
+            PositionInTriangulation::OutsideConvexHull(h0, h1) => {
+                return Some(interpolate_on_edge(h0, h1));
             },
             PositionInTriangulation::OnPoint(fixed_handle) => {
                 let handle = self.s.handle(fixed_handle);
-                Some(f(&*handle))
+                return Some(f(&*handle));
             },
-            _ => None,
+            _ => return None,
+        };
+        let ws = self.get_weights(&nns, point);
+        let mut sum = Zero::zero();
+        for (index, fixed_handle) in nns.iter().enumerate() {
+            let handle = self.s.handle(*fixed_handle);
+            sum += ws[index] * f(&*handle);
         }
+        Some(sum)
     }
     
     fn get_weights(&self, nns: &Vec<FixedVertexHandle>, 
@@ -532,15 +563,6 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             result.push(areas[i] / sum);
         }
         result
-    }
-
-    fn get_natural_neighbors(
-        &self, vertices: [FixedVertexHandle; 3], point: V::Vector) -> Vec<FixedVertexHandle> {
-        let v0 = vertices[0];
-        let v1 = vertices[1];
-        let v2 = vertices[2];
-        let edges = vec![(v2, v0), (v1, v2), (v0, v1)];
-        self.inspect_flips(edges, point)
     }
 
     fn inspect_flips(&self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, position: V::Vector) -> Vec<FixedVertexHandle> {
@@ -599,6 +621,7 @@ mod test {
     use cgmath::{Vector2, Array};
     use rand::{SeedableRng, XorShiftRng};
     use rand::distributions::{Range, IndependentSample};
+    use traits::HasPosition;
 
     #[test]
     fn test_inserting_one_point() {
@@ -632,12 +655,6 @@ mod test {
         d.insert(Vector2::new(1f32, 0f32));
         d.insert(Vector2::new(1f32, 1f32));
         d.insert(Vector2::new(2f32, 1f32));
-        for triangle in d.triangles() {
-            println!("triangle:");
-            for t in &triangle.0 {
-                println!("{}", t.fix());
-            }
-        }
         assert_eq!(d.triangles().count(), 2);
     }
     
@@ -784,5 +801,56 @@ mod test {
         for point in points.iter().cloned() {
             delaunay.insert(point);
         }
+    }
+
+
+    struct PointWithHeight {
+        point: Vector2<f32>,
+        height: f32,
+    }
+
+    impl HasPosition for PointWithHeight {
+        type Vector = Vector2<f32>;
+        fn position(&self) -> Vector2<f32> {
+            self.point
+        }
+    }
+
+    impl PointWithHeight {
+        fn new(x: f32, y: f32, height: f32) -> PointWithHeight {
+            PointWithHeight {
+                point: Vector2::new(x, y),
+                height: height
+            }
+        }
+    }
+
+    #[test]
+    fn test_natural_neighbor_interpolation() {
+        let mut points = vec![
+            PointWithHeight::new(0.0, 0.0, 0.0),
+            PointWithHeight::new(1.0, 0.0, 0.0),
+            PointWithHeight::new(0.0, 1.0, 0.0),
+            PointWithHeight::new(1.0, 1.0, 0.0),
+            PointWithHeight::new(2.0, 0.0, 0.0),
+            PointWithHeight::new(2.0, 1.0, 0.0),
+            PointWithHeight::new(3.0, 0.0, 1.0),
+            PointWithHeight::new(3.0, 1.0, 1.0),
+            PointWithHeight::new(4.0, 0.0, 1.0),
+            PointWithHeight::new(4.0, 1.0, 1.0),
+        ];
+        let mut delaunay = DelaunayTriangulation::new();
+        delaunay.set_tolerance(0.00005);
+        for point in points.drain(..) {
+            delaunay.insert(point);
+        }
+        assert_eq!(delaunay.nn_interpolation(Vector2::new(0.5, 0.5), |p| p.height), Some(0.0));
+        assert_eq!(delaunay.nn_interpolation(Vector2::new(0.2, 0.8), |p| p.height), Some(0.0));
+        assert_eq!(delaunay.nn_interpolation(Vector2::new(3.5, 1.), |p| p.height), Some(1.0));
+        assert_eq!(delaunay.nn_interpolation(Vector2::new(-20., 0.2), |p| p.height), Some(0.0));
+        let height = delaunay.nn_interpolation(Vector2::new(3.2, 0.9), |p| p.height).unwrap();
+        assert!((height - 1.0).abs() < 0.00001);
+        let height = delaunay.nn_interpolation(Vector2::new(3.5, 0.5), |p| p.height).unwrap();
+        assert!((height - 1.0).abs() < 0.00001);
     }
 }

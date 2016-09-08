@@ -47,7 +47,7 @@ impl <V: VectorN> SimpleEdge<V> where V::Scalar: RTreeFloat {
     pub fn nearest_point(&self, query_point: V) -> V {
         let (p1, p2) = (self.from, self.to);
         let dir = p2 - p1;
-        let s: V::Scalar = (query_point - p1).dot(&dir) / dir.length2();
+        let s = self.project_point(query_point);
         if V::Scalar::zero() < s && s < one() {
             p1 + dir * s
 
@@ -59,6 +59,20 @@ impl <V: VectorN> SimpleEdge<V> where V::Scalar: RTreeFloat {
             }
         }
     }
+
+    /// Projects a point on this line and returns it's relative position.
+    /// 
+    /// This method will return a value between 0. and 1. (linearly interpolated) if the projected
+    /// point lies between `self.from` and `self.to`, a value close to zero (due to rounding errors)
+    /// if the projected point is equal to `self.from` and a value smaller than zero if the projected
+    /// point lies "before" `self.from`. Analogously, a value close to 1. or greater than 1. is
+    /// returned if the projected point is equal to or lies behind `self.to`.
+    pub fn project_point(&self, query_point: V) -> V::Scalar {
+        let (p1, p2) = (self.from, self.to);
+        let dir = p2 - p1;
+        (query_point - p1).dot(&dir) / dir.length2()
+    }
+
     /// Returns a value indicating on which side of this edge a given point lies.
     ///
     /// Returns a value smaller than zero if `query_point` is on the right side,
