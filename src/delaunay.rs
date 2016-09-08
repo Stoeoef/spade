@@ -24,11 +24,12 @@ use primitives::{SimpleEdge, SimpleTriangle};
 use planarsubdivision::{PlanarSubdivision, FixedVertexHandle, EdgeHandle,
                         VertexHandle, approx_contained_in_circle_segment};
 
-enum PositionInTriangulation {
+pub enum PositionInTriangulation {
     InTriangle([FixedVertexHandle; 3]),
     OutsideConvexHull(FixedVertexHandle, FixedVertexHandle),
     OnPoint(FixedVertexHandle),
     OnEdge(FixedVertexHandle, FixedVertexHandle),
+    NoTriangulationPresent,
 }
 
 pub struct DelaunayTriangle<'a, V>(pub [VertexHandle<'a, V>; 3]) where V: HasPosition + 'a,
@@ -315,9 +316,18 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         new_handle
     }
 
-    fn get_position_in_triangulation(&self, starting_point: FixedVertexHandle, 
-                            point: &V::Vector) -> PositionInTriangulation {
-        let mut cur_handle = self.s.handle(starting_point);
+    pub fn get_position_in_triangulation(&self, point: V::Vector) -> PositionInTriangulation {
+        if self.num_vertices() < 3 {
+            PositionInTriangulation::NoTriangulationPresent
+        } else {
+            let start = self.points.nearest_neighbor(point).unwrap().handle;
+            self.get_position_in_triangulation_from_start_point(start, point) 
+        }
+    }
+
+    fn get_position_in_triangulation_from_start_point(
+        &self, start: FixedVertexHandle, point: V::Vector) -> PositionInTriangulation {
+        let mut cur_handle = self.s.handle(start);
         loop {
             let from_pos = cur_handle.position();
             let (mut sector, cw_handle, ccw_handle);
@@ -328,7 +338,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                     let cw_pos = self.s.handle(neighbors[i - 1]).position();
                     let ccw_pos = self.s.handle(neighbors[i]).position();
                     if approx_contained_in_circle_segment(
-                        &from_pos, &cw_pos, &ccw_pos, point, self.tolerance) {
+                        &from_pos, &cw_pos, &ccw_pos, &point, self.tolerance) {
                         sector = i;
                         break;
                     }
@@ -339,19 +349,19 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             let cw_pos = cw_handle.position();
             let ccw_pos = ccw_handle.position();
             let edge = SimpleEdge::new(cw_pos, ccw_pos);
-            let distance_cw = SimpleEdge::new(from_pos, cw_pos).distance(*point);
+            let distance_cw = SimpleEdge::new(from_pos, cw_pos).distance(point);
             if distance_cw <= self.tolerance {
-                if *point == cw_pos {
+                if point == cw_pos {
                     return PositionInTriangulation::OnPoint(cw_handle.fix());
                 }
-                if *point == from_pos {
+                if point == from_pos {
                     return PositionInTriangulation::OnPoint(cur_handle.fix());
                 }
                 return PositionInTriangulation::OnEdge(cw_handle.fix(), cur_handle.fix());
             }
-            let distance_ccw = SimpleEdge::new(from_pos, ccw_pos).distance(*point);
+            let distance_ccw = SimpleEdge::new(from_pos, ccw_pos).distance(point);
             if distance_ccw <= self.tolerance {
-                if *point == ccw_pos {
+                if point == ccw_pos {
                     return PositionInTriangulation::OnPoint(ccw_handle.fix());
                 }
                 return PositionInTriangulation::OnEdge(cur_handle.fix(), ccw_handle.fix());
@@ -360,7 +370,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             if edge.is_on_right_side(from_pos) {
                 // The segment forms a reflex angle -> point lies outside convex hull
                 let cw_edge = SimpleEdge::new(from_pos, cw_pos);
-                if cw_edge.approx_is_on_left_side(*point, -self.tolerance) {
+                if cw_edge.approx_is_on_left_side(point, -self.tolerance) {
                     return PositionInTriangulation::OutsideConvexHull(
                         cur_handle.fix(), cw_handle.fix());
                 } else {
@@ -369,40 +379,37 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 }
             }
             // Check if point is contained within the triangle formed by this segment
-            if edge.is_on_left_side(*point) {
+            if edge.is_on_left_side(point) {
                 // Point lies inside of a triangle
                 return PositionInTriangulation::InTriangle([
                     cw_handle.fix(), ccw_handle.fix(), cur_handle.fix()]);
             }
             // We didn't reach the point yet - continue walking
-            let distance_cw = cw_pos.distance(*point);
-            let distance_ccw = ccw_pos.distance(*point);
+            let distance_cw = cw_pos.distance(point);
+            let distance_ccw = ccw_pos.distance(point);
             cur_handle = if distance_cw < distance_ccw { cw_handle } else { ccw_handle };
         }
     }
 
     pub fn insert(&mut self, t: V) {
         let pos = t.position();
-        let new_handle_opt = if self.num_vertices() >= 3 {
-            let start_handle = self.points.nearest_neighbor(pos).unwrap().handle;
-            match self.get_position_in_triangulation(start_handle, &pos) {
-                PositionInTriangulation::OutsideConvexHull(v1, v2) => {
-                    Some(self.insert_outside_convex_hull((v1, v2), t))
-                },
-                PositionInTriangulation::InTriangle(vertices) => {
-                    Some(self.insert_into_triangle(vertices, t))
-                },
-                PositionInTriangulation::OnEdge(v1, v2) => {
-                    Some(self.insert_on_edge((v1, v2), t))
-                },
-                PositionInTriangulation::OnPoint(vertex) => {
-                    self.s.update_vertex(vertex, t);
-                    None
-                },
-            }
-        } else {
-            // We have no edges yet
-            self.initial_insertion(t)
+        let new_handle_opt = match self.get_position_in_triangulation(pos) {
+            PositionInTriangulation::OutsideConvexHull(v1, v2) => {
+                Some(self.insert_outside_convex_hull((v1, v2), t))
+            },
+            PositionInTriangulation::InTriangle(vertices) => {
+                Some(self.insert_into_triangle(vertices, t))
+            },
+            PositionInTriangulation::OnEdge(v1, v2) => {
+                Some(self.insert_on_edge((v1, v2), t))
+            },
+            PositionInTriangulation::OnPoint(vertex) => {
+                self.s.update_vertex(vertex, t);
+                None
+            },
+            PositionInTriangulation::NoTriangulationPresent => {
+                self.initial_insertion(t)
+            }                
         };
         if let Some(new_handle) = new_handle_opt {
             self.points.insert(PointEntry { point: pos, handle: new_handle });
@@ -459,7 +466,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
 
     pub fn nn_interpolation<F: Fn(&V) -> <V::Vector as VectorN>::Scalar>(
         &self, point: V::Vector, f: F) -> Option<<V::Vector as VectorN>::Scalar> {
-        match self.get_position_in_triangulation(0, &point) {
+        match self.get_position_in_triangulation(point) {
             PositionInTriangulation::InTriangle(vertices) => {
                 let nns = self.get_natural_neighbors(vertices, point);
                 let ws = self.get_weights(&nns, point);
@@ -473,13 +480,11 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             PositionInTriangulation::OnEdge(_, _) => {
                 panic!("not yet implemented");
             },
-            PositionInTriangulation::OutsideConvexHull(_, _) => {
-                None
-            }
             PositionInTriangulation::OnPoint(fixed_handle) => {
                 let handle = self.s.handle(fixed_handle);
                 Some(f(&*handle))
-            }
+            },
+            _ => None,
         }
     }
     
