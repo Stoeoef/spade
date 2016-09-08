@@ -140,6 +140,13 @@ impl <V> BoundingRect<V> where V: VectorN {
         }
     }
 
+    /// Returns true if this and another bounding rectangle intersect each other.
+    /// If the rectangles just "touch" each other at one side, true is returned.
+    pub fn intersects(&self, other: &BoundingRect<V>) -> bool {
+        self.lower.all_comp_wise(&other.upper(), |l, r| l <= r) &&
+            self.upper.all_comp_wise(&other.lower(), |l, r| l >= r)
+    }
+
     #[doc(hidden)]
     pub fn min_point(&self, point: &V) -> V {
         self.upper.min_vec(&self.lower.max_vec(point))

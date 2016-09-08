@@ -15,7 +15,7 @@
 
 pub mod exampleapplication;
 
-use cgmath::{BaseFloat, Vector2, Vector3, Array, One};
+use cgmath::{BaseFloat, Vector2, Vector3, Array};
 use cgmath::conv::*;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};

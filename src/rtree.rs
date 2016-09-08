@@ -616,7 +616,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         // Only look at children whose mbr intersects the circle
         for child in self.children.iter().filter(|c| {
             let min_dist2 = c.mbr().min_dist2(origin);
-            min_dist2 < *radius2
+            min_dist2 <= *radius2
         }) {
             match child {
                 &RTreeNode::DirectoryNode(ref data) =>
@@ -626,6 +626,20 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                         result.push(t);
                     }
                 },
+            }
+        }
+    }
+
+    fn lookup_in_rectangle<'b>(&'b self, result: &mut Vec<&'b T>,
+                               query_rect: &BoundingRect<T::Vector>) {
+        for child in self.children.iter().filter(|c| c.mbr().intersects(query_rect)) {
+            match child {
+                &RTreeNode::DirectoryNode(ref data) => data.lookup_in_rectangle(result, query_rect),
+                &RTreeNode::Leaf(ref t) => {
+                    if t.mbr().intersects(query_rect) {
+                        result.push(t);
+                    }
+                }
             }
         }
     }
@@ -948,7 +962,9 @@ impl<T> RTree<T> where T: SpatialObject {
 
     /// Returns all objects (partially) contained in a rectangle
     pub fn lookup_in_rectangle(&self, query_rect: &BoundingRect<T::Vector>) -> Vec<&T> {
-        panic!("Not yet implemented");
+        let mut result = Vec::new();
+        self.root.lookup_in_rectangle(&mut result, query_rect);
+        result
     }
 
     // TODO: This doesn't work yet.
@@ -993,6 +1009,7 @@ impl <T> RTree<T> where T: SpatialObject + PartialEq {
 #[cfg(test)]
 mod tests {
     use super::{RTree};
+    use boundingvolume::BoundingRect;
     use primitives::SimpleTriangle;
     use cgmath::{Vector2, InnerSpace};
     use num::Float;
@@ -1021,6 +1038,55 @@ mod tests {
                 }
             }
             assert!(nearest == tree.nearest_neighbor(*sample_point));
+        }
+    }
+
+    #[test]
+    fn test_lookup_in_circle() {
+        let (tree, points) = create_random_tree::<f32>(1000, [10, 233, 588812, 411112]);
+        let sample_points = random_points_with_seed(100, [66, 123, 12345, 112]);
+        const RADIUS: f32 = 20.;
+        for sample_point in &sample_points {
+            let mut expected = Vec::new();
+            for point in &points {
+                let new_dist = (point - sample_point).magnitude2();
+                if new_dist < RADIUS * RADIUS {
+                    expected.push(point);
+                }
+            }
+            let points = tree.lookup_in_circle(*sample_point, RADIUS * RADIUS);
+            assert_eq!(points.len(), expected.len());
+            for p in &points {
+                assert!(expected.contains(p));
+            }
+            for p in &expected {
+                assert!(points.contains(p));
+            }
+        }
+    }
+
+    #[test]
+    fn test_lookup_in_rect() {
+        let (tree, points) = create_random_tree::<f32>(1000, [10, 233, 588812, 411112]);
+        let sample_points = random_points_with_seed(100, [66, 123, 12345, 112]);
+        const SIZE: f32 = 20.;
+        for sample_point in &sample_points {
+            let sample_rect = BoundingRect::from_corners(
+                sample_point, &(*sample_point + Vector2::new(SIZE, SIZE)));
+            let mut expected = Vec::new();
+            for point in &points {
+                if sample_rect.contains_point(*point) {
+                    expected.push(point);
+                }
+            }
+            let points = tree.lookup_in_rectangle(&sample_rect);
+            assert_eq!(points.len(), expected.len());
+            for p in &points {
+                assert!(expected.contains(p));
+            }
+            for p in &expected {
+                assert!(points.contains(p));
+            }
         }
     }
 
