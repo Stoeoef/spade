@@ -589,20 +589,21 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         }
     }
     
-    fn lookup(&self, point: &T::Vector) -> Option<&T> {
-        if self.bounding_box.contains_point(*point) {
-            for child in self.children.iter() {
-                match child {
-                    &RTreeNode::DirectoryNode(ref data) => {
-                        let result = data.lookup(point);
-                        if result.is_some() {
-                            return result;
-                        }
-                    },
-                    &RTreeNode::Leaf(ref t) => {
-                        if t.contains(*point) {
-                            return Some(t);
-                        }
+    fn lookup(&self, point: T::Vector) -> Option<&T> {
+        let mut todo_list = Vec::with_capacity(40);
+        todo_list.push(self);
+        while let Some(next) = todo_list.pop() {
+            if next.mbr().contains_point(point) {
+                for child in next.children.iter() {
+                    match child {
+                        &RTreeNode::DirectoryNode(ref data) => {
+                            todo_list.push(data);
+                        },
+                        &RTreeNode::Leaf(ref obj) => {
+                            if obj.contains(point) {
+                                return Some(obj);
+                            }
+                        },
                     }
                 }
             }
@@ -930,7 +931,7 @@ impl<T> RTree<T> where T: SpatialObject {
     /// If `query_point` is contained by one object in the tree, this object will be returned.
     /// If multiple objects contain the point, only one of them will be returned.
     pub fn lookup(&self, point: T::Vector) -> Option<&T> {
-        self.root.lookup(&point.into())
+        self.root.lookup(point)
     }
     
     /// Returns the nearest neighbor.

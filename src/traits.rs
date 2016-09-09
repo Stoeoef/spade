@@ -213,4 +213,8 @@ impl <S>  SpatialObject for S where S: HasPosition {
     fn distance(&self, point: S::Vector) -> <S::Vector as VectorN>::Scalar {
         (self.position() - point).length2()
     }
+
+    fn contains(&self, point: S::Vector) -> bool {
+        self.position() == point
+    }
 }
