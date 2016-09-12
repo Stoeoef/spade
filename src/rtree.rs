@@ -445,7 +445,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
             }
             match child.nearest_neighbor(point, nearest_distance) {
                 Some(t) => {
-                    nearest_distance = t.distance(point.clone()).into();
+                    nearest_distance = t.distance2(point.clone()).into();
                     nearest = Some(t);
                 },
                 None => {}
@@ -529,7 +529,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
 
         for child in self.children.iter() {
             let min_dist = child.mbr().min_dist2(point);
-            if result.len() == n && min_dist >= result.last().unwrap().distance(*point) {
+            if result.len() == n && min_dist >= result.last().unwrap().distance2(*point) {
                 // Prune this element
                 continue;
             }
@@ -538,12 +538,12 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                     data.nearest_n_neighbors(point, n, result);
                 },
                 &RTreeNode::Leaf(ref t) => {
-                    let distance = t.distance(*point);
-                    if result.len() != n || distance < result.last().unwrap().distance(*point) {
+                    let distance = t.distance2(*point);
+                    if result.len() != n || distance < result.last().unwrap().distance2(*point) {
                         if result.len() == n {
                             result.pop();
                         }
-                        let index = match result.binary_search_by(|e| e.distance(*point).partial_cmp(
+                        let index = match result.binary_search_by(|e| e.distance2(*point).partial_cmp(
                             &distance).unwrap()) {
                             Ok(index) => index,
                             Err(index) => index,
@@ -623,7 +623,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                 &RTreeNode::DirectoryNode(ref data) =>
                     data.lookup_in_circle(result, origin, radius2),
                 &RTreeNode::Leaf(ref t) => {
-                    if t.distance(*origin) < *radius2 {
+                    if t.distance2(*origin) < *radius2 {
                         result.push(t);
                     }
                 },
@@ -734,7 +734,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbor(point, nearest_distance),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance(*point);
+                let distance = t.distance2(*point);
                 if distance < nearest_distance {
                     Some(t)
                 } else {
@@ -750,7 +750,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbors(point, nearest_distance, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance(*point);
+                let distance = t.distance2(*point);
                 match nearest_distance {
                     Some(nearest) => {                
                         if distance <= nearest {
@@ -783,7 +783,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
             &RTreeNode::DirectoryNode(ref data) => 
                 data.nearest_neighbors_with_min_dist(point, nearest_distance, min_dist, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance(*point);
+                let distance = t.distance2(*point);
                 if distance <= min_dist {
                     return None;
                 }
@@ -827,11 +827,63 @@ pub enum RTreeNode<T> where T: SpatialObject {
     DirectoryNode(DirectoryNodeData<T>),
 }
 
-/// A pure rust r*-tree implementation.
+
+/// A rust implementation of n dimensional r*-trees
 ///
-/// Note that the structure does use the [r-star-tree heuristics](https://en.wikipedia.org/wiki/R*_tree), even though it is called
-/// `RTree`.
-/// Allows to insert various objects into the tree and to make some common queries.
+/// [R-trees](https://en.wikipedia.org/wiki/R-tree) provide efficient nearest-neighbor searches for
+/// many objects. [R*-trees](https://en.wikipedia.org/wiki/R*_tree) (&quot;R-Star-Trees&quot;) 
+/// are a common variant of r-trees and use more advanced heuristics to improve query performance. This
+/// struct implements r*-trees, despite its name.
+/// Instead of linear time complexity, r-trees yield logarithmic complexity
+/// for look-up operations and nearest neighbor queries. Inserting into an r-tree runs in O(log(n)) time on average.
+/// Some simple simple geometric primitives that can be inserted into an r-tree can be found in 
+/// the `primitives` module. If your object is not among those, consider
+/// implementing the `SpatialObject` trait.
+/// 
+/// Note that the `rtree`-infrastructure works with 2, 3 and 4 dimensional vectors from the `nalgebra`
+/// and `cgmath` package with both integral and floating point scalar types:
+///
+/// ```
+/// # extern crate nalgebra;
+/// # extern crate spade;
+///
+/// # use nalgebra::{Vector4};
+/// # use spade::RTree;
+///
+/// # fn main() {
+///   let mut tree = RTree::new();
+///   tree.insert(Vector4::new(13i32, 10, 10, 37)); // Note that this is an integer vector
+/// # }
+/// ```
+///
+/// # Basic Example
+///
+/// ```
+/// extern crate cgmath; // Alternativeley: use nalgebra
+/// extern crate spade;
+///
+/// use spade::RTree;
+/// use cgmath::Vector2;
+///
+/// fn main() {
+/// let mut rtree = RTree::new();
+/// // Insert two points
+/// rtree.insert(Vector2::new(0.5, 0.5f32));
+/// rtree.insert(Vector2::new(1.0, 1.0f32));
+///
+/// if rtree.lookup(Vector2::new(0.5, 0.5)).is_some() {
+///   println!("We'fe found a point at [0.5, 0.5]/");
+/// }
+/// 
+/// let nearest = rtree.nearest_neighbor(Vector2::new(1.5, 1.5)).unwrap();
+/// println!("nearest neighbor at [1.5, 1.5]: {:?}", nearest);
+///
+/// // Iterate over all elements
+/// for point in rtree.iter() {
+///   println!("Found point: {:?}", point);
+/// }
+/// }
+/// ```
 #[derive(Clone)]
 pub struct RTree<T> where T: SpatialObject {
 
@@ -1194,7 +1246,7 @@ mod tests {
         let (tree, mut points) = create_random_tree::<f32>(100, [9, 8, 7, 6]);
         let query_point = Vector2::new(0., 0.);
         let sorted: Vec<_> = tree.nearest_neighbor_iterator(query_point).cloned().collect();
-        points.sort_by(|l, r| l.distance(query_point).partial_cmp(&r.distance(query_point)).unwrap());
+        points.sort_by(|l, r| l.distance2(query_point).partial_cmp(&r.distance2(query_point)).unwrap());
         assert_eq!(sorted, points);
     }
 

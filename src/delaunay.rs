@@ -123,6 +123,7 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 pub struct DelaunayTriangulation<V: HasPosition> where <V::Vector as VectorN>::Scalar: RTreeFloat {
     pub s: PlanarSubdivision<V>,
     points: RTree<PointEntry<V::Vector>>,
+    all_points_on_line: bool,
     pub tolerance: <V::Vector as VectorN>::Scalar,
 }
 
@@ -137,7 +138,8 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     pub fn new() -> DelaunayTriangulation<V> {
         DelaunayTriangulation {
             s: PlanarSubdivision::new(),
-             points: RTree::new(),
+            points: RTree::new(),
+            all_points_on_line: true,
             tolerance: <V::Vector as VectorN>::Scalar::zero(),
         }
     }
@@ -179,29 +181,46 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     }
 
     fn initial_insertion(&mut self, t: V) -> Option<FixedVertexHandle> {
-        // Used to insert one of the first three points
-        let vertices: Vec<_> = self.s.fixed_vertices().collect();
-        if let Some(index) = vertices.iter().cloned().position(
-            |h| self.s.handle(h).position() == t.position()) {
-            // Update entry
-            self.s.update_vertex(index, t);
-            None
-        } else {
-            match vertices.len() {
-                0 | 1 => { Some(self.s.insert_vertex(t)) },
-                2 => {
-                    let first = vertices[0];
-                    let second = vertices[1];
-                    let third = self.s.insert_vertex(t);
-                    // Create first triangle
-                    self.s.connect(first, second);
-                    self.s.connect(second, third);
-                    self.s.connect(third, first);
-                    Some(third)
-                },
-                _ => panic!("This should not happen."),
-            }
+        assert!(self.all_points_on_line);
+        // Inserts points if no points are present or if all points
+        // lie on the same line
+        if let Some(entry) = self.points.lookup(t.position()) {
+            self.s.update_vertex(entry.handle, t);
+            return None;
         }
+
+        if self.points.size() <= 1 {
+            return Some(self.s.insert_vertex(t));
+        }
+
+        // Check if the new point is on the same line as all points in the
+        // triangulation
+        let from = self.s.handle(0).position();
+        let to = self.s.handle(1).position();
+        let edge = SimpleEdge::new(from, to);
+        let new_pos = t.position();
+        if edge.projection_distance2(new_pos) <= self.tolerance {
+            return Some(self.s.insert_vertex(t));
+        }
+        // The point does not lie on the same line as all other points.
+        // Start creating a triangulation
+        let mut vertices: Vec<_> = self.s.vertices().map(
+            |v| (v.fix(), edge.project_point(v.position()))).collect();
+        // Sort vertices according to their position on the line
+        vertices.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
+
+        // Create line
+        for vs in vertices.windows(2) {
+            self.s.connect(vs[0].0, vs[1].0);
+        }
+
+        let new_vertex = self.s.insert_vertex(t);
+        // Connect all points on the line to the new vertex
+        for &(v, _) in &vertices {
+            self.s.connect(v, new_vertex);
+        }
+        self.all_points_on_line = false;
+        Some(new_vertex)
     }
 
     fn get_convex_hull_edges_for_point(&self, first_edge: (FixedVertexHandle, FixedVertexHandle),
@@ -306,9 +325,9 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             }
         }
 
+        assert!(self.s.disconnect(edge.0, edge.1));
         self.s.connect(edge.0, new_handle);
         self.s.connect(edge.1, new_handle);
-        assert!(self.s.disconnect(edge.0, edge.1));
  
         self.legalize_edges(illegal_edges, new_handle);
 
@@ -316,7 +335,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     }
 
     pub fn get_position_in_triangulation(&self, point: V::Vector) -> PositionInTriangulation {
-        if self.num_vertices() < 3 {
+        if self.all_points_on_line {
             PositionInTriangulation::NoTriangulationPresent
         } else {
             let start = self.points.nearest_neighbor(point).unwrap().handle;
@@ -348,7 +367,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             let cw_pos = cw_handle.position();
             let ccw_pos = ccw_handle.position();
             let edge = SimpleEdge::new(cw_pos, ccw_pos);
-            let distance_cw = SimpleEdge::new(from_pos, cw_pos).distance(point);
+            let distance_cw = SimpleEdge::new(from_pos, cw_pos).distance2(point);
             if distance_cw <= self.tolerance {
                 if point == cw_pos {
                     return PositionInTriangulation::OnPoint(cw_handle.fix());
@@ -358,7 +377,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 }
                 return PositionInTriangulation::OnEdge(cw_handle.fix(), cur_handle.fix());
             }
-            let distance_ccw = SimpleEdge::new(from_pos, ccw_pos).distance(point);
+            let distance_ccw = SimpleEdge::new(from_pos, ccw_pos).distance2(point);
             if distance_ccw <= self.tolerance {
                 if point == ccw_pos {
                     return PositionInTriangulation::OnPoint(ccw_handle.fix());
@@ -366,34 +385,35 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 return PositionInTriangulation::OnEdge(cur_handle.fix(), ccw_handle.fix());
             }
             // Check if the segment is a reflex angle (> 180°)
-            if edge.is_on_right_side(from_pos) {
+            if edge.approx_is_on_right_side(from_pos, self.tolerance) {
                 // The segment forms a reflex angle -> point lies outside convex hull
                 let cw_edge = SimpleEdge::new(from_pos, cw_pos);
-                if cw_edge.approx_is_on_left_side(point, -self.tolerance) {
-                    let ccw_edge = SimpleEdge::new(from_pos, ccw_pos);
-                    if ccw_edge.is_on_right_side(point) {
-                        // Both edges are part of the convex hull, return the closer one
-                        if ccw_edge.distance(point) < cw_edge.distance(point) {
-                            return PositionInTriangulation::OutsideConvexHull(
-                                cur_handle.fix(), ccw_handle.fix());
-                        }
-                    }
-                    return PositionInTriangulation::OutsideConvexHull(
-                        cur_handle.fix(), cw_handle.fix());
-                } else {
+                let ccw_edge = SimpleEdge::new(from_pos, ccw_pos);
+
+                // Both edges are part of the convex hull, return the one farther away
+                let s_ccw = ccw_edge.project_point(point);
+                let s_cw = cw_edge.project_point(point);
+                let p_ccw = (ccw_pos - from_pos) * s_ccw + from_pos;
+                let p_cw = (cw_pos - from_pos) * s_cw + from_pos;
+                if (p_cw.distance2(point) < p_ccw.distance2(point) && ccw_edge.is_on_right_side(point))
+                || cw_edge.is_on_right_side(point) {
                     return PositionInTriangulation::OutsideConvexHull(
                         cur_handle.fix(), ccw_handle.fix());
+                } else {
+                    return PositionInTriangulation::OutsideConvexHull(
+                        cur_handle.fix(), cw_handle.fix());
                 }
             }
             // Check if point is contained within the triangle formed by this segment
             if edge.is_on_left_side(point) {
                 // Point lies inside of a triangle
+                debug_assert!(EdgeHandle::from_neighbors(&self.s, cw_handle.fix(), ccw_handle.fix()).is_some());
                 return PositionInTriangulation::InTriangle([
                     cw_handle.fix(), ccw_handle.fix(), cur_handle.fix()]);
             }
             // We didn't reach the point yet - continue walking
-            let distance_cw = cw_pos.distance(point);
-            let distance_ccw = ccw_pos.distance(point);
+            let distance_cw = cw_pos.distance2(point);
+            let distance_ccw = ccw_pos.distance2(point);
             cur_handle = if distance_cw < distance_ccw { cw_handle } else { ccw_handle };
         }
     }
@@ -775,6 +795,22 @@ mod test {
     }
 
     #[test]
+    fn test_insert_points_on_line_2() {
+        // This test inserts the line first
+        let mut delaunay = DelaunayTriangulation::new();
+        delaunay.set_tolerance(1e-10);
+
+        for i in -50 .. 50 {
+            delaunay.insert(Vector2::new(i as f32, 0.));
+        }
+        
+        for i in -10 .. 10 {
+            delaunay.insert(Vector2::new(i as f32, 0.5 * (i as f32)));
+        }
+    }
+
+
+    #[test]
     fn test_insert_points_on_grid() {
         let mut delaunay = DelaunayTriangulation::new();
         delaunay.set_tolerance(1e-6);
@@ -802,7 +838,6 @@ mod test {
             delaunay.insert(point);
         }
     }
-
 
     struct PointWithHeight {
         point: Vector2<f32>,
@@ -852,5 +887,36 @@ mod test {
         assert!((height - 1.0).abs() < 0.00001);
         let height = delaunay.nn_interpolation(Vector2::new(3.5, 0.5), |p| p.height).unwrap();
         assert!((height - 1.0).abs() < 0.00001);
+    }
+
+    #[test]
+    fn test_insert_points_with_increasing_distance() {
+        use cgmath::InnerSpace;
+        let mut points = random_points(1000, [2, 23, 493, 712]);
+        points.sort_by(|p1, p2| p1.magnitude2().partial_cmp(&p2.magnitude2()).unwrap());
+        let mut delaunay = DelaunayTriangulation::new();
+        for point in &points {
+            delaunay.insert(*point);
+        }
+    }
+
+    #[test]
+    fn test_insert_points_on_grid_with_increasing_distance() {
+        // This test inserts points on a grid in increasing order from (0., 0.)
+        use cgmath::InnerSpace;
+        let mut points = Vec::new();
+        const SIZE: i32 = 7;
+        for x in -SIZE .. SIZE {
+            for y in -SIZE .. SIZE {
+                let point = Vector2::new(x as f64, y as f64);
+                points.push(point);
+            }
+        }
+        points.sort_by(|p1, p2| p1.magnitude2().partial_cmp(&p2.magnitude2()).unwrap());
+        let mut delaunay = DelaunayTriangulation::new();
+        delaunay.set_tolerance(1e-10);
+        for point in &points {
+            delaunay.insert(*point);
+        }
     }
 }

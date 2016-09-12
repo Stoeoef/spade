@@ -60,7 +60,13 @@ impl <V: VectorN> SimpleEdge<V> where V::Scalar: RTreeFloat {
         }
     }
 
-    /// Projects a point on this line and returns it's relative position.
+    pub fn projection_distance2(&self, query_point: V) -> V::Scalar {
+        let s = self.project_point(query_point);
+        let p = self.from + (self.to - self.from) * s;
+        p.distance2(query_point)
+    }
+
+    /// Projects a point on this line and returns its relative position.
     /// 
     /// This method will return a value between 0. and 1. (linearly interpolated) if the projected
     /// point lies between `self.from` and `self.to`, a value close to zero (due to rounding errors)
@@ -109,7 +115,7 @@ impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: RTreeFloat {
         BoundingRect::from_corners(&self.from, &self.to)
     }
 
-    fn distance(&self, point: V) -> V::Scalar {
+    fn distance2(&self, point: V) -> V::Scalar {
         let nn = self.nearest_point(point);
         (point - nn).length2()
     }
@@ -206,11 +212,11 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeF
         result
     }
 
-    fn distance(&self, point: V) -> V::Scalar {
+    fn distance2(&self, point: V) -> V::Scalar {
         for i in 0 .. 3 {
             let edge = SimpleEdge::new(self.vertices[i], self.vertices[(i + 1) % 3]);
             if edge.signed_side(point) <= zero() {
-                return edge.distance(point);
+                return edge.distance2(point);
             }
         }
         // The point is within the triangle
@@ -240,10 +246,11 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: RTreeFlo
         BoundingRect::from_corners(&(self.origin - r), &(self.origin + r))
     }
 
-    fn distance(&self, point: V) -> V::Scalar {
+    fn distance2(&self, point: V) -> V::Scalar {
         let dx = self.origin[0] - point[0];
         let dy = self.origin[1] - point[1];
-        ((dx * dx + dy * dy).sqrt() - self.radius).max(zero())
+        let dist = ((dx * dx + dy * dy).sqrt() - self.radius).max(zero());
+        dist * dist
     }
 
     // Since containment checks do not require the calculation of the square root
@@ -265,10 +272,10 @@ mod test {
     #[test]
     fn test_edge_distance() {
         let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-        assert!(e.distance(Vector2::new(1.0, 0.0)).approx_eq(&0.5));
-        assert!(e.distance(Vector2::new(0.0, 1.)).approx_eq(&0.5));
-        assert!(e.distance(Vector2::new(-1.0, -1.)).approx_eq(&2.));
-        assert!(e.distance(Vector2::new(2.0, 2.0)).approx_eq(&2.));
+        assert!(e.distance2(Vector2::new(1.0, 0.0)).approx_eq(&0.5));
+        assert!(e.distance2(Vector2::new(0.0, 1.)).approx_eq(&0.5));
+        assert!(e.distance2(Vector2::new(-1.0, -1.)).approx_eq(&2.));
+        assert!(e.distance2(Vector2::new(2.0, 2.0)).approx_eq(&2.));
     }
 
     #[test]
@@ -285,13 +292,13 @@ mod test {
         let v2 = Vector2::new(1., 0.);
         let v3 = Vector2::new(0., 1.);
         let t = SimpleTriangle::new([v1, v2, v3]);
-        assert_eq!(t.distance(Vector2::new(0.25, 0.25)), 0.);
-        assert!(t.distance(Vector2::new(-1., -1.)).approx_eq(&2.));
-        assert!(t.distance(Vector2::new(0., -1.)).approx_eq(&1.));
-        assert!(t.distance(Vector2::new(-1., 0.)).approx_eq(&1.));
-        assert!(t.distance(Vector2::new(1., 1.)).approx_eq(&0.5));
-        assert!(t.distance(Vector2::new(0.5, 0.5)).approx_eq(&0.0));
-        assert!(t.distance(Vector2::new(0.6, 0.6)) > 0.001);
+        assert_eq!(t.distance2(Vector2::new(0.25, 0.25)), 0.);
+        assert!(t.distance2(Vector2::new(-1., -1.)).approx_eq(&2.));
+        assert!(t.distance2(Vector2::new(0., -1.)).approx_eq(&1.));
+        assert!(t.distance2(Vector2::new(-1., 0.)).approx_eq(&1.));
+        assert!(t.distance2(Vector2::new(1., 1.)).approx_eq(&0.5));
+        assert!(t.distance2(Vector2::new(0.5, 0.5)).approx_eq(&0.0));
+        assert!(t.distance2(Vector2::new(0.6, 0.6)) > 0.001);
     }
 
     #[test]

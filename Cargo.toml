@@ -9,7 +9,7 @@ repository=""
 
 [dependencies]
 cgmath = "0.11.*"
-num = "0.1.30"
+num = "0.1.*"
 nalgebra = "0.9.*"
 clamp = "0.1.*"
 
@@ -19,6 +19,7 @@ time = "0.1.*"
 glium = "0.15.*"
 kiss3d = "0.7.*"
 noise = "0.2.*"
+glfw = "0.8.*"
 
 [profile.bench]
 opt-level = 3

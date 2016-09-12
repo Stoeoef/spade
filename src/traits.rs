@@ -27,8 +27,7 @@ pub trait RTreeFloat: RTreeNum + BaseFloat { }
 impl <S> RTreeNum for S where S: BaseNum + Bounded + Signed { }
 impl <S> RTreeFloat for S where S: RTreeNum + BaseFloat { }
 
-/// Abstraction over Vectors in different dimensions.
-/// Implement this if you need to use your own vector classes.
+/// Abstraction over vectors in different dimensions.
 pub trait VectorN where Self: Copy, Self: Clone,
 Self: Add<Self, Output=Self>,
 Self: Sub<Self, Output=Self>,
@@ -179,18 +178,43 @@ pub trait SpatialObject {
     /// might fail.
     fn mbr(&self) -> BoundingRect<Self::Vector>;
 
-    /// Returns the distance from the object's contour.
-    /// Note that this is not necessarily the euclidean distance,
-    /// this functions result's will only be used for comparison.
-    /// Returns zero if the point is contained within the object.
-    fn distance(&self, point: Self::Vector) -> <Self::Vector as VectorN>::Scalar;
+    /// Returns the squared euclidean distance from the object's contour.
+    /// Returns a value samller than zero if the point is contained within the object.
+    fn distance2(&self, point: Self::Vector) -> <Self::Vector as VectorN>::Scalar;
 
     /// Returns true if a given point is contained in this object.
     fn contains(&self, point: Self::Vector) -> bool {
-        self.distance(point) <= <Self::Vector as VectorN>::Scalar::zero()
+        self.distance2(point) <= <Self::Vector as VectorN>::Scalar::zero()
     }
 }
 
+/// An object with a well defined location.
+/// Since this trait also implements `SpatialObject`, `HasPosition` can serve as a quick and
+/// easy implementation of your own pointlike objects that can be inserted into r-trees:
+///
+/// ```
+/// extern crate cgmath;
+/// extern crate spade;
+///
+/// use cgmath::Vector3;
+/// use spade::{RTree, HasPosition};
+///
+/// struct MyPoint {
+///   position: Vector3<f32>,
+///   my_data: i32,
+/// }
+/// impl HasPosition for MyPoint {
+///    type Vector = Vector3<f32>;
+///    fn position(&self) -> Vector3<f32> {
+///      self.position
+///    }
+/// }
+/// fn main() {
+///   let mut tree = RTree::new();
+///   tree.insert(MyPoint { position: Vector3::new(0.0, 1.0, 0.0), my_data: 42 });
+///   assert_eq!(tree.lookup(Vector3::new(0.0, 1.0, 0.0)).unwrap().my_data, 42);
+/// }
+/// ```
 pub trait HasPosition {
     type Vector: VectorN;
     fn position(&self) -> Self::Vector;
@@ -210,7 +234,7 @@ impl <S>  SpatialObject for S where S: HasPosition {
         BoundingRect::from_point(self.position())
     }
 
-    fn distance(&self, point: S::Vector) -> <S::Vector as VectorN>::Scalar {
+    fn distance2(&self, point: S::Vector) -> <S::Vector as VectorN>::Scalar {
         (self.position() - point).length2()
     }
 

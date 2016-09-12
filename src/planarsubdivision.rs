@@ -78,7 +78,7 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
             // We must keep the out edges sorted ccw
             let mut sector;
             {
-                let neighbors: Vec<_> = self.handle(from).fixed_neighbors().collect();
+                let ref neighbors: Vec<_> = self.entry(from).neighbors;
                 sector = neighbors.len();
                 for i in 1 .. neighbors.len() {
                     let cw_pos = self.handle(neighbors[i - 1]).position();
@@ -93,7 +93,17 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
             if i == 0 {
                 to_index = sector;
             }
-            self.mut_entry(from).neighbors.insert(sector, to.clone());
+            debug_assert!({
+                let ref ns = self.entry(from).neighbors;
+                if ns.len() >= 2 {
+                    let cw_pos = self.handle(ns[sector - 1]).position();
+                    let ccw_pos = self.handle(ns[sector % ns.len()]).position();
+                    contained_in_circle_segment(&from_pos, &cw_pos, &ccw_pos, &to_pos)
+                } else {
+                    true
+                }
+            });
+            self.mut_entry(from).neighbors.insert(sector, to);
         }
         FixedEdgeHandle::new(from.clone(), to_index)
     }
