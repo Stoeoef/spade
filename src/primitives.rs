@@ -219,7 +219,7 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeF
     fn mbr(&self) -> BoundingRect<V> {
         let mut result = BoundingRect::new();
         for vertex in self.vertices.iter() {
-            result.add_point(vertex);
+            result.add_point(*vertex);
         }
         result
     }

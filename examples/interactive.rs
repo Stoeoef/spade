@@ -33,6 +33,7 @@ enum LookupMode {
     Nearest,
     NearestN,
     InCircle,
+    CloseN,
 }
 
 impl std::fmt::Display for LookupMode {
@@ -41,6 +42,7 @@ impl std::fmt::Display for LookupMode {
             &LookupMode::Nearest => "Nearest neighbor",
             &LookupMode::NearestN => "Nearest N neighbors",
             &LookupMode::InCircle => "Contained in Circle",
+            &LookupMode::CloseN => "Close neighbor",
         })
     }
 }
@@ -97,7 +99,8 @@ fn main() {
                             match lookup_mode {
                                 LookupMode::Nearest => lookup_mode = LookupMode::NearestN,
                                 LookupMode::NearestN => lookup_mode = LookupMode::InCircle,
-                                _ => lookup_mode = LookupMode::Nearest,
+                                LookupMode::InCircle => lookup_mode = LookupMode::CloseN,
+                                LookupMode::CloseN => lookup_mode = LookupMode::Nearest,
                             }
                             println!("Changed lookup mode to {}", lookup_mode);
                         },
@@ -145,6 +148,9 @@ fn main() {
                         LookupMode::NearestN => {
                             points.extend(app.tree.nearest_n_neighbors(
                                 last_point, N));
+                        },
+                        LookupMode::CloseN => {
+                            points.extend(app.tree.close_neighbor(last_point).iter().cloned());
                         },
                     }
                     for point in points.iter().cloned() {

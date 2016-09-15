@@ -96,9 +96,9 @@ impl <V> BoundingRect<V> where V: VectorN {
     /// Otherwise, this will enlarge `self` to be just large enough
     /// to contain the new point.
     #[inline]
-    pub fn add_point(&mut self, point: &V) {
-        self.lower = self.lower.min_vec(point);
-        self.upper = self.upper.max_vec(point);
+    pub fn add_point(&mut self, point: V) {
+        self.lower = self.lower.min_vec(&point);
+        self.upper = self.upper.max_vec(&point);
     }
 
     /// Enlarges this bounding rectangle to contain a rectangle.
@@ -148,27 +148,27 @@ impl <V> BoundingRect<V> where V: VectorN {
     }
 
     #[doc(hidden)]
-    pub fn min_point(&self, point: &V) -> V {
-        self.upper.min_vec(&self.lower.max_vec(point))
+    pub fn min_point(&self, point: V) -> V {
+        self.upper.min_vec(&self.lower.max_vec(&point))
     }
 
     #[doc(hidden)]
-    pub fn min_dist2(&self, point: &V) -> V::Scalar {
-        (self.min_point(point) - *point).length2()
+    pub fn min_dist2(&self, point: V) -> V::Scalar {
+        (self.min_point(point) - point).length2()
     }
 
     #[doc(hidden)]
-    pub fn max_dist2(&self, point: &V) -> V::Scalar {
+    pub fn max_dist2(&self, point: V) -> V::Scalar {
         let l = self.lower;
         let u = self.upper;
-        let d1 = (l - *point).map(|v| v.abs());
-        let d2 = (u - *point).map(|v| v.abs());
+        let d1 = (l - point).map(|v| v.abs());
+        let d2 = (u - point).map(|v| v.abs());
         let max_delta = d1.max_vec(&d2);
         max_delta.length2()
     }
 
     #[doc(hidden)]
-    pub fn min_max_dist2(&self, point: &V) -> V::Scalar {
+    pub fn min_max_dist2(&self, point: V) -> V::Scalar {
         let l = self.lower;
         let u = self.upper;
         let (mut min, mut max) = (V::new(), V::new());
@@ -186,7 +186,7 @@ impl <V> BoundingRect<V> where V: VectorN {
             let mut p = min;
             // Only set one component to the maximum distance
             p[i] = max[i];
-            result = min_inline(result, (p - *point).length2());
+            result = min_inline(result, (p - point).length2());
         }
         result
     }

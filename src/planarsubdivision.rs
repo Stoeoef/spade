@@ -139,6 +139,7 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
         &mut self.vertices[handle.clone()]
     }
 
+    #[inline(never)]
     pub fn flip_edge_cw(&mut self, fixed_handle: &FixedEdgeHandle) {
         // Get handles
         let (edge, rev, new1, new2) = {

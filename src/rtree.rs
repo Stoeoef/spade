@@ -94,8 +94,7 @@ impl <'a, T> Iterator for NearestNeighborIterator<'a, T> where T: SpatialObject 
             None => {
                 // Get new nearest elements
                 let min_dist_opt = self.tree.root.nearest_neighbors_with_min_dist(
-                    &self.query_point, None,
-                    self.min_dist, &mut self.next_items);
+                    self.query_point, None, self.min_dist, &mut self.next_items);
                 if let Some(min_dist) = min_dist_opt {
                     self.min_dist = min_dist;
                 }
@@ -421,7 +420,33 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         self.children.append(&mut new_children);
     }
 
-    fn nearest_neighbor(&self, point: &T::Vector, 
+    fn close_neighbor(&self, point: T::Vector) -> Option<&T> {
+        if self.children.is_empty() {
+            return None;
+        }
+        let mut follow = self;
+        loop {
+            let mut min_min_dist = Bounded::max_value();
+            let mut new_follow = follow.children.first().unwrap();
+            for child in follow.children.iter() {
+                let min_dist = child.mbr().min_dist2(point);
+                if min_dist < min_min_dist {
+                    new_follow = child;
+                    min_min_dist = min_dist;
+                }
+            }
+            match new_follow {
+                &RTreeNode::DirectoryNode(ref data) => {
+                    follow = data;
+                },
+                &RTreeNode::Leaf(ref t) => {
+                    return Some(t)
+                }
+            }
+        }
+    }
+
+    fn nearest_neighbor(&self, point: T::Vector, 
                         mut nearest_distance: <T::Vector as VectorN>::Scalar) -> Option<&T> {
         let mut nearest = None;
         // Calculate smallest minmax-distance
@@ -454,7 +479,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         nearest
     }
 
-    fn nearest_neighbors<'a>(&'a self, point: &T::Vector,
+    fn nearest_neighbors<'a>(&'a self, point: T::Vector,
                          mut nearest_distance: Option<<T::Vector as VectorN>::Scalar>, 
                              result: &mut Vec<&'a T>) -> Option<<T::Vector as VectorN>::Scalar> {
         // Calculate smallest minmax-distance
@@ -482,7 +507,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
 
     fn nearest_neighbors_with_min_dist<'a>(
-        &'a self, point: &T::Vector,
+        &'a self, point: T::Vector,
         mut nearest_distance: Option<<T::Vector as VectorN>::Scalar>, 
         min_dist: <T::Vector as VectorN>::Scalar, 
         result: &mut Vec<&'a T>) 
@@ -498,7 +523,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
             for dim in 0 .. T::Vector::dimensions() {
                 for mut p in [lower, upper].iter_mut() {
                     p[dim] = min_point[dim];
-                    let distance = (*p - *point).length2();
+                    let distance = (*p - point).length2();
                     smallest_min_max = min_inline(smallest_min_max, distance);
                 }
             }
@@ -525,11 +550,11 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         nearest_distance
     }
 
-    fn nearest_n_neighbors<'a>(&'a self, point: &T::Vector, n: usize, result: &mut Vec<&'a T>) {
+    fn nearest_n_neighbors<'a>(&'a self, point: T::Vector, n: usize, result: &mut Vec<&'a T>) {
 
         for child in self.children.iter() {
             let min_dist = child.mbr().min_dist2(point);
-            if result.len() == n && min_dist >= result.last().unwrap().distance2(*point) {
+            if result.len() == n && min_dist >= result.last().unwrap().distance2(point) {
                 // Prune this element
                 continue;
             }
@@ -538,12 +563,12 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                     data.nearest_n_neighbors(point, n, result);
                 },
                 &RTreeNode::Leaf(ref t) => {
-                    let distance = t.distance2(*point);
-                    if result.len() != n || distance < result.last().unwrap().distance2(*point) {
+                    let distance = t.distance2(point);
+                    if result.len() != n || distance < result.last().unwrap().distance2(point) {
                         if result.len() == n {
                             result.pop();
                         }
-                        let index = match result.binary_search_by(|e| e.distance2(*point).partial_cmp(
+                        let index = match result.binary_search_by(|e| e.distance2(point).partial_cmp(
                             &distance).unwrap()) {
                             Ok(index) => index,
                             Err(index) => index,
@@ -555,8 +580,8 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         }
     }
 
-    fn lookup_and_remove(&mut self, point: &T::Vector) -> Option<T> {
-        let contains = self.bounding_box.contains_point(*point);
+    fn lookup_and_remove(&mut self, point: T::Vector) -> Option<T> {
+        let contains = self.bounding_box.contains_point(point);
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
                                                    Box::new(Vec::new()));
@@ -571,7 +596,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                         }
                     },
                     RTreeNode::Leaf(t) => {
-                        if t.contains(*point) {
+                        if t.contains(point) {
                             result = Some(t);
                         } else {
                             self.children.push(RTreeNode::Leaf(t))
@@ -611,19 +636,19 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         None
     }
 
-    fn lookup_in_circle<'b>(&'b self, result: &mut Vec<&'b T>, origin: &T::Vector,
-                        radius2: &<T::Vector as VectorN>::Scalar)
+    fn lookup_in_circle<'b>(&'b self, result: &mut Vec<&'b T>, origin: T::Vector,
+                            radius2: <T::Vector as VectorN>::Scalar)
     {
         // Only look at children whose mbr intersects the circle
         for child in self.children.iter().filter(|c| {
             let min_dist2 = c.mbr().min_dist2(origin);
-            min_dist2 <= *radius2
+            min_dist2 <= radius2
         }) {
             match child {
                 &RTreeNode::DirectoryNode(ref data) =>
                     data.lookup_in_circle(result, origin, radius2),
                 &RTreeNode::Leaf(ref t) => {
-                    if t.distance2(*origin) < *radius2 {
+                    if t.distance2(origin) < radius2 {
                         result.push(t);
                     }
                 },
@@ -729,12 +754,12 @@ impl <T> RTreeNode<T> where T: SpatialObject {
         }
     }
 
-    fn nearest_neighbor(&self, point: &T::Vector, nearest_distance: <T::Vector as VectorN>::Scalar) 
+    fn nearest_neighbor(&self, point: T::Vector, nearest_distance: <T::Vector as VectorN>::Scalar) 
                         -> Option<&T> {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbor(point, nearest_distance),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance2(*point);
+                let distance = t.distance2(point);
                 if distance < nearest_distance {
                     Some(t)
                 } else {
@@ -744,13 +769,13 @@ impl <T> RTreeNode<T> where T: SpatialObject {
         }
     }
 
-    fn nearest_neighbors<'a>(&'a self, point: &T::Vector, 
+    fn nearest_neighbors<'a>(&'a self, point: T::Vector, 
                              nearest_distance: Option<<T::Vector as VectorN>::Scalar>,
                              result: &mut Vec<&'a T>) -> Option<<T::Vector as VectorN>::Scalar> {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbors(point, nearest_distance, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance2(*point);
+                let distance = t.distance2(point);
                 match nearest_distance {
                     Some(nearest) => {                
                         if distance <= nearest {
@@ -775,7 +800,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
     }
 
     fn nearest_neighbors_with_min_dist<'a>(
-        &'a self, point: &T::Vector, nearest_distance: Option<<T::Vector as VectorN>::Scalar>,
+        &'a self, point: T::Vector, nearest_distance: Option<<T::Vector as VectorN>::Scalar>,
         min_dist: <T::Vector as VectorN>::Scalar, result: &mut Vec<&'a T>)
         -> Option<<T::Vector as VectorN>::Scalar> 
     {
@@ -783,7 +808,7 @@ impl <T> RTreeNode<T> where T: SpatialObject {
             &RTreeNode::DirectoryNode(ref data) => 
                 data.nearest_neighbors_with_min_dist(point, nearest_distance, min_dist, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance2(*point);
+                let distance = t.distance2(point);
                 if distance <= min_dist {
                     return None;
                 }
@@ -965,7 +990,7 @@ impl<T> RTree<T> where T: SpatialObject {
     /// and returned. If the point is contained by multiple objects, only one of them is removed and
     /// returned.
     pub fn lookup_and_remove(&mut self, query_point: T::Vector) -> Option<T> {
-        let result = self.root.lookup_and_remove(&query_point.into());
+        let result = self.root.lookup_and_remove(query_point);
         if result.is_some() {
             self.size -= 1;
         }
@@ -990,7 +1015,13 @@ impl<T> RTree<T> where T: SpatialObject {
     ///
     /// Returns `None` if the tree is empty.
     pub fn nearest_neighbor(&self, query_point: T::Vector) -> Option<&T> {
-        self.root.nearest_neighbor(&query_point.into(), Bounded::max_value())
+        self.root.nearest_neighbor(query_point, Bounded::max_value())
+    }
+
+    /// Returns an object close to a given point. This operation is faster than
+    /// ```nearest_neighbor``` but will not neccessarily yield the real nearest neighbor.
+    pub fn close_neighbor(&self, query_point: T::Vector) -> Option<&T> {
+        self.root.close_neighbor(query_point)
     }
 
     /// Returns the nearest neighbors of a given point.
@@ -999,7 +1030,7 @@ impl<T> RTree<T> where T: SpatialObject {
     /// Returns an empty vector if the tree is empty.
     pub fn nearest_neighbors(&self, query_point: T::Vector) -> Vec<&T> {
         let mut result = Vec::new();
-        self.root.nearest_neighbors(&query_point.into(), None, &mut result);
+        self.root.nearest_neighbors(query_point, None, &mut result);
         result
     }
 
@@ -1009,7 +1040,7 @@ impl<T> RTree<T> where T: SpatialObject {
         // Iterator::collect(iter.take(n))
 
         let mut result = Vec::new();
-        self.root.nearest_n_neighbors(&query_point.into(), n, &mut result);
+        self.root.nearest_n_neighbors(query_point, n, &mut result);
         result
     }
 
@@ -1036,7 +1067,7 @@ impl<T> RTree<T> where T: SpatialObject {
     pub fn lookup_in_circle(&self, circle_origin: T::Vector, 
                             radius2: <T::Vector as VectorN>::Scalar) -> Vec<&T> {
         let mut result = Vec::new();
-        self.root.lookup_in_circle(&mut result, &circle_origin.into(), &radius2);
+        self.root.lookup_in_circle(&mut result, circle_origin.into(), radius2);
         result
     }
     

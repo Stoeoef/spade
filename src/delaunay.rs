@@ -336,7 +336,8 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         if self.all_points_on_line {
             PositionInTriangulation::NoTriangulationPresent
         } else {
-            let start = self.points.nearest_neighbor(point).unwrap().handle;
+            // let start = self.points.nearest_neighbor(point).unwrap().handle;
+            let start = self.points.close_neighbor(point).unwrap().handle;
             self.get_position_in_triangulation_from_start_point(start, point) 
         }
     }
@@ -385,23 +386,33 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             // Check if the segment is a reflex angle (> 180°)
             let query = edge.side_query(from_pos);
             if query.is_on_right_side_or_on_line() {
-                // The segment forms a reflex angle -> point lies outside convex hull
+                // The segment forms a reflex angle and is part of the convex hull
+                // In some rare cases, we must keep marching towards the point,
+                // otherwise we will return an edge e of the convex hull with
+                // point being on the right side of e.
                 let cw_edge = SimpleEdge::new(from_pos, cw_pos);
                 let ccw_edge = SimpleEdge::new(from_pos, ccw_pos);
 
-                // Both edges are part of the convex hull, return the one farther away
-                let s_ccw = ccw_edge.project_point(point);
-                let s_cw = cw_edge.project_point(point);
-                let p_ccw = (ccw_pos - from_pos) * s_ccw + from_pos;
-                let p_cw = (cw_pos - from_pos) * s_cw + from_pos;
-                if p_cw.distance2(point) < p_ccw.distance2(point) 
-                    && ccw_edge.side_query(point).is_on_right_side()
-                    || cw_edge.side_query(point).is_on_right_side() {
-                    return PositionInTriangulation::OutsideConvexHull(
-                        cur_handle.fix(), ccw_handle.fix());
-                } else {
-                    return PositionInTriangulation::OutsideConvexHull(
-                        cw_handle.fix(), cur_handle.fix());
+                let cw_edge_feasible = cw_edge.side_query(point).is_on_left_side();
+                let ccw_edge_feasible = ccw_edge.side_query(point).is_on_right_side();
+                match (cw_edge_feasible, ccw_edge_feasible) {
+                    (true, true) => {
+                        // Both edges are part of the convex hull, return the one farther away
+                        let d_cw = cw_edge.projection_distance2(point);
+                        let d_ccw = ccw_edge.projection_distance2(point);
+                        if d_cw < d_ccw {
+                            return PositionInTriangulation::OutsideConvexHull(
+                                cur_handle.fix(), ccw_handle.fix());
+                        } else {
+                            return PositionInTriangulation::OutsideConvexHull(
+                                cw_handle.fix(), cur_handle.fix());
+                        }
+                    },
+                    (false, true) => return PositionInTriangulation::OutsideConvexHull(
+                        cur_handle.fix(), ccw_handle.fix()),
+                    (true, false) => return PositionInTriangulation::OutsideConvexHull(
+                        cw_handle.fix(), cur_handle.fix()),
+                    (false, false) => { }, // Continue walking
                 }
             }
             // Check if point is contained within the triangle formed by this segment
