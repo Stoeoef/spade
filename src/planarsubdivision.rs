@@ -14,7 +14,6 @@
 // limitations under the License.
 
 use traits::{HasPosition, RTreeFloat, VectorN};
-use num::zero;
 use primitives::SimpleEdge;
 use std::default::Default;
 use std::ops::Deref;
@@ -24,24 +23,19 @@ pub struct PlanarSubdivision<V> where V: HasPosition {
 }
 
 pub fn contained_in_circle_segment<V: VectorN>(
-    origin: &V, cw_edge: &V, ccw_edge: &V, query_point: &V) -> bool 
+    origin: V, cw_edge: V, ccw_edge: V, query_point: V) -> bool 
     where V::Scalar: RTreeFloat
 {
-    approx_contained_in_circle_segment(origin, cw_edge, ccw_edge,
-                                       query_point, zero())
-}
+    let cw_edge = SimpleEdge::new(origin, cw_edge);
+    let ccw_edge = SimpleEdge::new(origin, ccw_edge);
 
-pub fn approx_contained_in_circle_segment<V: VectorN>(
-    origin: &V, cw_edge: &V, ccw_edge: &V, query_point: &V, eps: V::Scalar) -> bool
-    where V::Scalar: RTreeFloat
-{
-    let cw_edge = SimpleEdge::new(origin.clone(), cw_edge.clone());
-    let ccw_edge = SimpleEdge::new(origin.clone(), ccw_edge.clone());
+    let cw_info = cw_edge.side_query(query_point);
+    let ccw_info = ccw_edge.side_query(query_point);
 
-    let is_cw_left = cw_edge.approx_is_on_left_side(*query_point, eps);
-    let is_ccw_right = ccw_edge.approx_is_on_right_side(*query_point, eps);
+    let is_cw_left = cw_info.is_on_left_side_or_on_line();
+    let is_ccw_right = ccw_info.is_on_right_side_or_on_line();
     // Check if segment forms an angler sharper than 180 deg
-    if ccw_edge.is_on_left_side(cw_edge.to) {
+    if ccw_edge.side_query(cw_edge.to).is_on_left_side() {
         // More than 180 deg
         is_cw_left || is_ccw_right
     } else {
@@ -71,7 +65,7 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
         assert!(from != to);
         let mut to_index = 0;
         for i in 0 .. 2 {
-            let (from, to) = if i == 0 { (from, to) } else { (to, from) };
+            let (from, to) = if i == 0 { (to, from) } else { (from, to) };
             let from_pos = self.handle(from).position();
             let to_pos = self.handle(to).position();
             // Find sector that contains 'to'
@@ -83,8 +77,8 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
                 for i in 1 .. neighbors.len() {
                     let cw_pos = self.handle(neighbors[i - 1]).position();
                     let ccw_pos = self.handle(neighbors[i]).position();
-                    if contained_in_circle_segment(&from_pos, &cw_pos, 
-                                                   &ccw_pos, &to_pos) {
+                    if contained_in_circle_segment(from_pos, cw_pos, 
+                                                   ccw_pos, to_pos) {
                         sector = i;
                         break;
                     }
@@ -98,7 +92,7 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
                 if ns.len() >= 2 {
                     let cw_pos = self.handle(ns[sector - 1]).position();
                     let ccw_pos = self.handle(ns[sector % ns.len()]).position();
-                    contained_in_circle_segment(&from_pos, &cw_pos, &ccw_pos, &to_pos)
+                    contained_in_circle_segment(from_pos, cw_pos, ccw_pos, to_pos)
                 } else {
                     true
                 }
@@ -269,7 +263,7 @@ impl <V: HasPosition> VertexEntry<V> {
     fn new(data: V) -> VertexEntry<V> {
         VertexEntry {
             data: data,
-            neighbors: Vec::new(),
+            neighbors: Vec::with_capacity(6),
         }
     }
 }
@@ -367,8 +361,8 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> where <V::Vector as VectorN>::Scalar
         subdiv: &'a PlanarSubdivision<V>, from: FixedVertexHandle,
         to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
         let from_handle = subdiv.handle(from);
-        if let Some(index) = from_handle.fixed_neighbors()
-            .position(|e| e == to)
+        if let Some(index) = from_handle.fixed_neighbors_vec().iter()
+            .position(|e| *e == to)
         {
             Some(EdgeHandle::new(subdiv, from, index))
         } else {
@@ -701,21 +695,21 @@ mod test {
         let t3 = Vector2::new(-1f32, 1f32);
         let t4 = Vector2::new(-1f32, -1f32);
 
-        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t1));
-        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t2));
-        assert!(contained_in_circle_segment(&v0, &v2, &v3, &t3));
-        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t4));
+        assert!(!contained_in_circle_segment(v0, v2, v3, t1));
+        assert!(!contained_in_circle_segment(v0, v2, v3, t2));
+        assert!(contained_in_circle_segment(v0, v2, v3, t3));
+        assert!(!contained_in_circle_segment(v0, v2, v3, t4));
 
 
-        assert!(contained_in_circle_segment(&v0, &v1, &v3, &t1));
-        assert!(!contained_in_circle_segment(&v0, &v1, &v3, &t2));
-        assert!(contained_in_circle_segment(&v0, &v1, &v3, &t3));
-        assert!(!contained_in_circle_segment(&v0, &v1, &v3, &t4));
+        assert!(contained_in_circle_segment(v0, v1, v3, t1));
+        assert!(!contained_in_circle_segment(v0, v1, v3, t2));
+        assert!(contained_in_circle_segment(v0, v1, v3, t3));
+        assert!(!contained_in_circle_segment(v0, v1, v3, t4));
 
-        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t1));
-        assert!(!contained_in_circle_segment(&v0, &v1, &v4, &t2));
-        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t3));
-        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t4));
+        assert!(contained_in_circle_segment(v0, v1, v4, t1));
+        assert!(!contained_in_circle_segment(v0, v1, v4, t2));
+        assert!(contained_in_circle_segment(v0, v1, v4, t3));
+        assert!(contained_in_circle_segment(v0, v1, v4, t4));
     }
 
     #[test]

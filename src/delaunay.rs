@@ -15,7 +15,6 @@
 
 use cgmath::{SquareMatrix, Vector4, Matrix4, Array, 
              ElementWise, Zero};
-use cgmath::num_traits::Float;
 use num::{one, zero};
 use traits::{SpatialObject, HasPosition, RTreeFloat, VectorN};
 use rtree::RTree;
@@ -23,8 +22,9 @@ use boundingvolume::BoundingRect;
 use primitives::{SimpleEdge, SimpleTriangle};
 
 use planarsubdivision::{PlanarSubdivision, FixedVertexHandle, EdgeHandle,
-                        VertexHandle, approx_contained_in_circle_segment};
+                        VertexHandle, contained_in_circle_segment};
 
+#[derive(Debug)]
 pub enum PositionInTriangulation {
     InTriangle([FixedVertexHandle; 3]),
     OutsideConvexHull(FixedVertexHandle, FixedVertexHandle),
@@ -60,7 +60,7 @@ where V: HasPosition + 'a, <V::Vector as VectorN>::Scalar: RTreeFloat {
                 let v1 = h1.position();
                 let v2 = h2.position();
                 let edge = SimpleEdge::new(v0, v1);
-                if edge.is_on_left_side(v2) {
+                if edge.side_query(v2).is_on_left_side() {
                     return Some(DelaunayTriangle([h0, h1, h2]))
                 } else {
                     continue;
@@ -97,7 +97,7 @@ fn calculate_convex_polygon_area<V>(
 }
 
 fn contained_in_circumference<V>(
-    v1: &V, v2: &V, v3: &V, p: &V) -> bool where V: VectorN, 
+    v1: V, v2: V, v3: V, p: V) -> bool where V: VectorN, 
 V::Scalar: RTreeFloat
 {
     let c1 = Vector4::new(v1[0], v2[0], v3[0], p[0]);
@@ -124,7 +124,6 @@ pub struct DelaunayTriangulation<V: HasPosition> where <V::Vector as VectorN>::S
     pub s: PlanarSubdivision<V>,
     points: RTree<PointEntry<V::Vector>>,
     all_points_on_line: bool,
-    pub tolerance: <V::Vector as VectorN>::Scalar,
 }
 
 impl <V: HasPosition> Default for DelaunayTriangulation<V> 
@@ -140,7 +139,6 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             s: PlanarSubdivision::new(),
             points: RTree::new(),
             all_points_on_line: true,
-            tolerance: <V::Vector as VectorN>::Scalar::zero(),
         }
     }
     
@@ -158,10 +156,6 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                             radius2: <V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V>> {
         let fixed_handles = self.points.lookup_in_circle(center, radius2);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
-    }
-
-    pub fn set_tolerance(&mut self, tolerance: <V::Vector as VectorN>::Scalar) {
-        self.tolerance = tolerance;
     }
 
     pub fn num_vertices(&self) -> usize {
@@ -199,7 +193,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         let to = self.s.handle(1).position();
         let edge = SimpleEdge::new(from, to);
         let new_pos = t.position();
-        if edge.projection_distance2(new_pos) <= self.tolerance {
+        if edge.projection_distance2(new_pos) == Zero::zero() {
             return Some(self.s.insert_vertex(t));
         }
         // The point does not lie on the same line as all other points.
@@ -224,40 +218,38 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     }
 
     fn get_convex_hull_edges_for_point(&self, first_edge: (FixedVertexHandle, FixedVertexHandle),
-                                       point: &V::Vector) -> Vec<FixedVertexHandle> 
+                                       point: V::Vector) -> Vec<FixedVertexHandle> 
     {
         let mut result = Vec::new();
-         
+ 
         let first_edge = EdgeHandle::from_neighbors(&self.s, first_edge.0, first_edge.1).unwrap();
+        debug_assert!(first_edge.to_simple_edge().side_query(point).is_on_right_side());
+
         let mut last_edge = first_edge.clone();
         result.push(last_edge.from_handle().fix());
         result.push(last_edge.to_handle().fix());
-        // We'll need to follow the first edge in cw and ccw direction
-        for is_second_pass in &[false, true] {
-            let follow_cw = last_edge.to_simple_edge().is_on_left_side(point.position());
-            loop {
-                // Get next edge
-                let next_edge = if follow_cw {
-                    last_edge.rev().cw()
-                } else {
-                    last_edge.rev().ccw()
-                };
-                let simple = next_edge.to_simple_edge();
-                let signed_side = simple.signed_side(point.position());
-                if signed_side.abs() > self.tolerance && 
-                    (signed_side > <V::Vector as VectorN>::Scalar::zero()) == follow_cw {
-                    // Edge is part of the convex hull
-                    if *is_second_pass {
-                        result.insert(0, next_edge.to_handle().fix());
-                    } else {
-                        result.push(next_edge.to_handle().fix());
-                    }
-                    last_edge = next_edge;
-                } else {
-                    break;
-                }
+        // Follow the first edge in cw and ccw direction
+        loop {
+            let next_edge = last_edge.rev().ccw();
+            let query = next_edge.to_simple_edge().side_query(point);
+            if query.is_on_right_side() {
+                result.push(next_edge.to_handle().fix());
+            } else {
+                break;
             }
-            last_edge = first_edge.rev();
+            last_edge = next_edge;
+        }
+
+        last_edge = first_edge.clone();
+        loop {
+            let next_edge = last_edge.cw().rev();
+            let query = next_edge.to_simple_edge().side_query(point);
+            if query.is_on_right_side() {
+                result.insert(0, next_edge.from_handle().fix());
+            } else {
+                break;
+            }
+            last_edge = next_edge;
         }
         result
     }
@@ -265,7 +257,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     fn insert_outside_convex_hull(
         &mut self, closest_edge: (FixedVertexHandle, FixedVertexHandle), t: V) -> FixedVertexHandle {
         let position = t.position();
-        let handles = self.get_convex_hull_edges_for_point(closest_edge, &position);
+        let handles = self.get_convex_hull_edges_for_point(closest_edge, position);
         let new_handle = self.s.insert_vertex(t);
         // Make new connections
         let mut illegal_edges = Vec::with_capacity(handles.len() - 1);
@@ -289,18 +281,20 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
         self.s.connect(first_vertex, new_handle);
         self.s.connect(second_vertex, new_handle);
         self.s.connect(third_vertex, new_handle);
-        let illegal_edges = vec![(first_vertex, second_vertex),
-                                 (second_vertex, third_vertex),
-                                 (third_vertex, first_vertex)];
+        let illegal_edges = vec![(second_vertex, first_vertex),
+                                 (third_vertex, second_vertex),
+                                 (first_vertex, third_vertex)];
         self.legalize_edges(illegal_edges, new_handle);
         new_handle
     }
 
     fn get_left_triangle(&self, edge: (FixedVertexHandle, FixedVertexHandle)) 
                          -> Option<FixedVertexHandle> {
-        let edge = EdgeHandle::from_neighbors(&self.s, edge.0, edge.1).unwrap();
-        let ccw_handle = edge.ccw().to_handle();
-        if edge.to_simple_edge().approx_is_on_left_side(ccw_handle.position(), -self.tolerance) {
+        let edge_handle = EdgeHandle::from_neighbors(&self.s, edge.0, edge.1).unwrap();
+        let ccw_handle = edge_handle.ccw().to_handle();
+        let query = edge_handle.to_simple_edge().side_query(ccw_handle.position());
+        if query.is_on_left_side() {
+            debug_assert!(EdgeHandle::from_neighbors(&self.s, ccw_handle.fix(), edge.1).is_some());
             Some(ccw_handle.fix())
         } else {
             None
@@ -315,17 +309,21 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
     fn insert_on_edge(&mut self, edge: (FixedVertexHandle, FixedVertexHandle), t: V) -> FixedVertexHandle {
         let new_handle = self.s.insert_vertex(t);
         let mut illegal_edges = Vec::new();
+
         let left_handle_opt = self.get_left_triangle(edge);
         let right_handle_opt = self.get_right_triangle(edge);
-        for handle_opt in &[left_handle_opt, right_handle_opt] {
-            if let &Some(handle) = handle_opt {
-                self.s.connect(handle, new_handle);
-                illegal_edges.push((edge.0, handle));
-                illegal_edges.push((edge.1, handle));
-            }
+        assert!(self.s.disconnect(edge.0, edge.1));
+        if let Some(left_handle) = left_handle_opt {
+            self.s.connect(left_handle, new_handle);
+            illegal_edges.push((left_handle, edge.1));
+            illegal_edges.push((edge.0, left_handle));
+        }
+        if let Some(right_handle) = right_handle_opt {
+            self.s.connect(right_handle, new_handle);
+            illegal_edges.push((right_handle, edge.0));
+            illegal_edges.push((edge.1, right_handle));
         }
 
-        assert!(self.s.disconnect(edge.0, edge.1));
         self.s.connect(edge.0, new_handle);
         self.s.connect(edge.1, new_handle);
  
@@ -355,8 +353,8 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 for i in 1 .. neighbors.len() {
                     let cw_pos = self.s.handle(neighbors[i - 1]).position();
                     let ccw_pos = self.s.handle(neighbors[i]).position();
-                    if approx_contained_in_circle_segment(
-                        &from_pos, &cw_pos, &ccw_pos, &point, self.tolerance) {
+                    if contained_in_circle_segment(
+                        from_pos, cw_pos, ccw_pos, point) {
                         sector = i;
                         break;
                     }
@@ -368,7 +366,7 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
             let ccw_pos = ccw_handle.position();
             let edge = SimpleEdge::new(cw_pos, ccw_pos);
             let distance_cw = SimpleEdge::new(from_pos, cw_pos).distance2(point);
-            if distance_cw <= self.tolerance {
+            if distance_cw == Zero::zero() {
                 if point == cw_pos {
                     return PositionInTriangulation::OnPoint(cw_handle.fix());
                 }
@@ -378,14 +376,15 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 return PositionInTriangulation::OnEdge(cw_handle.fix(), cur_handle.fix());
             }
             let distance_ccw = SimpleEdge::new(from_pos, ccw_pos).distance2(point);
-            if distance_ccw <= self.tolerance {
+            if distance_ccw <= Zero::zero() {
                 if point == ccw_pos {
                     return PositionInTriangulation::OnPoint(ccw_handle.fix());
                 }
                 return PositionInTriangulation::OnEdge(cur_handle.fix(), ccw_handle.fix());
             }
             // Check if the segment is a reflex angle (> 180°)
-            if edge.approx_is_on_right_side(from_pos, self.tolerance) {
+            let query = edge.side_query(from_pos);
+            if query.is_on_right_side_or_on_line() {
                 // The segment forms a reflex angle -> point lies outside convex hull
                 let cw_edge = SimpleEdge::new(from_pos, cw_pos);
                 let ccw_edge = SimpleEdge::new(from_pos, ccw_pos);
@@ -395,17 +394,18 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
                 let s_cw = cw_edge.project_point(point);
                 let p_ccw = (ccw_pos - from_pos) * s_ccw + from_pos;
                 let p_cw = (cw_pos - from_pos) * s_cw + from_pos;
-                if (p_cw.distance2(point) < p_ccw.distance2(point) && ccw_edge.is_on_right_side(point))
-                || cw_edge.is_on_right_side(point) {
+                if p_cw.distance2(point) < p_ccw.distance2(point) 
+                    && ccw_edge.side_query(point).is_on_right_side()
+                    || cw_edge.side_query(point).is_on_right_side() {
                     return PositionInTriangulation::OutsideConvexHull(
                         cur_handle.fix(), ccw_handle.fix());
                 } else {
                     return PositionInTriangulation::OutsideConvexHull(
-                        cur_handle.fix(), cw_handle.fix());
+                        cw_handle.fix(), cur_handle.fix());
                 }
             }
             // Check if point is contained within the triangle formed by this segment
-            if edge.is_on_left_side(point) {
+            if edge.side_query(point).is_on_left_side() {
                 // Point lies inside of a triangle
                 debug_assert!(EdgeHandle::from_neighbors(&self.s, cw_handle.fix(), ccw_handle.fix()).is_some());
                 return PositionInTriangulation::InTriangle([
@@ -445,48 +445,22 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
 
     fn legalize_edges(&mut self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, new_vertex: FixedVertexHandle) {
         let position = self.s.handle(new_vertex).position();
-        while let Some((h_from, h_to)) = edges.pop() {
-            let (mut h0, mut v0, mut h1, mut v1, h2, v2, edge);
-            {
-                let from_handle = self.s.handle(h_from);
-                h0 = h_from;
-                v0 = from_handle.position();
-                let to_handle = self.s.handle(h_to);
-                h1 = h_to;
-                v1 = to_handle.position();
-                let edge_handle = EdgeHandle::from_neighbors(&self.s, h0, h1).unwrap();
-                let simple = SimpleEdge::new(v0, v1);
-                
-                if simple.is_on_left_side(position) {
-                    let handle = edge_handle.cw().to_handle();
-                    h2 = handle.fix();
-                    v2 = handle.position();
-                } else {
-                    let handle = edge_handle.ccw().to_handle();
-                    h2 = handle.fix();
-                    v2 = handle.position();
+         while let Some((h0, h1)) = edges.pop() {
+            if let Some(h2) = self.get_left_triangle((h0, h1)) {
+                let v0 = self.s.handle(h0).position();
+                let v1 = self.s.handle(h1).position();
+                let v2 = self.s.handle(h2).position();
+                debug_assert!(!SimpleTriangle::is_ordered_ccw(&[v2, v1, v0]));
+                debug_assert!(SimpleTriangle::is_ordered_ccw(&[position, v1, v0]));
+                if contained_in_circumference(v2, v1, v0, position) {
+                    // The edge is illegal
+                    let edge = EdgeHandle::from_neighbors(&self.s, h0, h1).unwrap().fix();
+                    self.s.flip_edge_cw(&edge);
+                    edges.push((h2, h1));
+                    edges.push((h0, h2));
+                    debug_assert!(EdgeHandle::from_neighbors(&self.s, h0, h2).is_some());
+                    debug_assert!(EdgeHandle::from_neighbors(&self.s, h1, h2).is_some());
                 }
-                edge = edge_handle.fix();
-                let pos_side = simple.signed_side(position);
-                let v2_side = simple.signed_side(v2);
-                if (pos_side < self.tolerance && v2_side < self.tolerance)
-                    || (pos_side > -self.tolerance && v2_side > -self.tolerance) {
-                    continue;
-                }
-            }
-            // Ensure that v0, v1, v2 are ordered cw, otherwise
-            // contained_in_circumference might fail
-            if SimpleTriangle::is_ordered_ccw(&[v0, v1, v2]) {
-                ::std::mem::swap(&mut v0, &mut v1);
-                ::std::mem::swap(&mut h0, &mut h1);
-            }
-            if contained_in_circumference(&v0, &v1, &v2, &position) {
-                // The edge is illegal
-                self.s.flip_edge_cw(&edge);
-                debug_assert!(EdgeHandle::from_neighbors(&self.s, h0, h2).is_some());
-                edges.push((h0, h2));
-                debug_assert!(EdgeHandle::from_neighbors(&self.s, h1, h2).is_some());
-                edges.push((h1, h2));
             }
         }
     }
@@ -505,17 +479,17 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
 
         let nns = match self.get_position_in_triangulation(point) {
             PositionInTriangulation::InTriangle(vs) => {
-                self.inspect_flips(vec![(vs[2], vs[0]), (vs[1], vs[2]), (vs[0], vs[1])], point)
+                self.inspect_flips(vec![(vs[0], vs[2]), (vs[2], vs[1]), (vs[1], vs[0])], point)
             },
             PositionInTriangulation::OnEdge(h0, h1) => {
                 let left_opt = self.get_left_triangle((h0, h1));
                 let right_opt = self.get_right_triangle((h0, h1));
                 if let (Some(left_handle), Some(right_handle)) = (left_opt, right_opt) {
                     let mut direct_neighbors = Vec::new();
-                    direct_neighbors.push((left_handle, h0));
-                    direct_neighbors.push((h1, left_handle));
-                    direct_neighbors.push((right_handle, h1));
-                    direct_neighbors.push((h0, right_handle));
+                    direct_neighbors.push((h0, left_handle));
+                    direct_neighbors.push((left_handle, h1));
+                    direct_neighbors.push((h1, right_handle));
+                    direct_neighbors.push((right_handle, h0));
                     self.inspect_flips(direct_neighbors, point)
                 } else {
                     return Some(interpolate_on_edge(h0, h1))
@@ -587,48 +561,25 @@ impl <V: HasPosition> DelaunayTriangulation<V> where <V::Vector as VectorN>::Sca
 
     fn inspect_flips(&self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, position: V::Vector) -> Vec<FixedVertexHandle> {
         let mut result = Vec::new();
-        while let Some((h_from, h_to)) = edges.pop() {
-            let (mut h0, mut v0, mut h1, mut v1, h2, v2);
-            {
-                let from_handle = self.s.handle(h_from);
-                h0 = h_from;
-                v0 = from_handle.position();
-                let to_handle = self.s.handle(h_to);
-                h1 = h_to;
-                v1 = to_handle.position();
-                let edge_handle = EdgeHandle::from_neighbors(&self.s, h0, h1).unwrap();
-                let simple = SimpleEdge::new(v0, v1);
-                
-                if simple.is_on_left_side(position) {
-                    let handle = edge_handle.cw().to_handle();
-                    h2 = handle.fix();
-                    v2 = handle.position();
+        while let Some((h0, h1)) = edges.pop() {
+            if let Some(h2) = self.get_left_triangle((h0, h1)) {
+                let v0 = self.s.handle(h0).position();
+                let v1 = self.s.handle(h1).position();
+                let v2 = self.s.handle(h2).position();
+                debug_assert!(!SimpleTriangle::is_ordered_ccw(&[v2, v1, v0]));
+                debug_assert!(SimpleTriangle::is_ordered_ccw(&[position, v1, v0]));
+                if contained_in_circumference(v2, v1, v0, position) {
+                    // The would be illegal
+                    // Add edges in ccw order
+                    edges.push((h0, h2));
+                    edges.push((h2, h1));
                 } else {
-                    let handle = edge_handle.ccw().to_handle();
-                    h2 = handle.fix();
-                    v2 = handle.position();
+                    // Edge is legal
+                    result.push(h0);
                 }
-                let pos_side = simple.signed_side(position);
-                let v2_side = simple.signed_side(v2);
-                if (pos_side < self.tolerance && v2_side < self.tolerance)
-                    || (pos_side > -self.tolerance && v2_side > -self.tolerance) {
-                    result.push(h_from);
-                    continue;
-                }
-            }
-            // Ensure that v0, v1, v2 are ordered cw, otherwise
-            // contained_in_circumference might fail
-            if SimpleTriangle::is_ordered_ccw(&[v0, v1, v2]) {
-                ::std::mem::swap(&mut v0, &mut v1);
-                ::std::mem::swap(&mut h0, &mut h1);
-            }
-            if contained_in_circumference(&v0, &v1, &v2, &position) {
-                // The edge is illegal
-                // Add edges in ccw order
-                edges.push((h2, h1));
-                edges.push((h0, h2));
             } else {
-                result.push(h_from);
+                // Edge is part of the convex hull
+                result.push(h0);
             }
         }
         result
@@ -702,12 +653,14 @@ mod test {
         let v1 = Vector2::new(a1.sin(), a1.cos()) * 2. + offset;
         let v2 = Vector2::new(a2.sin(), a2.cos()) * 2. + offset;
         let v3 = Vector2::new(a3.sin(), a3.cos()) * 2. + offset;
-        assert!(contained_in_circumference(&v1, &v2, &v3, &offset));
+        assert!(contained_in_circumference(v1, v2, v3, offset));
         let shrunk = (v1 - offset) * 0.9 + offset;
-        assert!(contained_in_circumference(&v1, &v2, &v3, &shrunk));
+        assert!(contained_in_circumference(v1, v2, v3, shrunk));
         let expanded = (v1 - offset) * 1.1 + offset;
-        assert!(!contained_in_circumference(&v1, &v2, &v3, &expanded));
-        assert!(!contained_in_circumference(&v1, &v2, &v3, &(Vector2::from_value(2.0) + offset)));
+        assert!(!contained_in_circumference(v1, v2, v3, expanded));
+        assert!(!contained_in_circumference(v1, v2, v3, (Vector2::from_value(2.0) + offset)));
+        assert!(contained_in_circumference(Vector2::new(0f32, -1f32), Vector2::new(0f32, 0f32),
+                                           Vector2::new(-1f32, 0f32), Vector2::new(0f32, 1f32)));
     }
 
 
@@ -725,14 +678,12 @@ mod test {
         points
     }
 
-    // #[ignore]
     #[test]
     fn test_insert_points() {
         // Just check if this won't crash
-        const SIZE: usize = 10000;
+        const SIZE: usize = 100000;
         let mut points = random_points(SIZE, [1, 3, 3, 7]);
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(1.0e-6);
         for p in points.drain(..) {
             delaunay.insert(p);
         }
@@ -758,7 +709,6 @@ mod test {
         const SIZE: usize = 30;
         let mut points = random_points(SIZE, [2, 123, 43, 7]);
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(1e-6);
         for p in &points {
             delaunay.insert(*p);
         }
@@ -772,7 +722,6 @@ mod test {
     fn test_insert_on_edges() {
         // Just check if this won't crash
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(1e-6);
         delaunay.insert(Vector2::new(0., 0f32));
         delaunay.insert(Vector2::new(1., 0.));
         delaunay.insert(Vector2::new(0., 1.));
@@ -798,7 +747,6 @@ mod test {
     fn test_insert_points_on_line_2() {
         // This test inserts the line first
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(1e-10);
 
         for i in -50 .. 50 {
             delaunay.insert(Vector2::new(i as f32, 0.));
@@ -813,12 +761,11 @@ mod test {
     #[test]
     fn test_insert_points_on_grid() {
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(1e-6);
         delaunay.insert(Vector2::new(0., 1f32));
         delaunay.insert(Vector2::new(0.0, 0.0));
         delaunay.insert(Vector2::new(1.0, 0.0));
         for y in 0 .. 20 {
-            for x in 0 .. 20 {
+            for x in 0 .. 7 {
                 delaunay.insert(Vector2::new(x as f32, y as f32));
             }
         }
@@ -833,7 +780,6 @@ mod test {
                       Vector2::new(-0.29053342, -0.20643954),
                       Vector2::new(-0.19144729, -0.42079023)];
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(0.00005);
         for point in points.iter().cloned() {
             delaunay.insert(point);
         }
@@ -875,7 +821,6 @@ mod test {
             PointWithHeight::new(4.0, 1.0, 1.0),
         ];
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(0.00005);
         for point in points.drain(..) {
             delaunay.insert(point);
         }
@@ -914,7 +859,6 @@ mod test {
         }
         points.sort_by(|p1, p2| p1.magnitude2().partial_cmp(&p2.magnitude2()).unwrap());
         let mut delaunay = DelaunayTriangulation::new();
-        delaunay.set_tolerance(1e-10);
         for point in &points {
             delaunay.insert(*point);
         }

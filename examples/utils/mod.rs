@@ -15,12 +15,12 @@
 
 pub mod exampleapplication;
 
-use cgmath::{BaseFloat, Vector2, Vector3, Array};
+use cgmath::{Vector2, Vector3, Array};
 use cgmath::conv::*;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-use spade::BoundingRect;
+use spade::{BoundingRect, RTreeFloat};
 
 #[derive(Clone, Copy)]
 pub struct Vertex {
@@ -36,7 +36,7 @@ impl Vertex {
     }
 }
 
-pub fn random_points_with_seed<S: BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+pub fn random_points_with_seed<S: RTreeFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();

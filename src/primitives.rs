@@ -34,6 +34,38 @@ pub struct SimpleEdge<V: VectorN> {
     pub to: V,
 }
 
+pub struct EdgeSideInfo<S: RTreeFloat> {
+    signed_side: S,
+}
+
+impl <S> EdgeSideInfo<S> where S: RTreeFloat {
+    /// Returns `true` if the query point lies on the left side of the query edge.
+    pub fn is_on_left_side(&self) -> bool {
+        self.signed_side > S::zero()
+    }
+
+    /// Returns `true` if the query point lies on the right side of the query edge.
+    pub fn is_on_right_side(&self) -> bool {
+        self.signed_side < S::zero()
+    }
+
+    /// Returns `true` if the query point lies on the left side or on the query edge.
+    pub fn is_on_left_side_or_on_line(&self) -> bool {
+        self.signed_side >= S::zero()
+    }
+
+    /// Returns `true` if the query point lies on the right side or on the query edge.
+    pub fn is_on_right_side_or_on_line(&self) -> bool {
+        self.signed_side <= S::zero()
+    }
+
+    /// Returns `true` if the query point lies on the line.
+    /// The second parameter can be used to counter some rounding faults.
+    pub fn is_on_line(&self, tolerance: S) -> bool {
+        self.signed_side.abs() <= tolerance
+    }
+}
+
 impl <V: VectorN> SimpleEdge<V> where V::Scalar: RTreeFloat {
     /// Creates a new edge from `from` to `to`.
     pub fn new(from: V, to: V) -> SimpleEdge<V> {
@@ -79,33 +111,13 @@ impl <V: VectorN> SimpleEdge<V> where V::Scalar: RTreeFloat {
         (query_point - p1).dot(&dir) / dir.length2()
     }
 
-    /// Returns a value indicating on which side of this edge a given point lies.
-    ///
-    /// Returns a value smaller than zero if `query_point` is on the right side,
-    /// or greater than zero if `query_point` is on the left side.
-    pub fn signed_side(&self, query_point: V) -> V::Scalar {
+
+    /// Determines on which side of this edge a given point lies.
+    pub fn side_query(&self, q: V) -> EdgeSideInfo<V::Scalar> {
         let (ref a, ref b) = (self.from, self.to);
-        (b[0] - a[0]) * (query_point[1] - a[1]) - (b[1] - a[1])  * (query_point[0] - a[0])
+        let signed_side = (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1])  * (q[0] - a[0]);
+        EdgeSideInfo { signed_side: signed_side }
     }
-
-    /// Returns `true` if a given point is on the right side of this edge.
-    pub fn is_on_right_side(&self, query_point: V) -> bool {
-        self.signed_side(query_point) < V::Scalar::zero()
-    }
-
-    /// Returns `false` if a given point is on the left side of this edge.
-    pub fn is_on_left_side(&self, query_point: V) -> bool {
-        self.signed_side(query_point) > V::Scalar::zero()
-    }
-
-    pub fn approx_is_on_right_side(&self, query_point: V, eps: V::Scalar) -> bool {
-        self.signed_side(query_point) < eps
-    }
-
-    pub fn approx_is_on_left_side(&self, query_point: V, eps: V::Scalar) -> bool {
-        self.signed_side(query_point) > -eps
-    }
-
 }
 
 impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: RTreeFloat {
@@ -131,7 +143,7 @@ impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat {
     /// Checks if the given points are ordered counter clock wise.
     pub fn is_ordered_ccw(vertices: &[V; 3]) -> bool {
         let edge = SimpleEdge::new(vertices[0].clone(), vertices[1].clone());
-        return edge.signed_side(vertices[2]) >= zero()
+        edge.side_query(vertices[2]).is_on_left_side_or_on_line()
     }
 
     pub fn new(mut vertices: [V; 3]) -> SimpleTriangle<V> {
@@ -215,7 +227,7 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeF
     fn distance2(&self, point: V) -> V::Scalar {
         for i in 0 .. 3 {
             let edge = SimpleEdge::new(self.vertices[i], self.vertices[(i + 1) % 3]);
-            if edge.signed_side(point) <= zero() {
+            if edge.side_query(point).is_on_right_side() {
                 return edge.distance2(point);
             }
         }
@@ -281,9 +293,9 @@ mod test {
     #[test]
     fn test_edge_side() {
         let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-        assert!(e.signed_side(Vector2::new(1.0, 0.0)) < 0.0);
-        assert!(e.signed_side(Vector2::new(0.0, 1.0)) > 0.0);
-        assert!(e.signed_side(Vector2::new(0.5, 0.5)).approx_eq(&0.0));
+        assert!(e.side_query(Vector2::new(1.0, 0.0)).is_on_right_side());
+        assert!(e.side_query(Vector2::new(0.0, 1.0)).is_on_left_side());
+        assert!(e.side_query(Vector2::new(0.5, 0.5)).is_on_line(0.0));
     }
 
     #[test]
