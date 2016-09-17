@@ -96,8 +96,8 @@ fn get_interpolated_grid(
                 let mut dir = Vector2::new(0., 0.);
                 dir[dim] = 1.;
                 let to = start + (pos + dir) * step;
-                let from_height = delaunay.nn_interpolation(from, |v| v.height);
-                let to_height = delaunay.nn_interpolation(to, |v| v.height);
+                let from_height = delaunay.nn_interpolation(&from, |v| v.height);
+                let to_height = delaunay.nn_interpolation(&to, |v| v.height);
                 if let (Some(from_height), Some(to_height)) = (from_height, to_height) {
                     let from = VectorWithHeight { point: from, height: from_height + OFFSET };
                     let to = VectorWithHeight { point: to, height: to_height + OFFSET };

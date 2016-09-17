@@ -139,18 +139,18 @@ fn main() {
                     match lookup_mode {
                         LookupMode::Nearest => {
                             points.extend(
-                                app.tree.nearest_neighbor(last_point).iter().cloned());
+                                app.tree.nearest_neighbor(&last_point).iter().cloned());
                         },
                         LookupMode::InCircle => {
                             points.extend(app.tree.lookup_in_circle(
-                                last_point, LOOKUP_RADIUS2).iter().cloned());
+                                &last_point, &LOOKUP_RADIUS2).iter().cloned());
                         },
                         LookupMode::NearestN => {
                             points.extend(app.tree.nearest_n_neighbors(
-                                last_point, N));
+                                &last_point, N));
                         },
                         LookupMode::CloseN => {
-                            points.extend(app.tree.close_neighbor(last_point).iter().cloned());
+                            points.extend(app.tree.close_neighbor(&last_point).iter().cloned());
                         },
                     }
                     for point in points.iter().cloned() {

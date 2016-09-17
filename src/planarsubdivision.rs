@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{HasPosition, RTreeFloat, VectorN};
+use traits::{HasPosition, VectorN};
 use primitives::SimpleEdge;
 use std::default::Default;
 use std::ops::Deref;
@@ -23,11 +23,10 @@ pub struct PlanarSubdivision<V> where V: HasPosition {
 }
 
 pub fn contained_in_circle_segment<V: VectorN>(
-    origin: V, cw_edge: V, ccw_edge: V, query_point: V) -> bool 
-    where V::Scalar: RTreeFloat
+    origin: &V, cw_edge: &V, ccw_edge: &V, query_point: &V) -> bool 
 {
-    let cw_edge = SimpleEdge::new(origin, cw_edge);
-    let ccw_edge = SimpleEdge::new(origin, ccw_edge);
+    let cw_edge = SimpleEdge::new(origin.clone(), cw_edge.clone());
+    let ccw_edge = SimpleEdge::new(origin.clone(), ccw_edge.clone());
 
     let cw_info = cw_edge.side_query(query_point);
     let ccw_info = ccw_edge.side_query(query_point);
@@ -35,7 +34,7 @@ pub fn contained_in_circle_segment<V: VectorN>(
     let is_cw_left = cw_info.is_on_left_side_or_on_line();
     let is_ccw_right = ccw_info.is_on_right_side_or_on_line();
     // Check if segment forms an angler sharper than 180 deg
-    if ccw_edge.side_query(cw_edge.to).is_on_left_side() {
+    if ccw_edge.side_query(&cw_edge.to).is_on_left_side() {
         // More than 180 deg
         is_cw_left || is_ccw_right
     } else {
@@ -44,7 +43,7 @@ pub fn contained_in_circle_segment<V: VectorN>(
     }
 }
 
-impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: RTreeFloat {
+impl<V: HasPosition> PlanarSubdivision<V> {
 
     pub fn new() -> PlanarSubdivision<V> {
         Default::default()
@@ -77,8 +76,8 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
                 for i in 1 .. neighbors.len() {
                     let cw_pos = self.handle(neighbors[i - 1]).position();
                     let ccw_pos = self.handle(neighbors[i]).position();
-                    if contained_in_circle_segment(from_pos, cw_pos, 
-                                                   ccw_pos, to_pos) {
+                    if contained_in_circle_segment(&from_pos, &cw_pos, 
+                                                   &ccw_pos, &to_pos) {
                         sector = i;
                         break;
                     }
@@ -92,7 +91,7 @@ impl<V: HasPosition> PlanarSubdivision<V> where <V::Vector as VectorN>::Scalar: 
                 if ns.len() >= 2 {
                     let cw_pos = self.handle(ns[sector - 1]).position();
                     let ccw_pos = self.handle(ns[sector % ns.len()]).position();
-                    contained_in_circle_segment(from_pos, cw_pos, ccw_pos, to_pos)
+                    contained_in_circle_segment(&from_pos, &cw_pos, &ccw_pos, &to_pos)
                 } else {
                     true
                 }
@@ -187,8 +186,7 @@ pub struct AllVerticesIterator<'a, V: HasPosition + 'a> {
     cur_vertex: FixedVertexHandle,
 }
 
-impl <'a, V: HasPosition> Iterator for AllVerticesIterator<'a, V> 
-    where <V::Vector as VectorN>::Scalar: RTreeFloat {
+impl <'a, V: HasPosition> Iterator for AllVerticesIterator<'a, V> {
     type Item = VertexHandle<'a, V>;
 
     fn next(&mut self) -> Option<VertexHandle<'a, V>> {
@@ -207,9 +205,7 @@ pub struct AllEdgesIterator<'a, V: HasPosition + 'a> {
     cur_vertex_index: usize,
 }
 
-impl <'a, V: HasPosition> AllEdgesIterator<'a, V> 
-    where <V::Vector as VectorN>::Scalar: RTreeFloat
-{
+impl <'a, V: HasPosition> AllEdgesIterator<'a, V> {
     pub fn new(subdiv: &'a PlanarSubdivision<V>) -> Self {
         AllEdgesIterator {
             subdiv: subdiv,
@@ -219,9 +215,7 @@ impl <'a, V: HasPosition> AllEdgesIterator<'a, V>
     }
 }
 
-impl <'a, V: HasPosition + 'a> Iterator for AllEdgesIterator<'a, V> 
-    where <V::Vector as VectorN>::Scalar: RTreeFloat
-{
+impl <'a, V: HasPosition + 'a> Iterator for AllEdgesIterator<'a, V> {
     type Item = EdgeHandle<'a, V>;
     
     fn next(&mut self) -> Option<EdgeHandle<'a, V>> {
@@ -269,13 +263,12 @@ impl <V: HasPosition> VertexEntry<V> {
     }
 }
 
-pub struct VertexHandle<'a, V> where V: HasPosition + 'a, <V::Vector as VectorN>::Scalar: RTreeFloat {
+pub struct VertexHandle<'a, V> where V: HasPosition + 'a {
     subdiv: &'a PlanarSubdivision<V>,
     fixed: FixedVertexHandle,
 }
 
-impl <'a, V> Clone for VertexHandle<'a, V> where V: HasPosition + 'a,
-<V::Vector as VectorN>::Scalar: RTreeFloat {
+impl <'a, V> Clone for VertexHandle<'a, V> where V: HasPosition + 'a {
     fn clone(&self) -> VertexHandle<'a, V> {
         VertexHandle::new(self.subdiv, self.fixed)
     }
@@ -343,8 +336,7 @@ impl FixedEdgeHandle {
     }
 }
 
-impl <'a, V> Clone for EdgeHandle<'a, V> where V: HasPosition + 'a, 
-<V::Vector as VectorN>::Scalar: RTreeFloat {
+impl <'a, V> Clone for EdgeHandle<'a, V> where V: HasPosition + 'a {
     fn clone(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.subdiv, self.from_handle, self.to_index)
     }
@@ -356,7 +348,7 @@ impl <'a, V> PartialEq for EdgeHandle<'a, V> where V: HasPosition + 'a {
     }
 }
 
-impl <'a, V: HasPosition> EdgeHandle<'a, V> where <V::Vector as VectorN>::Scalar: RTreeFloat {
+impl <'a, V: HasPosition> EdgeHandle<'a, V> {
 
     pub fn from_neighbors(
         subdiv: &'a PlanarSubdivision<V>, from: FixedVertexHandle,
@@ -430,7 +422,7 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> where <V::Vector as VectorN>::Scalar
     }
 }
 
-impl <'a, V: HasPosition> VertexHandle<'a, V> where <V::Vector as VectorN>::Scalar: RTreeFloat {
+impl <'a, V: HasPosition> VertexHandle<'a, V>  {
     fn new(subdiv: &'a PlanarSubdivision<V>,
            fixed: FixedVertexHandle) -> VertexHandle<'a, V> {
         VertexHandle {
@@ -472,8 +464,7 @@ impl <'a, V: HasPosition> VertexHandle<'a, V> where <V::Vector as VectorN>::Scal
     }
 }
 
-impl <'a, V> Deref for VertexHandle<'a, V> where V: HasPosition,
-<V::Vector as VectorN>::Scalar: RTreeFloat {
+impl <'a, V> Deref for VertexHandle<'a, V> where V: HasPosition {
     type Target = V;
 
     fn deref(&self) -> &V {
@@ -696,21 +687,21 @@ mod test {
         let t3 = Vector2::new(-1f32, 1f32);
         let t4 = Vector2::new(-1f32, -1f32);
 
-        assert!(!contained_in_circle_segment(v0, v2, v3, t1));
-        assert!(!contained_in_circle_segment(v0, v2, v3, t2));
-        assert!(contained_in_circle_segment(v0, v2, v3, t3));
-        assert!(!contained_in_circle_segment(v0, v2, v3, t4));
+        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t1));
+        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t2));
+        assert!(contained_in_circle_segment(&v0, &v2, &v3, &t3));
+        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t4));
 
 
-        assert!(contained_in_circle_segment(v0, v1, v3, t1));
-        assert!(!contained_in_circle_segment(v0, v1, v3, t2));
-        assert!(contained_in_circle_segment(v0, v1, v3, t3));
-        assert!(!contained_in_circle_segment(v0, v1, v3, t4));
+        assert!(contained_in_circle_segment(&v0, &v1, &v3, &t1));
+        assert!(!contained_in_circle_segment(&v0, &v1, &v3, &t2));
+        assert!(contained_in_circle_segment(&v0, &v1, &v3, &t3));
+        assert!(!contained_in_circle_segment(&v0, &v1, &v3, &t4));
 
-        assert!(contained_in_circle_segment(v0, v1, v4, t1));
-        assert!(!contained_in_circle_segment(v0, v1, v4, t2));
-        assert!(contained_in_circle_segment(v0, v1, v4, t3));
-        assert!(contained_in_circle_segment(v0, v1, v4, t4));
+        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t1));
+        assert!(!contained_in_circle_segment(&v0, &v1, &v4, &t2));
+        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t3));
+        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t4));
     }
 
     #[test]
@@ -732,4 +723,3 @@ mod test {
         assert_eq!(subdiv.edges().count(), 5);
     }
 }
-

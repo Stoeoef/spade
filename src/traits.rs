@@ -13,29 +13,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{BaseNum, BaseFloat, Vector2, Vector3, Vector4, Array, Zero};
-use num::{Bounded, Signed};
+use cgmath as cg;
+use num::{Signed, Num, BigInt, BigRational, zero};
 use misc::{min_inline, max_inline};
 use boundingvolume::BoundingRect;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
+use std::fmt::Debug;
 use nalgebra::{Repeat};
 use nalgebra as na;
 
-pub trait RTreeNum: BaseNum + Bounded + Signed { }
-pub trait RTreeFloat: RTreeNum + BaseFloat { }
+pub trait RTreeNum: Signed + Clone + Debug + PartialOrd { }
+pub trait RTreeFloat: RTreeNum + cg::BaseFloat + na::BaseFloat { }
 
-impl <S> RTreeNum for S where S: BaseNum + Bounded + Signed { }
-impl <S> RTreeFloat for S where S: RTreeNum + BaseFloat { }
+impl RTreeNum for i32 { }
+impl RTreeNum for i64 { }
+impl RTreeNum for f32 { }
+impl RTreeNum for f64 { }
+
+impl RTreeFloat for f32 { }
+impl RTreeFloat for f64 { }
+
+impl RTreeNum for BigInt { }
+impl RTreeNum for BigRational { }
 
 /// Abstraction over vectors in different dimensions.
-pub trait VectorN where Self: Copy, Self: Clone,
+pub trait VectorN where Self: Clone,
 Self: Add<Self, Output=Self>,
 Self: Sub<Self, Output=Self>,
 Self: Div<<Self as VectorN>::Scalar, Output=Self>,
 Self: Mul<<Self as VectorN>::Scalar, Output=Self>,
 Self: Index<usize, Output=<Self as VectorN>::Scalar>,
 Self: IndexMut<usize, Output=<Self as VectorN>::Scalar>,
-Self: ::std::fmt::Debug,
+Self: Debug,
 Self: PartialEq {
     type Scalar: RTreeNum;
 
@@ -44,7 +53,7 @@ Self: PartialEq {
 
     /// Creates a new vector with all components initialized to zero.
     fn new() -> Self {
-        Self::from_value(Self::Scalar::zero())
+        Self::from_value(zero())
     }
 
     /// The (fixed) number of dimensions of this vector trait.
@@ -54,7 +63,7 @@ Self: PartialEq {
     fn component_wise<F: Fn(Self::Scalar, Self::Scalar) -> Self::Scalar>(&self, rhs: &Self, f: F) -> Self {
         let mut result = self.clone();
         for i in 0 .. Self::dimensions() {
-            result[i] = f(self[i], rhs[i]);
+            result[i] = f(self[i].clone(), rhs[i].clone());
         }
         result
     }
@@ -63,7 +72,7 @@ Self: PartialEq {
     fn map<F: Fn(Self::Scalar) -> Self::Scalar>(&self, f: F) -> Self {
         let mut result = self.clone();
         for i in 0 .. Self::dimensions() {
-            result[i]  = f(self[i]);
+            result[i]  = f(self[i].clone());
         }
         result
     }
@@ -81,7 +90,7 @@ Self: PartialEq {
     /// Fold operation over all vector components.
     fn fold<T, F: Fn(T, Self::Scalar) -> T>(&self, mut acc: T, f: F) -> T {
         for i in 0 .. Self::dimensions() {
-            acc = f(acc, self[i]);
+            acc = f(acc, self[i].clone());
         }
         acc
     }
@@ -89,7 +98,7 @@ Self: PartialEq {
     /// Checks if a property holds for all components.
     fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
         for i in 0 .. Self::dimensions() {
-            if !f(self[i], rhs[i]) {
+            if !f(self[i].clone(), rhs[i].clone()) {
                 return false;
             }
         }
@@ -98,8 +107,7 @@ Self: PartialEq {
 
     /// Returns the vector's dot product.
     fn dot(&self, rhs: &Self) -> Self::Scalar {
-        self.component_wise(rhs, |l, r| l * r).fold(Self::Scalar::zero(), 
-                                                    |acc, val| acc + val)
+        self.component_wise(rhs, |l, r| l * r).fold(zero(), |acc, val| acc + val)
     }
 
     /// Returns the vector's squared length.
@@ -109,34 +117,34 @@ Self: PartialEq {
 
 }
 
-impl<S: RTreeNum> VectorN for Vector2<S> {
+impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 2 }
     fn from_value(value: Self::Scalar) -> Self {
-        Array::from_value(value)
+        cg::Array::from_value(value)
     }
 }
 
-impl<S: RTreeNum> VectorN for Vector3<S> {
+impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 3 }
     fn from_value(value: Self::Scalar) -> Self {
-        Array::from_value(value)
+        cg::Array::from_value(value)
     }
 }
 
-impl<S: RTreeNum> VectorN for Vector4<S> {
+impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 4 }
     fn from_value(value: Self::Scalar) -> Self {
-        Array::from_value(value)
+        cg::Array::from_value(value)
     }
 }
 
-impl<S: RTreeNum> VectorN for na::Vector2<S> {
+impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector2<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 2 }
@@ -145,7 +153,7 @@ impl<S: RTreeNum> VectorN for na::Vector2<S> {
     }
 }
 
-impl<S: RTreeNum> VectorN for na::Vector3<S> {
+impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector3<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 3 }
@@ -154,7 +162,7 @@ impl<S: RTreeNum> VectorN for na::Vector3<S> {
     }
 }
 
-impl<S: RTreeNum> VectorN for na::Vector4<S> {
+impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector4<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 4 }
@@ -180,11 +188,11 @@ pub trait SpatialObject {
 
     /// Returns the squared euclidean distance from the object's contour.
     /// Returns a value samller than zero if the point is contained within the object.
-    fn distance2(&self, point: Self::Vector) -> <Self::Vector as VectorN>::Scalar;
+    fn distance2(&self, point: &Self::Vector) -> <Self::Vector as VectorN>::Scalar;
 
     /// Returns true if a given point is contained in this object.
-    fn contains(&self, point: Self::Vector) -> bool {
-        self.distance2(point) <= <Self::Vector as VectorN>::Scalar::zero()
+    fn contains(&self, point: &Self::Vector) -> bool {
+        self.distance2(point) <= zero()
     }
 }
 
@@ -212,7 +220,7 @@ pub trait SpatialObject {
 /// fn main() {
 ///   let mut tree = RTree::new();
 ///   tree.insert(MyPoint { position: Vector3::new(0.0, 1.0, 0.0), my_data: 42 });
-///   assert_eq!(tree.lookup(Vector3::new(0.0, 1.0, 0.0)).unwrap().my_data, 42);
+///   assert_eq!(tree.lookup(&Vector3::new(0.0, 1.0, 0.0)).unwrap().my_data, 42);
 /// }
 /// ```
 pub trait HasPosition {
@@ -223,7 +231,7 @@ pub trait HasPosition {
 impl <V> HasPosition for V where V: VectorN {
     type Vector = V;
     fn position(&self) -> V {
-        *self
+        self.clone()
     }
 }
 
@@ -234,11 +242,84 @@ impl <S>  SpatialObject for S where S: HasPosition {
         BoundingRect::from_point(self.position())
     }
 
-    fn distance2(&self, point: S::Vector) -> <S::Vector as VectorN>::Scalar {
-        (self.position() - point).length2()
+    fn distance2(&self, point: &S::Vector) -> <S::Vector as VectorN>::Scalar {
+        (self.position() - point.clone()).length2()
     }
 
-    fn contains(&self, point: S::Vector) -> bool {
-        self.position() == point
+    fn contains(&self, point: &S::Vector) -> bool {
+        self.position() == *point
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BigVec2<N: Num> {
+    pub x: N,
+    pub y: N,
+}
+
+impl <N: Num + Clone> BigVec2<N> {
+    pub fn new(x: N, y: N) -> BigVec2<N> {
+        BigVec2 { x: x, y: y }
+    }
+}
+
+impl <N: RTreeNum> VectorN for BigVec2<N> {
+    type Scalar = N;
+
+    fn dimensions() -> usize {
+        2
+    }
+
+    fn from_value(val: N) -> Self {
+        BigVec2::new(val.clone(), val.clone())
+    }
+}
+
+impl <N: RTreeNum> Add for BigVec2<N> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        BigVec2::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl <N: RTreeNum> Sub for BigVec2<N> {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self {
+        BigVec2::new(self.x - rhs.x, self.y - rhs.y)
+    }
+}
+
+impl <N: RTreeNum> Mul<N> for BigVec2<N> {
+    type Output = Self;
+    fn mul(self, rhs: N) -> Self {
+        BigVec2::new(self.x * rhs.clone(), self.y * rhs.clone())
+    }
+}
+
+impl <N: RTreeNum> Div<N> for BigVec2<N> {
+    type Output = Self;
+    fn div(self, rhs: N) -> Self {
+        BigVec2::new(self.x / rhs.clone(), self.y / rhs.clone())
+    }
+}
+
+impl <N: RTreeNum> Index<usize> for BigVec2<N> {
+    type Output = N;
+
+    fn index<'a>(&'a self, index: usize) -> &'a N {
+        unsafe {
+            &::std::mem::transmute::<_, &[N; 2]>(self)[index]
+        }
+
+    }
+}
+
+impl <N: RTreeNum> IndexMut<usize> for BigVec2<N> {
+
+    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut N {
+        unsafe {
+            &mut ::std::mem::transmute::<_, &mut [N; 2]>(self)[index]
+        }
     }
 }

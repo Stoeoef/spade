@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use misc::min_inline;
-use num::{Bounded, Signed, zero, one, cast};
+use num::{Signed, zero, one};
 use traits::{VectorN};
 
 /// An axis aligned minimal bounding rectangle.
@@ -28,24 +27,12 @@ pub struct BoundingRect<V: VectorN> {
 
 impl <V> BoundingRect<V> where V: VectorN {
 
-    /// Creates an uninitialized bounding rectangle.
-    ///
-    /// This will create a new bounding rectangle that contains no objects.
-    /// Note that `lower` and `upper` are set to positive / negative infinity,
-    /// thus some operations (like `area`, `margin`) will yield unspecified results.
-    pub fn new() -> BoundingRect<V> {
-        BoundingRect {
-            lower: V::from_value(Bounded::max_value()),
-            upper: V::from_value(Bounded::min_value()),
-        }
-    }
-
     /// Creates a bounding rectangle that contains exactly one point.
     ///
     /// This will create a bounding rectangle with `lower == upper == point`.
     pub fn from_point(point: V) -> BoundingRect<V> {
         BoundingRect {
-            lower: point,
+            lower: point.clone(),
             upper: point,
         }
     }
@@ -62,21 +49,21 @@ impl <V> BoundingRect<V> where V: VectorN {
     ///
     /// The lower corner has the smaller coordinates.
     pub fn lower(&self) -> V {
-        self.lower
+        self.lower.clone()
     }
 
     /// Returns the upper corner of the bounding rectangle.
     ///
     /// The upper corner has the larger coordinates.
     pub fn upper(&self) -> V {
-        self.upper
+        self.upper.clone()
     }
 
     /// Checks if a point is contained within the bounding rectangle.
     ///
     /// A point lying exactly on the bounding rectangle's border is also contained.
     #[inline]
-    pub fn contains_point(&self, point: V) -> bool {
+    pub fn contains_point(&self, point: &V) -> bool {
         self.lower.all_comp_wise(&point, |l, r| l <= r) &&
             self.upper.all_comp_wise(&point, |l, r| l >= r)
     }
@@ -114,19 +101,20 @@ impl <V> BoundingRect<V> where V: VectorN {
 
     /// Returns the rectangle's area.
     pub fn area(&self) -> V::Scalar {
-        let diag = self.upper - self.lower;
+        let diag = self.upper() - self.lower();
         diag.fold(one(), |acc, value| acc * value)
     }
 
     /// Returns half of the rectangle's margin, thus `width + height`.
     pub fn half_margin(&self) -> V::Scalar {
-        let diag = self.upper - self.lower;
+        let diag = self.upper() - self.lower();
         diag.fold(zero(), |acc, value| acc + value)
     }
 
     /// Returns the rectangle's center.
     pub fn center(&self) -> V {
-        self.lower + (self.upper - self.lower) / cast::<_, V::Scalar>(2i32).unwrap()
+        let two = one::<V::Scalar>() + one::<V::Scalar>();
+        self.lower() + (self.upper() - self.lower()) / two
     }
 
     /// Returns the intersection of this and another bounding rectangle.
@@ -148,45 +136,48 @@ impl <V> BoundingRect<V> where V: VectorN {
     }
 
     #[doc(hidden)]
-    pub fn min_point(&self, point: V) -> V {
+    pub fn min_point(&self, point: &V) -> V {
         self.upper.min_vec(&self.lower.max_vec(&point))
     }
 
     #[doc(hidden)]
-    pub fn min_dist2(&self, point: V) -> V::Scalar {
-        (self.min_point(point) - point).length2()
+    pub fn min_dist2(&self, point: &V) -> V::Scalar {
+        (self.min_point(point) - point.clone()).length2()
     }
 
     #[doc(hidden)]
-    pub fn max_dist2(&self, point: V) -> V::Scalar {
-        let l = self.lower;
-        let u = self.upper;
-        let d1 = (l - point).map(|v| v.abs());
-        let d2 = (u - point).map(|v| v.abs());
+    pub fn max_dist2(&self, point: &V) -> V::Scalar {
+        let l = self.lower();
+        let u = self.upper();
+        let d1 = (l - point.clone()).map(|v| v.abs());
+        let d2 = (u - point.clone()).map(|v| v.abs());
         let max_delta = d1.max_vec(&d2);
         max_delta.length2()
     }
 
     #[doc(hidden)]
-    pub fn min_max_dist2(&self, point: V) -> V::Scalar {
-        let l = self.lower;
-        let u = self.upper;
+    pub fn min_max_dist2(&self, point: &V) -> V::Scalar {
+        let l = self.lower();
+        let u = self.upper();
         let (mut min, mut max) = (V::new(), V::new());
         for i in 0 .. V::dimensions() {
-            if (l[i] - point[i]).abs() < (u[i] - point[i]).abs() { 
-                min[i] = l[i];
-                max[i] = u[i];
+            if (l[i].clone() - point[i].clone()).abs() < (u[i].clone() - point[i].clone()).abs() { 
+                min[i] = l[i].clone();
+                max[i] = u[i].clone();
             } else {
-                min[i] = u[i];
-                max[i] = l[i];
+                min[i] = u[i].clone();
+                max[i] = l[i].clone();
             }
         }
-        let mut result = V::Scalar::max_value();
+        let mut result = zero();
         for i in 0 .. V::dimensions() {
-            let mut p = min;
+            let mut p = min.clone();
             // Only set one component to the maximum distance
-            p[i] = max[i];
-            result = min_inline(result, (p - point).length2());
+            p[i] = max[i].clone();
+            let new_dist = (p - point.clone()).length2();
+            if new_dist < result || i == 0 {
+                result = new_dist
+            }
         }
         result
     }
