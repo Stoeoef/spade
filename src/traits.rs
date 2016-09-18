@@ -15,6 +15,7 @@
 
 use cgmath as cg;
 use num::{Signed, Num, BigInt, BigRational, zero};
+use num::bigint::ToBigInt;
 use misc::{min_inline, max_inline};
 use boundingvolume::BoundingRect;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
@@ -321,5 +322,17 @@ impl <N: RTreeNum> IndexMut<usize> for BigVec2<N> {
         unsafe {
             &mut ::std::mem::transmute::<_, &mut [N; 2]>(self)[index]
         }
+    }
+}
+
+impl <I> From<cg::Vector2<I>> for BigVec2<BigInt> where I: cg::BaseNum + ToBigInt {
+    fn from(v: cg::Vector2<I>) -> Self {
+        BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
+    }
+}
+
+impl <I> From<na::Vector2<I>> for BigVec2<BigInt> where I: na::BaseNum + ToBigInt {
+    fn from(v: na::Vector2<I>) -> Self {
+        BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
     }
 }

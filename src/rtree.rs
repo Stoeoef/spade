@@ -370,24 +370,23 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         let mut inclusion_count = 0;
         let mut min_area = zero();
         let mut min_index = 0;
+        let mut first = true;
         for (index, child) in self.children.iter().enumerate() {
             let mbr = child.mbr();
             if mbr.contains_rect(&insertion_mbr) {
                 inclusion_count += 1;
                 let area = mbr.area();
-                if area < min_area || index == 0 {
+                if area < min_area || first {
                     min_area = area;
                     min_index = index;
+                    first = false;
                 }
             }
         }
         if inclusion_count == 0 {
             // No inclusion found, subtree depends on overlap and area increase
             let all_leaves = self.depth <= 2;
-            
             let mut min = (zero(), zero(), zero());
-
-            let mut min_overlap_increase = zero();
 
             for (index, child1) in self.children.iter().enumerate() {
                 let mbr = child1.mbr();
@@ -402,14 +401,9 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                             let child_mbr = child2.mbr();
                             overlap = overlap.clone() + mbr.intersect(&child_mbr).area();
                             new_overlap = new_overlap.clone() + new_mbr.intersect(&child_mbr).area();
-                            if new_overlap.clone() - overlap.clone() > min_overlap_increase || index == 0 {
-                                // Overlap increase is already too large
-                                break;
-                            }
                         }
                     }
                     let overlap_increase = new_overlap - overlap;
-                    min_overlap_increase = overlap_increase.clone();
                     overlap_increase
                 } else {
                     // Don't calculate overlap increase if not all children are leaves
@@ -419,7 +413,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
                 let area_increase = new_mbr.area() - mbr.area();
                 let area = new_mbr.area();
                 let new_min = (overlap_increase, area_increase, area);
-                if new_min <= min || index == 0 {
+                if new_min < min || index == 0 {
                     min = new_min;
                     min_index = index;
                 }

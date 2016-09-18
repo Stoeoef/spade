@@ -15,6 +15,7 @@
 
 use num::{Signed, zero, one};
 use traits::{VectorN};
+use misc::max_inline;
 
 /// An axis aligned minimal bounding rectangle.
 ///
@@ -102,13 +103,13 @@ impl <V> BoundingRect<V> where V: VectorN {
     /// Returns the rectangle's area.
     pub fn area(&self) -> V::Scalar {
         let diag = self.upper() - self.lower();
-        diag.fold(one(), |acc, value| acc * value)
+        diag.fold(one(), |acc, value| max_inline(acc * value, zero()))
     }
 
     /// Returns half of the rectangle's margin, thus `width + height`.
     pub fn half_margin(&self) -> V::Scalar {
         let diag = self.upper() - self.lower();
-        diag.fold(zero(), |acc, value| acc + value)
+        diag.fold(zero(), |acc, value| max_inline(acc + value, zero()))
     }
 
     /// Returns the rectangle's center.

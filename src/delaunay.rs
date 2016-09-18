@@ -21,7 +21,7 @@ use boundingvolume::BoundingRect;
 use primitives::{SimpleEdge, SimpleTriangle};
 
 use planarsubdivision::{PlanarSubdivision, FixedVertexHandle, EdgeHandle,
-                        VertexHandle, contained_in_circle_segment};
+                        VertexHandle, SectorInfo};
 
 #[derive(Debug)]
 pub enum PositionInTriangulation {
@@ -66,7 +66,7 @@ impl <'a, V> Iterator for DelaunayTriangleIterator<'a, V> where V: HasPosition +
                 if h0 >= self.delaunay.num_vertices() {
                     return None
                 }
-                let neighbors = s.handle(h0).fixed_neighbors_vec().clone();
+                let neighbors = s.handle(h0).fixed_neighbors();
                 for i in 0 .. neighbors.len() {
                     let h1 = neighbors[i];
                     if h0 < h1 {
@@ -375,22 +375,13 @@ impl <V: HasPosition> DelaunayTriangulation<V> {
         let mut cur_handle = self.s.handle(start);
         loop {
             let from_pos = cur_handle.position();
-            let (mut sector, cw_handle, ccw_handle);
-            {
-                let neighbors = cur_handle.fixed_neighbors_vec();
-                sector = neighbors.len();
-                for i in 1 .. neighbors.len() {
-                    let cw_pos = self.s.handle(neighbors[i - 1]).position();
-                    let ccw_pos = self.s.handle(neighbors[i]).position();
-                    if contained_in_circle_segment(
-                        &from_pos, &cw_pos, &ccw_pos, point) {
-                        sector = i;
-                        break;
-                    }
-                }
-                cw_handle = self.s.handle(neighbors[sector - 1]).clone();
-                ccw_handle = self.s.handle(neighbors[sector % neighbors.len()]).clone();
-            }
+            let sector = match cur_handle.sector_info(point) {
+                SectorInfo::NoSector => panic!("Found isolated point. This is a bug."),
+                SectorInfo::InSector(sector) => sector
+            };
+            let neighbors = cur_handle.fixed_neighbors();
+            let cw_handle = self.s.handle(neighbors[sector - 1]);
+            let ccw_handle = self.s.handle(neighbors[sector % neighbors.len()]);
             let cw_pos = cw_handle.position();
             let ccw_pos = ccw_handle.position();
             let edge = SimpleEdge::new(cw_pos.clone(), ccw_pos.clone());
@@ -722,7 +713,7 @@ mod test {
     #[test]
     fn test_insert_points() {
         // Just check if this won't crash
-        const SIZE: usize = 200000;
+        const SIZE: usize = 50000;
         let mut points = random_points(SIZE, [1, 3, 3, 7]);
         let mut delaunay = DelaunayTriangulation::new();
         for p in points.drain(..) {

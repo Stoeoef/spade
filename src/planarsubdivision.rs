@@ -43,6 +43,12 @@ pub fn contained_in_circle_segment<V: VectorN>(
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SectorInfo {
+    NoSector,
+    InSector(usize),
+}
+
 impl<V: HasPosition> PlanarSubdivision<V> {
 
     pub fn new() -> PlanarSubdivision<V> {
@@ -65,30 +71,21 @@ impl<V: HasPosition> PlanarSubdivision<V> {
         let mut to_index = 0;
         for i in 0 .. 2 {
             let (from, to) = if i == 0 { (to, from) } else { (from, to) };
-            let from_pos = self.handle(from).position();
             let to_pos = self.handle(to).position();
             // Find sector that contains 'to'
             // We must keep the out edges sorted ccw
-            let mut sector;
-            {
-                let ref neighbors: Vec<_> = self.entry(from).neighbors;
-                sector = neighbors.len();
-                for i in 1 .. neighbors.len() {
-                    let cw_pos = self.handle(neighbors[i - 1]).position();
-                    let ccw_pos = self.handle(neighbors[i]).position();
-                    if contained_in_circle_segment(&from_pos, &cw_pos, 
-                                                   &ccw_pos, &to_pos) {
-                        sector = i;
-                        break;
-                    }
-                }
-            }
+            let sector = match self.handle(from).sector_info(&to_pos) {
+                SectorInfo::InSector(sector) => sector,
+                SectorInfo::NoSector => 0,
+            };
             if i == 0 {
                 to_index = sector;
             }
+
             debug_assert!({
                 let ref ns = self.entry(from).neighbors;
                 if ns.len() >= 2 {
+                    let from_pos = self.handle(from).position();
                     let cw_pos = self.handle(ns[sector - 1]).position();
                     let ccw_pos = self.handle(ns[sector % ns.len()]).position();
                     contained_in_circle_segment(&from_pos, &cw_pos, &ccw_pos, &to_pos)
@@ -97,6 +94,10 @@ impl<V: HasPosition> PlanarSubdivision<V> {
                 }
             });
             self.mut_entry(from).neighbors.insert(sector, to);
+
+            if i == 0 {
+                to_index = sector;
+            }
         }
         FixedEdgeHandle::new(from.clone(), to_index)
     }
@@ -155,7 +156,7 @@ impl<V: HasPosition> PlanarSubdivision<V> {
 
     pub fn handle(&self, fixed_handle: FixedVertexHandle)
         -> VertexHandle<V> {
-        VertexHandle::new(&self, fixed_handle.clone())
+        VertexHandle::new(&self, self.entry(fixed_handle), fixed_handle)
     }
 
     pub fn edge_handle(&self, fixed_handle: &FixedEdgeHandle) 
@@ -265,12 +266,13 @@ impl <V: HasPosition> VertexEntry<V> {
 
 pub struct VertexHandle<'a, V> where V: HasPosition + 'a {
     subdiv: &'a PlanarSubdivision<V>,
+    entry: &'a VertexEntry<V>,
     fixed: FixedVertexHandle,
 }
 
 impl <'a, V> Clone for VertexHandle<'a, V> where V: HasPosition + 'a {
     fn clone(&self) -> VertexHandle<'a, V> {
-        VertexHandle::new(self.subdiv, self.fixed)
+        VertexHandle::new(self.subdiv, self.entry, self.fixed)
     }
 }
 
@@ -354,7 +356,7 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
         subdiv: &'a PlanarSubdivision<V>, from: FixedVertexHandle,
         to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
         let from_handle = subdiv.handle(from);
-        if let Some(index) = from_handle.fixed_neighbors_vec().iter()
+        if let Some(index) = from_handle.fixed_neighbors().iter()
             .position(|e| *e == to)
         {
             Some(EdgeHandle::new(subdiv, from, index))
@@ -423,27 +425,22 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
 }
 
 impl <'a, V: HasPosition> VertexHandle<'a, V>  {
-    fn new(subdiv: &'a PlanarSubdivision<V>,
+    fn new(subdiv: &'a PlanarSubdivision<V>, entry: &'a VertexEntry<V>,
            fixed: FixedVertexHandle) -> VertexHandle<'a, V> {
         VertexHandle {
             subdiv: subdiv,
+            entry: entry,
             fixed: fixed,
         }
     }
 
-    pub fn fixed_neighbors(&self) -> Box<Iterator<Item=FixedVertexHandle> + 'a> {
-        let entry: &'a VertexEntry<V> = self.subdiv.entry(self.fixed);
-        Box::new(entry.neighbors.iter().cloned())
-    }
-
-    pub fn fixed_neighbors_vec(&self) -> &Vec<FixedVertexHandle> {
-        &self.subdiv.entry(self.fixed).neighbors
+    pub fn fixed_neighbors(&self) -> &'a Vec<FixedVertexHandle> {
+        &self.entry.neighbors
     }
 
     pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V>> + 'a> {
-        let entry: &'a VertexEntry<V> = self.subdiv.entry(self.fixed);
         let subdiv = self.subdiv;
-        Box::new(entry.neighbors.iter().map(move |h| subdiv.handle(*h)))
+        Box::new(self.entry.neighbors.iter().map(move |h| subdiv.handle(*h)))
     }
 
     pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V>> + 'a> {
@@ -454,9 +451,42 @@ impl <'a, V: HasPosition> VertexHandle<'a, V>  {
             subdiv, fixed, index)))
     }
 
+    #[inline(never)]
+    pub fn sector_info(&self, point: &V::Vector) -> SectorInfo {
+        
+        let neighbors = &self.entry.neighbors;
+        if neighbors.len() == 0 {
+            return SectorInfo::NoSector;
+        }
+        let vertex_pos = self.entry.data.position();
+        let cw = *neighbors.first().unwrap();
+        let cw_pos = self.subdiv.handle(cw).position();
+        let mut cw_edge = SimpleEdge::new(vertex_pos.clone(), cw_pos);
+        let mut cw_query = cw_edge.side_query(point);
+        let mut sector = neighbors.len();
+        for (cur_sector, next) in neighbors.iter().enumerate().skip(1) {
+            let ccw = self.subdiv.handle(*next);
+            let ccw_pos = ccw.position();
+            let ccw_edge = SimpleEdge::new(vertex_pos.clone(), ccw_pos);
+            let ccw_query = ccw_edge.side_query(point);
+            let is_cw_left = cw_query.is_on_left_side_or_on_line();
+            let is_ccw_right = ccw_query.is_on_right_side_or_on_line();
+            // Check if segment forms an angler sharper than 180 deg
+            let contained = (is_cw_left || is_ccw_right)
+                && ((is_cw_left && is_ccw_right) 
+                    || ccw_edge.side_query(&cw_edge.to).is_on_left_side());
+            if contained {
+                sector = cur_sector;
+                break;
+            }
+            cw_edge = ccw_edge;
+            cw_query = ccw_query;
+        }
+        SectorInfo::InSector(sector)
+    }
+
     fn num_neighbors(&self) -> usize {
-        let entry: &'a VertexEntry<V> = self.subdiv.entry(self.fixed);
-        entry.neighbors.len()
+        self.entry.neighbors.len()
     }
 
     pub fn fix(&self) -> FixedVertexHandle {
@@ -468,7 +498,7 @@ impl <'a, V> Deref for VertexHandle<'a, V> where V: HasPosition {
     type Target = V;
 
     fn deref(&self) -> &V {
-        &self.subdiv.entry(self.fixed).data
+        &self.entry.data
     }
 }
 
@@ -477,7 +507,7 @@ pub type FixedVertexHandle = usize;
 #[cfg(test)]
 mod test {
     use super::{PlanarSubdivision, FixedVertexHandle, EdgeHandle, CircularIterator,
-                contained_in_circle_segment};
+                SectorInfo, contained_in_circle_segment};
     use cgmath::Vector2;
 
     fn create_subdiv_with_triangle() -> (PlanarSubdivision<Vector2<f32>>,
@@ -500,7 +530,7 @@ mod test {
         let fixed = s.insert_vertex(Vector2::new(0.0f32, 0.0));
         {
             let handle = s.handle(fixed);
-            assert_eq!(handle.fixed_neighbors().count(), 0);
+            assert_eq!(handle.fixed_neighbors().len(), 0);
             assert_eq!(s.num_vertices(), 1);
         }
         s.insert_vertex(Vector2::new(0.0f32, 0.0));
@@ -517,10 +547,8 @@ mod test {
         s.connect(fixed1, fixed2);
         
         let (handle1, handle2) = (s.handle(fixed1), s.handle(fixed2));
-        assert_eq!(handle1.fixed_neighbors().collect::<Vec<_>>(),
-                   vec![fixed2]);
-        assert_eq!(handle2.fixed_neighbors().collect::<Vec<_>>(),
-                   vec![fixed1]);
+        assert_eq!(*handle1.fixed_neighbors(), vec![fixed2]);
+        assert_eq!(*handle2.fixed_neighbors(), vec![fixed1]);
     }
 
     #[test]
@@ -534,8 +562,8 @@ mod test {
         s.connect(fixed1, fixed2);
         assert!(s.disconnect(fixed1, fixed2));
         let (handle1, handle2) = (s.handle(fixed1), s.handle(fixed2));
-        assert_eq!(handle1.fixed_neighbors().collect::<Vec<_>>(), Vec::new());
-        assert_eq!(handle2.fixed_neighbors().collect::<Vec<_>>(), Vec::new());
+        assert_eq!(*handle1.fixed_neighbors(), Vec::new());
+        assert_eq!(*handle2.fixed_neighbors(), Vec::new());
         
     }
 
@@ -587,7 +615,7 @@ mod test {
         for v in vs.iter() {
             s.connect(v0, *v);
         }
-        let neighbors: Vec<_> = s.handle(v0).fixed_neighbors().collect();
+        let neighbors = &s.handle(v0).fixed_neighbors();
         let positions: Vec<_> = vs.iter()
             .map(|v| neighbors.iter().position(|n| n == v).unwrap()).collect();
         assert!((positions[0] + 1) % 4 == positions[3]);
@@ -702,6 +730,32 @@ mod test {
         assert!(!contained_in_circle_segment(&v0, &v1, &v4, &t2));
         assert!(contained_in_circle_segment(&v0, &v1, &v4, &t3));
         assert!(contained_in_circle_segment(&v0, &v1, &v4, &t4));
+    }
+
+    #[test]
+    fn test_sector_info() {
+        let is_in_sector = |s: SectorInfo| -> bool {
+            match s {
+                SectorInfo::InSector(_) => true,
+                _ => false
+            }
+        };
+            
+        let mut subdiv = PlanarSubdivision::new();
+        let h0 = subdiv.insert_vertex(Vector2::new(0f32, 0f32));
+        assert_eq!(subdiv.handle(h0).sector_info(&Vector2::new(1.0, 1.0)), SectorInfo::NoSector);
+        let h1 = subdiv.insert_vertex(Vector2::new(0f32, 1f32));
+        let h2 = subdiv.insert_vertex(Vector2::new(-1f32, 0f32));
+        let h3 = subdiv.insert_vertex(Vector2::new(1f32, 0f32));
+        for v in &[h1, h2, h3] {
+            subdiv.connect(h0, *v);
+        }
+
+        let h0_handle = subdiv.handle(h0);
+        assert!(is_in_sector(h0_handle.sector_info(&Vector2::new(1.0, 1.0))));
+        assert!(is_in_sector(h0_handle.sector_info(&Vector2::new(-1.0, 1.0))));
+        assert!(is_in_sector(h0_handle.sector_info(&Vector2::new(1.0, -1.0))));
+        assert!(is_in_sector(h0_handle.sector_info(&Vector2::new(-1.0, -1.0))));
     }
 
     #[test]
