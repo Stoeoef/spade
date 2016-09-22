@@ -14,14 +14,15 @@
 // limitations under the License.
 
 use cgmath as cg;
-use num::{Signed, Num, BigInt, BigRational, zero};
-use num::bigint::ToBigInt;
+use num::{Signed, BigInt, BigRational, zero};
+use num::rational::Ratio;
 use misc::{min_inline, max_inline};
 use boundingvolume::BoundingRect;
+use bigvec::{AdaptiveInt};
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
 use std::fmt::Debug;
-use nalgebra::{Repeat};
 use nalgebra as na;
+use nalgebra::{Repeat};
 
 pub trait RTreeNum: Signed + Clone + Debug + PartialOrd { }
 pub trait RTreeFloat: RTreeNum + cg::BaseFloat + na::BaseFloat { }
@@ -36,6 +37,8 @@ impl RTreeFloat for f64 { }
 
 impl RTreeNum for BigInt { }
 impl RTreeNum for BigRational { }
+impl RTreeNum for AdaptiveInt { }
+impl RTreeNum for Ratio<AdaptiveInt> { }
 
 /// Abstraction over vectors in different dimensions.
 pub trait VectorN where Self: Clone,
@@ -70,8 +73,8 @@ Self: PartialEq {
     }
 
     /// Maps an unary operation to all compoenents.
-    fn map<F: Fn(Self::Scalar) -> Self::Scalar>(&self, f: F) -> Self {
-        let mut result = self.clone();
+    fn map<F: Fn(Self::Scalar) -> O::Scalar, O: VectorN>(&self, f: F) -> O {
+        let mut result = O::new();
         for i in 0 .. Self::dimensions() {
             result[i]  = f(self[i].clone());
         }
@@ -252,87 +255,3 @@ impl <S>  SpatialObject for S where S: HasPosition {
     }
 }
 
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BigVec2<N: Num> {
-    pub x: N,
-    pub y: N,
-}
-
-impl <N: Num + Clone> BigVec2<N> {
-    pub fn new(x: N, y: N) -> BigVec2<N> {
-        BigVec2 { x: x, y: y }
-    }
-}
-
-impl <N: RTreeNum> VectorN for BigVec2<N> {
-    type Scalar = N;
-
-    fn dimensions() -> usize {
-        2
-    }
-
-    fn from_value(val: N) -> Self {
-        BigVec2::new(val.clone(), val.clone())
-    }
-}
-
-impl <N: RTreeNum> Add for BigVec2<N> {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self {
-        BigVec2::new(self.x + rhs.x, self.y + rhs.y)
-    }
-}
-
-impl <N: RTreeNum> Sub for BigVec2<N> {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self {
-        BigVec2::new(self.x - rhs.x, self.y - rhs.y)
-    }
-}
-
-impl <N: RTreeNum> Mul<N> for BigVec2<N> {
-    type Output = Self;
-    fn mul(self, rhs: N) -> Self {
-        BigVec2::new(self.x * rhs.clone(), self.y * rhs.clone())
-    }
-}
-
-impl <N: RTreeNum> Div<N> for BigVec2<N> {
-    type Output = Self;
-    fn div(self, rhs: N) -> Self {
-        BigVec2::new(self.x / rhs.clone(), self.y / rhs.clone())
-    }
-}
-
-impl <N: RTreeNum> Index<usize> for BigVec2<N> {
-    type Output = N;
-
-    fn index<'a>(&'a self, index: usize) -> &'a N {
-        unsafe {
-            &::std::mem::transmute::<_, &[N; 2]>(self)[index]
-        }
-
-    }
-}
-
-impl <N: RTreeNum> IndexMut<usize> for BigVec2<N> {
-
-    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut N {
-        unsafe {
-            &mut ::std::mem::transmute::<_, &mut [N; 2]>(self)[index]
-        }
-    }
-}
-
-impl <I> From<cg::Vector2<I>> for BigVec2<BigInt> where I: cg::BaseNum + ToBigInt {
-    fn from(v: cg::Vector2<I>) -> Self {
-        BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
-    }
-}
-
-impl <I> From<na::Vector2<I>> for BigVec2<BigInt> where I: na::BaseNum + ToBigInt {
-    fn from(v: na::Vector2<I>) -> Self {
-        BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
-    }
-}

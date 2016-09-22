@@ -13,17 +13,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{BaseFloat, Vector2};
+use cgmath::{BaseFloat, Vector2, BaseNum};
 use rtree::RTree;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
 use traits::RTreeNum;
 
-pub fn random_points_with_seed<S: BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+pub fn random_scalars_in_range<S: RTreeNum + Rand + SampleRange>(range: S, size: usize, seed: [u32; 4]) -> Vec<S> {
     let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-S::one(), S::one());
-    let mut points = Vec::new();
+    let range = Range::new(-range.clone(), range.clone());
+    let mut result = Vec::with_capacity(size);
+    for _ in 0 .. size {
+        result.push(range.ind_sample(&mut rng));
+    }
+    result
+}
+
+pub fn random_points_in_range<S: RTreeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed);
+    let range = Range::new(-range.clone(), range.clone());
+    let mut points = Vec::with_capacity(size);
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng);
         let y = range.ind_sample(&mut rng);
@@ -32,7 +42,11 @@ pub fn random_points_with_seed<S: BaseFloat + Rand + SampleRange>(size: usize, s
     points
 }
 
-pub fn create_random_tree<S: BaseFloat + Rand + SampleRange + RTreeNum>(
+pub fn random_points_with_seed<S: RTreeNum + BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+    random_points_in_range(S::one(), size, seed)
+}
+
+pub fn create_random_tree<S: RTreeNum + BaseFloat + Rand + SampleRange>(
     size: usize, seed: [u32; 4]) -> (
     RTree<Vector2<S>>, Vec<Vector2<S>>) {
     let mut tree = RTree::new();

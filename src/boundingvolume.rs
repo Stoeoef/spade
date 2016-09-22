@@ -150,8 +150,8 @@ impl <V> BoundingRect<V> where V: VectorN {
     pub fn max_dist2(&self, point: &V) -> V::Scalar {
         let l = self.lower();
         let u = self.upper();
-        let d1 = (l - point.clone()).map(|v| v.abs());
-        let d2 = (u - point.clone()).map(|v| v.abs());
+        let d1: V = (l - point.clone()).map(|v| v.abs());
+        let d2: V = (u - point.clone()).map(|v| v.abs());
         let max_delta = d1.max_vec(&d2);
         max_delta.length2()
     }

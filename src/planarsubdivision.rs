@@ -14,22 +14,25 @@
 // limitations under the License.
 
 use traits::{HasPosition, VectorN};
+use kernels::{DelaunayKernel, TrivialKernel};
 use primitives::SimpleEdge;
+use std::marker::PhantomData;
 use std::default::Default;
 use std::ops::Deref;
 
-pub struct PlanarSubdivision<V> where V: HasPosition {
+pub struct PlanarSubdivision<V, K> where V: HasPosition {
+    __kernel: PhantomData<K>,
     vertices: Vec<VertexEntry<V>>,
 }
 
-pub fn contained_in_circle_segment<V: VectorN>(
+pub fn contained_in_circle_segment<V: VectorN, K: DelaunayKernel<V::Scalar>>(
     origin: &V, cw_edge: &V, ccw_edge: &V, query_point: &V) -> bool 
 {
     let cw_edge = SimpleEdge::new(origin.clone(), cw_edge.clone());
     let ccw_edge = SimpleEdge::new(origin.clone(), ccw_edge.clone());
 
-    let cw_info = cw_edge.side_query(query_point);
-    let ccw_info = ccw_edge.side_query(query_point);
+    let cw_info = K::side_query(&cw_edge, query_point);
+    let ccw_info = K::side_query(&ccw_edge, query_point);
 
     let is_cw_left = cw_info.is_on_left_side_or_on_line();
     let is_ccw_right = ccw_info.is_on_right_side_or_on_line();
@@ -49,10 +52,13 @@ pub enum SectorInfo {
     InSector(usize),
 }
 
-impl<V: HasPosition> PlanarSubdivision<V> {
+impl<V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> PlanarSubdivision<V, K> {
 
-    pub fn new() -> PlanarSubdivision<V> {
-        Default::default()
+    pub fn new() -> PlanarSubdivision<V, K> {
+        PlanarSubdivision {
+            __kernel: Default::default(),
+            vertices: Vec::new(),
+        }
     }
 
     pub fn insert_vertex<'a> (&'a mut self, vertex: V) 
@@ -88,7 +94,7 @@ impl<V: HasPosition> PlanarSubdivision<V> {
                     let from_pos = self.handle(from).position();
                     let cw_pos = self.handle(ns[sector - 1]).position();
                     let ccw_pos = self.handle(ns[sector % ns.len()]).position();
-                    contained_in_circle_segment(&from_pos, &cw_pos, &ccw_pos, &to_pos)
+                    contained_in_circle_segment::<V::Vector, K>(&from_pos, &cw_pos, &ccw_pos, &to_pos)
                 } else {
                     true
                 }
@@ -155,12 +161,12 @@ impl<V: HasPosition> PlanarSubdivision<V> {
     }
 
     pub fn handle(&self, fixed_handle: FixedVertexHandle)
-        -> VertexHandle<V> {
+        -> VertexHandle<V, K> {
         VertexHandle::new(&self, self.entry(fixed_handle), fixed_handle)
     }
 
     pub fn edge_handle(&self, fixed_handle: &FixedEdgeHandle) 
-    -> EdgeHandle<V> {
+    -> EdgeHandle<V, K> {
         EdgeHandle::new(&self, fixed_handle.from_handle,
                         fixed_handle.to_index)
     }
@@ -173,24 +179,24 @@ impl<V: HasPosition> PlanarSubdivision<V> {
         Box::new(0 .. self.vertices.len())
     }
 
-    pub fn vertices<'a>(&'a self) -> AllVerticesIterator<'a, V> {
+    pub fn vertices<'a>(&'a self) -> AllVerticesIterator<'a, V, K> {
         AllVerticesIterator { subdiv: self, cur_vertex: 0 }
     }
 
-    pub fn edges<'a>(&'a self) -> AllEdgesIterator<'a, V> {
+    pub fn edges<'a>(&'a self) -> AllEdgesIterator<'a, V, K> {
         AllEdgesIterator::new(self)
     }
 }
 
-pub struct AllVerticesIterator<'a, V: HasPosition + 'a> {
-    subdiv: &'a PlanarSubdivision<V>,
+pub struct AllVerticesIterator<'a, V: HasPosition + 'a, K: 'a> {
+    subdiv: &'a PlanarSubdivision<V, K>,
     cur_vertex: FixedVertexHandle,
 }
 
-impl <'a, V: HasPosition> Iterator for AllVerticesIterator<'a, V> {
-    type Item = VertexHandle<'a, V>;
+impl <'a, V: HasPosition, K> Iterator for AllVerticesIterator<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    type Item = VertexHandle<'a, V, K>;
 
-    fn next(&mut self) -> Option<VertexHandle<'a, V>> {
+    fn next(&mut self) -> Option<VertexHandle<'a, V, K>> {
         if self.cur_vertex >= self.subdiv.num_vertices() {
             None
         } else {
@@ -200,14 +206,14 @@ impl <'a, V: HasPosition> Iterator for AllVerticesIterator<'a, V> {
     }
 }
 
-pub struct AllEdgesIterator<'a, V: HasPosition + 'a> {
-    subdiv: &'a PlanarSubdivision<V>,
+pub struct AllEdgesIterator<'a, V: HasPosition + 'a, K: 'a> {
+    subdiv: &'a PlanarSubdivision<V, K>,
     cur_vertex: FixedVertexHandle,
     cur_vertex_index: usize,
 }
 
-impl <'a, V: HasPosition> AllEdgesIterator<'a, V> {
-    pub fn new(subdiv: &'a PlanarSubdivision<V>) -> Self {
+impl <'a, V: HasPosition, K> AllEdgesIterator<'a, V, K> {
+    pub fn new(subdiv: &'a PlanarSubdivision<V, K>) -> Self {
         AllEdgesIterator {
             subdiv: subdiv,
             cur_vertex: 0,
@@ -216,10 +222,10 @@ impl <'a, V: HasPosition> AllEdgesIterator<'a, V> {
     }
 }
 
-impl <'a, V: HasPosition + 'a> Iterator for AllEdgesIterator<'a, V> {
-    type Item = EdgeHandle<'a, V>;
+impl <'a, V: HasPosition + 'a, K> Iterator for AllEdgesIterator<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    type Item = EdgeHandle<'a, V, K>;
     
-    fn next(&mut self) -> Option<EdgeHandle<'a, V>> {
+    fn next(&mut self) -> Option<EdgeHandle<'a, V, K>> {
         if let Some(cur_entry) = self.subdiv.entry_option(self.cur_vertex) {
             if self.cur_vertex_index >= cur_entry.neighbors.len() {
                 self.cur_vertex += 1;
@@ -242,10 +248,11 @@ impl <'a, V: HasPosition + 'a> Iterator for AllEdgesIterator<'a, V> {
     }
 }
 
-impl <V: HasPosition> Default for PlanarSubdivision<V> {
-    fn default() -> PlanarSubdivision<V> {
+impl <V: HasPosition> Default for PlanarSubdivision<V, TrivialKernel> {
+    fn default() -> PlanarSubdivision<V, TrivialKernel> {
         PlanarSubdivision {
-            vertices: Vec::new()
+            __kernel: Default::default(),
+            vertices: Vec::new(),
         }
     }
 }
@@ -264,14 +271,14 @@ impl <V: HasPosition> VertexEntry<V> {
     }
 }
 
-pub struct VertexHandle<'a, V> where V: HasPosition + 'a {
-    subdiv: &'a PlanarSubdivision<V>,
+pub struct VertexHandle<'a, V, K> where V: HasPosition + 'a, K: 'a {
+    subdiv: &'a PlanarSubdivision<V, K>,
     entry: &'a VertexEntry<V>,
     fixed: FixedVertexHandle,
 }
 
-impl <'a, V> Clone for VertexHandle<'a, V> where V: HasPosition + 'a {
-    fn clone(&self) -> VertexHandle<'a, V> {
+impl <'a, V, K> Clone for VertexHandle<'a, V, K> where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a {
+    fn clone(&self) -> VertexHandle<'a, V, K> {
         VertexHandle::new(self.subdiv, self.entry, self.fixed)
     }
 }
@@ -317,8 +324,8 @@ impl <T, F> Iterator for CircularIterator<T, F> where
     }
 }
 
-pub struct EdgeHandle<'a, V> where V: HasPosition + 'a {
-    subdiv: &'a PlanarSubdivision<V>,
+pub struct EdgeHandle<'a, V, K> where V: HasPosition + 'a, K: 'a {
+    subdiv: &'a PlanarSubdivision<V, K>,
     from_handle: FixedVertexHandle,
     to_index: usize,
 }
@@ -338,23 +345,23 @@ impl FixedEdgeHandle {
     }
 }
 
-impl <'a, V> Clone for EdgeHandle<'a, V> where V: HasPosition + 'a {
-    fn clone(&self) -> EdgeHandle<'a, V> {
+impl <'a, V, K> Clone for EdgeHandle<'a, V, K> where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    fn clone(&self) -> EdgeHandle<'a, V, K> {
         EdgeHandle::new(self.subdiv, self.from_handle, self.to_index)
     }
 }
 
-impl <'a, V> PartialEq for EdgeHandle<'a, V> where V: HasPosition + 'a {
-    fn eq(&self, rhs: &EdgeHandle<'a, V>) -> bool {
+impl <'a, V, K> PartialEq for EdgeHandle<'a, V, K> where V: HasPosition + 'a {
+    fn eq(&self, rhs: &EdgeHandle<'a, V, K>) -> bool {
         self.from_handle == rhs.from_handle && self.to_index == rhs.to_index
     }
 }
 
-impl <'a, V: HasPosition> EdgeHandle<'a, V> {
+impl <'a, V: HasPosition, K> EdgeHandle<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
 
     pub fn from_neighbors(
-        subdiv: &'a PlanarSubdivision<V>, from: FixedVertexHandle,
-        to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
+        subdiv: &'a PlanarSubdivision<V, K>, from: FixedVertexHandle,
+        to: FixedVertexHandle) -> Option<EdgeHandle<'a, V, K>> {
         let from_handle = subdiv.handle(from);
         if let Some(index) = from_handle.fixed_neighbors().iter()
             .position(|e| *e == to)
@@ -365,8 +372,8 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
         }
     }
 
-    fn new(subdiv: &'a PlanarSubdivision<V>, from_handle: FixedVertexHandle,
-           to_index: usize) -> EdgeHandle<'a, V> {
+    fn new(subdiv: &'a PlanarSubdivision<V, K>, from_handle: FixedVertexHandle,
+           to_index: usize) -> EdgeHandle<'a, V, K> {
         EdgeHandle {
             subdiv: subdiv,
             from_handle: from_handle,
@@ -374,16 +381,16 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
         }
     }
 
-    pub fn from_handle(&self) -> VertexHandle<'a, V> {
+    pub fn from_handle(&self) -> VertexHandle<'a, V, K> {
         self.subdiv.handle(self.from_handle)
     }
 
-    pub fn to_handle(&self) -> VertexHandle<'a, V> {
+    pub fn to_handle(&self) -> VertexHandle<'a, V, K> {
         self.subdiv.handle(self.subdiv.entry(self.from_handle).neighbors[self.to_index])
     }
 
-    pub fn ccw_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V>> + 'a> {
-        let clone: EdgeHandle<'a, V> = self.clone();
+    pub fn ccw_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, K>> + 'a> {
+        let clone: EdgeHandle<'a, V, K> = self.clone();
         Box::new(CircularIterator::new(clone, |h| h.ccw()))
     }
 
@@ -395,13 +402,13 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
     }
 
 
-    pub fn ccw(&self) -> EdgeHandle<'a, V> {
+    pub fn ccw(&self) -> EdgeHandle<'a, V, K> {
         let from_handle = self.from_handle();
         let ccw_index = (self.to_index + 1) % from_handle.num_neighbors();
         EdgeHandle::new(self.subdiv, self.from_handle, ccw_index)
     }
 
-    pub fn cw(&self) -> EdgeHandle<'a, V> {
+    pub fn cw(&self) -> EdgeHandle<'a, V, K> {
         let from_handle = self.from_handle();
         let cw_index = if self.to_index == 0 {
             from_handle.num_neighbors() - 1
@@ -411,7 +418,7 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
         EdgeHandle::new(self.subdiv, self.from_handle, cw_index)
     }
 
-    pub fn rev(&self) -> EdgeHandle<'a, V> {
+    pub fn rev(&self) -> EdgeHandle<'a, V, K> {
         let to_handle = self.to_handle().fix();
         EdgeHandle::from_neighbors(
             &self.subdiv, to_handle, self.from_handle)
@@ -424,9 +431,9 @@ impl <'a, V: HasPosition> EdgeHandle<'a, V> {
     }
 }
 
-impl <'a, V: HasPosition> VertexHandle<'a, V>  {
-    fn new(subdiv: &'a PlanarSubdivision<V>, entry: &'a VertexEntry<V>,
-           fixed: FixedVertexHandle) -> VertexHandle<'a, V> {
+impl <'a, V: HasPosition, K> VertexHandle<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    fn new(subdiv: &'a PlanarSubdivision<V, K>, entry: &'a VertexEntry<V>,
+           fixed: FixedVertexHandle) -> VertexHandle<'a, V, K> {
         VertexHandle {
             subdiv: subdiv,
             entry: entry,
@@ -438,12 +445,12 @@ impl <'a, V: HasPosition> VertexHandle<'a, V>  {
         &self.entry.neighbors
     }
 
-    pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V>> + 'a> {
+    pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V, K>> + 'a> {
         let subdiv = self.subdiv;
         Box::new(self.entry.neighbors.iter().map(move |h| subdiv.handle(*h)))
     }
 
-    pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V>> + 'a> {
+    pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, K>> + 'a> {
         let num_neighbors = self.num_neighbors();
         let subdiv = self.subdiv;
         let fixed = self.fixed;
@@ -462,19 +469,19 @@ impl <'a, V: HasPosition> VertexHandle<'a, V>  {
         let cw = *neighbors.first().unwrap();
         let cw_pos = self.subdiv.handle(cw).position();
         let mut cw_edge = SimpleEdge::new(vertex_pos.clone(), cw_pos);
-        let mut cw_query = cw_edge.side_query(point);
+        let mut cw_query = K::side_query(&cw_edge, point);
         let mut sector = neighbors.len();
         for (cur_sector, next) in neighbors.iter().enumerate().skip(1) {
             let ccw = self.subdiv.handle(*next);
             let ccw_pos = ccw.position();
             let ccw_edge = SimpleEdge::new(vertex_pos.clone(), ccw_pos);
-            let ccw_query = ccw_edge.side_query(point);
+            let ccw_query = K::side_query(&ccw_edge, point);
             let is_cw_left = cw_query.is_on_left_side_or_on_line();
             let is_ccw_right = ccw_query.is_on_right_side_or_on_line();
             // Check if segment forms an angler sharper than 180 deg
             let contained = (is_cw_left || is_ccw_right)
                 && ((is_cw_left && is_ccw_right) 
-                    || ccw_edge.side_query(&cw_edge.to).is_on_left_side());
+                    || K::side_query(&ccw_edge, &cw_edge.to).is_on_left_side());
             if contained {
                 sector = cur_sector;
                 break;
@@ -494,7 +501,7 @@ impl <'a, V: HasPosition> VertexHandle<'a, V>  {
     }
 }
 
-impl <'a, V> Deref for VertexHandle<'a, V> where V: HasPosition {
+impl <'a, V, K> Deref for VertexHandle<'a, V, K> where V: HasPosition {
     type Target = V;
 
     fn deref(&self) -> &V {
@@ -509,11 +516,12 @@ mod test {
     use super::{PlanarSubdivision, FixedVertexHandle, EdgeHandle, CircularIterator,
                 SectorInfo, contained_in_circle_segment};
     use cgmath::Vector2;
+    use kernels::TrivialKernel;
 
-    fn create_subdiv_with_triangle() -> (PlanarSubdivision<Vector2<f32>>,
+    fn create_subdiv_with_triangle() -> (PlanarSubdivision<Vector2<f32>, TrivialKernel>,
                                          FixedVertexHandle, FixedVertexHandle, 
                                          FixedVertexHandle) {
-        let mut subdiv = PlanarSubdivision::new();
+        let mut subdiv = PlanarSubdivision::default();
         let h1 = subdiv.insert_vertex(Vector2::new(0.0f32, 0.0));
         let h2 = subdiv.insert_vertex(Vector2::new(1.0f32, 0.0));
         let h3 = subdiv.insert_vertex(Vector2::new(0.0f32, 1.0));
@@ -525,7 +533,7 @@ mod test {
     
     #[test]
     fn test_insert_vertex() {
-        let mut s = PlanarSubdivision::new();
+        let mut s = PlanarSubdivision::default();
         assert_eq!(s.num_vertices(), 0);
         let fixed = s.insert_vertex(Vector2::new(0.0f32, 0.0));
         {
@@ -539,7 +547,7 @@ mod test {
 
     #[test]
     fn test_connect_vertices_simple() {
-        let mut s = PlanarSubdivision::new();
+        let mut s = PlanarSubdivision::default();
         let vec1 = Vector2::new(0.0f32, 0.0);
         let vec2 = Vector2::new(0.0f32, 1.0);
         let fixed1 = s.insert_vertex(vec1);
@@ -553,7 +561,7 @@ mod test {
 
     #[test]
     fn test_disconnect() {
-        let mut s = PlanarSubdivision::new();
+        let mut s = PlanarSubdivision::default();
         let vec1 = Vector2::new(0.0f32, 0.0);
         let vec2 = Vector2::new(0.0f32, 1.0);
         let fixed1 = s.insert_vertex(vec1);
@@ -604,7 +612,7 @@ mod test {
     #[test]
     fn test_connect_vertices_retains_ccw_ordering() {
         // After insertion, edges must still be ordered ccw
-        let mut s = PlanarSubdivision::new();
+        let mut s = PlanarSubdivision::default();
         let v0 = s.insert_vertex(Vector2::new(0.0f32, 0.0));
         let vs = vec![Vector2::new(0.0f32, 1.0),
                       Vector2::new(1.0f32, 0.0),
@@ -650,7 +658,7 @@ mod test {
 
     #[test]
     fn test_edge_from_neighbors() {
-        let mut s = PlanarSubdivision::new();
+        let mut s = PlanarSubdivision::default();
         let f1 = s.insert_vertex(Vector2::new(0f32, 0f32));
         let f2 = s.insert_vertex(Vector2::new(1f32, 0f32));
         let f3 = s.insert_vertex(Vector2::new(0f32, 1f32));
@@ -685,7 +693,7 @@ mod test {
 
     #[test]
     fn test_flip_edge() {
-        let mut subdiv = PlanarSubdivision::new();
+        let mut subdiv = PlanarSubdivision::default();
         let h0 = subdiv.insert_vertex(Vector2::new(-1f32, -1f32));
         let h1 = subdiv.insert_vertex(Vector2::new(-1f32, 1f32));
         let h2 = subdiv.insert_vertex(Vector2::new(1f32, 1f32));
@@ -715,21 +723,21 @@ mod test {
         let t3 = Vector2::new(-1f32, 1f32);
         let t4 = Vector2::new(-1f32, -1f32);
 
-        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t1));
-        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t2));
-        assert!(contained_in_circle_segment(&v0, &v2, &v3, &t3));
-        assert!(!contained_in_circle_segment(&v0, &v2, &v3, &t4));
+        assert!(!contained_in_circle_segment::<_, TrivialKernel>(&v0, &v2, &v3, &t1));
+        assert!(!contained_in_circle_segment::<_, TrivialKernel>(&v0, &v2, &v3, &t2));
+        assert!(contained_in_circle_segment::<_, TrivialKernel>(&v0, &v2, &v3, &t3));
+        assert!(!contained_in_circle_segment::<_, TrivialKernel>(&v0, &v2, &v3, &t4));
 
 
-        assert!(contained_in_circle_segment(&v0, &v1, &v3, &t1));
-        assert!(!contained_in_circle_segment(&v0, &v1, &v3, &t2));
-        assert!(contained_in_circle_segment(&v0, &v1, &v3, &t3));
-        assert!(!contained_in_circle_segment(&v0, &v1, &v3, &t4));
+        assert!(contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v3, &t1));
+        assert!(!contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v3, &t2));
+        assert!(contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v3, &t3));
+        assert!(!contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v3, &t4));
 
-        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t1));
-        assert!(!contained_in_circle_segment(&v0, &v1, &v4, &t2));
-        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t3));
-        assert!(contained_in_circle_segment(&v0, &v1, &v4, &t4));
+        assert!(contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v4, &t1));
+        assert!(!contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v4, &t2));
+        assert!(contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v4, &t3));
+        assert!(contained_in_circle_segment::<_, TrivialKernel>(&v0, &v1, &v4, &t4));
     }
 
     #[test]
@@ -741,7 +749,7 @@ mod test {
             }
         };
             
-        let mut subdiv = PlanarSubdivision::new();
+        let mut subdiv = PlanarSubdivision::default();
         let h0 = subdiv.insert_vertex(Vector2::new(0f32, 0f32));
         assert_eq!(subdiv.handle(h0).sector_info(&Vector2::new(1.0, 1.0)), SectorInfo::NoSector);
         let h1 = subdiv.insert_vertex(Vector2::new(0f32, 1f32));
@@ -760,7 +768,7 @@ mod test {
 
     #[test]
     fn test_all_edges_iterator() {
-        let mut subdiv = PlanarSubdivision::new();
+        let mut subdiv = PlanarSubdivision::default();
         let h0 = subdiv.insert_vertex(Vector2::new(-1f32, -1f32));
         let h1 = subdiv.insert_vertex(Vector2::new(-1f32, 1f32));
         let h2 = subdiv.insert_vertex(Vector2::new(1f32, 1f32));

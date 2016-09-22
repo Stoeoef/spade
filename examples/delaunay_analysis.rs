@@ -24,58 +24,36 @@ extern crate glium;
 
 mod utils;
 
-use rand::XorShiftRng;
-use spade::{DelaunayTriangulation, RTree, HasPosition, SpatialObject, BigVec2};
-use num::bigint::{ToBigInt, BigInt};
+use spade::{DelaunayTriangulation, DelaunayKernel, 
+            AdaptiveIntKernel, TrivialKernel, FloatKernel, VectorN};
 use utils::*;
 use time::Duration;
 use cgmath::Vector2;
 
-struct PointWithIndex {
-    point: Vector2<f64>,
-    index: usize,
-}
-
-impl HasPosition for PointWithIndex {
-    type Vector = Vector2<f64>;
-
-    fn position(&self) -> Vector2<f64> {
-        self.point
-    }
-}
-
-fn main() {
-    const MAX_VERTICES: usize = 400000;
-    const MAX_VERTICES_SMALL: usize = MAX_VERTICES / 10;
-
-    let seed = [6663111, 351, 23151, 23126];
-    let vertices = random_points_with_seed::<f64>(MAX_VERTICES, seed);
-    // let mut delaunay = DelaunayTriangulation::new();
-    // println!("f64 benchmark");
-    // let time = Duration::span(|| {
-    //     for vertex in vertices.iter() {
-    //         delaunay.insert(*vertex);
-    //     }
-    // });
-    // println!("time: {:?}", time);
-    // println!("i64 benchmark");
-    let vertices = random_points_with_seed_and_range::<i64>(10000, MAX_VERTICES, seed);
-    // let mut delaunay = DelaunayTriangulation::new();
-    // let time = Duration::span(|| {
-    //     for vertex in vertices.iter() {
-    //         delaunay.insert(*vertex);
-    //     }
-    // });
-    // println!("time: {:?}", time);
-    
-    println!("BigInt benchmark");
-    let vertices: Vec<BigVec2<BigInt>> = vertices.iter().take(MAX_VERTICES_SMALL)
-        .map(|v| (*v).into()).collect();
-    let mut delaunay = DelaunayTriangulation::new();
+fn bench<V: VectorN, K: DelaunayKernel<V::Scalar>>(vs: &[V], title: &str) {
+    println!("{}", title);
+    let mut delaunay: DelaunayTriangulation<V, K> = DelaunayTriangulation::new();
     let time = Duration::span(|| {
-        for vertex in vertices.iter() {
+        for vertex in vs.iter() {
             delaunay.insert(vertex.clone());
         }
     });
-    println!("time: {:?}", time);
+    println!("time / op: {:?}ns", time.num_nanoseconds().unwrap() / vs.len() as i64);
+}
+
+fn main() {
+
+    const SIZE: usize = 400000;
+
+    let seed = [661311, 350191, 123021, 231261];
+    let vertices_f64 = random_points_with_seed_range_and_origin::<f64>(
+        20.0, Vector2::new(1e20, -1e20), SIZE, seed);
+    let vertices_i64 = random_points_with_seed_and_range::<i64>(10000, SIZE, seed);
+    let vertices_large_range = random_points_with_seed_and_range::<i64>(
+        1000000000, SIZE, seed);
+
+    bench::<_, TrivialKernel>(&vertices_f64, "f64 benchmark");
+    bench::<_, TrivialKernel>(&vertices_i64, "i64 benchmark");
+    bench::<_, AdaptiveIntKernel>(&vertices_large_range, "AdaptiveIntKernel benchmark");
+    bench::<_, FloatKernel>(&vertices_f64, "FloatKernel benchmark");
 }

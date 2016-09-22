@@ -27,6 +27,9 @@ mod traits;
 mod rtree;
 mod misc;
 mod boundingvolume;
+mod bigvec;
+mod exactpred;
+mod kernels;
 
 pub mod primitives;
 
@@ -35,6 +38,7 @@ mod planarsubdivision;
 
 pub use rtree::*;
 pub use delaunay::*;
-pub use planarsubdivision::*;
 pub use traits::*;
 pub use boundingvolume::*;
+pub use bigvec::*;
+pub use kernels::*;

@@ -36,18 +36,24 @@ impl Vertex {
     }
 }
 
-pub fn random_points_with_seed_and_range<S: RTreeNum + Copy + Rand + SampleRange>(
-    range: S, size: usize, seed: [u32; 4])
+pub fn random_points_with_seed_range_and_origin<S: RTreeNum + Copy + Rand + SampleRange>(
+    range: S, origin: Vector2<S>, size: usize, seed: [u32; 4])
     -> Vec<Vector2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-range, range);
     let mut points = Vec::new();
     for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng);
-        let y = range.ind_sample(&mut rng);
+        let x = range.ind_sample(&mut rng) + origin.x;
+        let y = range.ind_sample(&mut rng) + origin.y;
         points.push(Vector2::new(x, y));
     }
     points    
+}
+
+pub fn random_points_with_seed_and_range<S: RTreeNum + Copy + Rand + SampleRange>(
+    range: S, size: usize, seed: [u32; 4])
+    -> Vec<Vector2<S>> {
+    random_points_with_seed_range_and_origin(range, Vector2::new(S::zero(), S::zero()), size, seed)
 }
 
 pub fn random_points_with_seed<S: RTreeFloat + Rand + SampleRange + BaseNum>(

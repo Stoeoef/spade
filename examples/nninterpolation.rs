@@ -26,7 +26,7 @@ use kiss3d::resource::Mesh;
 
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
-use spade::{DelaunayTriangulation, HasPosition};
+use spade::{DelaunayTriangulation, HasPosition, TrivialKernel};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -82,7 +82,7 @@ fn main() {
 }
 
 fn get_interpolated_grid(
-    delaunay: &DelaunayTriangulation<VectorWithHeight>) -> Vec<(Vector3<f32>, Vector3<f32>)> {
+    delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>) -> Vec<(Vector3<f32>, Vector3<f32>)> {
     let mut result = Vec::new();
     const GRID_SIZE: f64 = SAMPLE_REGION * 1.1;
     const OFFSET: f64 = -0.1;
@@ -109,16 +109,16 @@ fn get_interpolated_grid(
     result
 }
 
-fn generate_random_mesh() -> (Mesh, DelaunayTriangulation<VectorWithHeight>) {
+fn generate_random_mesh() -> (Mesh, DelaunayTriangulation<VectorWithHeight, TrivialKernel>) {
     let delaunay = generate_random_triangulation();
     (create_mesh_from_triangulation(&delaunay), delaunay)
 }
 
-fn extract_edges(delaunay: &DelaunayTriangulation<VectorWithHeight>)
+fn extract_edges(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>)
                  -> Vec<(Vector3<f32>, Vector3<f32>)> {
     let offset = Vector3::new(0., 0., -0.01);
     let mut lines = Vec::new();
-    for edge in delaunay.subdiv().edges() {
+    for edge in delaunay.edges() {
         let from_pos = Cast::from(edge.from_handle().position_3d() + offset);
         let to_pos = Cast::from(edge.to_handle().position_3d() + offset);
         lines.push((from_pos, to_pos));
@@ -126,7 +126,7 @@ fn extract_edges(delaunay: &DelaunayTriangulation<VectorWithHeight>)
     lines
 }
 
-fn generate_random_triangulation() -> DelaunayTriangulation<VectorWithHeight> {
+fn generate_random_triangulation() -> DelaunayTriangulation<VectorWithHeight, TrivialKernel> {
 
     let mut rng = ::rand::thread_rng();
     let seed = ::noise::Seed::new(rng.gen());
@@ -143,10 +143,10 @@ fn generate_random_triangulation() -> DelaunayTriangulation<VectorWithHeight> {
     delaunay
 }
 
-fn create_mesh_from_triangulation(delaunay: &DelaunayTriangulation<VectorWithHeight>) -> Mesh {
+fn create_mesh_from_triangulation(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>) -> Mesh {
     let mut coords = Vec::new();
     let mut faces = Vec::new();
-    for vertex in delaunay.subdiv().vertices() {
+    for vertex in delaunay.vertices() {
         coords.push(Cast::from(vertex.position_3d().to_point()));
     }
     for triangle in delaunay.triangles() {

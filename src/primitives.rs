@@ -34,11 +34,16 @@ pub struct SimpleEdge<V: VectorN> {
     pub to: V,
 }
 
+#[derive(Debug)]
 pub struct EdgeSideInfo<S> {
     signed_side: S,
 }
 
 impl <S> EdgeSideInfo<S> where S: RTreeNum  {
+    pub fn from_determinant(s: S) -> EdgeSideInfo<S> {
+        EdgeSideInfo { signed_side: s }
+    }
+
     /// Returns `true` if the query point lies on the left side of the query edge.
     pub fn is_on_left_side(&self) -> bool {
         self.signed_side > S::zero()
@@ -62,6 +67,12 @@ impl <S> EdgeSideInfo<S> where S: RTreeNum  {
     /// Returns `true` if the query point lies on the line.
     pub fn is_on_line(&self) -> bool {
         self.signed_side.abs() == zero()
+    }
+}
+
+impl <S: RTreeNum + Float> EdgeSideInfo<S> {
+    pub fn is_det_normal(&self) -> bool {
+        self.signed_side.is_normal()
     }
 }
 
