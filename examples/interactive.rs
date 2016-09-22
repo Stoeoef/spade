@@ -21,7 +21,8 @@ extern crate glium;
 
 mod utils;
 use utils::exampleapplication::ExampleApplication;
-use utils::{Vertex, get_color_for_depth, push_rectangle, push_cross, random_points_with_seed};
+use utils::{Vertex, get_color_for_depth, push_rectangle, push_cross};
+use spade::testutils::random_points_with_seed;
 use spade::{RTree, RTreeNode};
 use cgmath::{Vector2, Vector3};
 use cgmath::conv::*;

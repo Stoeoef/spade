@@ -18,7 +18,7 @@ use cgmath as cg;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul, Rem, Neg};
 use num::{Num, BigInt, Zero, One, Signed, ToPrimitive, Integer};
 use num::bigint::ToBigInt;
-use traits::{RTreeNum, VectorN};
+use traits::{SpadeNum, VectorN};
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,7 +35,7 @@ impl <N: Num + Clone> BigVec2<N> {
     }
 }
 
-impl <N: RTreeNum> VectorN for BigVec2<N> {
+impl <N: SpadeNum> VectorN for BigVec2<N> {
     type Scalar = N;
 
     fn dimensions() -> usize {
@@ -47,35 +47,35 @@ impl <N: RTreeNum> VectorN for BigVec2<N> {
     }
 }
 
-impl <N: RTreeNum> Add for BigVec2<N> {
+impl <N: SpadeNum> Add for BigVec2<N> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         BigVec2::new(self.x + rhs.x, self.y + rhs.y)
     }
 }
 
-impl <N: RTreeNum> Sub for BigVec2<N> {
+impl <N: SpadeNum> Sub for BigVec2<N> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
         BigVec2::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
 
-impl <N: RTreeNum> Mul<N> for BigVec2<N> {
+impl <N: SpadeNum> Mul<N> for BigVec2<N> {
     type Output = Self;
     fn mul(self, rhs: N) -> Self {
         BigVec2::new(self.x * rhs.clone(), self.y * rhs.clone())
     }
 }
 
-impl <N: RTreeNum> Div<N> for BigVec2<N> {
+impl <N: SpadeNum> Div<N> for BigVec2<N> {
     type Output = Self;
     fn div(self, rhs: N) -> Self {
         BigVec2::new(self.x / rhs.clone(), self.y / rhs.clone())
     }
 }
 
-impl <N: RTreeNum> Index<usize> for BigVec2<N> {
+impl <N: SpadeNum> Index<usize> for BigVec2<N> {
     type Output = N;
 
     fn index<'a>(&'a self, index: usize) -> &'a N {
@@ -86,7 +86,7 @@ impl <N: RTreeNum> Index<usize> for BigVec2<N> {
     }
 }
 
-impl <N: RTreeNum> IndexMut<usize> for BigVec2<N> {
+impl <N: SpadeNum> IndexMut<usize> for BigVec2<N> {
 
     fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut N {
         unsafe {
@@ -360,7 +360,7 @@ impl Signed for AdaptiveInt {
         }
     }
     fn abs_sub(&self, other: &Self) -> Self {
-        use ::AdaptiveInt::*;
+        use bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.abs_sub(r)),
             (&LowRes(ref l), &HighRes(ref r)) => HighRes(l.to_bigint().unwrap().abs_sub(r)),

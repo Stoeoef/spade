@@ -24,7 +24,7 @@ extern crate time;
 mod utils;
 
 use spade::{RTree};
-use utils::*;
+use spade::testutils::*;
 use time::Duration;
 use cgmath::Vector2;
 use std::path::Path;

@@ -13,12 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{RTreeNum};
+use traits::{SpadeNum};
 
 // A call to l.min(r) does not seem to be inlined, thus we define it ourselves
 // This does improve performance significantly.
 #[inline]
-pub fn min_inline<S: RTreeNum>(a: S, b: S) -> S {
+pub fn min_inline<S: SpadeNum>(a: S, b: S) -> S {
     if a < b {
         a
     } else {
@@ -27,7 +27,7 @@ pub fn min_inline<S: RTreeNum>(a: S, b: S) -> S {
 }
 
 #[inline]
-pub fn max_inline<S: RTreeNum>(a: S, b: S) -> S {
+pub fn max_inline<S: SpadeNum>(a: S, b: S) -> S {
     if a > b {
         a
     } else {

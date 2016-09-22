@@ -12,9 +12,9 @@ cgmath = "0.11.*"
 num = "0.1.*"
 nalgebra = "0.9.*"
 clamp = "0.1.*"
+rand = "0.3.*"
 
 [dev-dependencies]
-rand = "0.3.*"
 time = "0.1.*"
 glium = "0.15.*"
 kiss3d = "0.7.*"

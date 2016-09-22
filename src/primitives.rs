@@ -21,7 +21,7 @@
 
 
 use cgmath::{Vector3, Zero, One};
-use traits::{RTreeFloat, RTreeNum, SpatialObject, VectorN};
+use traits::{SpadeFloat, SpadeNum, SpatialObject, VectorN};
 use num::{Float, one, zero, Signed};
 use boundingvolume::BoundingRect;
 
@@ -39,7 +39,7 @@ pub struct EdgeSideInfo<S> {
     signed_side: S,
 }
 
-impl <S> EdgeSideInfo<S> where S: RTreeNum  {
+impl <S> EdgeSideInfo<S> where S: SpadeNum  {
     pub fn from_determinant(s: S) -> EdgeSideInfo<S> {
         EdgeSideInfo { signed_side: s }
     }
@@ -70,7 +70,7 @@ impl <S> EdgeSideInfo<S> where S: RTreeNum  {
     }
 }
 
-impl <S: RTreeNum + Float> EdgeSideInfo<S> {
+impl <S: SpadeNum + Float> EdgeSideInfo<S> {
     pub fn is_det_normal(&self) -> bool {
         self.signed_side.is_normal()
     }
@@ -107,7 +107,7 @@ impl <V> SimpleEdge<V> where V: VectorN {
     }
 }
 
-impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: RTreeFloat {
+impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
     /// Yields the nearest point on this edge.
     pub fn nearest_point(&self, query_point: &V) -> V {
         let (p1, p2) = (self.from.clone(), self.to.clone());
@@ -145,7 +145,7 @@ impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: RTreeFloat {
     }
 }
 
-impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: RTreeFloat {
+impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
     type Vector = V;
 
     fn mbr(&self) -> BoundingRect<V> {
@@ -189,7 +189,7 @@ impl <V> SimpleTriangle<V> where V: VectorN {
 
 }
 
-impl <V> PartialEq for SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat {
+impl <V> PartialEq for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
     fn eq(&self, rhs: &SimpleTriangle<V>) -> bool {
         let vl = self.vertices();
         let vr = rhs.vertices();
@@ -203,7 +203,7 @@ impl <V> PartialEq for SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat
     }
 }
 
-impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat {
+impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
     pub fn circumcenter(&self) -> V {
         let one: V::Scalar = One::one();
         let two = one + one;
@@ -235,7 +235,7 @@ impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat {
 }
 
 
-impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: RTreeFloat {
+impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
     type Vector = V;
     
     fn mbr(&self) -> BoundingRect<V> {
@@ -263,7 +263,7 @@ pub struct SimpleCircle<V: VectorN> {
     pub radius: V::Scalar,
 }
 
-impl <V> SimpleCircle<V> where V: VectorN, V::Scalar: RTreeFloat {
+impl <V> SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFloat {
     pub fn new(origin: V, radius: V::Scalar) -> SimpleCircle<V> {
         SimpleCircle {
             origin: origin,
@@ -272,7 +272,7 @@ impl <V> SimpleCircle<V> where V: VectorN, V::Scalar: RTreeFloat {
     }
 }
 
-impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: RTreeFloat {
+impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFloat {
     type Vector = V;
 
     fn mbr(&self) -> BoundingRect<V> {

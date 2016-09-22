@@ -16,7 +16,7 @@
 //! This module offers a delaunay triangulation and various iterators for inspecting
 //! its structure. The main data structure is `DelaunayTriangulation`.
 use num::{one, zero};
-use traits::{SpatialObject, HasPosition, RTreeFloat, VectorN};
+use traits::{SpatialObject, HasPosition, SpadeFloat, VectorN};
 use kernels::{DelaunayKernel, TrivialKernel};
 use rtree::RTree;
 use boundingvolume::BoundingRect;
@@ -33,11 +33,11 @@ pub enum PositionInTriangulation<H> {
     InTriangle([H; 3]),
     /// The point is outside the convex hull. The two given handles mark an edge on the convex
     /// hull that is close to the point.
-    OutsideConvexHull(FixedVertexHandle, FixedVertexHandle),
+    OutsideConvexHull(H, H),
     /// An object with this position has already been inserted. Its handle is given.
-    OnPoint(FixedVertexHandle),
+    OnPoint(H),
     /// The point lies on the edge between two objects. The handles of these objects are given.
-    OnEdge(FixedVertexHandle, FixedVertexHandle),
+    OnEdge(H, H),
     /// There is no valid triangulation yet, thus, all points inserted so far lie on a line.
     NoTriangulationPresent,
 }
@@ -131,7 +131,7 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 /// can fail if imprecise calculations are used (like native `f32` / `f64` operations), 
 /// resulting in crashes at run time. To prevent those crashes, Spade offers a few "calculation
 /// kernels" that can fit the individual needs of an application. Refer to the following table
-/// and the `kernel` module for more information:
+/// and the documentation of each kernel for more information:
 ///
 /// |  |  Vector types: | When to use: | Properties: |
 /// |-------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
@@ -185,7 +185,7 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 pub struct DelaunayTriangulation<V: HasPosition, K>
 {
     __kernel: PhantomData<K>,
-    pub s: PlanarSubdivision<V, K>,
+    s: PlanarSubdivision<V, K>,
     points: RTree<PointEntry<V::Vector>>,
     all_points_on_line: bool,
 }
@@ -199,6 +199,25 @@ impl <V: HasPosition> Default for
 
 impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> DelaunayTriangulation<V, K> 
 {
+    /// Creates a new Delaunay triangulation.
+    ///
+    /// Using this method directly can be a bit cumbersome due to type annotations, consider using
+    /// `Default::default()` or `<kernel name>::new_triangulation()` for a `DelaunayKernel` if
+    /// possible. Otherwise, you may need to specify the kernel like this:
+    ///
+    /// ```
+    /// # extern crate nalgebra;
+    /// # extern crate spade;
+    /// use spade::{DelaunayTriangulation, FloatKernel};
+    /// # fn main() {
+    /// let mut triangulation = DelaunayTriangulation::<_, FloatKernel>::new();
+    /// 
+    /// # triangulation.insert(nalgebra::Vector2::new(332f64, 123f64));
+    /// # }
+    /// ```
+    /// 
+    /// Usually, the omitted type (the triangulation's vertex type) can be inferred after
+    /// `insert` is called.
     pub fn new() -> DelaunayTriangulation<V, K> {
         DelaunayTriangulation {
             __kernel: Default::default(),
@@ -207,27 +226,41 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
             all_points_on_line: true,
         }
     }
-    
+
+    /// Creates a dynamic vertex handle from a fixed handle.
+    /// May panics if the given handle is from another triangulation or artificially
+    /// obtained, `FixedVertexHandles` obtained from this triangulation will remain valid
+    /// until the triangulation is destroyed.
+    /// May panic if the handle was not obtained from this triangulation.
+    pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, K> {
+        self.s.handle(handle)
+    }
+
+    /// Checks if the triangulation contains an object with a given coordinate.
     pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V, K>> {
         let handle = self.points.lookup(point);
         handle.map(|h| self.s.handle(h.handle))
     }
 
+    /// Returns all vertices contained in a rectangle.
     pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Vector>) -> Vec<VertexHandle<V, K>> {
         let fixed_handles = self.points.lookup_in_rectangle(rect);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
 
+    /// Returns all vertices contained in a circle.
     pub fn lookup_in_circle(&self, center: &V::Vector, 
                             radius2: &<V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V, K>> {
         let fixed_handles = self.points.lookup_in_circle(center, radius2);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
 
+    /// Returns the number of vertices in this triangulation.
     pub fn num_vertices(&self) -> usize {
         self.s.num_vertices()
     }
 
+    /// Returns an iterator over all triangles.
     pub fn triangles(&self) -> DelaunayTriangleIterator<V, K> {
         DelaunayTriangleIterator {
             delaunay: &self,
@@ -236,26 +269,28 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
         }
     }
 
+    /// Returns an iterator over all edges.
     pub fn edges(&self) -> AllEdgesIterator<V, K> {
         self.s.edges()
     }
 
+    /// Returns an iterator over all vertices.
     pub fn vertices(&self) -> AllVerticesIterator<V, K> {
         self.s.vertices()
     }
 
-    fn initial_insertion(&mut self, t: V) -> Option<FixedVertexHandle> {
+    fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
         assert!(self.all_points_on_line);
         // Inserts points if no points are present or if all points
         // lie on the same line
         let new_pos = t.position();
         if let Some(entry) = self.points.lookup(&new_pos) {
             self.s.update_vertex(entry.handle, t);
-            return None;
+            return Result::Err(entry.handle);
         }
 
         if self.points.size() <= 1 {
-            return Some(self.s.insert_vertex(t));
+            return Result::Ok(self.s.insert_vertex(t));
         }
 
         // Check if the new point is on the same line as all points in the
@@ -264,7 +299,7 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
         let to = self.s.handle(1).position();
         let edge = SimpleEdge::new(from.clone(), to.clone());
         if K::side_query(&edge, &new_pos).is_on_line() {
-            return Some(self.s.insert_vertex(t));
+            return Result::Ok(self.s.insert_vertex(t));
         }
         // The point does not lie on the same line as all other points.
         // Start creating a triangulation
@@ -285,7 +320,7 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
             self.s.connect(v, new_vertex);
         }
         self.all_points_on_line = false;
-        Some(new_vertex)
+        Result::Ok(new_vertex)
     }
 
     fn get_convex_hull_edges_for_point(&self, first_edge: (FixedVertexHandle, FixedVertexHandle),
@@ -403,17 +438,32 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
         new_handle
     }
 
-    #[inline(never)]
-    pub fn get_position_in_triangulation(&self, point: &V::Vector) -> PositionInTriangulation<FixedVertexHandle> {
-        if self.all_points_on_line {
-            PositionInTriangulation::NoTriangulationPresent
-        } else {
-            let start = self.points.close_neighbor(point).unwrap().handle;
-            self.get_position_in_triangulation_from_start_point(start, point) 
+    /// Returns information about the location of a point in a triangulation.
+    pub fn get_position_in_triangulation(
+        &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V, K>> {
+        use PositionInTriangulation::*;
+
+        match self.get_position_in_triangulation_fixed(point) {
+            NoTriangulationPresent => NoTriangulationPresent,
+            InTriangle(fs) => InTriangle(
+                [self.s.handle(fs[0]), self.s.handle(fs[1]), self.s.handle(fs[2])]),
+            OutsideConvexHull(h1, h2) => OutsideConvexHull(self.s.handle(h1), self.s.handle(h2)),
+            OnPoint(h) => OnPoint(self.s.handle(h)),
+            OnEdge(h1, h2) => OnEdge(self.s.handle(h1), self.s.handle(h2)),
         }
     }
 
-    fn get_position_in_triangulation_from_start_point(
+    fn get_position_in_triangulation_fixed(&self, point: &V::Vector) -> PositionInTriangulation<FixedVertexHandle> {
+        if self.all_points_on_line {
+            // TODO: We might want to check if the point is on the line or already contained
+            PositionInTriangulation::NoTriangulationPresent
+        } else {
+            let start = self.points.close_neighbor(point).unwrap().handle;
+            self.get_position_in_triangulation_from_start_point_fixed(start, point) 
+        }
+    }
+
+    fn get_position_in_triangulation_from_start_point_fixed(
         &self, start: FixedVertexHandle, point: &V::Vector) -> PositionInTriangulation<FixedVertexHandle> {
         let mut cur_handle = self.s.handle(start);
         loop {
@@ -487,28 +537,41 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
         }
     }
 
-    pub fn insert(&mut self, t: V) {
+    /// Inserts a new vertex into the triangulation
+    /// This operations runs in O(log n) on average, n denotes the number of vertices contained
+    /// in the triangulation. If the point has already been contained in the
+    /// triangulation, the old vertex is overwritten.
+    ///
+    /// Returns handle to the new vertex. Use this handle with
+    /// `DelaunayTriangulation::handle(..)` to refer to the vertex.
+    pub fn insert(&mut self, t: V) -> FixedVertexHandle {
         let pos = t.position();
-        let new_handle_opt = match self.get_position_in_triangulation(&pos) {
+        let insertion_result = match self.get_position_in_triangulation_fixed(&pos) {
             PositionInTriangulation::OutsideConvexHull(v1, v2) => {
-                Some(self.insert_outside_convex_hull((v1, v2), t))
+                Result::Ok(self.insert_outside_convex_hull((v1, v2), t))
             },
             PositionInTriangulation::InTriangle(vertices) => {
-                Some(self.insert_into_triangle(vertices, t))
+                Result::Ok(self.insert_into_triangle(vertices, t))
             },
             PositionInTriangulation::OnEdge(v1, v2) => {
-                Some(self.insert_on_edge((v1, v2), t))
+                Result::Ok(self.insert_on_edge((v1, v2), t))
             },
             PositionInTriangulation::OnPoint(vertex) => {
                 self.s.update_vertex(vertex, t);
-                None
+                Result::Err(vertex)
             },
             PositionInTriangulation::NoTriangulationPresent => {
                 self.initial_insertion(t)
-            }                
+            }
         };
-        if let Some(new_handle) = new_handle_opt {
-            self.points.insert(PointEntry { point: pos, handle: new_handle });
+        match insertion_result {
+            Result::Ok(new_handle) => {
+                self.points.insert(PointEntry { point: pos, handle: new_handle });
+                new_handle
+            },
+            Result::Err(update_handle) => {
+                update_handle
+            }
         }
     }
 
@@ -536,7 +599,7 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
 }
 
 impl <V, K> DelaunayTriangulation<V, K> 
-    where V: HasPosition, <V::Vector as VectorN>::Scalar: RTreeFloat,
+    where V: HasPosition, <V::Vector as VectorN>::Scalar: SpadeFloat,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
 
     pub fn nn_interpolation<F: Fn(&V) -> <V::Vector as VectorN>::Scalar>(
@@ -551,7 +614,7 @@ impl <V, K> DelaunayTriangulation<V, K>
             f0 * (one::<<V::Vector as VectorN>::Scalar>() - w1) + f1 * w1
         };
 
-        let nns = match self.get_position_in_triangulation(point) {
+        let nns = match self.get_position_in_triangulation_fixed(point) {
             PositionInTriangulation::InTriangle(vs) => {
                 self.inspect_flips(vec![(vs[0], vs[2]), (vs[2], vs[1]), (vs[1], vs[0])], point)
             },
@@ -704,23 +767,6 @@ mod test {
         assert_eq!(d.triangles().count(), 2);
     }
     
-    // #[test]
-    // fn test_triangle_entry_partial_eq() {
-    //     let v0 = Vector2::new(0.0f32, 0.0);
-    //     let v1 = Vector2::new(1.0, 0.0);
-    //     let v2 = Vector2::new(0.0, 2.0);
-    //     let v3 = Vector2::new(1.0, 1.0);
-    //     let t1 = TriangleEntry::new([v0, v1, v2], [0, 1, 2]);
-    //     let t2 = TriangleEntry::new([v2, v0, v1], [2, 0, 1]);
-    //     assert!(t1 == t2);
-    //     let t3 = TriangleEntry::new([v1, v2, v0], [1, 2, 0]);
-    //     assert!(t1 == t3);
-    //     let t4 = TriangleEntry::new([v0, v1, v3], [0, 1, 2]);
-    //     assert!(t1 != t4);
-    //     let t5 = TriangleEntry::new([v2, v0, v1], [3, 0, 1]);
-    //     assert!(t1 != t5);
-    // }
-
     #[test]
     fn test_insert_points() {
         // Just check if this won't crash

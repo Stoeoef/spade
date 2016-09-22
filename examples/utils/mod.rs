@@ -15,12 +15,9 @@
 
 pub mod exampleapplication;
 
-use cgmath::{Vector2, Vector3, Array, BaseNum};
+use cgmath::{Vector2, Vector3, Array};
 use cgmath::conv::*;
-use rand::{Rand, XorShiftRng, SeedableRng};
-use rand::distributions::{Range, IndependentSample};
-use rand::distributions::range::SampleRange;
-use spade::{BoundingRect, RTreeFloat, RTreeNum};
+use spade::{BoundingRect};
 
 #[derive(Clone, Copy)]
 pub struct Vertex {
@@ -36,32 +33,7 @@ impl Vertex {
     }
 }
 
-pub fn random_points_with_seed_range_and_origin<S: RTreeNum + Copy + Rand + SampleRange>(
-    range: S, origin: Vector2<S>, size: usize, seed: [u32; 4])
-    -> Vec<Vector2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-range, range);
-    let mut points = Vec::new();
-    for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng) + origin.x;
-        let y = range.ind_sample(&mut rng) + origin.y;
-        points.push(Vector2::new(x, y));
-    }
-    points    
-}
 
-pub fn random_points_with_seed_and_range<S: RTreeNum + Copy + Rand + SampleRange>(
-    range: S, size: usize, seed: [u32; 4])
-    -> Vec<Vector2<S>> {
-    random_points_with_seed_range_and_origin(range, Vector2::new(S::zero(), S::zero()), size, seed)
-}
-
-pub fn random_points_with_seed<S: RTreeFloat + Rand + SampleRange + BaseNum>(
-    size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
-    random_points_with_seed_and_range(S::one(), size, seed)
-}
-
-// Wraps values to the interval [-1, 1], 
 // wrap around if a value overflows
 // fn wrap<S: BaseFloat>(val: S) -> S {
 //     let two = one::<S>() + one::<S>();

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{RTreeNum, VectorN, HasPosition};
+use traits::{SpadeNum, VectorN, HasPosition};
 use delaunay::DelaunayTriangulation;
 use primitives::{SimpleEdge, EdgeSideInfo};
 use bigvec::{BigVec2, AdaptiveInt};
@@ -29,7 +29,7 @@ use exactpred::{orient2d, incircle};
 /// Since each application has different needs, a `DelaunayKernel` will define how these geometric
 /// queries are calculated for each triangulation. It is recommended to use one of the predefined
 /// kernels that fits your needs.
-pub trait DelaunayKernel<D: RTreeNum>: ::std::marker::Sized {
+pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
     /// pa, pb, pc have to be ordered clockwise.
     fn contained_in_circumference<V: VectorN<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
@@ -83,7 +83,7 @@ pub trait DelaunayKernel<D: RTreeNum>: ::std::marker::Sized {
 /// If you run into said problems, consider using `FloatKernel` or `AdaptiveIntKernel`.
 pub struct TrivialKernel { }
 
-impl <N: RTreeNum> DelaunayKernel<N> for TrivialKernel { }
+impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
 
 /// Delaunay kernel for integral coordinates with a larger value range.
 ///

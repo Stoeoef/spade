@@ -19,14 +19,9 @@ extern crate cgmath;
 extern crate time;
 extern crate num;
 
-#[macro_use]
-extern crate glium;
-
-mod utils;
-
-use spade::{DelaunayTriangulation, DelaunayKernel, 
+use spade::{DelaunayTriangulation, DelaunayKernel,
             AdaptiveIntKernel, TrivialKernel, FloatKernel, VectorN};
-use utils::*;
+use spade::testutils::*;
 use time::Duration;
 use cgmath::Vector2;
 
@@ -38,6 +33,7 @@ fn bench<V: VectorN, K: DelaunayKernel<V::Scalar>>(vs: &[V], title: &str) {
             delaunay.insert(vertex.clone());
         }
     });
+    assert!(delaunay.num_vertices() > vs.len() / 2);
     println!("time / op: {:?}ns", time.num_nanoseconds().unwrap() / vs.len() as i64);
 }
 
@@ -47,9 +43,9 @@ fn main() {
 
     let seed = [661311, 350191, 123021, 231261];
     let vertices_f64 = random_points_with_seed_range_and_origin::<f64>(
-        20.0, Vector2::new(1e20, -1e20), SIZE, seed);
-    let vertices_i64 = random_points_with_seed_and_range::<i64>(10000, SIZE, seed);
-    let vertices_large_range = random_points_with_seed_and_range::<i64>(
+        20.0, Vector2::new(1e10, -1e10), SIZE, seed);
+    let vertices_i64 = random_points_in_range::<i64>(10000, SIZE, seed);
+    let vertices_large_range = random_points_in_range::<i64>(
         1000000000, SIZE, seed);
 
     bench::<_, TrivialKernel>(&vertices_f64, "f64 benchmark");

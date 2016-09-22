@@ -24,21 +24,21 @@ use std::fmt::Debug;
 use nalgebra as na;
 use nalgebra::{Repeat};
 
-pub trait RTreeNum: Signed + Clone + Debug + PartialOrd { }
-pub trait RTreeFloat: RTreeNum + cg::BaseFloat + na::BaseFloat { }
+pub trait SpadeNum: Signed + Clone + Debug + PartialOrd { }
+pub trait SpadeFloat: SpadeNum + cg::BaseFloat + na::BaseFloat { }
 
-impl RTreeNum for i32 { }
-impl RTreeNum for i64 { }
-impl RTreeNum for f32 { }
-impl RTreeNum for f64 { }
+impl SpadeNum for i32 { }
+impl SpadeNum for i64 { }
+impl SpadeNum for f32 { }
+impl SpadeNum for f64 { }
 
-impl RTreeFloat for f32 { }
-impl RTreeFloat for f64 { }
+impl SpadeFloat for f32 { }
+impl SpadeFloat for f64 { }
 
-impl RTreeNum for BigInt { }
-impl RTreeNum for BigRational { }
-impl RTreeNum for AdaptiveInt { }
-impl RTreeNum for Ratio<AdaptiveInt> { }
+impl SpadeNum for BigInt { }
+impl SpadeNum for BigRational { }
+impl SpadeNum for AdaptiveInt { }
+impl SpadeNum for Ratio<AdaptiveInt> { }
 
 /// Abstraction over vectors in different dimensions.
 pub trait VectorN where Self: Clone,
@@ -50,7 +50,7 @@ Self: Index<usize, Output=<Self as VectorN>::Scalar>,
 Self: IndexMut<usize, Output=<Self as VectorN>::Scalar>,
 Self: Debug,
 Self: PartialEq {
-    type Scalar: RTreeNum;
+    type Scalar: SpadeNum;
 
     /// Creates a new vector with all compoenents set to a certain value.
     fn from_value(value: Self::Scalar) -> Self;
@@ -121,7 +121,7 @@ Self: PartialEq {
 
 }
 
-impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
+impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 2 }
@@ -130,7 +130,7 @@ impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     }
 }
 
-impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
+impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 3 }
@@ -139,7 +139,7 @@ impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
     }
 }
 
-impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
+impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 4 }
@@ -148,7 +148,7 @@ impl<S: RTreeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
     }
 }
 
-impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector2<S> {
+impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 2 }
@@ -157,7 +157,7 @@ impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector2<S> {
     }
 }
 
-impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector3<S> {
+impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 3 }
@@ -166,7 +166,7 @@ impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector3<S> {
     }
 }
 
-impl<S: RTreeNum + na::BaseNum> VectorN for na::Vector4<S> {
+impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 4 }

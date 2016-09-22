@@ -18,6 +18,7 @@ use kernels::{DelaunayKernel, TrivialKernel};
 use primitives::SimpleEdge;
 use std::marker::PhantomData;
 use std::default::Default;
+use std::fmt::Debug;
 use std::ops::Deref;
 
 pub struct PlanarSubdivision<V, K> where V: HasPosition {
@@ -271,6 +272,30 @@ impl <V: HasPosition> VertexEntry<V> {
     }
 }
 
+/// A reference to a vertex in a triangulation.
+/// Note that this handle dereferences to the data it represents.
+///
+/// # Example
+///
+/// ```
+/// # extern crate nalgebra;
+/// # extern crate spade;
+///
+/// # use nalgebra::{Vector2};
+/// # use spade::{DelaunayTriangulation};
+///
+/// # fn main() {
+///   let mut delaunay = DelaunayTriangulation::default();
+///   let fixed_handle = delaunay.insert(Vector2::new(0.0, 1.0));
+///   delaunay.insert(Vector2::new(0.0, -1.0));
+///   delaunay.insert(Vector2::new(1.0, 0.0));
+///   let vertex_handle = delaunay.handle(fixed_handle);
+///   assert_eq!(vertex_handle.num_neighbors(), 2);
+///   // This dereferences into a Vector2
+///   assert_eq!(*vertex_handle, Vector2::new(0.0, 1.0));
+/// # }
+/// ```
+
 pub struct VertexHandle<'a, V, K> where V: HasPosition + 'a, K: 'a {
     subdiv: &'a PlanarSubdivision<V, K>,
     entry: &'a VertexEntry<V>,
@@ -280,6 +305,15 @@ pub struct VertexHandle<'a, V, K> where V: HasPosition + 'a, K: 'a {
 impl <'a, V, K> Clone for VertexHandle<'a, V, K> where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a {
     fn clone(&self) -> VertexHandle<'a, V, K> {
         VertexHandle::new(self.subdiv, self.entry, self.fixed)
+    }
+}
+
+impl <'a, V, K> Debug for VertexHandle<'a, V, K> 
+    where V: HasPosition + Debug + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        try!(write!(f, "VertexHandle {{ fixed = {}, data = ", self.fixed));
+        try!(self.entry.data.fmt(f));
+        write!(f, " }}")
     }
 }
 
@@ -441,15 +475,18 @@ impl <'a, V: HasPosition, K> VertexHandle<'a, V, K> where K: DelaunayKernel<<V::
         }
     }
 
-    pub fn fixed_neighbors(&self) -> &'a Vec<FixedVertexHandle> {
+    /// Returns the neighbors of this vertex as fixed handles
+    pub fn fixed_neighbors(&self) -> &'a [FixedVertexHandle] {
         &self.entry.neighbors
     }
 
+    /// Returns the neighbors an iterator over the neighbors of this vertex.
     pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V, K>> + 'a> {
         let subdiv = self.subdiv;
         Box::new(self.entry.neighbors.iter().map(move |h| subdiv.handle(*h)))
     }
 
+    /// Returns an iterator over all out edges of this vertex.
     pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, K>> + 'a> {
         let num_neighbors = self.num_neighbors();
         let subdiv = self.subdiv;
@@ -458,9 +495,9 @@ impl <'a, V: HasPosition, K> VertexHandle<'a, V, K> where K: DelaunayKernel<<V::
             subdiv, fixed, index)))
     }
 
-    #[inline(never)]
+    /// Returns information about the sector in which a given point is contained.
+    /// A "Sector" is the circle segment between two adjacent out edges.
     pub fn sector_info(&self, point: &V::Vector) -> SectorInfo {
-        
         let neighbors = &self.entry.neighbors;
         if neighbors.len() == 0 {
             return SectorInfo::NoSector;
@@ -492,10 +529,12 @@ impl <'a, V: HasPosition, K> VertexHandle<'a, V, K> where K: DelaunayKernel<<V::
         SectorInfo::InSector(sector)
     }
 
-    fn num_neighbors(&self) -> usize {
+    /// Returns the number of neighbors of this point.
+    pub fn num_neighbors(&self) -> usize {
         self.entry.neighbors.len()
     }
 
+    /// Returns this handle as `FixedVertexHandle`.
     pub fn fix(&self) -> FixedVertexHandle {
         self.fixed
     }
@@ -555,8 +594,8 @@ mod test {
         s.connect(fixed1, fixed2);
         
         let (handle1, handle2) = (s.handle(fixed1), s.handle(fixed2));
-        assert_eq!(*handle1.fixed_neighbors(), vec![fixed2]);
-        assert_eq!(*handle2.fixed_neighbors(), vec![fixed1]);
+        assert_eq!(handle1.fixed_neighbors(), &[fixed2]);
+        assert_eq!(handle2.fixed_neighbors(), &[fixed1]);
     }
 
     #[test]
@@ -570,8 +609,8 @@ mod test {
         s.connect(fixed1, fixed2);
         assert!(s.disconnect(fixed1, fixed2));
         let (handle1, handle2) = (s.handle(fixed1), s.handle(fixed2));
-        assert_eq!(*handle1.fixed_neighbors(), Vec::new());
-        assert_eq!(*handle2.fixed_neighbors(), Vec::new());
+        assert_eq!(handle1.fixed_neighbors(), &[]);
+        assert_eq!(handle2.fixed_neighbors(), &[]);
         
     }
 
