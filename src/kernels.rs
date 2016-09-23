@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{SpadeNum, VectorN, HasPosition};
+use traits::{SpadeNum, HasPosition, TwoDimensional};
 use delaunay::DelaunayTriangulation;
 use primitives::{SimpleEdge, EdgeSideInfo};
 use bigvec::{BigVec2, AdaptiveInt};
@@ -32,7 +32,7 @@ use exactpred::{orient2d, incircle};
 pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
     /// pa, pb, pc have to be ordered clockwise.
-    fn contained_in_circumference<V: VectorN<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
+    fn contained_in_circumference<V: TwoDimensional<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
         let adx = pa[0].clone() - pd[0].clone();
         let ady = pa[1].clone() - pd[1].clone();
         let bdx = pb[0].clone() - pd[0].clone();
@@ -54,19 +54,19 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     }
 
     /// Returns an `EdgeSideInfo` yielding on which side of a line a point lies.
-    fn side_query<V: VectorN<Scalar=D>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<D> {
+    fn side_query<V: TwoDimensional<Scalar=D>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<D> {
         edge.side_query(position)
     }
 
     /// Another formulation of `side_query`, will return `true` if `v0`, `v1` and `v2` are ordered
     /// counterclockwise.
-    fn is_ordered_ccw<V: VectorN<Scalar=D>>(v0: &V, v1: &V, v2: &V) -> bool {
+    fn is_ordered_ccw<V: TwoDimensional<Scalar=D>>(v0: &V, v1: &V, v2: &V) -> bool {
         let edge = SimpleEdge::new(v0.clone(), v1.clone());
         Self::side_query(&edge, v2).is_on_left_side_or_on_line()
     }
 
     fn new_triangulation<T: HasPosition>() -> DelaunayTriangulation<T, Self>
-                         where T::Vector: VectorN<Scalar=D>
+                         where T::Vector: TwoDimensional<Scalar=D>
     {
         DelaunayTriangulation::new()
     }
@@ -94,7 +94,7 @@ impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
 pub struct AdaptiveIntKernel { }
 
 impl DelaunayKernel<i64> for AdaptiveIntKernel {
-    fn contained_in_circumference<V: VectorN<Scalar=i64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
+    fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
         let to_bigvec = |v: &V| BigVec2::new(
             AdaptiveInt::from_i64(&v[0]), AdaptiveInt::from_i64(&v[1]));
         // Cast input to adaptive ints to prevent overflows
@@ -122,11 +122,11 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
 pub struct FloatKernel { }
 
 impl DelaunayKernel<f64> for FloatKernel {
-    fn contained_in_circumference<V: VectorN<Scalar=f64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
+    fn contained_in_circumference<V: TwoDimensional<Scalar=f64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
         incircle(v1, v2, v3, p) < 0.0
     }
 
-    fn side_query<V: VectorN<Scalar=f64>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<f64> {
+    fn side_query<V: TwoDimensional<Scalar=f64>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<f64> {
         let det = orient2d(&edge.from, &edge.to, &position);
         EdgeSideInfo::from_determinant(det)
     }

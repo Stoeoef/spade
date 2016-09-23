@@ -16,7 +16,8 @@
 //! This module offers a delaunay triangulation and various iterators for inspecting
 //! its structure. The main data structure is `DelaunayTriangulation`.
 use num::{one, zero};
-use traits::{SpatialObject, HasPosition, SpadeFloat, VectorN};
+use traits::{SpatialObject, HasPosition2D, SpadeFloat, 
+             HasPosition, VectorN, TwoDimensional};
 use kernels::{DelaunayKernel, TrivialKernel};
 use rtree::RTree;
 use boundingvolume::BoundingRect;
@@ -43,18 +44,23 @@ pub enum PositionInTriangulation<H> {
 }
 
 /// Represents a triangle in a delaunay triangulation.
-pub struct DelaunayTriangle<'a, V, K>(pub [VertexHandle<'a, V, K>; 3]) where V: HasPosition + 'a, K: 'a;
+pub struct DelaunayTriangle<'a, V, K>(pub [VertexHandle<'a, V, K>; 3]) where V: HasPosition2D + 'a, K: 'a, V::Vector: TwoDimensional;
 
 /// Iterator over all triangles in a delaunay triangulation.
 pub struct DelaunayTriangleIterator<'a, V, K> 
-    where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a {
+    where V: HasPosition2D + 'a, 
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
+          V::Vector: TwoDimensional
+{
     delaunay: &'a DelaunayTriangulation<V, K>,
     current_index: FixedVertexHandle,
     current_neighbors: Vec<(FixedVertexHandle, FixedVertexHandle)>,
 }
 
 impl <'a, V, K> Iterator for DelaunayTriangleIterator<'a, V, K>
-    where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    where V: HasPosition2D + 'a, 
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
     type Item = DelaunayTriangle<'a, V, K>;
 
     fn next(&mut self) -> Option<DelaunayTriangle<'a, V, K>> {
@@ -97,7 +103,8 @@ impl <'a, V, K> Iterator for DelaunayTriangleIterator<'a, V, K>
 }
 
 fn calculate_convex_polygon_double_area<V>(
-    poly: &Vec<V>) -> V::Scalar where V: VectorN {
+    poly: &Vec<V>) -> V::Scalar 
+    where V: TwoDimensional {
     let mut sum = zero();
     for vertices in poly[1 .. ].windows(2) {
         let triangle = SimpleTriangle::new(poly[0].clone(), vertices[0].clone(), vertices[1].clone());
@@ -107,6 +114,7 @@ fn calculate_convex_polygon_double_area<V>(
 }
 
 /// An entry of the delaunay triangulation's r-tree.
+#[derive(Clone, Debug)]
 struct PointEntry<V> {
     point: V,
     handle: FixedVertexHandle,
@@ -125,7 +133,7 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 /// suitable properties for other geometric operations, like interpolation.
 ///
 /// This triangulation works with `Vector2`-vectors from the `cgmath` and `nalgebra` package.
-/// Objects that are inserted into the triangulation have to implement the `HasPosition` trait.
+/// Objects that are inserted into the triangulation have to implement the `HasPosition2D` trait.
 /// 
 /// Implementing delaunay triangulations is all about precision: the various geometric queries
 /// can fail if imprecise calculations are used (like native `f32` / `f64` operations), 
@@ -180,9 +188,8 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 /// # }
 /// ```
 ///
-
-
-pub struct DelaunayTriangulation<V: HasPosition, K>
+pub struct DelaunayTriangulation<V: HasPosition2D, K>
+    where V::Vector: TwoDimensional
 {
     __kernel: PhantomData<K>,
     s: PlanarSubdivision<V, K>,
@@ -190,14 +197,29 @@ pub struct DelaunayTriangulation<V: HasPosition, K>
     all_points_on_line: bool,
 }
 
-impl <V: HasPosition> Default for 
-    DelaunayTriangulation<V, TrivialKernel> {
+impl<V: HasPosition2D + Clone, K> Clone for DelaunayTriangulation<V, K>  where V::Vector: TwoDimensional {
+    fn clone(&self) -> DelaunayTriangulation<V, K> {
+        DelaunayTriangulation {
+          __kernel: Default::default(),
+            s: self.s.clone(),
+            points: self.points.clone(),
+            all_points_on_line: self.all_points_on_line,
+        }
+    }
+}
+
+impl <V> Default for DelaunayTriangulation<V, TrivialKernel> 
+    where V: HasPosition2D,
+          V::Vector: TwoDimensional {
     fn default() -> DelaunayTriangulation<V, TrivialKernel> {
         DelaunayTriangulation::new()
     }
 }
 
-impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> DelaunayTriangulation<V, K> 
+impl <V, K> DelaunayTriangulation<V, K>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional,
 {
     /// Creates a new Delaunay triangulation.
     ///
@@ -598,11 +620,56 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
 }
 
 impl <V, K> DelaunayTriangulation<V, K> 
-    where V: HasPosition, <V::Vector as VectorN>::Scalar: SpadeFloat,
-          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    where V: HasPosition2D, <V::Vector as VectorN>::Scalar: SpadeFloat,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> ,
+          V::Vector: TwoDimensional
+{
 
-    pub fn nn_interpolation<F: Fn(&V) -> <V::Vector as VectorN>::Scalar>(
-        &self, point: &V::Vector, f: F) -> Option<<V::Vector as VectorN>::Scalar> {
+    /// Performs a natural neighbor interpolation for a given position.
+    ///
+    /// Returns `None` if the triangulation has no triangles yet.
+    /// Points outside of the convex hull will be interpolated as well.
+    /// This operation runs in O(log n) for n inserted vertices.
+    ///
+    /// # Example
+    /// ```
+    /// # extern crate nalgebra;
+    /// # extern crate spade;
+    ///
+    /// # use nalgebra::{Vector2};
+    /// # use spade::{DelaunayTriangulation, DelaunayTriangle, HasPosition};
+    ///
+    /// struct PointWithHeight {
+    ///   point: Vector2<f32>,
+    ///   height: f32,
+    /// }
+    ///
+    /// impl HasPosition for PointWithHeight {
+    ///   type Vector = Vector2<f32>;
+    ///     fn position(&self) -> Vector2<f32> {
+    ///       self.point
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///   let mut delaunay = DelaunayTriangulation::default();
+    ///   delaunay.insert(PointWithHeight { point: Vector2::new(0.0, 0.0), height: 5. });
+    ///   delaunay.insert(PointWithHeight { point: Vector2::new(1.0, 0.0), height: 0. });
+    ///   delaunay.insert(PointWithHeight { point: Vector2::new(0.0, 1.0), height: 0. });
+    ///   let lookup = Vector2::new(0.2, 0.2);
+    ///   // Interpolate the points height
+    ///   let interpolated = delaunay.nn_interpolation(&lookup, |p| p.height).unwrap();
+    ///   // and insert it afterwards.
+    ///   delaunay.insert(PointWithHeight { point: lookup, height: interpolated });
+    ///   // Data points themselves will always yield their own height
+    ///   assert_eq!(delaunay.nn_interpolation(&Vector2::new(0.0, 0.0), |p| p.height),
+    ///              Some(5.0));
+    /// }
+    /// ```
+    pub fn nn_interpolation<R, F: Fn(&V) -> R>(
+        &self, point: &V::Vector, f: F) -> Option<R>
+        where R: ::std::ops::Mul<<V::Vector as VectorN>::Scalar, Output=R> + ::std::ops::Add<Output=R> 
+    + ::std::ops::Sub<R> {
 
         let interpolate_on_edge = |h0, h1| {
             let h0 = self.s.handle(h0);
@@ -641,12 +708,16 @@ impl <V, K> DelaunayTriangulation<V, K>
             _ => return None,
         };
         let ws = self.get_weights(&nns, point);
-        let mut sum = zero();
+        let mut sum = None;
         for (index, fixed_handle) in nns.iter().enumerate() {
             let handle = self.s.handle(*fixed_handle);
-            sum += ws[index] * f(&*handle);
+            let new = f(&*handle) * ws[index];
+            sum = match sum {
+                Some(val) => Some(val + new),
+                None => Some(new),
+            }
         }
-        Some(sum)
+        sum
     }
     
     fn get_weights(&self, nns: &Vec<FixedVertexHandle>, 
@@ -702,8 +773,8 @@ impl <V, K> DelaunayTriangulation<V, K>
                 let v0 = self.s.handle(h0).position();
                 let v1 = self.s.handle(h1).position();
                 let v2 = self.s.handle(h2).position();
-                debug_assert!(!SimpleTriangle::is_ordered_ccw(&v2, &v1, &v0));
-                debug_assert!(SimpleTriangle::is_ordered_ccw(position, &v1, &v0));
+                debug_assert!(!K::is_ordered_ccw(&v2, &v1, &v0));
+                debug_assert!(K::is_ordered_ccw(position, &v1, &v0));
                 if K::contained_in_circumference(&v2, &v1, &v0, position) {
                     // The would be illegal
                     // Add edges in ccw order

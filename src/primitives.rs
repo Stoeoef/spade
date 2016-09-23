@@ -21,7 +21,7 @@
 
 
 use cgmath::{Vector3, Zero, One};
-use traits::{SpadeFloat, SpadeNum, SpatialObject, VectorN};
+use traits::{SpadeFloat, SpadeNum, SpatialObject, VectorN, TwoDimensional};
 use num::{Float, one, zero, Signed};
 use boundingvolume::BoundingRect;
 
@@ -85,6 +85,18 @@ impl <V> SimpleEdge<V> where V: VectorN {
         }
     }
 
+    /// Projects a point onto the infinite line defined by this edge
+    /// and returns true if the projected points lies on the
+    /// finite edge from `from` to `to`.
+    pub fn is_projection_on_edge(&self, query_point: &V) -> bool {
+        let (p1, p2) = (self.from.clone(), self.to.clone());
+        let dir = p2 - p1.clone();
+        let s = (query_point.clone() - p1).dot(&dir);
+        zero::<V::Scalar>() <= s && s <= dir.length2()
+    }
+}
+
+impl <V> SimpleEdge<V> where V: TwoDimensional {
     /// Determines on which side of this edge a given point lies.
     pub fn side_query(&self, q: &V) -> EdgeSideInfo<V::Scalar> {
         let (a, b) = (&self.from, &self.to);
@@ -96,14 +108,6 @@ impl <V> SimpleEdge<V> where V: VectorN {
     pub fn is_point_on_edge(&self, query_point: &V) -> bool {
         self.is_projection_on_edge(query_point)
             && self.side_query(query_point).is_on_line()
-    }
-
-    pub fn is_projection_on_edge(&self, query_point: &V) -> bool {
-        let (p1, p2) = (self.from.clone(), self.to.clone());
-        let dir = p2 - p1.clone();
-        let s = (query_point.clone() - p1).dot(&dir);
-        zero::<V::Scalar>() <= s && s <= dir.length2()
-
     }
 }
 
@@ -168,17 +172,19 @@ pub struct SimpleTriangle<V: VectorN> {
 
 impl <V> SimpleTriangle<V> where V: VectorN {
     /// Checks if the given points are ordered counter clock wise.
-    pub fn is_ordered_ccw(v0: &V, v1: &V, v2: &V) -> bool {
-        let edge = SimpleEdge::new(v0.clone(), v1.clone());
-        edge.side_query(v2).is_on_left_side_or_on_line()
-    }
-
     pub fn new(v0: V, v1: V, v2: V) -> SimpleTriangle<V> {
         SimpleTriangle { v0: v0, v1: v1, v2: v2 }
     }
 
     pub fn vertices(&self) -> [&V; 3] {
         [&self.v0, &self.v1, &self.v2]
+    }
+}
+
+impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
+    pub fn is_ordered_ccw(v0: &V, v1: &V, v2: &V) -> bool {
+        let edge = SimpleEdge::new(v0.clone(), v1.clone());
+        edge.side_query(v2).is_on_left_side_or_on_line()
     }
 
     pub fn double_area(&self) -> V::Scalar {
@@ -203,7 +209,7 @@ impl <V> PartialEq for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat
     }
 }
 
-impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
+impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
     pub fn circumcenter(&self) -> V {
         let one: V::Scalar = One::one();
         let two = one + one;
@@ -235,7 +241,7 @@ impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
 }
 
 
-impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
+impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
     type Vector = V;
     
     fn mbr(&self) -> BoundingRect<V> {
@@ -253,11 +259,12 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeF
                 return edge.distance2(point);
             }
         }
-        // The point is within the triangle
+        // The point lies within the triangle
         zero()
     }
 }
 
+/// An n-dimensional circle, defined by its origin and radius.
 pub struct SimpleCircle<V: VectorN> {
     pub origin: V,
     pub radius: V::Scalar,

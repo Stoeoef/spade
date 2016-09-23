@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{HasPosition, VectorN};
+use traits::{HasPosition2D, VectorN, TwoDimensional};
 use kernels::{DelaunayKernel, TrivialKernel};
 use primitives::SimpleEdge;
 use std::marker::PhantomData;
@@ -21,12 +21,25 @@ use std::default::Default;
 use std::fmt::Debug;
 use std::ops::Deref;
 
-pub struct PlanarSubdivision<V, K> where V: HasPosition {
+pub struct PlanarSubdivision<V, K> 
+    where V: HasPosition2D,
+          V::Vector: TwoDimensional {
     __kernel: PhantomData<K>,
     vertices: Vec<VertexEntry<V>>,
 }
 
-pub fn contained_in_circle_segment<V: VectorN, K: DelaunayKernel<V::Scalar>>(
+impl<V, K> Clone for PlanarSubdivision<V, K> 
+    where V: HasPosition2D + Clone,
+          V::Vector: TwoDimensional {
+    fn clone(&self) -> PlanarSubdivision<V, K> {
+        PlanarSubdivision {
+            __kernel: Default::default(),
+            vertices: self.vertices.clone(),
+        }
+    }
+}
+
+pub fn contained_in_circle_segment<V: TwoDimensional, K: DelaunayKernel<V::Scalar>>(
     origin: &V, cw_edge: &V, ccw_edge: &V, query_point: &V) -> bool 
 {
     let cw_edge = SimpleEdge::new(origin.clone(), cw_edge.clone());
@@ -53,7 +66,10 @@ pub enum SectorInfo {
     InSector(usize),
 }
 
-impl<V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> PlanarSubdivision<V, K> {
+impl<V, K> PlanarSubdivision<V, K> where
+    V: HasPosition2D,
+    K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+    V::Vector: TwoDimensional {
 
     pub fn new() -> PlanarSubdivision<V, K> {
         PlanarSubdivision {
@@ -189,12 +205,15 @@ impl<V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> PlanarSu
     }
 }
 
-pub struct AllVerticesIterator<'a, V: HasPosition + 'a, K: 'a> {
+pub struct AllVerticesIterator<'a, V: HasPosition2D + 'a, K: 'a> 
+    where V::Vector: TwoDimensional {
     subdiv: &'a PlanarSubdivision<V, K>,
     cur_vertex: FixedVertexHandle,
 }
 
-impl <'a, V: HasPosition, K> Iterator for AllVerticesIterator<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+impl <'a, V: HasPosition2D, K> Iterator for AllVerticesIterator<'a, V, K>
+    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
     type Item = VertexHandle<'a, V, K>;
 
     fn next(&mut self) -> Option<VertexHandle<'a, V, K>> {
@@ -207,13 +226,15 @@ impl <'a, V: HasPosition, K> Iterator for AllVerticesIterator<'a, V, K> where K:
     }
 }
 
-pub struct AllEdgesIterator<'a, V: HasPosition + 'a, K: 'a> {
+pub struct AllEdgesIterator<'a, V: HasPosition2D + 'a, K: 'a> 
+    where V::Vector: TwoDimensional {
     subdiv: &'a PlanarSubdivision<V, K>,
     cur_vertex: FixedVertexHandle,
     cur_vertex_index: usize,
 }
 
-impl <'a, V: HasPosition, K> AllEdgesIterator<'a, V, K> {
+impl <'a, V: HasPosition2D, K> AllEdgesIterator<'a, V, K> 
+    where V::Vector: TwoDimensional {
     pub fn new(subdiv: &'a PlanarSubdivision<V, K>) -> Self {
         AllEdgesIterator {
             subdiv: subdiv,
@@ -223,7 +244,9 @@ impl <'a, V: HasPosition, K> AllEdgesIterator<'a, V, K> {
     }
 }
 
-impl <'a, V: HasPosition + 'a, K> Iterator for AllEdgesIterator<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+impl <'a, V: HasPosition2D + 'a, K> Iterator for AllEdgesIterator<'a, V, K> 
+    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
     type Item = EdgeHandle<'a, V, K>;
     
     fn next(&mut self) -> Option<EdgeHandle<'a, V, K>> {
@@ -249,7 +272,8 @@ impl <'a, V: HasPosition + 'a, K> Iterator for AllEdgesIterator<'a, V, K> where 
     }
 }
 
-impl <V: HasPosition> Default for PlanarSubdivision<V, TrivialKernel> {
+impl <V: HasPosition2D> Default for PlanarSubdivision<V, TrivialKernel> 
+    where V::Vector: TwoDimensional {
     fn default() -> PlanarSubdivision<V, TrivialKernel> {
         PlanarSubdivision {
             __kernel: Default::default(),
@@ -258,12 +282,16 @@ impl <V: HasPosition> Default for PlanarSubdivision<V, TrivialKernel> {
     }
 }
 
-struct VertexEntry<V> where V: HasPosition {
+#[derive(Clone)]
+struct VertexEntry<V> 
+    where V: HasPosition2D,
+          V::Vector: TwoDimensional {
     data: V,
     neighbors: Vec<FixedVertexHandle>,
 }
 
-impl <V: HasPosition> VertexEntry<V> {
+impl <V: HasPosition2D> VertexEntry<V> 
+    where V::Vector: TwoDimensional {
     fn new(data: V) -> VertexEntry<V> {
         VertexEntry {
             data: data,
@@ -296,20 +324,28 @@ impl <V: HasPosition> VertexEntry<V> {
 /// # }
 /// ```
 
-pub struct VertexHandle<'a, V, K> where V: HasPosition + 'a, K: 'a {
+pub struct VertexHandle<'a, V, K> 
+    where V: HasPosition2D + 'a, 
+          K: 'a,
+          V::Vector: TwoDimensional {
     subdiv: &'a PlanarSubdivision<V, K>,
     entry: &'a VertexEntry<V>,
     fixed: FixedVertexHandle,
 }
 
-impl <'a, V, K> Clone for VertexHandle<'a, V, K> where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a {
+impl <'a, V, K> Clone for VertexHandle<'a, V, K> 
+    where V: HasPosition2D + 'a, 
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
+          V::Vector: TwoDimensional {
     fn clone(&self) -> VertexHandle<'a, V, K> {
         VertexHandle::new(self.subdiv, self.entry, self.fixed)
     }
 }
 
 impl <'a, V, K> Debug for VertexHandle<'a, V, K> 
-    where V: HasPosition + Debug + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+    where V: HasPosition2D + Debug + 'a,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         try!(write!(f, "VertexHandle {{ fixed = {}, data = ", self.fixed));
         try!(self.entry.data.fmt(f));
@@ -358,7 +394,9 @@ impl <T, F> Iterator for CircularIterator<T, F> where
     }
 }
 
-pub struct EdgeHandle<'a, V, K> where V: HasPosition + 'a, K: 'a {
+pub struct EdgeHandle<'a, V, K>
+    where V: HasPosition2D + 'a, K: 'a,
+          V::Vector: TwoDimensional {
     subdiv: &'a PlanarSubdivision<V, K>,
     from_handle: FixedVertexHandle,
     to_index: usize,
@@ -379,19 +417,26 @@ impl FixedEdgeHandle {
     }
 }
 
-impl <'a, V, K> Clone for EdgeHandle<'a, V, K> where V: HasPosition + 'a, K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+impl <'a, V, K> Clone for EdgeHandle<'a, V, K>
+    where V: HasPosition2D + 'a,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
     fn clone(&self) -> EdgeHandle<'a, V, K> {
         EdgeHandle::new(self.subdiv, self.from_handle, self.to_index)
     }
 }
 
-impl <'a, V, K> PartialEq for EdgeHandle<'a, V, K> where V: HasPosition + 'a {
+impl <'a, V, K> PartialEq for EdgeHandle<'a, V, K> 
+    where V: HasPosition2D + 'a,
+          V::Vector: TwoDimensional {
     fn eq(&self, rhs: &EdgeHandle<'a, V, K>) -> bool {
         self.from_handle == rhs.from_handle && self.to_index == rhs.to_index
     }
 }
 
-impl <'a, V: HasPosition, K> EdgeHandle<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
+    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
 
     pub fn from_neighbors(
         subdiv: &'a PlanarSubdivision<V, K>, from: FixedVertexHandle,
@@ -465,7 +510,9 @@ impl <'a, V: HasPosition, K> EdgeHandle<'a, V, K> where K: DelaunayKernel<<V::Ve
     }
 }
 
-impl <'a, V: HasPosition, K> VertexHandle<'a, V, K> where K: DelaunayKernel<<V::Vector as VectorN>::Scalar> {
+impl <'a, V: HasPosition2D, K> VertexHandle<'a, V, K> 
+    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional {
     fn new(subdiv: &'a PlanarSubdivision<V, K>, entry: &'a VertexEntry<V>,
            fixed: FixedVertexHandle) -> VertexHandle<'a, V, K> {
         VertexHandle {
@@ -540,7 +587,9 @@ impl <'a, V: HasPosition, K> VertexHandle<'a, V, K> where K: DelaunayKernel<<V::
     }
 }
 
-impl <'a, V, K> Deref for VertexHandle<'a, V, K> where V: HasPosition {
+impl <'a, V, K> Deref for VertexHandle<'a, V, K>
+    where V: HasPosition2D,
+          V::Vector: TwoDimensional {
     type Target = V;
 
     fn deref(&self) -> &V {

@@ -118,8 +118,17 @@ Self: PartialEq {
     fn length2(&self) -> Self::Scalar {
         self.dot(&self)
     }
-
 }
+
+/// Only implemented by two dimensional vectors.
+/// Some datastructures won't work for if 3 or
+/// more dimensional vectors are used, this trait
+/// will ensure that they all have the correct
+/// dimension.
+pub trait TwoDimensional : VectorN { }
+
+impl <S: SpadeNum + cg::BaseNum> TwoDimensional for cg::Vector2<S> { }
+impl <S: SpadeNum + na::BaseNum> TwoDimensional for na::Vector2<S> { }
 
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     type Scalar = S;
@@ -231,6 +240,11 @@ pub trait HasPosition {
     type Vector: VectorN;
     fn position(&self) -> Self::Vector;
 }
+
+/// Like `HasPosition`, but will only work for two dimensional vectors.
+pub trait HasPosition2D: HasPosition where Self::Vector: TwoDimensional { }
+
+impl <V: HasPosition> HasPosition2D for V where V::Vector: TwoDimensional { }
 
 impl <V> HasPosition for V where V: VectorN {
     type Vector = V;

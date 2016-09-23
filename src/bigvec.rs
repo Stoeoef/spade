@@ -18,7 +18,7 @@ use cgmath as cg;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul, Rem, Neg};
 use num::{Num, BigInt, Zero, One, Signed, ToPrimitive, Integer};
 use num::bigint::ToBigInt;
-use traits::{SpadeNum, VectorN};
+use traits::{SpadeNum, VectorN, TwoDimensional};
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,6 +46,9 @@ impl <N: SpadeNum> VectorN for BigVec2<N> {
         BigVec2::new(val.clone(), val.clone())
     }
 }
+
+
+impl <S: SpadeNum> TwoDimensional for BigVec2<S> { }
 
 impl <N: SpadeNum> Add for BigVec2<N> {
     type Output = Self;

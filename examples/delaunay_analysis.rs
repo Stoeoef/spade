@@ -19,8 +19,8 @@ extern crate cgmath;
 extern crate time;
 extern crate num;
 
-use spade::{DelaunayTriangulation, DelaunayKernel,
-            AdaptiveIntKernel, TrivialKernel, FloatKernel, VectorN};
+use spade::{DelaunayTriangulation, DelaunayKernel, TwoDimensional,
+            AdaptiveIntKernel, TrivialKernel, FloatKernel};
 use spade::testutils::*;
 use time::Duration;
 use cgmath::Vector2;
@@ -28,7 +28,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Write};
 
-fn bench<V: VectorN, K: DelaunayKernel<V::Scalar>>(vs: &[V], chunk_size: usize, title: &str)
+fn bench<V: TwoDimensional, K: DelaunayKernel<V::Scalar>>(vs: &[V], chunk_size: usize, title: &str)
                                                    -> Vec<i64> {
     println!("{}", title);
     let mut delaunay: DelaunayTriangulation<V, K> = DelaunayTriangulation::new();
