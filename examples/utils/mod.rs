@@ -13,8 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(dead_code)]
 pub mod exampleapplication;
 
+// Rust generates warnings for this crate when running cargo test, allowing some dead
+// code seems to be the less obnoxious solution.
 use cgmath::{Vector2, Vector3, Array};
 use cgmath::conv::*;
 use spade::{BoundingRect};
