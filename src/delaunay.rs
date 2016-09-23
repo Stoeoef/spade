@@ -231,7 +231,6 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
     /// May panics if the given handle is from another triangulation or artificially
     /// obtained, `FixedVertexHandles` obtained from this triangulation will remain valid
     /// until the triangulation is destroyed.
-    /// May panic if the handle was not obtained from this triangulation.
     pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, K> {
         self.s.handle(handle)
     }
@@ -542,7 +541,7 @@ impl <V: HasPosition, K: DelaunayKernel<<V::Vector as VectorN>::Scalar>> Delauna
     /// in the triangulation. If the point has already been contained in the
     /// triangulation, the old vertex is overwritten.
     ///
-    /// Returns handle to the new vertex. Use this handle with
+    /// Returns a handle to the new vertex. Use this handle with
     /// `DelaunayTriangulation::handle(..)` to refer to the vertex.
     pub fn insert(&mut self, t: V) -> FixedVertexHandle {
         let pos = t.position();

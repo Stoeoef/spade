@@ -24,22 +24,34 @@ use spade::{DelaunayTriangulation, DelaunayKernel,
 use spade::testutils::*;
 use time::Duration;
 use cgmath::Vector2;
+use std::path::Path;
+use std::fs::File;
+use std::io::{Write};
 
-fn bench<V: VectorN, K: DelaunayKernel<V::Scalar>>(vs: &[V], title: &str) {
+fn bench<V: VectorN, K: DelaunayKernel<V::Scalar>>(vs: &[V], chunk_size: usize, title: &str)
+                                                   -> Vec<i64> {
     println!("{}", title);
     let mut delaunay: DelaunayTriangulation<V, K> = DelaunayTriangulation::new();
-    let time = Duration::span(|| {
-        for vertex in vs.iter() {
-            delaunay.insert(vertex.clone());
-        }
-    });
+    let mut result = Vec::new();
+    let mut sum = 0;
+    for chunk in vs.chunks(chunk_size) {
+        let time = Duration::span(|| {
+            for vertex in chunk.iter() {
+                delaunay.insert(vertex.clone());
+            }
+        });
+        sum += time.num_nanoseconds().unwrap();
+        result.push(time.num_nanoseconds().unwrap() / chunk_size as i64);
+    };
     assert!(delaunay.num_vertices() > vs.len() / 2);
-    println!("time / op: {:?}ns", time.num_nanoseconds().unwrap() / vs.len() as i64);
+    println!("time / op: {:?}ns", sum / vs.len() as i64);
+    result
 }
 
 fn main() {
 
-    const SIZE: usize = 400000;
+    const SIZE: usize = 4000000;
+    const CHUNK_SIZE: usize = SIZE / 100;
 
     let seed = [661311, 350191, 123021, 231261];
     let vertices_f64 = random_points_with_seed_range_and_origin::<f64>(
@@ -48,8 +60,28 @@ fn main() {
     let vertices_large_range = random_points_in_range::<i64>(
         1000000000, SIZE, seed);
 
-    bench::<_, TrivialKernel>(&vertices_f64, "f64 benchmark");
-    bench::<_, TrivialKernel>(&vertices_i64, "i64 benchmark");
-    bench::<_, AdaptiveIntKernel>(&vertices_large_range, "AdaptiveIntKernel benchmark");
-    bench::<_, FloatKernel>(&vertices_f64, "FloatKernel benchmark");
+    let f64_time = bench::<_, TrivialKernel>(&vertices_f64, CHUNK_SIZE, "f64 benchmark");
+    let i64_time = bench::<_, TrivialKernel>(&vertices_i64, CHUNK_SIZE, "i64 benchmark");
+    let apt_time = bench::<_, AdaptiveIntKernel>(&vertices_large_range, CHUNK_SIZE, 
+                                                 "AdaptiveIntKernel benchmark");
+    let floatk_time = bench::<_, FloatKernel>(&vertices_f64, CHUNK_SIZE, "FloatKernel benchmark");
+
+
+    let mut result_file = File::create(&Path::new("delaunay_analysis.dat")).unwrap();
+    let mut print_measurements = |description: &str, measurements: &Vec<i64>| {
+        write!(result_file, "\"{}\"\n", description).unwrap();
+        for (index, time) in measurements.iter().enumerate() {
+            let size = index * CHUNK_SIZE;
+            write!(result_file, "{} {}\n", size, time).unwrap();
+        }
+        write!(result_file, "\n\n").unwrap();
+    };
+
+    print_measurements("f64", &f64_time);
+    print_measurements("i64", &i64_time);
+    print_measurements("Adaptive", &apt_time);
+    print_measurements("FloatKernel", &floatk_time);
+
+    println!("Done!");
+
 }
