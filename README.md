@@ -4,6 +4,7 @@
  * [Documentation](https://stoeoef.github.io/spade/)
  * [Using spade](#using-spade)
  * [Examples](#examples)
+ * [Feedback](#feedback)
  * [Performance](#performance)
 
 Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures optimized for spatial access operations.
@@ -13,24 +14,25 @@ The first major datastructure is an n-dimensional r*-tree ([wikipedia](https://e
 The second datastructures implements a 2D delaunay triangulation ([wikipedia](https://en.wikipedia.org/wiki/Delaunay_triangulation)) backed by an r-tree for faster insertion times and nearest neighbor lookup.
 The triangulation also implements natural neighbor interpolation ([wikipedia](https://en.wikipedia.org/wiki/Natural_neighbor)) which allows for a smooth interpolation on the resulting grid.
 
-All classes are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
+All structures are purely written in (safe) rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
 
 # Documentation
 [Link to documentation](https://stoeoef.github.io/spade/)
 
 # Using spade
-We're not a crate yet, so add this to your `Cargo.toml`:
+Add this to your `Cargo.toml`:
 ```
-[dependencies]
-spade = { git = "https://github.com/Stoeoef/spade.git" }
+spade = "0.1.*"
 ```
+# Feedback
+Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Feel free to post an issue on GitHub. If you're in for an adventure, pull requests of any kind are very welcome.
 
 # Examples
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
 Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance.
-![An example R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
+![An exam-ple R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
 
 ## Natural neighbor interpolation
 The delaunay triangulation of a height field is shown with orange lines, the green grid shows the natural neighbor interpolated heights. In contrast to barycentric interpolation (the gray polygons), natural neighbor interpolation is smooth (C¹ differentiable, except for the data points themselves).
