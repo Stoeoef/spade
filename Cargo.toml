@@ -4,8 +4,11 @@ version = "0.1.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 license="Apache-2.0"
 description="Spatial datastructures like r-trees and delaunay triangulations for rust."
-homepage=""
-repository=""
+documentation="https://stoeoef.github.io/spade/spade/index.html"
+repository="https://github.com/Stoeoef/spade"
+readme = "README.md"
+keywords = ["delaunay", "triangulation", "rtree", "geometry"]
+license = "Apache-2.0"
 
 [dependencies]
 cgmath = "0.11.*"
