@@ -1,4 +1,10 @@
+[![Build Status](https://travis-ci.org/Stoeoef/spade.svg?branch=master)](https://travis-ci.org/Stoeoef/spade)
 # spade
+
+ * [Documentation](https://stoeoef.github.io/spade/)
+ * [Using spade](#using-spade)
+ * [Examples](#examples)
+ * [Performance](#performance)
 
 Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures optimized for spatial access operations.
 
@@ -11,6 +17,13 @@ All classes are purely written in rust, the package currently supports vectors f
 
 # Documentation
 [Link to documentation](https://stoeoef.github.io/spade/)
+
+# Using spade
+We're not a crate yet, so add this to your `Cargo.toml`:
+```
+[dependencies]
+spade = { git = "https://github.com/Stoeoef/spade.git" }
+```
 
 # Examples
 ## R-Tree
