@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/Stoeoef/spade.svg?branch=master)](https://travis-ci.org/Stoeoef/spade)
+[![Docs](https://docs.rs/spade/badge.svg)](https://docs.rs/spade/0.1.0/spade/)
 # spade
 
  * [Documentation](https://stoeoef.github.io/spade/)
@@ -25,14 +26,15 @@ Add this to your `Cargo.toml`:
 spade = "0.1.*"
 ```
 # Feedback
-Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Feel free to post an issue on GitHub. If you're in for an adventure, pull requests of any kind are very welcome.
+Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Feel free to post an issue on GitHub. Please do report bugs as well. If you're in for an adventure, pull requests of any kind are very welcome.
 
 # Examples
+_Note: If you have opened this on docs.rs, you won't see any images. Use the README.md on the GitHub page._
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
 Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance.
-![An exam-ple R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
+![An example R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
 
 ## Natural neighbor interpolation
 The delaunay triangulation of a height field is shown with orange lines, the green grid shows the natural neighbor interpolated heights. In contrast to barycentric interpolation (the gray polygons), natural neighbor interpolation is smooth (C¹ differentiable, except for the data points themselves).
