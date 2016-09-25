@@ -749,6 +749,28 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject + PartialEq {
             false
         }
     }
+
+    fn contains(&self, obj: &T) -> bool {
+        let contains = self.bounding_box.as_ref().map(
+            |bb| bb.contains_rect(&obj.mbr())).unwrap_or(false);
+        if contains {
+            for child in self.children.iter() {
+                match child {
+                    &RTreeNode::DirectoryNode(ref data) => {
+                        if data.contains(obj) {
+                            return true;
+                        }
+                    },
+                    &RTreeNode::Leaf(ref t) => {
+                        if t == obj {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
 }
 
 enum InsertionResult<T> where T: SpatialObject {
@@ -1156,6 +1178,10 @@ impl <T> RTree<T> where T: SpatialObject + PartialEq {
             self.size -= 1;
         }
         result
+    }
+
+    pub fn contains(&self, obj: &T) -> bool {
+        self.root.contains(obj)
     }
 }
 

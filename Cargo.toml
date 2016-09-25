@@ -10,7 +10,7 @@ keywords = ["delaunay", "triangulation", "rtree", "geometry"]
 license = "Apache-2.0"
 
 [dependencies]
-cgmath = "0.11.*"
+cgmath = "0.12.*"
 num = "0.1.*"
 nalgebra = "0.9.*"
 clamp = "0.1.*"

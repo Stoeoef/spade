@@ -350,7 +350,7 @@ impl <V, K> DelaunayTriangulation<V, K>
         let mut result = Vec::new();
  
         let first_edge = EdgeHandle::from_neighbors(&self.s, first_edge.0, first_edge.1).unwrap();
-        debug_assert!(first_edge.to_simple_edge().side_query(point).is_on_right_side());
+        debug_assert!(K::side_query(&first_edge.to_simple_edge(), point).is_on_right_side());
 
         let mut last_edge = first_edge.clone();
         result.push(last_edge.from_handle().fix());
