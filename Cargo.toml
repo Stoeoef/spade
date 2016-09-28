@@ -3,10 +3,10 @@ name = "spade"
 version = "0.1.1"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 description="Spatial datastructures like r-trees and delaunay triangulations for rust."
-documentation="https://stoeoef.github.io/spade/spade/index.html"
-repository="https://github.com/Stoeoef/spade"
+documentation = "https://docs.rs/spade/0.1.0/spade/"
+repository = "https://github.com/Stoeoef/spade"
 readme = "README.md"
-keywords = ["delaunay", "triangulation", "rtree", "geometry"]
+keywords = ["delaunay", "triangulation", "rtree", "geometry", "interpolation"]
 license = "Apache-2.0"
 
 [dependencies]
