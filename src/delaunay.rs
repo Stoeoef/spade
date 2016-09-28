@@ -130,7 +130,7 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 /// A 2D Delaunay triangulation.
 /// 
 /// A delaunay triangulation is a special triangulation of a set of points that fulfills some
-/// suitable properties for other geometric operations, like interpolation.
+/// suitable properties for geometric operations like interpolation.
 ///
 /// This triangulation works with `Vector2`-vectors from the `cgmath` and `nalgebra` package.
 /// Objects that are inserted into the triangulation have to implement the `HasPosition2D` trait.
@@ -188,6 +188,21 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 /// # }
 /// ```
 ///
+/// # Iterating
+/// A triangulation has three elements - vertices, edges and triangles - that can be iterated over.
+/// Use `vertices()` `edges()` and `triangles()` to call appropriate, non-mutating iterators.
+///
+/// # Mutating
+/// Adding vertices is always a legal operation. Removing vertices is not possible.
+/// Mutation of a vertex is possible with `lookup_mut(..)`.
+///
+/// While `VertexHandle`s are intended to be used for short lived 
+/// iteration purposes, `FixedVertexHandle`s can be made persistent and have 
+/// a `'static` lifetime. A `VertexHandle` can be transformed to its fixed
+/// variant by calling `VertexHandle::fix()`.
+/// Use `handle` or `handle_mut` to resolve a `FixedVertexHandle`.
+/// 
+/// A vertex position must not be changed after the vertex has been inserted.
 pub struct DelaunayTriangulation<V: HasPosition2D, K>
     where V::Vector: TwoDimensional
 {
@@ -250,17 +265,35 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Creates a dynamic vertex handle from a fixed handle.
-    /// May panics if the given handle is from another triangulation or artificially
-    /// obtained, `FixedVertexHandles` obtained from this triangulation will remain valid
-    /// until the triangulation is destroyed.
+    /// May panic if the handle was not obtained from this triangulation.
     pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, K> {
         self.s.handle(handle)
+    }
+
+    /// Returns a mutable reference to the vertex data referenced by a 
+    /// `FixedVertexHandle`. May panic if the handle was not obtained from this
+    /// triangulation.
+    pub fn handle_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
+        self.s.mut_data(handle)
     }
 
     /// Checks if the triangulation contains an object with a given coordinate.
     pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V, K>> {
         let handle = self.points.lookup(point);
         handle.map(|h| self.s.handle(h.handle))
+    }
+
+    /// Checks if the triangulation contains an object and returns a mutable
+    /// reference to it. Note that this will return a reference, while
+    /// `lookup(..)` returns a vertex handle.
+    pub fn lookup_mut(&mut self, point: &V::Vector) -> Option<&mut V> {
+        let handle = self.points.lookup(point);
+        if let Some(entry) = handle {
+            Some(self.s.mut_data(entry.handle))
+
+        } else {
+            None
+        }
     }
 
     /// Returns all vertices contained in a rectangle.
@@ -508,10 +541,12 @@ impl <V, K> DelaunayTriangulation<V, K>
             if from_pos == *point {
                 return PositionInTriangulation::OnPoint(cur_handle.fix());
             }
-            if SimpleEdge::new(from_pos.clone(), cw_pos.clone()).is_point_on_edge(point) {
+            if K::point_on_edge(
+                &SimpleEdge::new(from_pos.clone(), cw_pos.clone()), point) {
                 return PositionInTriangulation::OnEdge(cw_handle.fix(), cur_handle.fix());
             }
-            if SimpleEdge::new(from_pos.clone(), ccw_pos.clone()).is_point_on_edge(point) {
+            if K::point_on_edge(
+                &SimpleEdge::new(from_pos.clone(), ccw_pos.clone()), point) {
                 return PositionInTriangulation::OnEdge(cur_handle.fix(), ccw_handle.fix());
             }
 
@@ -801,6 +836,7 @@ mod test {
     use rand::{SeedableRng, XorShiftRng};
     use rand::distributions::{Range, IndependentSample};
     use traits::{HasPosition};
+    use kernels::{FloatKernel, DelaunayKernel};
 
     #[test]
     fn test_inserting_one_point() {
@@ -953,6 +989,21 @@ mod test {
             d.insert(point);
         }
     }
+
+    #[test]
+    fn crash_test2() {
+        let points = [
+            Vector2 { x: 536f64, y: -1024f64 }, 
+            Vector2 { x: 248.00000000000003, y: -1072f64 }, 
+            Vector2 { x: 464f64, y: -1036f64 }, 
+            Vector2 { x: 616f64, y: -1004f64 }
+        ];
+        let mut d = FloatKernel::new_triangulation();
+        for point in points.iter() {
+            d.insert(*point);
+        }
+    }
+
 
     struct PointWithHeight {
         point: Vector2<f32>,

@@ -67,6 +67,7 @@ impl RTreeOptions {
     }
 }
 
+#[doc(hidden)]
 pub struct NearestNeighborIterator<'a, T> where T: SpatialObject + 'a {
     next_items: Vec<&'a T>,
     min_dist: <T::Vector as VectorN>::Scalar,
@@ -104,12 +105,15 @@ impl <'a, T> Iterator for NearestNeighborIterator<'a, T> where T: SpatialObject 
     }
 }
 
+/// Iterates over all entries in an r-tree.
+/// Returned by `RTree::iter()`
 pub struct RTreeIterator<'a, T> where T: SpatialObject + 'a {
     data: &'a DirectoryNodeData<T>,
     cur_index: usize, 
     cur_iterator: Option<Box<RTreeNodeIterator<'a, T>>>,
 }
 
+#[allow(missing_docs)]
 pub enum RTreeNodeIterator<'a, T> where T: SpatialObject + 'a {
     LeafIterator(Once<&'a T>),
     DirectoryNodeIterator(RTreeIterator<'a, T>),
@@ -182,6 +186,7 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T> where T: SpatialObject {
     }
 }
 
+#[doc(hidden)]
 impl <T> DirectoryNodeData<T> where T: SpatialObject {
 
     pub fn children(&self) -> &Vec<RTreeNode<T>> {
@@ -676,6 +681,28 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
         None
     }
 
+    fn lookup_mut(&mut self, point: &T::Vector) -> Option<&mut T> {
+        let mut todo_list = Vec::with_capacity(40);
+        todo_list.push(self);
+        while let Some(mut next) = todo_list.pop() {
+            if next.mbr().contains_point(point) {
+                for child in next.children.iter_mut() {
+                    match child {
+                        &mut RTreeNode::DirectoryNode(ref mut data) => {
+                            todo_list.push(data);
+                        },
+                        &mut RTreeNode::Leaf(ref mut obj) => {
+                            if obj.contains(point) {
+                                return Some(obj);
+                            }
+                        },
+                    }
+                }
+            }
+        }
+        None
+    }
+
     fn lookup_in_circle<'b>(&'b self, result: &mut Vec<&'b T>, origin: &T::Vector,
                             radius2: &<T::Vector as VectorN>::Scalar)
     {
@@ -711,6 +738,7 @@ impl <T> DirectoryNodeData<T> where T: SpatialObject {
     }
 }
 
+#[doc(hidden)]
 impl <T> DirectoryNodeData<T> where T: SpatialObject + PartialEq {
 
     pub fn remove(&mut self, to_remove: &T) -> bool {
@@ -801,6 +829,7 @@ impl InsertionState {
     }
 }
 
+#[doc(hidden)]
 impl <T> RTreeNode<T> where T: SpatialObject {
 
     pub fn depth(&self) -> usize {
@@ -1074,9 +1103,22 @@ impl<T> RTree<T> where T: SpatialObject {
     ///
     /// If `query_point` is contained by one object in the tree, this object will be returned.
     /// If multiple objects contain the point, only one of them will be returned.
-    pub fn lookup(&self, point: &T::Vector) -> Option<&T> {
+    pub fn lookup(&self, query_point: &T::Vector) -> Option<&T> {
         if self.size > 0 {
-            self.root.lookup(point)
+            self.root.lookup(query_point)
+        } else {
+            None
+        }
+    }
+
+    /// Searches for an element at a given position and returns a mutable
+    /// reference.
+    /// If `query_point` is contained by multiple objects in the tree,
+    /// one of them will be returned.
+    /// *Do not change the object's minimal bounding box*.
+    pub fn lookup_mut(&mut self, query_point: &T::Vector) -> Option<&mut T> {
+        if self.size > 0 {
+            self.root.lookup_mut(query_point)
         } else {
             None
         }
@@ -1180,6 +1222,7 @@ impl <T> RTree<T> where T: SpatialObject + PartialEq {
         result
     }
 
+    /// Returns `true` if a given object is contained in this tree.
     pub fn contains(&self, obj: &T) -> bool {
         self.root.contains(obj)
     }
@@ -1287,13 +1330,15 @@ mod tests {
 
     #[test]
     fn test_lookup() {
-        let (tree, points) = create_random_tree::<f32>(10000, [9, 8, 7, 6]);
+        let (mut tree, mut points) = create_random_tree::<f32>(10000, [9, 8, 7, 6]);
         let sample_points = random_points_with_seed(1000, [2, 1, 0, 3]);
         for sample_point in &sample_points {
-            assert!(!tree.lookup(sample_point).is_some());
+            assert!(tree.lookup(sample_point).is_none());
+            assert!(tree.lookup_mut(sample_point).is_none());
         }
-        for point in &points {
+        for point in points.iter_mut() {
             assert!(tree.lookup(point) == Some(point));
+            assert!(tree.lookup_mut(point) == Some(point));
         }
     }
 

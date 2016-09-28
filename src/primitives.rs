@@ -24,9 +24,10 @@ use cgmath::{Vector3, Zero, One};
 use traits::{SpadeFloat, SpadeNum, SpatialObject, VectorN, TwoDimensional};
 use num::{Float, one, zero, Signed};
 use boundingvolume::BoundingRect;
+use kernels::{TrivialKernel, DelaunayKernel};
 
-#[derive(Clone, Debug)]
 /// An edge defined by it's two end points.
+#[derive(Clone, Debug)]
 pub struct SimpleEdge<V: VectorN> {
     /// The edge's origin.
     pub from: V,
@@ -34,12 +35,15 @@ pub struct SimpleEdge<V: VectorN> {
     pub to: V,
 }
 
+
+/// Yields information about on which side of a line a point lies.
 #[derive(Debug)]
 pub struct EdgeSideInfo<S> {
     signed_side: S,
 }
 
 impl <S> EdgeSideInfo<S> where S: SpadeNum  {
+    #[doc(hidden)]
     pub fn from_determinant(s: S) -> EdgeSideInfo<S> {
         EdgeSideInfo { signed_side: s }
     }
@@ -64,15 +68,10 @@ impl <S> EdgeSideInfo<S> where S: SpadeNum  {
         self.signed_side <= S::zero()
     }
 
-    /// Returns `true` if the query point lies on the line.
+    /// Returns `true` if the query point lies on an infinite line going
+    /// through the edge's start and end point.
     pub fn is_on_line(&self) -> bool {
         self.signed_side.abs() == zero()
-    }
-}
-
-impl <S: SpadeNum + Float> EdgeSideInfo<S> {
-    pub fn is_det_normal(&self) -> bool {
-        self.signed_side.is_normal()
     }
 }
 
@@ -85,9 +84,9 @@ impl <V> SimpleEdge<V> where V: VectorN {
         }
     }
 
-    /// Projects a point onto the infinite line defined by this edge
-    /// and returns true if the projected points lies on the
-    /// finite edge from `from` to `to`.
+    /// Projects a point onto the infinite line going through the
+    /// edge's start and end point and returns `true` if the projected
+    /// points lies between `from` to `to`.
     pub fn is_projection_on_edge(&self, query_point: &V) -> bool {
         let (p1, p2) = (self.from.clone(), self.to.clone());
         let dir = p2 - p1.clone();
@@ -103,11 +102,6 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
         let signed_side = (b[0].clone() - a[0].clone()) * (q[1].clone() - a[1].clone()) 
             - (b[1].clone() - a[1].clone()) * (q[0].clone() - a[0].clone());
         EdgeSideInfo { signed_side: signed_side }
-    }
-
-    pub fn is_point_on_edge(&self, query_point: &V) -> bool {
-        self.is_projection_on_edge(query_point)
-            && self.side_query(query_point).is_on_line()
     }
 }
 
@@ -129,6 +123,9 @@ impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
         }
     }
 
+    /// Returns the minimal squared distance of a given point to its
+    /// projection onto the infinite edge going through this edge's start 
+    /// and end point.
     pub fn projection_distance2(&self, query_point: &V) -> V::Scalar {
         let s = self.project_point(query_point);
         let p = self.from.clone() + (self.to.clone() - self.from.clone()) * s;
@@ -176,17 +173,15 @@ impl <V> SimpleTriangle<V> where V: VectorN {
         SimpleTriangle { v0: v0, v1: v1, v2: v2 }
     }
 
+    /// Returns the triangle's vertices.
     pub fn vertices(&self) -> [&V; 3] {
         [&self.v0, &self.v1, &self.v2]
     }
 }
 
 impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
-    pub fn is_ordered_ccw(v0: &V, v1: &V, v2: &V) -> bool {
-        let edge = SimpleEdge::new(v0.clone(), v1.clone());
-        edge.side_query(v2).is_on_left_side_or_on_line()
-    }
 
+    /// Returns the triangle's doubled area.
     pub fn double_area(&self) -> V::Scalar {
         let b = self.v1.clone() - self.v0.clone();
         let c = self.v2.clone() - self.v0.clone();
@@ -195,7 +190,7 @@ impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
 
 }
 
-impl <V> PartialEq for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
+impl <V> PartialEq for SimpleTriangle<V> where V: VectorN {
     fn eq(&self, rhs: &SimpleTriangle<V>) -> bool {
         let vl = self.vertices();
         let vr = rhs.vertices();
@@ -209,7 +204,32 @@ impl <V> PartialEq for SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat
     }
 }
 
+impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
+
+    /// Returns the nearest point lying on any of the triangle's edges.
+    pub fn nearest_point_on_edge(&self, pos: &V) -> V {
+        let e0 = SimpleEdge::new(self.v0.clone(), self.v1.clone());
+        let e1 = SimpleEdge::new(self.v1.clone(), self.v2.clone());
+        let e2 = SimpleEdge::new(self.v2.clone(), self.v0.clone());
+        let p0 = e0.nearest_point(pos);
+        let p1 = e1.nearest_point(pos);
+        let p2 = e2.nearest_point(pos);
+        let d0 = p0.distance2(pos);
+        let d1 = p1.distance2(pos);
+        let d2 = p2.distance2(pos);
+        if d0 <= d1 && d0 <= d2 {
+            return p0;
+        }
+        if d1 <= d0 && d1 <= d2 {
+            return p1;
+        }
+        p2
+    }
+}
+
 impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
+
+    /// Returns the position of the triangle's circumcenter.
     pub fn circumcenter(&self) -> V {
         let one: V::Scalar = One::one();
         let two = one + one;
@@ -227,6 +247,7 @@ impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
         result + self.v0.clone()
     }
 
+    /// Returns the barycentric coordinates of a point.
     pub fn barycentric_interpolation(&self, coord: &V) -> Vector3<V::Scalar> {
         let (v1, v2, v3) = (self.v0.clone(), self.v1.clone(), self.v2.clone());
         let (x, y) = (coord[0], coord[1]);
@@ -251,7 +272,9 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        let ordered_ccw = SimpleTriangle::is_ordered_ccw(&self.v0, &self.v1, &self.v2);
+        
+        let ordered_ccw = TrivialKernel::is_ordered_ccw(
+            &self.v0, &self.v1, &self.v2);
         for i in 0 .. 3 {
             let edge = SimpleEdge::new(self.vertices()[i].clone(), 
                                        self.vertices()[(i + 1) % 3].clone());
@@ -266,14 +289,18 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
 
 /// An n-dimensional circle, defined by its origin and radius.
 pub struct SimpleCircle<V: VectorN> {
-    pub origin: V,
+    /// The circle's center.
+    pub center: V,
+    /// The circle's radius.
     pub radius: V::Scalar,
 }
 
 impl <V> SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFloat {
-    pub fn new(origin: V, radius: V::Scalar) -> SimpleCircle<V> {
+
+    /// Create a new circle.
+    pub fn new(center: V, radius: V::Scalar) -> SimpleCircle<V> {
         SimpleCircle {
-            origin: origin,
+            center: center,
             radius: radius,
         }
     }
@@ -284,12 +311,12 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
 
     fn mbr(&self) -> BoundingRect<V> {
         let r = V::from_value(self.radius);
-        BoundingRect::from_corners(&(self.origin.clone() - r.clone()), &(self.origin.clone() + r.clone()))
+        BoundingRect::from_corners(&(self.center.clone() - r.clone()), &(self.center.clone() + r.clone()))
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        let dx = self.origin[0] - point[0];
-        let dy = self.origin[1] - point[1];
+        let dx = self.center[0] - point[0];
+        let dy = self.center[1] - point[1];
         let dist = ((dx * dx + dy * dy).sqrt() - self.radius).max(zero());
         dist * dist
     }
@@ -297,8 +324,8 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
     // Since containment checks do not require the calculation of the square root
     // we can redefine this method.
     fn contains(&self, point: &V) -> bool {
-        let dx = self.origin[0] - point[0];
-        let dy = self.origin[1] - point[1];
+        let dx = self.center[0] - point[0];
+        let dy = self.center[1] - point[1];
         let r2 = self.radius * self.radius;
         dx * dx + dy * dy <= r2
     }
@@ -308,15 +335,16 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
 mod test {
     use super::{SimpleEdge, SimpleTriangle};
     use traits::SpatialObject;
-    use cgmath::{Vector2, ApproxEq};
-    
+    use cgmath::{Vector2};
+    use approx::ApproxEq;
+
     #[test]
     fn test_edge_distance() {
         let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-        assert!(e.distance2(&Vector2::new(1.0, 0.0)).approx_eq(&0.5));
-        assert!(e.distance2(&Vector2::new(0.0, 1.)).approx_eq(&0.5));
-        assert!(e.distance2(&Vector2::new(-1.0, -1.)).approx_eq(&2.));
-        assert!(e.distance2(&Vector2::new(2.0, 2.0)).approx_eq(&2.));
+        assert!(e.distance2(&Vector2::new(1.0, 0.0)).relative_eq(&0.5, 1e-10, 1e-10));
+        assert!(e.distance2(&Vector2::new(0.0, 1.)).relative_eq(&0.5, 1e-10, 1e-10));
+        assert!(e.distance2(&Vector2::new(-1.0, -1.)).relative_eq(&2., 1e-10, 1e-10));
+        assert!(e.distance2(&Vector2::new(2.0, 2.0)).relative_eq(&2., 1e-10, 1e-10));
     }
 
     #[test]
@@ -334,22 +362,11 @@ mod test {
         let v3 = Vector2::new(0., 1.);
         let t = SimpleTriangle::new(v1, v2, v3);
         assert_eq!(t.distance2(&Vector2::new(0.25, 0.25)), 0.);
-        assert!(t.distance2(&Vector2::new(-1., -1.)).approx_eq(&2.));
-        assert!(t.distance2(&Vector2::new(0., -1.)).approx_eq(&1.));
-        assert!(t.distance2(&Vector2::new(-1., 0.)).approx_eq(&1.));
-        assert!(t.distance2(&Vector2::new(1., 1.)).approx_eq(&0.5));
-        assert!(t.distance2(&Vector2::new(0.5, 0.5)).approx_eq(&0.0));
+        assert!(t.distance2(&Vector2::new(-1., -1.)).relative_eq(&2., 1e-10, 1e-10));
+        assert!(t.distance2(&Vector2::new(0., -1.)).relative_eq(&1., 1e-10, 1e-10));
+        assert!(t.distance2(&Vector2::new(-1., 0.)).relative_eq(&1., 1e-10, 1e-10));
+        assert!(t.distance2(&Vector2::new(1., 1.)).relative_eq(&0.5, 1e-10, 1e-10));
+        assert!(t.distance2(&Vector2::new(0.5, 0.5)).relative_eq(&0.0, 1e-10, 1e-10));
         assert!(t.distance2(&Vector2::new(0.6, 0.6)) > 0.001);
     }
-
-    #[test]
-    fn test_triangle_is_ordered_ccw() {
-        let v1 = Vector2::new(0f32, 0.);
-        let v2 = Vector2::new(1f32, 0.);
-        let v3 = Vector2::new(0f32, 1.);
-        assert!(SimpleTriangle::is_ordered_ccw(&v1, &v2, &v3));
-        assert!(!SimpleTriangle::is_ordered_ccw(&v2, &v1, &v3));
-        assert!(SimpleTriangle::is_ordered_ccw(&v3, &v1, &v2));
-    }        
-
 }

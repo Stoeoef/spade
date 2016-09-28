@@ -22,6 +22,7 @@ glium = "0.15.*"
 kiss3d = "0.7.*"
 noise = "0.2.*"
 glfw = "0.8.*"
+approx = "0.1.*"
 
 [profile.bench]
 opt-level = 3

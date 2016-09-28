@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(missing_docs)]
+
 use cgmath::{BaseFloat, Vector2, BaseNum};
 use rtree::RTree;
 use rand::{Rand, XorShiftRng, SeedableRng};

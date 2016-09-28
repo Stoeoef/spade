@@ -50,8 +50,9 @@ pub fn contained_in_circle_segment<V: TwoDimensional, K: DelaunayKernel<V::Scala
 
     let is_cw_left = cw_info.is_on_left_side_or_on_line();
     let is_ccw_right = ccw_info.is_on_right_side_or_on_line();
+
     // Check if segment forms an angler sharper than 180 deg
-    if ccw_edge.side_query(&cw_edge.to).is_on_left_side() {
+    if K::side_query(&ccw_edge, &cw_edge.to).is_on_left_side_or_on_line() {
         // More than 180 deg
         is_cw_left || is_ccw_right
     } else {
@@ -159,7 +160,7 @@ impl<V, K> PlanarSubdivision<V, K> where
 
     fn mut_entry(&mut self, handle: FixedVertexHandle)
              -> &mut VertexEntry<V> {
-        &mut self.vertices[handle.clone()]
+        &mut self.vertices[handle]
     }
 
     #[inline(never)]
@@ -175,6 +176,10 @@ impl<V, K> PlanarSubdivision<V, K> where
         self.mut_entry(edge.from_handle).neighbors.remove(edge.to_index);
         self.mut_entry(rev.from_handle).neighbors.remove(rev.to_index);
         self.connect(new1, new2);
+    }
+
+    pub fn mut_data(&mut self, fixed_handle: FixedVertexHandle) -> &mut V {
+        &mut self.mut_entry(fixed_handle).data
     }
 
     pub fn handle(&self, fixed_handle: FixedVertexHandle)
@@ -205,6 +210,7 @@ impl<V, K> PlanarSubdivision<V, K> where
     }
 }
 
+/// An iterator over all vertices in a subdivision.
 pub struct AllVerticesIterator<'a, V: HasPosition2D + 'a, K: 'a> 
     where V::Vector: TwoDimensional {
     subdiv: &'a PlanarSubdivision<V, K>,
@@ -226,6 +232,7 @@ impl <'a, V: HasPosition2D, K> Iterator for AllVerticesIterator<'a, V, K>
     }
 }
 
+/// An iterator over all edges contained in a subdivision.
 pub struct AllEdgesIterator<'a, V: HasPosition2D + 'a, K: 'a> 
     where V::Vector: TwoDimensional {
     subdiv: &'a PlanarSubdivision<V, K>,
@@ -235,7 +242,7 @@ pub struct AllEdgesIterator<'a, V: HasPosition2D + 'a, K: 'a>
 
 impl <'a, V: HasPosition2D, K> AllEdgesIterator<'a, V, K> 
     where V::Vector: TwoDimensional {
-    pub fn new(subdiv: &'a PlanarSubdivision<V, K>) -> Self {
+    fn new(subdiv: &'a PlanarSubdivision<V, K>) -> Self {
         AllEdgesIterator {
             subdiv: subdiv,
             cur_vertex: 0,
@@ -552,20 +559,20 @@ impl <'a, V: HasPosition2D, K> VertexHandle<'a, V, K>
         let vertex_pos = self.entry.data.position();
         let cw = *neighbors.first().unwrap();
         let cw_pos = self.subdiv.handle(cw).position();
-        let mut cw_edge = SimpleEdge::new(vertex_pos.clone(), cw_pos);
+        let mut cw_edge = SimpleEdge::new(vertex_pos.clone(), cw_pos.clone());
         let mut cw_query = K::side_query(&cw_edge, point);
         let mut sector = neighbors.len();
         for (cur_sector, next) in neighbors.iter().enumerate().skip(1) {
             let ccw = self.subdiv.handle(*next);
             let ccw_pos = ccw.position();
-            let ccw_edge = SimpleEdge::new(vertex_pos.clone(), ccw_pos);
+            let ccw_edge = SimpleEdge::new(vertex_pos.clone(), ccw_pos.clone());
             let ccw_query = K::side_query(&ccw_edge, point);
             let is_cw_left = cw_query.is_on_left_side_or_on_line();
             let is_ccw_right = ccw_query.is_on_right_side_or_on_line();
             // Check if segment forms an angler sharper than 180 deg
             let contained = (is_cw_left || is_ccw_right)
                 && ((is_cw_left && is_ccw_right) 
-                    || K::side_query(&ccw_edge, &cw_edge.to).is_on_left_side());
+                    || K::side_query(&ccw_edge, &cw_edge.to).is_on_left_side_or_on_line());
             if contained {
                 sector = cur_sector;
                 break;
@@ -597,6 +604,9 @@ impl <'a, V, K> Deref for VertexHandle<'a, V, K>
     }
 }
 
+/// A `'static` handle to a vertex. This handle can be made
+/// persistent and will remain valid until the vertex it refers to
+/// is removed.
 pub type FixedVertexHandle = usize;
 
 #[cfg(test)]

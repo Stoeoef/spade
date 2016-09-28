@@ -24,7 +24,12 @@ use std::fmt::Debug;
 use nalgebra as na;
 use nalgebra::{Repeat};
 
+/// Scalar that can be used for spade's datastructures will need to implement
+/// this trait. Can be an integer or floating point type.
+/// Note that `copy` is not necessary.
 pub trait SpadeNum: Signed + Clone + Debug + PartialOrd { }
+/// Trait for `SpadeNum`s that are also a floating point number.
+/// Used by all operations that require precise division.
 pub trait SpadeFloat: SpadeNum + cg::BaseFloat + na::BaseFloat { }
 
 impl SpadeNum for i32 { }
@@ -50,6 +55,7 @@ Self: Index<usize, Output=<Self as VectorN>::Scalar>,
 Self: IndexMut<usize, Output=<Self as VectorN>::Scalar>,
 Self: Debug,
 Self: PartialEq {
+    /// The vector's internal scalar type.
     type Scalar: SpadeNum;
 
     /// Creates a new vector with all compoenents set to a certain value.
@@ -189,6 +195,7 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
 /// See the `primitives` module for some basic implementations which can also serve 
 /// as useful examples for own implementations.
 pub trait SpatialObject {
+    /// The object's vector type.
     type Vector: VectorN;
 
     /// Returns the object's minimal bounding rectangle.
@@ -237,7 +244,9 @@ pub trait SpatialObject {
 /// }
 /// ```
 pub trait HasPosition {
+    /// The object's vector type
     type Vector: VectorN;
+    /// Return's the object's position.
     fn position(&self) -> Self::Vector;
 }
 

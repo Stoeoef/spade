@@ -65,10 +65,19 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
         Self::side_query(&edge, v2).is_on_left_side_or_on_line()
     }
 
+    /// Creates a new delaunay triangulation using this kernel.
     fn new_triangulation<T: HasPosition>() -> DelaunayTriangulation<T, Self>
                          where T::Vector: TwoDimensional<Scalar=D>
     {
         DelaunayTriangulation::new()
+    }
+
+    /// Returns if a point lies on the infinite edge going through
+    /// `edge.from` and `edge.to`.
+    fn point_on_edge<V: TwoDimensional<Scalar=D>>(
+        edge: &SimpleEdge<V>, position: &V) -> bool {
+        Self::side_query(edge, position).is_on_line()
+            && edge.is_projection_on_edge(position)
     }
 }
 
