@@ -86,7 +86,7 @@ impl <V> SimpleEdge<V> where V: VectorN {
 
     /// Projects a point onto the infinite line going through the
     /// edge's start and end point and returns `true` if the projected
-    /// points lies between `from` to `to`.
+    /// points lies between `from` and `to`.
     pub fn is_projection_on_edge(&self, query_point: &V) -> bool {
         let (p1, p2) = (self.from.clone(), self.to.clone());
         let dir = p2 - p1.clone();
