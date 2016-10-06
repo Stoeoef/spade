@@ -866,8 +866,8 @@ impl <V, K> DelaunayTriangulation<V, K>
 
     /// Estimates a normal for each vertex in the triangulation.
     ///
-    /// `f` must yield the value that should be interpolated for each vertex,
-    /// `g` is a callback function that should be used to store the calculated normals.
+    /// `f` must yield a "height" value for each vertex,
+    /// `g` is a callback function that can be used to store the calculated normals.
     ///
     /// ```
     /// # extern crate nalgebra;
@@ -923,8 +923,7 @@ impl <V, K> DelaunayTriangulation<V, K>
     /// function `f`.
     /// The normal is the weighted and normalized average of the normals of all triangles
     /// adjacent to the given vertex.
-    pub fn estimate_normal<F, RV>(&self, v: FixedVertexHandle, f: &F)
-                                     -> RV
+    pub fn estimate_normal<F, RV>(&self, v: FixedVertexHandle, f: &F) -> RV
         where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
               RV: ThreeDimensional<Scalar=<V::Vector as VectorN>::Scalar> {
         let mut v_pos = RV::new();
@@ -1053,7 +1052,6 @@ impl <V, K> DelaunayTriangulation<V, K>
     ///  println!("interpolated: {}", interpolated.unwrap());
     /// }
     /// ```
-
     pub fn nn_interpolation_c1_sibson<F: Fn(&V) -> <V::Vector as VectorN>::Scalar, G: Fn(&V) -> V::Vector> (
         &self, point: &V::Vector, f: F, g: G) -> Option<<V::Vector as VectorN>::Scalar> {
         
