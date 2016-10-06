@@ -13,7 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{SpadeNum, HasPosition, TwoDimensional};
+use traits::{SpadeNum, HasPosition};
+use vector_traits::TwoDimensional;
 use delaunay::DelaunayTriangulation;
 use primitives::{SimpleEdge, EdgeSideInfo};
 use bigvec::{BigVec2, AdaptiveInt};

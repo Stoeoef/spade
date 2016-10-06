@@ -15,7 +15,8 @@
 
 use misc::min_inline;
 use std::sync::Arc;
-use traits::{SpatialObject, VectorN};
+use traits::{SpatialObject};
+use vector_traits::VectorN;
 use num::{zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;

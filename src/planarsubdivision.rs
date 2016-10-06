@@ -13,7 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{HasPosition2D, VectorN, TwoDimensional};
+use traits::{HasPosition2D};
+use vector_traits::{VectorN, TwoDimensional};
 use kernels::{DelaunayKernel, TrivialKernel};
 use primitives::SimpleEdge;
 use std::marker::PhantomData;

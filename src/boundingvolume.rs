@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use num::{Signed, zero, one};
-use traits::{VectorN};
+use vector_traits::VectorN;
 use misc::max_inline;
 
 /// An axis aligned minimal bounding rectangle.

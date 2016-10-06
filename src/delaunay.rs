@@ -15,9 +15,9 @@
 
 //! This module offers a delaunay triangulation and various iterators for inspecting
 //! its structure. The main data structure is `DelaunayTriangulation`.
-use num::{one, zero};
-use traits::{SpatialObject, HasPosition2D, SpadeFloat, 
-             HasPosition, VectorN, TwoDimensional};
+use num::{One, Float, Zero, one, zero};
+use traits::{SpatialObject, HasPosition2D, SpadeFloat, HasPosition};
+use vector_traits::{VectorN, TwoDimensional, ThreeDimensional};
 use kernels::{DelaunayKernel, TrivialKernel};
 use rtree::RTree;
 use boundingvolume::BoundingRect;
@@ -705,44 +705,10 @@ impl <V, K> DelaunayTriangulation<V, K>
         &self, point: &V::Vector, f: F) -> Option<R>
         where R: ::std::ops::Mul<<V::Vector as VectorN>::Scalar, Output=R> + ::std::ops::Add<Output=R> 
     + ::std::ops::Sub<R> {
-
-        let interpolate_on_edge = |h0, h1| {
-            let h0 = self.s.handle(h0);
-            let h1 = self.s.handle(h1);
-            let edge = SimpleEdge::new(h0.position(), h1.position());
-            let w1 = ::clamp::clamp(zero(), edge.project_point(point), one());
-            let (f0, f1) = (f(&*h0), f(&*h1));
-            f0 * (one::<<V::Vector as VectorN>::Scalar>() - w1) + f1 * w1
-        };
-
-        let nns = match self.get_position_in_triangulation_fixed(point) {
-            PositionInTriangulation::InTriangle(vs) => {
-                self.inspect_flips(vec![(vs[0], vs[2]), (vs[2], vs[1]), (vs[1], vs[0])], point)
-            },
-            PositionInTriangulation::OnEdge(h0, h1) => {
-                let left_opt = self.get_left_triangle((h0, h1));
-                let right_opt = self.get_right_triangle((h0, h1));
-                if let (Some(left_handle), Some(right_handle)) = (left_opt, right_opt) {
-                    let mut direct_neighbors = Vec::new();
-                    direct_neighbors.push((h0, left_handle));
-                    direct_neighbors.push((left_handle, h1));
-                    direct_neighbors.push((h1, right_handle));
-                    direct_neighbors.push((right_handle, h0));
-                    self.inspect_flips(direct_neighbors, point)
-                } else {
-                    return Some(interpolate_on_edge(h0, h1))
-                }
-            },
-            PositionInTriangulation::OutsideConvexHull(h0, h1) => {
-                return Some(interpolate_on_edge(h0, h1));
-            },
-            PositionInTriangulation::OnPoint(fixed_handle) => {
-                let handle = self.s.handle(fixed_handle);
-                return Some(f(&*handle));
-            },
-            _ => return None,
-        };
+        
+        let nns = self.get_natural_neighbors(point);
         let ws = self.get_weights(&nns, point);
+
         let mut sum = None;
         for (index, fixed_handle) in nns.iter().enumerate() {
             let handle = self.s.handle(*fixed_handle);
@@ -754,9 +720,23 @@ impl <V, K> DelaunayTriangulation<V, K>
         }
         sum
     }
-    
+
     fn get_weights(&self, nns: &Vec<FixedVertexHandle>, 
                    point: &V::Vector) -> Vec<<V::Vector as VectorN>::Scalar> {
+
+        if nns.len() == 1 {
+            return vec![one()];
+        }
+
+        if nns.len() == 2 {
+            let p0 = self.s.handle(nns[0]).position();
+            let p1 = self.s.handle(nns[1]).position();
+            let one = <<V::Vector as VectorN>::Scalar>::one();
+            let edge = SimpleEdge::new(p0, p1);
+            let w1 = ::clamp::clamp(zero(), edge.project_point(point), one);
+            let w0 = one - w1;
+            return vec![w0, w1];
+        }
         let mut result = Vec::new();
         let len = nns.len();
 
@@ -801,6 +781,63 @@ impl <V, K> DelaunayTriangulation<V, K>
         result
     }
 
+    fn get_natural_neighbors(&self, position: &V::Vector) -> Vec<FixedVertexHandle> {
+        match self.get_position_in_triangulation_fixed(position) {
+            PositionInTriangulation::InTriangle(vs) => {
+                self.inspect_flips(vec![(vs[0], vs[2]), (vs[2], vs[1]), (vs[1], vs[0])], position)
+            },
+            PositionInTriangulation::OnEdge(h0, h1) => {
+                let left_opt = self.get_left_triangle((h0, h1));
+                let right_opt = self.get_right_triangle((h0, h1));
+                if let (Some(left_handle), Some(right_handle)) = (left_opt, right_opt) {
+                    let mut direct_neighbors = Vec::new();
+                    direct_neighbors.push((h0, left_handle));
+                    direct_neighbors.push((left_handle, h1));
+                    direct_neighbors.push((h1, right_handle));
+                    direct_neighbors.push((right_handle, h0));
+                    self.inspect_flips(direct_neighbors, position)
+                } else {
+                    vec![h0, h1]
+                }
+            },
+            PositionInTriangulation::OutsideConvexHull(h0, h1) => {
+                // Get the closest edge on the convex hull
+                let edges = self.get_convex_hull_edges_for_point(
+                    (h0, h1), position);
+                let mut min_dist = <V::Vector as VectorN>::Scalar::max_value();
+                let mut min_from = 0;
+                let mut min_to = 0;
+                for cur_edge in edges.windows(2) {
+                    let p0 = self.handle(cur_edge[0]).position();
+                    let p1 = self.handle(cur_edge[1]).position();
+                    let new_dist = SimpleEdge::new(p0, p1).distance2(position);
+                    if new_dist < min_dist {
+                        min_from = cur_edge[0];
+                        min_to = cur_edge[1];
+                        min_dist = new_dist;
+                    }
+                }
+                let p0 = self.handle(min_from).position();
+                let p1 = self.handle(min_to).position();
+                if SimpleEdge::new(p0.clone(), p1.clone())
+                    .is_projection_on_edge(position) {
+                    vec![min_from, min_to]
+                } else {
+                    // Return the closer point
+                    if p0.distance2(position) < p1.distance2(position) {
+                        vec![min_from]
+                    } else {
+                        vec![min_to]
+                    }
+                }
+            },
+            PositionInTriangulation::OnPoint(fixed_handle) => {
+                vec![fixed_handle]
+            },
+            _ => Vec::new()
+        }
+    }
+
     fn inspect_flips(&self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, position: &V::Vector) -> Vec<FixedVertexHandle> {
         let mut result = Vec::new();
         while let Some((h0, h1)) = edges.pop() {
@@ -825,6 +862,231 @@ impl <V, K> DelaunayTriangulation<V, K>
             }
         }
         result
+    }
+
+    /// Estimates a normal for each vertex in the triangulation.
+    ///
+    /// `f` must yield the value that should be interpolated for each vertex,
+    /// `g` is a callback function that should be used to store the calculated normals.
+    ///
+    /// ```
+    /// # extern crate nalgebra;
+    /// # extern crate spade;
+    /// 
+    /// # use nalgebra::{Vector2, Vector3};
+    /// # use spade::{DelaunayTriangulation, DelaunayTriangle, HasPosition};
+    ///
+    /// struct PointWithHeight {
+    ///   point: Vector2<f32>,
+    ///   normal: Vector3<f32>,
+    ///   height: f32,
+    /// }
+    ///
+    /// impl HasPosition for PointWithHeight {
+    ///   type Vector = Vector2<f32>;
+    ///     fn position(&self) -> Vector2<f32> {
+    ///       self.point
+    ///     }
+    /// }
+    /// impl PointWithHeight {
+    ///   fn new(point: Vector2<f32>, height: f32) -> PointWithHeight {
+    ///     PointWithHeight { point: point, height: height, normal: Vector3::new(0., 0., 0.) }
+    ///   }
+    /// }
+    ///
+    /// fn main() {
+    ///   let mut delaunay = DelaunayTriangulation::default();
+    ///   // Insert some points here... (skipped)
+    ///   # delaunay.insert(PointWithHeight { point: Vector2::new(0.0, 0.0), height: 5., normal: Vector3::new(0., 0., 0.)});
+    ///   // Then, estimate all normals at once:
+    ///   delaunay.estimate_normals(&(|v: &PointWithHeight| v.height), &(|v: &mut PointWithHeight, n| v.normal = n));
+    ///   
+    ///   // And print them
+    ///   for vertex in delaunay.vertices() {
+    ///      println!("vertex: {:?}, normal: {:?}", vertex.position(), vertex.normal);
+    ///   }
+    /// }
+    /// ```
+    pub fn estimate_normals<F, G, RV>(&mut self, f: &F, g: G)
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              G: Fn(&mut V, RV),
+              RV: ThreeDimensional<Scalar=<V::Vector as VectorN>::Scalar> {
+        for v in 0 .. self.num_vertices() {
+            let normal = self.estimate_normal::<F, RV>(v, f);
+            g(self.s.mut_data(v), normal);
+        }
+    }
+
+    /// Estimates a normal value for a given vertex.
+    ///
+    /// This assumes that the triangulation models some kind of height field, given by the
+    /// function `f`.
+    /// The normal is the weighted and normalized average of the normals of all triangles
+    /// adjacent to the given vertex.
+    pub fn estimate_normal<F, RV>(&self, v: FixedVertexHandle, f: &F)
+                                     -> RV
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              RV: ThreeDimensional<Scalar=<V::Vector as VectorN>::Scalar> {
+        let mut v_pos = RV::new();
+        let neighbor_positions: Vec<_> = {
+            let handle = self.handle(v);
+            let v_2d = handle.position();
+            v_pos[0] = v_2d[0];
+            v_pos[1] = v_2d[1];
+            v_pos[2] = f(&*handle);
+
+            handle.neighbors().map(
+                |n| {
+                    let pos = n.position();
+                    let mut result = RV::new();
+                    result[0] = pos[0];
+                    result[1] = pos[1];
+                    result[2] = f(&*n);
+                    result
+                }).collect()
+        };
+        let mut final_normal = RV::new();
+        for index in 0 .. neighbor_positions.len() {
+            let p0 = neighbor_positions[index].clone();
+            let p1 = neighbor_positions[
+                (index + 1) % neighbor_positions.len()].clone();
+            let d0 = v_pos.clone() - p0;
+            let d1 = v_pos.clone() - p1;
+            let normal = d0.cross(&d1);
+            if normal[2] > zero() {
+                final_normal = final_normal + normal;
+            }
+
+        }
+        // Normalize
+        final_normal.clone() / final_normal.length2().sqrt()
+    }
+
+    /// Estimates gradients for all vertices in this triangulation.
+    ///
+    /// `f` yields the value for which a gradient should be calculated,
+    /// `g` can be used to store the gradient. See `estimate_normals` for a similar example.
+    ///
+    /// Internally, the normal for each vertex is calculated first. Then, an appropriate
+    /// gradient is calculated.
+    pub fn estimate_gradients<F, G>(&mut self, f: &F, g: &G) 
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              G: Fn(&mut V, V::Vector) {
+        for v in 0 .. self.num_vertices() {
+            let gradient = self.estimate_gradient::<F, G>(v, f);
+            g(self.s.mut_data(v), gradient);
+        }
+    }
+
+    /// Estimates and returns the gradient for a single vertex in this triangulation.
+    pub fn estimate_gradient<F, G>(&self, v: FixedVertexHandle, f: &F) -> V::Vector 
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar {
+        use cgmath::Vector3;
+        let normal = self.estimate_normal::<_, Vector3<_>>(v, f);
+        // Calculate gradient from normal
+        let mut gradient = V::Vector::new();
+        gradient[0] = normal.x;
+        gradient[1] = normal.y;
+        let g2 = gradient.length2();
+        if g2 != zero() {
+            let one = <V::Vector as VectorN>::Scalar::one();
+            let d2 = one - normal.z * normal.z;
+            let a2 = d2 / (one - d2);
+            gradient = gradient * (a2 / g2).sqrt();
+        }
+      
+        gradient
+    }
+
+    /// Interpolates a data point on this triangulation according to Sibson's c1 interpolant.
+    ///
+    /// The interpolation given by `nn_interpolation` is not differentiable at the triangulation's
+    /// data points. Sibson introduced another interpolation scheme that takes the gradient of each
+    /// data point into account and offers an interpolation that is differentiable (c1) at the data
+    /// points.
+    /// The interpolation needs to know the gradients of the points natural neighbors, though.
+    /// Spade can estimate them automatically, see `estimate_gradient` and `estimate_gradients`.
+    /// The value that should be interpolated is given by `f`, the gradient of a vertex must
+    /// be given by `g`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # extern crate nalgebra;
+    /// # extern crate spade;
+    /// 
+    /// # use nalgebra::{Vector2, Vector3};
+    /// # use spade::{DelaunayTriangulation, DelaunayTriangle, HasPosition};
+    /// struct PointWithHeight {
+    ///   point: Vector2<f32>,
+    ///   gradient: Vector2<f32>,
+    ///   height: f32,
+    /// }
+    ///
+    /// impl HasPosition for PointWithHeight {
+    ///   type Vector = Vector2<f32>;
+    ///     fn position(&self) -> Vector2<f32> {
+    ///       self.point
+    ///     }
+    /// }
+    ///
+    /// impl PointWithHeight {
+    ///   fn new(point: Vector2<f32>, height: f32) -> PointWithHeight {
+    ///     // Initialize the gradient to any value since it will be overwritten
+    ///     PointWithHeight { point: point, height: height, gradient: Vector2::new(0., 0.) }
+    ///   }
+    /// }
+    ///
+    /// fn main() {
+    ///   let mut delaunay = DelaunayTriangulation::default();
+    ///   // Insert some points here...
+    ///   # delaunay.insert(PointWithHeight::new(Vector2::new(0.0, 0.0), 5.));
+    ///   # delaunay.insert(PointWithHeight::new(Vector2::new(1.0, 0.0), 0.));
+    ///   # delaunay.insert(PointWithHeight::new(Vector2::new(0.0, 1.0), 2.));
+    ///   // Estimate all gradients and store them:
+    ///   delaunay.estimate_gradients(&(|v: &PointWithHeight| v.height),
+    ///                               &(|v: &mut PointWithHeight, g| v.gradient = g));
+    ///   
+    ///   // Now we can use the gradients for interpolation:
+    ///  let interpolated = delaunay.nn_interpolation_c1_sibson(
+    ///      &Vector2::new(0.5, 0.2), |v| v.height, |v| v.gradient);
+    ///  println!("interpolated: {}", interpolated.unwrap());
+    /// }
+    /// ```
+
+    pub fn nn_interpolation_c1_sibson<F: Fn(&V) -> <V::Vector as VectorN>::Scalar, G: Fn(&V) -> V::Vector> (
+        &self, point: &V::Vector, f: F, g: G) -> Option<<V::Vector as VectorN>::Scalar> {
+        
+        let nns = self.get_natural_neighbors(point);
+        let ws = self.get_weights(&nns, point);
+        if ws.is_empty() {
+            return None;
+        }
+        let mut sum_c0 = zero();
+        let mut sum_c1 = zero();
+        let mut sum_c1_weights = zero();
+        let mut alpha = <V::Vector as VectorN>::Scalar::zero();
+        let mut beta = <V::Vector as VectorN>::Scalar::zero();
+        for (index, fixed_handle) in nns.iter().enumerate() {
+            let handle = self.s.handle(*fixed_handle);
+            let pos_i = handle.position();
+            let h_i = f(&*handle);
+            let diff = pos_i - point.clone();
+            let r_i = diff.length2().sqrt();
+            let c1_weight_i = ws[index] / r_i;
+            let grad_i = g(&*handle);
+            let zeta_i = h_i + diff.dot(&grad_i);
+            alpha += c1_weight_i * r_i;
+            beta += c1_weight_i * r_i * r_i;
+            sum_c1_weights += c1_weight_i;
+            sum_c1 += zeta_i * c1_weight_i;
+            sum_c0 += h_i * ws[index];
+
+        }
+        alpha /= sum_c1_weights;
+        sum_c1 /= sum_c1_weights;
+        let result = (alpha * sum_c0 + beta * sum_c1) / (alpha + beta);
+        Some(result)
     }
 }
 

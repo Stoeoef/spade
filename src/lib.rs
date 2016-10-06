@@ -41,6 +41,7 @@ extern crate rand;
 pub mod testutils;
 
 mod traits;
+mod vector_traits;
 mod rtree;
 mod misc;
 mod boundingvolume;
@@ -59,3 +60,4 @@ pub use delaunay::*;
 pub use traits::*;
 pub use boundingvolume::*;
 pub use kernels::*;
+pub use vector_traits::*;

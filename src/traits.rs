@@ -13,16 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+use nalgebra as na;
 use cgmath as cg;
+
 use num::{Signed, BigInt, BigRational, zero};
 use num::rational::Ratio;
-use misc::{min_inline, max_inline};
 use boundingvolume::BoundingRect;
 use bigvec::{AdaptiveInt};
-use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
+use vector_traits::{VectorN, TwoDimensional};
 use std::fmt::Debug;
-use nalgebra as na;
-use nalgebra::{Repeat};
 
 /// Scalar that can be used for spade's datastructures will need to implement
 /// this trait. Can be an integer or floating point type.
@@ -44,151 +44,6 @@ impl SpadeNum for BigInt { }
 impl SpadeNum for BigRational { }
 impl SpadeNum for AdaptiveInt { }
 impl SpadeNum for Ratio<AdaptiveInt> { }
-
-/// Abstraction over vectors in different dimensions.
-pub trait VectorN where Self: Clone,
-Self: Add<Self, Output=Self>,
-Self: Sub<Self, Output=Self>,
-Self: Div<<Self as VectorN>::Scalar, Output=Self>,
-Self: Mul<<Self as VectorN>::Scalar, Output=Self>,
-Self: Index<usize, Output=<Self as VectorN>::Scalar>,
-Self: IndexMut<usize, Output=<Self as VectorN>::Scalar>,
-Self: Debug,
-Self: PartialEq {
-    /// The vector's internal scalar type.
-    type Scalar: SpadeNum;
-
-    /// Creates a new vector with all compoenents set to a certain value.
-    fn from_value(value: Self::Scalar) -> Self;
-
-    /// Creates a new vector with all components initialized to zero.
-    fn new() -> Self {
-        Self::from_value(zero())
-    }
-
-    /// The (fixed) number of dimensions of this vector trait.
-    fn dimensions() -> usize;
-
-    /// Applies a binary operation component wise.
-    fn component_wise<F: Fn(Self::Scalar, Self::Scalar) -> Self::Scalar>(&self, rhs: &Self, f: F) -> Self {
-        let mut result = self.clone();
-        for i in 0 .. Self::dimensions() {
-            result[i] = f(self[i].clone(), rhs[i].clone());
-        }
-        result
-    }
-
-    /// Maps an unary operation to all compoenents.
-    fn map<F: Fn(Self::Scalar) -> O::Scalar, O: VectorN>(&self, f: F) -> O {
-        let mut result = O::new();
-        for i in 0 .. Self::dimensions() {
-            result[i]  = f(self[i].clone());
-        }
-        result
-    }
-
-    /// Returns a new vector containing the minimum values of this and another vector (componentwise)
-    fn min_vec(&self, rhs: &Self) -> Self {
-        self.component_wise(rhs, |l, r| min_inline(l, r))
-    }
-
-    /// Returns a new vector containing the maximum values of this and another vector (componentwise)
-    fn max_vec(&self, rhs: &Self) -> Self {
-        self.component_wise(rhs, |l, r| max_inline(l, r))
-    }
-
-    /// Fold operation over all vector components.
-    fn fold<T, F: Fn(T, Self::Scalar) -> T>(&self, mut acc: T, f: F) -> T {
-        for i in 0 .. Self::dimensions() {
-            acc = f(acc, self[i].clone());
-        }
-        acc
-    }
-
-    /// Checks if a property holds for all components.
-    fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
-        for i in 0 .. Self::dimensions() {
-            if !f(self[i].clone(), rhs[i].clone()) {
-                return false;
-            }
-        }
-        true
-    }
-
-    /// Returns the vector's dot product.
-    fn dot(&self, rhs: &Self) -> Self::Scalar {
-        self.component_wise(rhs, |l, r| l * r).fold(zero(), |acc, val| acc + val)
-    }
-
-    /// Returns the vector's squared length.
-    fn length2(&self) -> Self::Scalar {
-        self.dot(&self)
-    }
-}
-
-/// Only implemented by two dimensional vectors.
-/// Some datastructures won't work for if 3 or
-/// more dimensional vectors are used, this trait
-/// will ensure that they all have the correct
-/// dimension.
-pub trait TwoDimensional : VectorN { }
-
-impl <S: SpadeNum + cg::BaseNum> TwoDimensional for cg::Vector2<S> { }
-impl <S: SpadeNum + na::BaseNum> TwoDimensional for na::Vector2<S> { }
-
-impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 2 }
-    fn from_value(value: Self::Scalar) -> Self {
-        cg::Array::from_value(value)
-    }
-}
-
-impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 3 }
-    fn from_value(value: Self::Scalar) -> Self {
-        cg::Array::from_value(value)
-    }
-}
-
-impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 4 }
-    fn from_value(value: Self::Scalar) -> Self {
-        cg::Array::from_value(value)
-    }
-}
-
-impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 2 }
-    fn from_value(value: Self::Scalar) -> Self {
-        na::Vector2::repeat(value)
-    }
-}
-
-impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 3 }
-    fn from_value(value: Self::Scalar) -> Self {
-        na::Vector3::repeat(value)
-    }
-}
-
-impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 4 }
-    fn from_value(value: Self::Scalar) -> Self {
-        na::Vector4::repeat(value)
-    }
-}
 
 /// Describes objects that can be located by r-trees.
 ///
@@ -277,4 +132,3 @@ impl <S>  SpatialObject for S where S: HasPosition {
         self.position() == *point
     }
 }
-

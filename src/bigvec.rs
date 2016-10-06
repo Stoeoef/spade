@@ -18,7 +18,8 @@ use cgmath as cg;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul, Rem, Neg};
 use num::{Num, BigInt, Zero, One, Signed, ToPrimitive, Integer};
 use num::bigint::ToBigInt;
-use traits::{SpadeNum, VectorN, TwoDimensional};
+use traits::{SpadeNum};
+use vector_traits::{VectorN, TwoDimensional};
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, Eq)]
