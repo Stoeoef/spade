@@ -7,7 +7,7 @@ name = "nninterpolation"
 path = "nninterpolation.rs"
 
 [dependencies]
-nalgebra = "0.9.*"
+nalgebra = "0.9.0"
 noise = "0.2.*"
 kiss3d = "0.7.*"
 glfw = "0.8.*"
