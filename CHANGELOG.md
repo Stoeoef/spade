@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
   - `DelaunayTriangulation`: `estimate_normal`, `estimate_normals`, `estimate_gradient`, `estimate_gradients`
   - Added Sibson's c1 interpolant, `DelaunayTriangulation::nn_interpolation_c1_sibson`
+  - Added Farin's c1 interpolant, `DelaunayTriangulation::nn_interpolation_c1_farin`
   - trait `ThreeDimensional`
   
 ### Changed
