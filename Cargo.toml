@@ -20,7 +20,6 @@ noise = "0.2.*"
 [dev-dependencies]
 time = "0.1.*"
 glium = "0.15.*"
-kiss3d = "0.7.*"
 glfw = "0.8.*"
 approx = "0.1.*"
 
@@ -33,10 +32,3 @@ debug-assertions = false
 opt-level = 3
 debug = true
 debug-assertions = false
-
-[[example]]
-name = "nninterpolation"
-
-# kiss3d requires an older nalgebra version
-[dev-dependencies.nalgebra]
-version = "0.9.*"

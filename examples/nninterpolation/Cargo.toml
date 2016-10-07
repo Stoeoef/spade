@@ -1,0 +1,18 @@
+[package]
+name = "nninterpolation-example"
+version = "0.1.0"
+
+[[bin]]
+name = "nninterpolation"
+path = "nninterpolation.rs"
+
+[dependencies]
+nalgebra = "0.9.*"
+noise = "0.2.*"
+kiss3d = "0.7.*"
+glfw = "0.8.*"
+rand = "0.3.*"
+spade = { path = "../../" }
+
+[profile.dev]
+opt-level = 3
