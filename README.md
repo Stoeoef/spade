@@ -1,8 +1,9 @@
 [![Build Status](https://travis-ci.org/Stoeoef/spade.svg?branch=master)](https://travis-ci.org/Stoeoef/spade)
-[![Docs](https://docs.rs/spade/badge.svg)](https://docs.rs/spade/0.1.0/spade/)
+[![Docs](https://docs.rs/spade/badge.svg)](https://docs.rs/spade/)
+[![Crates.io](https://img.shields.io/crates/v/spade.svg)](https://crates.io/crates/spade)
 # spade
 
- * [Documentation](https://stoeoef.github.io/spade/)
+ * [Documentation](https://docs.rs/spade/)
  * [Using spade](#using-spade)
  * [Examples](#examples)
  * [Feedback](#feedback)
@@ -18,7 +19,7 @@ The triangulation also implements natural neighbor interpolation ([wikipedia](ht
 All structures are purely written in (safe) rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
 
 # Documentation
-[Link to documentation](https://stoeoef.github.io/spade/)
+The documentation can be found under [docs.rs](https://docs.rs/spade/)
 
 # Using spade
 Add this to your `Cargo.toml`:
@@ -26,7 +27,7 @@ Add this to your `Cargo.toml`:
 spade = "0.1.*"
 ```
 # Feedback
-Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Feel free to post an issue on GitHub. Please do report bugs as well. If you're in for an adventure, pull requests of any kind are very welcome.
+Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Please do post an issue on GitHub. Please do report bugs as well. If you're in for an adventure, pull requests of any kind are very welcome.
 
 # Examples
 _Note: If you have opened this on docs.rs, you won't see any images. Use the README.md on the GitHub page._
