@@ -1224,7 +1224,7 @@ mod test {
     #[test]
     fn test_insert_points() {
         // Just check if this won't crash
-        const SIZE: usize = 50000;
+        const SIZE: usize = 10000;
         let mut points = random_points_with_seed::<f64>(SIZE, [1, 3, 3, 7]);
         let mut d: DelaunayTriangulation<_, _> = Default::default();
         for p in points.drain(..) {
@@ -1235,7 +1235,7 @@ mod test {
 
     #[test]
     fn test_insert_integral_points() {
-        const SIZE: usize = 100000;
+        const SIZE: usize = 10000;
         let mut points = random_points_in_range(1000i64, SIZE, [100934, 1235, 701, 12355]);
         let mut d: DelaunayTriangulation<_, _> = Default::default();
         for p in points.drain(..) {
