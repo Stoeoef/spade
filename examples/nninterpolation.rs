@@ -56,6 +56,7 @@ enum DelaunayVisibility {
 enum GridVisibility {
     ShowC0,
     ShowC1,
+    ShowFarin,
     None,
 }
 
@@ -64,7 +65,8 @@ impl GridVisibility {
         use GridVisibility::*;
         match self {
             &ShowC0 => ShowC1,
-            &ShowC1 => None,
+            &ShowC1 => ShowFarin,
+            &ShowFarin => None,
             &None => ShowC0,
         }
     }
@@ -74,6 +76,7 @@ impl GridVisibility {
         match self {
             &ShowC0 => println!("Displaying c0 interpolant"),
             &ShowC1 => println!("Displaying sibson's c1 interpolant"),
+            &ShowFarin => println!("Displaying farin's c1 interpolant"),
             _ => { },
         }
     }
@@ -128,8 +131,8 @@ fn main() {
     let mut window = Window::new("Delaunay Demo");
 
     window.set_light(Light::StickToCamera);
-    
-    let mut grid_visibility = GridVisibility::ShowC1;
+
+    let mut grid_visibility = GridVisibility::ShowC0;
     let mut delaunay_visibility = DelaunayVisibility::All;
     let mut show_normals = false;
 
@@ -137,13 +140,17 @@ fn main() {
     let mesh = Rc::new(RefCell::new(mesh));
     let mut node = window.add_mesh(mesh.clone(), Repeat::repeat(1.0));
     node.enable_backface_culling(false);
-    
+
     let lines = extract_edges(&delaunay);
     let grid_c1 = get_interpolated_grid(&delaunay, |d, p| d.nn_interpolation_c1_sibson(
         p, |v| v.height, |v| v.gradient).unwrap());
 
     let grid_c0 = get_interpolated_grid(&delaunay, |d, p| d.nn_interpolation(
         p, |v| v.height).unwrap());
+
+    let grid_farin = get_interpolated_grid(
+        &delaunay, |d, p| d.nn_interpolation_c1_farin(p, |v| v.height, |v| v.gradient).unwrap());
+
 
     let normals = get_normals(&delaunay);
 
@@ -190,6 +197,11 @@ fn main() {
                 for &(from, to) in &grid_c1 {
                     window.draw_line(&from.to_point(), &to.to_point(), &color);
                 }
+            },
+            GridVisibility::ShowFarin => {
+                for &(from, to) in &grid_farin {
+                    window.draw_line(&from.to_point(), &to.to_point(), &color);
+                }
             }
             _ => { },
         }
@@ -230,12 +242,7 @@ fn get_interpolated_grid<F>(
     for x in 0 .. GRID_SUBDIVISIONS + 1 {
         for y in 0 .. GRID_SUBDIVISIONS + 1 {
             let pos = transform(Vector2::new(x as f64, y as f64));
-            // let value = delaunay.nn_interpolation_c1(&pos, |v| v.height,
-            //                                          |v| v.gradient).unwrap();
             let value = f(delaunay, &pos);
-
-            // let value = delaunay.nn_interpolation(&pos, |v| v.height).unwrap();
-                                                     
             values[x][y] = value;
         }
     }

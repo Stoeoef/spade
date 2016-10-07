@@ -1047,9 +1047,9 @@ impl <V, K> DelaunayTriangulation<V, K>
     ///                               &(|v: &mut PointWithHeight, g| v.gradient = g));
     ///   
     ///   // Now we can use the gradients for interpolation:
-    ///  let interpolated = delaunay.nn_interpolation_c1_sibson(
+    ///   let interpolated = delaunay.nn_interpolation_c1_sibson(
     ///      &Vector2::new(0.5, 0.2), |v| v.height, |v| v.gradient);
-    ///  println!("interpolated: {}", interpolated.unwrap());
+    ///   println!("interpolated: {}", interpolated.unwrap());
     /// }
     /// ```
     pub fn nn_interpolation_c1_sibson<F: Fn(&V) -> <V::Vector as VectorN>::Scalar, G: Fn(&V) -> V::Vector> (
@@ -1084,6 +1084,93 @@ impl <V, K> DelaunayTriangulation<V, K>
         alpha /= sum_c1_weights;
         sum_c1 /= sum_c1_weights;
         let result = (alpha * sum_c0 + beta * sum_c1) / (alpha + beta);
+        Some(result)
+    }
+
+
+    /// Interpolates a data point on this triangulation using Farin's c1 interpolant.
+    ///
+    /// This method is used in the same way as `nn_interpolation_c1_sibson`. The resulting
+    /// interpolant is very similar to sibson's c1 interpolant but uses a different algorithm.
+    pub fn nn_interpolation_c1_farin<F: Fn(&V) -> <V::Vector as VectorN>::Scalar, G: Fn(&V) -> V::Vector> (
+        &self, point: &V::Vector, f: F, g: G) -> Option<<V::Vector as VectorN>::Scalar> {
+        let nns = self.get_natural_neighbors(point);
+        let ws = self.get_weights(&nns, point);
+        if ws.is_empty() {
+            return None;
+        }
+        let handles: Vec<_> = nns.iter().map(|v| self.handle(*v)).collect();
+
+        let one = <V::Vector as VectorN>::Scalar::one();
+        let two = one + one;
+        let three = one + one + one;
+        let four = two + two;
+        let six = three * two;
+
+        let get_edge_height = |i2: usize, i1: usize| {
+            // Calculates an edge control point.
+            // The edge is given by handles[i2] -> handles[i1]
+            let diff = handles[i1].position() - handles[i2].position();
+            let grad = g(&*handles[i2]);
+            f(&*handles[i2]) - grad.dot(&diff) / three
+        };
+
+        let mut result = <V::Vector as VectorN>::Scalar::zero();
+
+        for first_index in 0 .. nns.len() {
+            for second_index in first_index .. nns.len() {
+                for third_index in second_index .. nns.len() {
+                    // Determine control point "height"
+                    let control_height;
+                    let norm;
+                    if first_index == second_index && second_index == third_index {
+                        // Control point is one of the original data points
+                        control_height = f(&*handles[first_index]);
+                        norm = six;
+                    } else {
+                        if first_index == second_index || first_index == third_index ||
+                            second_index == third_index 
+                        {
+                            // Point lies on an edge of the bezier simplex
+                            let (i2, i1) = if first_index == second_index {
+                                (first_index, third_index)
+                            } else if first_index == third_index {
+                                (first_index, second_index)
+                            } else {
+                                (second_index, first_index)
+                            };
+                            control_height = get_edge_height(i2, i1);
+                            norm = two;
+                        } else {
+                            // We have an inner control point, first != second != third
+                            // Get all 6 edge control points of the triangle spanned by
+                            // first_index, second_index and third_index
+                            let cur_handles = [first_index, second_index, third_index];
+                            const EDGE_POINTS: [(usize, usize); 6] = [(0, 1), (0, 2), (1, 0), 
+                                                                      (1, 2), (2, 0), (2, 1)];
+                            let mut edge_contrib = <V::Vector as VectorN>::Scalar::zero();
+                            for &(ref i1, ref i2) in &EDGE_POINTS {
+                                let i2 = cur_handles[*i2];
+                                let i1 = cur_handles[*i1];
+                                // TODO: We could cache the edge points in some way instead of
+                                // calculating them anew for each inner point...
+                                edge_contrib += get_edge_height(i2, i1);
+                            }
+                            edge_contrib /= four;
+                            
+                            let inner_contrib = (f(&*handles[first_index]) +
+                                                 f(&*handles[second_index]) + 
+                                                 f(&*handles[third_index])) / six;
+                            control_height = edge_contrib - inner_contrib;
+                            norm = one;
+                        }
+                    }
+                    // Add control height to result, weight it with the appropriate natural
+                    // neighbor coordinates.
+                    result += six * ws[first_index] * ws[second_index] * ws[third_index] * fp / norm;
+                }
+            }
+        }
         Some(result)
     }
 }
