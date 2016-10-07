@@ -1167,7 +1167,8 @@ impl <V, K> DelaunayTriangulation<V, K>
                     }
                     // Add control height to result, weight it with the appropriate natural
                     // neighbor coordinates.
-                    result += six * ws[first_index] * ws[second_index] * ws[third_index] * fp / norm;
+                    result += six * ws[first_index] * ws[second_index] * ws[third_index] 
+                        * control_height / norm;
                 }
             }
         }
