@@ -208,7 +208,7 @@ pub struct DelaunayTriangulation<V: HasPosition2D, K>
 {
     __kernel: PhantomData<K>,
     s: PlanarSubdivision<V, K>,
-    points: RTree<PointEntry<V::Vector>>,
+    points: RTree<PointEntry<V::Vector>, PointEntry<V::Vector>>,
     all_points_on_line: bool,
 }
 

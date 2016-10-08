@@ -48,7 +48,7 @@ impl std::fmt::Display for LookupMode {
     }
 }
 
-fn get_tree_edges(tree: &RTree<Vector2<f32>>) -> (Vec<Vertex>, Vec<Vertex>) {
+fn get_tree_edges(tree: &RTree<Vector2<f32>, Vector2<f32>>) -> (Vec<Vertex>, Vec<Vertex>) {
     let mut edges = Vec::new();
     let mut vertices = Vec::new();
     let vertex_color = Vector3::new(0.0, 0.0, 1.0);

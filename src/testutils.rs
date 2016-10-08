@@ -55,7 +55,7 @@ pub fn random_points_with_seed_range_and_origin<S: SpadeNum + Copy + Rand + Samp
 
 pub fn create_random_tree<S: SpadeNum + BaseFloat + Rand + SampleRange>(
     size: usize, seed: [u32; 4]) -> (
-    RTree<Vector2<S>>, Vec<Vector2<S>>) {
+    RTree<Vector2<S>, Vector2<S>>, Vec<Vector2<S>>) {
     let mut tree = RTree::new();
     
     let points = random_points_with_seed(size, seed);

@@ -43,7 +43,7 @@ const FRAGMENT_SHADER_SRC: &'static str = r#"
 
 
 pub struct ExampleApplication {
-    pub tree: RTree<Vector2<f32>>,
+    pub tree: RTree<Vector2<f32>, Vector2<f32>>,
     program: Program,
     pub edges_buffer: VertexBuffer<Vertex>,
     pub vertices_buffer: VertexBuffer<Vertex>,
