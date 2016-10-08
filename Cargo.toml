@@ -19,8 +19,6 @@ noise = "0.2.*"
 
 [dev-dependencies]
 time = "0.1.*"
-glium = "0.15.*"
-glfw = "0.8.*"
 approx = "0.1.*"
 
 [profile.bench]

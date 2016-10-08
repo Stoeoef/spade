@@ -1,0 +1,17 @@
+[package]
+name = "rtreevis-example"
+version = "0.1.0"
+
+[[bin]]
+name = "rtreevis"
+path = "rtreevis.rs"
+
+[dependencies]
+glfw = "0.8.*"
+glium = "0.15.*"
+rand = "0.3.*"
+cgmath = "*"
+spade = { path = "../../" }
+
+[profile.dev]
+opt-level = 3

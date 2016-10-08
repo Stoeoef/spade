@@ -13,15 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_use]
-extern crate glium;
-
 extern crate rand;
 extern crate spade;
 extern crate cgmath;
 extern crate time;
-
-mod utils;
 
 use spade::{RTree};
 use spade::testutils::*;

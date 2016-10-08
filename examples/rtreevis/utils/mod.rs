@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![allow(dead_code)]
 pub mod exampleapplication;
 
 // Rust generates warnings for this crate when running cargo test, allowing some dead
@@ -28,45 +27,12 @@ pub struct Vertex {
     pub color: [f32; 3],
 }
 
-#[cfg(not(test))]
 implement_vertex!(Vertex, pos, color);
 impl Vertex {
     pub fn new(pos: [f32; 2], color: [f32; 3]) -> Vertex {
         Vertex { pos: pos, color: color }
     }
 }
-
-
-// wrap around if a value overflows
-// fn wrap<S: BaseFloat>(val: S) -> S {
-//     let two = one::<S>() + one::<S>();
-//     if val > one::<S>() {
-//         two - val
-//     } else if val < -one::<S>() {
-//         two + val
-//     } else {
-//         val
-//     }
-// }
-
-// pub fn random_walk<S: BaseFloat + Rand + SampleRange>(
-//     size: usize, step_size: S, seed: [u32; 4]) -> Vec<Vector2<S>> {
-//     let mut rng = XorShiftRng::from_seed(seed);
-//     let range = Range::new(-step_size, step_size);
-//     let mut points = Vec::new();
-//     let mut last = Vector2::from_value(zero::<S>());
-//     for _ in 0 .. size {
-//         let dx = range.ind_sample(&mut rng);
-//         let dy = range.ind_sample(&mut rng);
-//         let mut next: Vector2<S> = Vector2::new(dx, dy) + last;
-//         next.x = wrap(next.x);
-//         next.y = wrap(next.y);
-//         last = next.clone();
-//         points.push(next);
-//     }
-//     points
-// }
-
 
 pub fn push_rectangle(vec: &mut Vec<Vertex>, rect: &BoundingRect<Vector2<f32>>, 
                                     color: &Vector3<f32>) {
