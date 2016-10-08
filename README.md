@@ -34,11 +34,13 @@ _Note: If you have opened this on docs.rs, you won't see any images. Use the REA
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
-Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance.
+Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance. You can find this example in `/examples/rtreevis`, run it with `cargo run`.
+
 ![An example R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
 
 ## Natural neighbor interpolation
-The delaunay triangulation of a height field is shown with orange lines, the green grid shows the natural neighbor interpolated heights. In contrast to barycentric interpolation (the gray polygons), natural neighbor interpolation is smooth (C¹ differentiable, except for the data points themselves).
+The delaunay triangulation of a height field is shown with orange lines, the green grid shows the natural neighbor interpolated heights. In contrast to barycentric interpolation (the gray polygons), natural neighbor interpolation is smooth (C¹ differentiable, except for the data points themselves). You can find this example in `/examples/nninterpolation`, run it with `cargo run`.
+
 ![Delaunay triangulation with a grid showing interpolated values](/images/nninterpolation.png?raw=true)
 
 # Performance
