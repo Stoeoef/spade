@@ -44,7 +44,9 @@ pub enum PositionInTriangulation<H> {
 }
 
 /// Represents a triangle in a delaunay triangulation.
-pub struct DelaunayTriangle<'a, V, K>(pub [VertexHandle<'a, V, K>; 3]) where V: HasPosition2D + 'a, K: 'a, V::Vector: TwoDimensional;
+// TODO
+pub struct DelaunayTriangle<'a, V, K>(pub [VertexHandle<'a, V, V, K>; 3]) 
+    where V: HasPosition2D + 'a, K: 'a, V::Vector: TwoDimensional;
 
 /// Iterator over all triangles in a delaunay triangulation.
 pub struct DelaunayTriangleIterator<'a, V, K> 
@@ -207,7 +209,7 @@ pub struct DelaunayTriangulation<V: HasPosition2D, K>
     where V::Vector: TwoDimensional
 {
     __kernel: PhantomData<K>,
-    s: PlanarSubdivision<V, K>,
+    s: PlanarSubdivision<V, V, K>,
     points: RTree<PointEntry<V::Vector>, PointEntry<V::Vector>>,
     all_points_on_line: bool,
 }
@@ -266,7 +268,8 @@ impl <V, K> DelaunayTriangulation<V, K>
 
     /// Creates a dynamic vertex handle from a fixed handle.
     /// May panic if the handle was not obtained from this triangulation.
-    pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, K> {
+    // TODO
+    pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, V, K> {
         self.s.handle(handle)
     }
 
@@ -278,7 +281,7 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Checks if the triangulation contains an object with a given coordinate.
-    pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V, K>> {
+    pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V, V, K>> {
         let handle = self.points.lookup(point);
         handle.map(|h| self.s.handle(h.handle))
     }
@@ -297,14 +300,14 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Returns all vertices contained in a rectangle.
-    pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Vector>) -> Vec<VertexHandle<V, K>> {
+    pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Vector>) -> Vec<VertexHandle<V, V, K>> {
         let fixed_handles = self.points.lookup_in_rectangle(rect);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
 
     /// Returns all vertices contained in a circle.
     pub fn lookup_in_circle(&self, center: &V::Vector, 
-                            radius2: &<V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V, K>> {
+                            radius2: &<V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V, V, K>> {
         let fixed_handles = self.points.lookup_in_circle(center, radius2);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
@@ -324,12 +327,13 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Returns an iterator over all edges.
-    pub fn edges(&self) -> AllEdgesIterator<V, K> {
+    // TODO
+    pub fn edges(&self) -> AllEdgesIterator<V, V, K> {
         self.s.edges()
     }
 
     /// Returns an iterator over all vertices.
-    pub fn vertices(&self) -> AllVerticesIterator<V, K> {
+    pub fn vertices(&self) -> AllVerticesIterator<V, V, K> {
         self.s.vertices()
     }
 
@@ -494,7 +498,7 @@ impl <V, K> DelaunayTriangulation<V, K>
 
     /// Returns information about the location of a point in a triangulation.
     pub fn get_position_in_triangulation(
-        &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V, K>> {
+        &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V, V, K>> {
         use PositionInTriangulation::*;
 
         match self.get_position_in_triangulation_fixed(point) {

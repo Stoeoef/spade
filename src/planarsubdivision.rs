@@ -21,18 +21,21 @@ use std::marker::PhantomData;
 use std::default::Default;
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::borrow::{Borrow, BorrowMut};
 
-pub struct PlanarSubdivision<V, K> 
+pub struct PlanarSubdivision<V, B, K> 
     where V: HasPosition2D,
-          V::Vector: TwoDimensional {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
     __kernel: PhantomData<K>,
-    vertices: Vec<VertexEntry<V>>,
+    vertices: Vec<VertexEntry<V, B>>,
 }
 
-impl<V, K> Clone for PlanarSubdivision<V, K> 
+impl<V, B, K> Clone for PlanarSubdivision<V, B, K> 
     where V: HasPosition2D + Clone,
-          V::Vector: TwoDimensional {
-    fn clone(&self) -> PlanarSubdivision<V, K> {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + Clone {
+    fn clone(&self) -> PlanarSubdivision<V, B, K> {
         PlanarSubdivision {
             __kernel: Default::default(),
             vertices: self.vertices.clone(),
@@ -68,19 +71,20 @@ pub enum SectorInfo {
     InSector(usize),
 }
 
-impl<V, K> PlanarSubdivision<V, K> where
+impl<V, B, K> PlanarSubdivision<V, B, K> where
     V: HasPosition2D,
     K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-    V::Vector: TwoDimensional {
+    V::Vector: TwoDimensional,
+    B: Borrow<V> {
 
-    pub fn new() -> PlanarSubdivision<V, K> {
+    pub fn new() -> PlanarSubdivision<V, B, K> {
         PlanarSubdivision {
             __kernel: Default::default(),
             vertices: Vec::new(),
         }
     }
 
-    pub fn insert_vertex<'a> (&'a mut self, vertex: V) 
+    pub fn insert_vertex<'a> (&'a mut self, vertex: B) 
                               -> FixedVertexHandle
     {
         let index = self.vertices.len();
@@ -129,38 +133,38 @@ impl<V, K> PlanarSubdivision<V, K> where
     
     pub fn disconnect(&mut self, v1: FixedVertexHandle, v2: FixedVertexHandle)
         -> bool {
-            let v1_index;
-            let v2_index;
-            if let Some(edge) = EdgeHandle::from_neighbors(self, v1, v2) {
-                v1_index = edge.to_index;
-                v2_index = edge.rev().to_index;
-            } else {
-                return false
-            }
-            self.mut_entry(v1).neighbors.remove(v1_index);
-            self.mut_entry(v2).neighbors.remove(v2_index);
-            true
+        let v1_index;
+        let v2_index;
+        if let Some(edge) = EdgeHandle::from_neighbors(self, v1, v2) {
+            v1_index = edge.to_index;
+            v2_index = edge.rev().to_index;
+        } else {
+            return false
         }
+        self.mut_entry(v1).neighbors.remove(v1_index);
+        self.mut_entry(v2).neighbors.remove(v2_index);
+        true
+    }
 
     fn entry(&self, handle: FixedVertexHandle)
-             -> &VertexEntry<V> {
+             -> &VertexEntry<V, B> {
         &self.vertices[handle.clone()]
     }
 
     fn entry_option(&self, handle: FixedVertexHandle)
-                    -> Option<&VertexEntry<V>> 
+                    -> Option<&VertexEntry<V, B>> 
     {
         self.vertices.get(handle)
     }
 
     pub fn update_vertex(&mut self, handle: FixedVertexHandle,
-                         vertex: V) {
-        assert_eq!(vertex.position(), self.handle(handle).position());
+                         vertex: B) {
+        assert_eq!(vertex.borrow().position(), self.handle(handle).position());
         self.mut_entry(handle).data = vertex;
     }
 
     fn mut_entry(&mut self, handle: FixedVertexHandle)
-             -> &mut VertexEntry<V> {
+             -> &mut VertexEntry<V, B> {
         &mut self.vertices[handle]
     }
 
@@ -179,17 +183,13 @@ impl<V, K> PlanarSubdivision<V, K> where
         self.connect(new1, new2);
     }
 
-    pub fn mut_data(&mut self, fixed_handle: FixedVertexHandle) -> &mut V {
-        &mut self.mut_entry(fixed_handle).data
-    }
-
     pub fn handle(&self, fixed_handle: FixedVertexHandle)
-        -> VertexHandle<V, K> {
+        -> VertexHandle<V, B, K> {
         VertexHandle::new(&self, self.entry(fixed_handle), fixed_handle)
     }
 
     pub fn edge_handle(&self, fixed_handle: &FixedEdgeHandle) 
-    -> EdgeHandle<V, K> {
+    -> EdgeHandle<V, B, K> {
         EdgeHandle::new(&self, fixed_handle.from_handle,
                         fixed_handle.to_index)
     }
@@ -202,28 +202,45 @@ impl<V, K> PlanarSubdivision<V, K> where
         Box::new(0 .. self.vertices.len())
     }
 
-    pub fn vertices<'a>(&'a self) -> AllVerticesIterator<'a, V, K> {
+    pub fn vertices<'a>(&'a self) -> AllVerticesIterator<'a, V, B, K> {
         AllVerticesIterator { subdiv: self, cur_vertex: 0 }
     }
 
-    pub fn edges<'a>(&'a self) -> AllEdgesIterator<'a, V, K> {
+    pub fn edges<'a>(&'a self) -> AllEdgesIterator<'a, V, B, K> {
         AllEdgesIterator::new(self)
     }
 }
 
+impl<V, B, K> PlanarSubdivision<V, B, K> where
+    V: HasPosition2D,
+    K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+    V::Vector: TwoDimensional,
+    B: BorrowMut<V> {
+
+    pub fn mut_data(&mut self, fixed_handle: FixedVertexHandle) -> &mut V {
+        self.mut_entry(fixed_handle).data.borrow_mut()
+    }
+}
+
+
 /// An iterator over all vertices in a subdivision.
-pub struct AllVerticesIterator<'a, V: HasPosition2D + 'a, K: 'a> 
-    where V::Vector: TwoDimensional {
-    subdiv: &'a PlanarSubdivision<V, K>,
+pub struct AllVerticesIterator<'a, V, B, K> 
+    where V: HasPosition2D + 'a,
+          V::Vector: TwoDimensional,
+          K: 'a,
+          B: Borrow<V> + 'a {
+    subdiv: &'a PlanarSubdivision<V, B, K>,
     cur_vertex: FixedVertexHandle,
 }
 
-impl <'a, V: HasPosition2D, K> Iterator for AllVerticesIterator<'a, V, K>
-    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
-    type Item = VertexHandle<'a, V, K>;
+impl <'a, V, B, K> Iterator for AllVerticesIterator<'a, V, B, K>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    type Item = VertexHandle<'a, V, B, K>;
 
-    fn next(&mut self) -> Option<VertexHandle<'a, V, K>> {
+    fn next(&mut self) -> Option<VertexHandle<'a, V, B, K>> {
         if self.cur_vertex >= self.subdiv.num_vertices() {
             None
         } else {
@@ -234,16 +251,21 @@ impl <'a, V: HasPosition2D, K> Iterator for AllVerticesIterator<'a, V, K>
 }
 
 /// An iterator over all edges contained in a subdivision.
-pub struct AllEdgesIterator<'a, V: HasPosition2D + 'a, K: 'a> 
-    where V::Vector: TwoDimensional {
-    subdiv: &'a PlanarSubdivision<V, K>,
+pub struct AllEdgesIterator<'a, V, B, K> 
+    where V: HasPosition2D + 'a,
+          V::Vector: TwoDimensional,
+          K: 'a,
+          B: Borrow<V> + 'a,
+{
+    subdiv: &'a PlanarSubdivision<V, B, K>,
     cur_vertex: FixedVertexHandle,
     cur_vertex_index: usize,
 }
 
-impl <'a, V: HasPosition2D, K> AllEdgesIterator<'a, V, K> 
-    where V::Vector: TwoDimensional {
-    fn new(subdiv: &'a PlanarSubdivision<V, K>) -> Self {
+impl <'a, V: HasPosition2D, B, K> AllEdgesIterator<'a, V, B, K> 
+    where V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn new(subdiv: &'a PlanarSubdivision<V, B, K>) -> Self {
         AllEdgesIterator {
             subdiv: subdiv,
             cur_vertex: 0,
@@ -252,12 +274,14 @@ impl <'a, V: HasPosition2D, K> AllEdgesIterator<'a, V, K>
     }
 }
 
-impl <'a, V: HasPosition2D + 'a, K> Iterator for AllEdgesIterator<'a, V, K> 
-    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
-    type Item = EdgeHandle<'a, V, K>;
+impl <'a, V, B, K> Iterator for AllEdgesIterator<'a, V, B, K> 
+    where V: HasPosition2D + 'a,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional,
+          B: Borrow<V>  {
+    type Item = EdgeHandle<'a, V, B, K>;
     
-    fn next(&mut self) -> Option<EdgeHandle<'a, V, K>> {
+    fn next(&mut self) -> Option<EdgeHandle<'a, V, B, K>> {
         if let Some(cur_entry) = self.subdiv.entry_option(self.cur_vertex) {
             if self.cur_vertex_index >= cur_entry.neighbors.len() {
                 self.cur_vertex += 1;
@@ -280,9 +304,10 @@ impl <'a, V: HasPosition2D + 'a, K> Iterator for AllEdgesIterator<'a, V, K>
     }
 }
 
-impl <V: HasPosition2D> Default for PlanarSubdivision<V, TrivialKernel> 
-    where V::Vector: TwoDimensional {
-    fn default() -> PlanarSubdivision<V, TrivialKernel> {
+impl <V: HasPosition2D, B> Default for PlanarSubdivision<V, B, TrivialKernel> 
+    where V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn default() -> PlanarSubdivision<V, B, TrivialKernel> {
         PlanarSubdivision {
             __kernel: Default::default(),
             vertices: Vec::new(),
@@ -291,17 +316,22 @@ impl <V: HasPosition2D> Default for PlanarSubdivision<V, TrivialKernel>
 }
 
 #[derive(Clone)]
-struct VertexEntry<V> 
+struct VertexEntry<V, B> 
     where V: HasPosition2D,
-          V::Vector: TwoDimensional {
-    data: V,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    __v: PhantomData<V>,
+    data: B,
     neighbors: Vec<FixedVertexHandle>,
 }
 
-impl <V: HasPosition2D> VertexEntry<V> 
-    where V::Vector: TwoDimensional {
-    fn new(data: V) -> VertexEntry<V> {
+impl <V, B> VertexEntry<V, B> 
+    where V: HasPosition2D,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn new(data: B) -> VertexEntry<V, B> {
         VertexEntry {
+            __v: Default::default(),
             data: data,
             neighbors: Vec::with_capacity(6),
         }
@@ -332,31 +362,34 @@ impl <V: HasPosition2D> VertexEntry<V>
 /// # }
 /// ```
 
-pub struct VertexHandle<'a, V, K> 
+pub struct VertexHandle<'a, V, B, K> 
     where V: HasPosition2D + 'a, 
           K: 'a,
-          V::Vector: TwoDimensional {
-    subdiv: &'a PlanarSubdivision<V, K>,
-    entry: &'a VertexEntry<V>,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a {
+    subdiv: &'a PlanarSubdivision<V, B, K>,
+    entry: &'a VertexEntry<V, B>,
     fixed: FixedVertexHandle,
 }
 
-impl <'a, V, K> Clone for VertexHandle<'a, V, K> 
+impl <'a, V, B, K> Clone for VertexHandle<'a, V, B, K> 
     where V: HasPosition2D + 'a, 
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
-          V::Vector: TwoDimensional {
-    fn clone(&self) -> VertexHandle<'a, V, K> {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a {
+    fn clone(&self) -> VertexHandle<'a, V, B, K> {
         VertexHandle::new(self.subdiv, self.entry, self.fixed)
     }
 }
 
-impl <'a, V, K> Debug for VertexHandle<'a, V, K> 
+impl <'a, V, B, K> Debug for VertexHandle<'a, V, B, K> 
     where V: HasPosition2D + Debug + 'a,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         try!(write!(f, "VertexHandle {{ fixed = {}, data = ", self.fixed));
-        try!(self.entry.data.fmt(f));
+        try!(self.entry.data.borrow().fmt(f));
         write!(f, " }}")
     }
 }
@@ -402,10 +435,11 @@ impl <T, F> Iterator for CircularIterator<T, F> where
     }
 }
 
-pub struct EdgeHandle<'a, V, K>
+pub struct EdgeHandle<'a, V, B, K>
     where V: HasPosition2D + 'a, K: 'a,
-          V::Vector: TwoDimensional {
-    subdiv: &'a PlanarSubdivision<V, K>,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a {
+    subdiv: &'a PlanarSubdivision<V, B, K>,
     from_handle: FixedVertexHandle,
     to_index: usize,
 }
@@ -425,30 +459,34 @@ impl FixedEdgeHandle {
     }
 }
 
-impl <'a, V, K> Clone for EdgeHandle<'a, V, K>
+impl <'a, V, B, K> Clone for EdgeHandle<'a, V, B, K>
     where V: HasPosition2D + 'a,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
-    fn clone(&self) -> EdgeHandle<'a, V, K> {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn clone(&self) -> EdgeHandle<'a, V, B, K> {
         EdgeHandle::new(self.subdiv, self.from_handle, self.to_index)
     }
 }
 
-impl <'a, V, K> PartialEq for EdgeHandle<'a, V, K> 
+impl <'a, V, B, K> PartialEq for EdgeHandle<'a, V, B, K> 
     where V: HasPosition2D + 'a,
-          V::Vector: TwoDimensional {
-    fn eq(&self, rhs: &EdgeHandle<'a, V, K>) -> bool {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn eq(&self, rhs: &EdgeHandle<'a, V, B, K>) -> bool {
         self.from_handle == rhs.from_handle && self.to_index == rhs.to_index
     }
 }
 
-impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
-    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
+impl <'a, V, B, K> EdgeHandle<'a, V, B, K>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
 
     pub fn from_neighbors(
-        subdiv: &'a PlanarSubdivision<V, K>, from: FixedVertexHandle,
-        to: FixedVertexHandle) -> Option<EdgeHandle<'a, V, K>> {
+        subdiv: &'a PlanarSubdivision<V, B, K>, from: FixedVertexHandle,
+        to: FixedVertexHandle) -> Option<EdgeHandle<'a, V, B, K>> {
         let from_handle = subdiv.handle(from);
         if let Some(index) = from_handle.fixed_neighbors().iter()
             .position(|e| *e == to)
@@ -459,8 +497,8 @@ impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
         }
     }
 
-    fn new(subdiv: &'a PlanarSubdivision<V, K>, from_handle: FixedVertexHandle,
-           to_index: usize) -> EdgeHandle<'a, V, K> {
+    fn new(subdiv: &'a PlanarSubdivision<V, B, K>, from_handle: FixedVertexHandle,
+           to_index: usize) -> EdgeHandle<'a, V, B, K> {
         EdgeHandle {
             subdiv: subdiv,
             from_handle: from_handle,
@@ -468,16 +506,16 @@ impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
         }
     }
 
-    pub fn from_handle(&self) -> VertexHandle<'a, V, K> {
+    pub fn from_handle(&self) -> VertexHandle<'a, V, B, K> {
         self.subdiv.handle(self.from_handle)
     }
 
-    pub fn to_handle(&self) -> VertexHandle<'a, V, K> {
+    pub fn to_handle(&self) -> VertexHandle<'a, V, B, K> {
         self.subdiv.handle(self.subdiv.entry(self.from_handle).neighbors[self.to_index])
     }
 
-    pub fn ccw_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, K>> + 'a> {
-        let clone: EdgeHandle<'a, V, K> = self.clone();
+    pub fn ccw_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, B, K>> + 'a> {
+        let clone: EdgeHandle<'a, V, B, K> = self.clone();
         Box::new(CircularIterator::new(clone, |h| h.ccw()))
     }
 
@@ -489,13 +527,13 @@ impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
     }
 
 
-    pub fn ccw(&self) -> EdgeHandle<'a, V, K> {
+    pub fn ccw(&self) -> EdgeHandle<'a, V, B, K> {
         let from_handle = self.from_handle();
         let ccw_index = (self.to_index + 1) % from_handle.num_neighbors();
         EdgeHandle::new(self.subdiv, self.from_handle, ccw_index)
     }
 
-    pub fn cw(&self) -> EdgeHandle<'a, V, K> {
+    pub fn cw(&self) -> EdgeHandle<'a, V, B, K> {
         let from_handle = self.from_handle();
         let cw_index = if self.to_index == 0 {
             from_handle.num_neighbors() - 1
@@ -505,7 +543,7 @@ impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
         EdgeHandle::new(self.subdiv, self.from_handle, cw_index)
     }
 
-    pub fn rev(&self) -> EdgeHandle<'a, V, K> {
+    pub fn rev(&self) -> EdgeHandle<'a, V, B, K> {
         let to_handle = self.to_handle().fix();
         EdgeHandle::from_neighbors(
             &self.subdiv, to_handle, self.from_handle)
@@ -518,11 +556,13 @@ impl <'a, V: HasPosition2D, K> EdgeHandle<'a, V, K>
     }
 }
 
-impl <'a, V: HasPosition2D, K> VertexHandle<'a, V, K> 
-    where K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
-    fn new(subdiv: &'a PlanarSubdivision<V, K>, entry: &'a VertexEntry<V>,
-           fixed: FixedVertexHandle) -> VertexHandle<'a, V, K> {
+impl <'a, V, B, K> VertexHandle<'a, V, B, K> 
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn new(subdiv: &'a PlanarSubdivision<V, B, K>, entry: &'a VertexEntry<V, B>,
+           fixed: FixedVertexHandle) -> VertexHandle<'a, V, B, K> {
         VertexHandle {
             subdiv: subdiv,
             entry: entry,
@@ -536,13 +576,13 @@ impl <'a, V: HasPosition2D, K> VertexHandle<'a, V, K>
     }
 
     /// Returns the neighbors an iterator over the neighbors of this vertex.
-    pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V, K>> + 'a> {
+    pub fn neighbors(&self) -> Box<Iterator<Item=VertexHandle<'a, V, B, K>> + 'a> {
         let subdiv = self.subdiv;
         Box::new(self.entry.neighbors.iter().map(move |h| subdiv.handle(*h)))
     }
 
     /// Returns an iterator over all out edges of this vertex.
-    pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, K>> + 'a> {
+    pub fn out_edges(&self) -> Box<Iterator<Item=EdgeHandle<'a, V, B, K>> + 'a> {
         let num_neighbors = self.num_neighbors();
         let subdiv = self.subdiv;
         let fixed = self.fixed;
@@ -557,7 +597,7 @@ impl <'a, V: HasPosition2D, K> VertexHandle<'a, V, K>
         if neighbors.len() == 0 {
             return SectorInfo::NoSector;
         }
-        let vertex_pos = self.entry.data.position();
+        let vertex_pos = self.entry.data.borrow().position();
         let cw = *neighbors.first().unwrap();
         let cw_pos = self.subdiv.handle(cw).position();
         let mut cw_edge = SimpleEdge::new(vertex_pos.clone(), cw_pos.clone());
@@ -595,13 +635,14 @@ impl <'a, V: HasPosition2D, K> VertexHandle<'a, V, K>
     }
 }
 
-impl <'a, V, K> Deref for VertexHandle<'a, V, K>
+impl <'a, V, B, K> Deref for VertexHandle<'a, V, B, K>
     where V: HasPosition2D,
-          V::Vector: TwoDimensional {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
     type Target = V;
 
     fn deref(&self) -> &V {
-        &self.entry.data
+        &self.entry.data.borrow()
     }
 }
 
@@ -617,9 +658,9 @@ mod test {
     use cgmath::Vector2;
     use kernels::TrivialKernel;
 
-    fn create_subdiv_with_triangle() -> (PlanarSubdivision<Vector2<f32>, TrivialKernel>,
-                                         FixedVertexHandle, FixedVertexHandle, 
-                                         FixedVertexHandle) {
+    fn create_subdiv_with_triangle() -> (
+        PlanarSubdivision<Vector2<f32>, Vector2<f32>, TrivialKernel>,
+        FixedVertexHandle, FixedVertexHandle, FixedVertexHandle) {
         let mut subdiv = PlanarSubdivision::default();
         let h1 = subdiv.insert_vertex(Vector2::new(0.0f32, 0.0));
         let h2 = subdiv.insert_vertex(Vector2::new(1.0f32, 0.0));
