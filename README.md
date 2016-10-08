@@ -24,7 +24,7 @@ The documentation can be found under [docs.rs](https://docs.rs/spade/)
 # Using spade
 Add this to your `Cargo.toml`:
 ```
-spade = "0.1.*"
+spade = "0.2.*"
 ```
 # Feedback
 Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Please do post an issue on GitHub. Please do report bugs as well. If you're in for an adventure, pull requests of any kind are very welcome.
