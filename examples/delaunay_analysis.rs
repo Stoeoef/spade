@@ -31,7 +31,7 @@ use std::io::{Write};
 fn bench<V: TwoDimensional, K: DelaunayKernel<V::Scalar>>(vs: &[V], chunk_size: usize, title: &str)
                                                    -> Vec<i64> {
     println!("{}", title);
-    let mut delaunay: DelaunayTriangulation<V, K> = DelaunayTriangulation::new();
+    let mut delaunay: DelaunayTriangulation<V, V, K> = DelaunayTriangulation::new();
     let mut result = Vec::new();
     let mut sum = 0;
     for chunk in vs.chunks(chunk_size) {

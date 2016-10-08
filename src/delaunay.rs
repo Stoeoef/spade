@@ -23,7 +23,7 @@ use rtree::RTree;
 use boundingvolume::BoundingRect;
 use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
-
+use std::borrow::{Borrow, BorrowMut};
 use planarsubdivision::{PlanarSubdivision, FixedVertexHandle, EdgeHandle, AllEdgesIterator,
                         AllVerticesIterator, VertexHandle, SectorInfo};
 
@@ -44,28 +44,31 @@ pub enum PositionInTriangulation<H> {
 }
 
 /// Represents a triangle in a delaunay triangulation.
-// TODO
-pub struct DelaunayTriangle<'a, V, K>(pub [VertexHandle<'a, V, V, K>; 3]) 
-    where V: HasPosition2D + 'a, K: 'a, V::Vector: TwoDimensional;
+pub struct DelaunayTriangle<'a, V, B, K>(pub [VertexHandle<'a, V, B, K>; 3]) 
+    where V: HasPosition2D + 'a, K: 'a,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a;
 
 /// Iterator over all triangles in a delaunay triangulation.
-pub struct DelaunayTriangleIterator<'a, V, K> 
+pub struct DelaunayTriangleIterator<'a, V, B, K> 
     where V: HasPosition2D + 'a, 
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
-          V::Vector: TwoDimensional
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a
 {
-    delaunay: &'a DelaunayTriangulation<V, K>,
+    delaunay: &'a DelaunayTriangulation<V, B, K>,
     current_index: FixedVertexHandle,
     current_neighbors: Vec<(FixedVertexHandle, FixedVertexHandle)>,
 }
 
-impl <'a, V, K> Iterator for DelaunayTriangleIterator<'a, V, K>
+impl <'a, V, B, K> Iterator for DelaunayTriangleIterator<'a, V, B, K>
     where V: HasPosition2D + 'a, 
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional {
-    type Item = DelaunayTriangle<'a, V, K>;
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a {
+    type Item = DelaunayTriangle<'a, V, B, K>;
 
-    fn next(&mut self) -> Option<DelaunayTriangle<'a, V, K>> {
+    fn next(&mut self) -> Option<DelaunayTriangle<'a, V, B, K>> {
         let ref s = self.delaunay.s;
         loop {
             if let Some((h1, h2)) = self.current_neighbors.pop() {
@@ -117,12 +120,15 @@ fn calculate_convex_polygon_double_area<V>(
 
 /// An entry of the delaunay triangulation's r-tree.
 #[derive(Clone, Debug)]
-struct PointEntry<V> {
+struct PointEntry<V> 
+    where V: TwoDimensional
+{
     point: V,
     handle: FixedVertexHandle,
 }
 
-impl<V> HasPosition for PointEntry<V> where V: VectorN {
+impl<V> HasPosition for PointEntry<V> 
+    where V: TwoDimensional {
     type Vector = V;
     fn position(&self) -> V {
         self.point.clone()
@@ -205,17 +211,48 @@ impl<V> HasPosition for PointEntry<V> where V: VectorN {
 /// Use `handle` or `handle_mut` to resolve a `FixedVertexHandle`.
 /// 
 /// A vertex position must not be changed after the vertex has been inserted.
-pub struct DelaunayTriangulation<V: HasPosition2D, K>
-    where V::Vector: TwoDimensional
+///
+/// # Type Parameters
+/// `DelaunayTriangulation` has three type parameters: `V`, `B` and `K`.
+/// `V: HasPosition2D` defines the delaunay's vertex type. 
+/// If `V` is stored directly in the triangulation, `B` is equal to `T`
+/// `K: DelaunayKernel` defines the triangulations calculation kernel.
+/// ## Using pointer like types
+/// If `T` should not be stored directly but with a pointer (that is, 
+/// a type `B: Borrow<T>`), you may need to specify the pointer type as seen
+/// in the following example:
+///
+/// ```
+/// # extern crate nalgebra;
+/// # extern crate spade;
+///
+/// # use nalgebra::{Vector2};
+/// # use spade::{DelaunayTriangulation, DelaunayKernel, FloatKernel};
+///
+/// # fn main() {
+///   let mut delaunay: DelaunayTriangulation<Vector2<_>, Box<_>, _> 
+///       = FloatKernel::new_triangulation();
+///   delaunay.insert(Box::new(Vector2::new(0.0, 1.0)));
+/// # }
+/// ```
+
+pub struct DelaunayTriangulation<V, B, K>
+    where V: HasPosition2D,
+          V::Vector: TwoDimensional,
+          B: Borrow<V>
 {
     __kernel: PhantomData<K>,
-    s: PlanarSubdivision<V, V, K>,
+    s: PlanarSubdivision<V, B, K>,
     points: RTree<PointEntry<V::Vector>, PointEntry<V::Vector>>,
     all_points_on_line: bool,
 }
 
-impl<V: HasPosition2D + Clone, K> Clone for DelaunayTriangulation<V, K>  where V::Vector: TwoDimensional {
-    fn clone(&self) -> DelaunayTriangulation<V, K> {
+impl<V, B, K> Clone for DelaunayTriangulation<V, B, K> 
+    where V: HasPosition2D + Clone,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + Clone {
+
+    fn clone(&self) -> DelaunayTriangulation<V, B, K> {
         DelaunayTriangulation {
           __kernel: Default::default(),
             s: self.s.clone(),
@@ -225,18 +262,20 @@ impl<V: HasPosition2D + Clone, K> Clone for DelaunayTriangulation<V, K>  where V
     }
 }
 
-impl <V> Default for DelaunayTriangulation<V, TrivialKernel> 
+impl <V, B> Default for DelaunayTriangulation<V, B, TrivialKernel> 
     where V: HasPosition2D,
-          V::Vector: TwoDimensional {
-    fn default() -> DelaunayTriangulation<V, TrivialKernel> {
+          V::Vector: TwoDimensional,
+          B: Borrow<V> {
+    fn default() -> DelaunayTriangulation<V, B, TrivialKernel> {
         DelaunayTriangulation::new()
     }
 }
 
-impl <V, K> DelaunayTriangulation<V, K>
+impl <V, B, K> DelaunayTriangulation<V, B, K>
     where V: HasPosition2D,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
           V::Vector: TwoDimensional,
+          B: Borrow<V>
 {
     /// Creates a new Delaunay triangulation.
     ///
@@ -249,15 +288,15 @@ impl <V, K> DelaunayTriangulation<V, K>
     /// # extern crate spade;
     /// use spade::{DelaunayTriangulation, FloatKernel};
     /// # fn main() {
-    /// let mut triangulation = DelaunayTriangulation::<_, FloatKernel>::new();
+    /// let mut triangulation = DelaunayTriangulation::<_, _, FloatKernel>::new();
     /// 
     /// # triangulation.insert(nalgebra::Vector2::new(332f64, 123f64));
     /// # }
     /// ```
     /// 
-    /// Usually, the omitted type (the triangulation's vertex type) can be inferred after
+    /// Usually, the omitted types (the triangulation's vertex type) can be inferred after
     /// `insert` is called.
-    pub fn new() -> DelaunayTriangulation<V, K> {
+    pub fn new() -> DelaunayTriangulation<V, B, K> {
         DelaunayTriangulation {
             __kernel: Default::default(),
             s: PlanarSubdivision::new(),
@@ -268,46 +307,25 @@ impl <V, K> DelaunayTriangulation<V, K>
 
     /// Creates a dynamic vertex handle from a fixed handle.
     /// May panic if the handle was not obtained from this triangulation.
-    // TODO
-    pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, V, K> {
+    pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V, B, K> {
         self.s.handle(handle)
     }
 
-    /// Returns a mutable reference to the vertex data referenced by a 
-    /// `FixedVertexHandle`. May panic if the handle was not obtained from this
-    /// triangulation.
-    pub fn handle_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
-        self.s.mut_data(handle)
-    }
-
     /// Checks if the triangulation contains an object with a given coordinate.
-    pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V, V, K>> {
+    pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V, B, K>> {
         let handle = self.points.lookup(point);
         handle.map(|h| self.s.handle(h.handle))
     }
 
-    /// Checks if the triangulation contains an object and returns a mutable
-    /// reference to it. Note that this will return a reference, while
-    /// `lookup(..)` returns a vertex handle.
-    pub fn lookup_mut(&mut self, point: &V::Vector) -> Option<&mut V> {
-        let handle = self.points.lookup(point);
-        if let Some(entry) = handle {
-            Some(self.s.mut_data(entry.handle))
-
-        } else {
-            None
-        }
-    }
-
     /// Returns all vertices contained in a rectangle.
-    pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Vector>) -> Vec<VertexHandle<V, V, K>> {
+    pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Vector>) -> Vec<VertexHandle<V, B, K>> {
         let fixed_handles = self.points.lookup_in_rectangle(rect);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
 
     /// Returns all vertices contained in a circle.
     pub fn lookup_in_circle(&self, center: &V::Vector, 
-                            radius2: &<V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V, V, K>> {
+                            radius2: &<V::Vector as VectorN>::Scalar) -> Vec<VertexHandle<V, B, K>> {
         let fixed_handles = self.points.lookup_in_circle(center, radius2);
         fixed_handles.iter().map(|entry| self.s.handle(entry.handle)).collect()
     }
@@ -318,7 +336,7 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Returns an iterator over all triangles.
-    pub fn triangles(&self) -> DelaunayTriangleIterator<V, K> {
+    pub fn triangles(&self) -> DelaunayTriangleIterator<V, B, K> {
         DelaunayTriangleIterator {
             delaunay: &self,
             current_index: 0,
@@ -327,21 +345,20 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Returns an iterator over all edges.
-    // TODO
-    pub fn edges(&self) -> AllEdgesIterator<V, V, K> {
+    pub fn edges(&self) -> AllEdgesIterator<V, B, K> {
         self.s.edges()
     }
 
     /// Returns an iterator over all vertices.
-    pub fn vertices(&self) -> AllVerticesIterator<V, V, K> {
+    pub fn vertices(&self) -> AllVerticesIterator<V, B, K> {
         self.s.vertices()
     }
 
-    fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
+    fn initial_insertion(&mut self, t: B) -> Result<FixedVertexHandle, FixedVertexHandle> {
         assert!(self.all_points_on_line);
         // Inserts points if no points are present or if all points
         // lie on the same line
-        let new_pos = t.position();
+        let new_pos = t.borrow().position();
         if let Some(entry) = self.points.lookup(&new_pos) {
             self.s.update_vertex(entry.handle, t);
             return Result::Err(entry.handle);
@@ -419,8 +436,8 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     fn insert_outside_convex_hull(
-        &mut self, closest_edge: (FixedVertexHandle, FixedVertexHandle), t: V) -> FixedVertexHandle {
-        let position = t.position();
+        &mut self, closest_edge: (FixedVertexHandle, FixedVertexHandle), t: B) -> FixedVertexHandle {
+        let position = t.borrow().position();
         let handles = self.get_convex_hull_edges_for_point(closest_edge, &position);
         let new_handle = self.s.insert_vertex(t);
         // Make new connections
@@ -435,7 +452,7 @@ impl <V, K> DelaunayTriangulation<V, K>
         new_handle
     }
     
-    fn insert_into_triangle(&mut self, vertices: [FixedVertexHandle; 3], t: V) -> FixedVertexHandle {
+    fn insert_into_triangle(&mut self, vertices: [FixedVertexHandle; 3], t: B) -> FixedVertexHandle {
         let new_handle = self.s.insert_vertex(t);
         
         let first_vertex = vertices[0];
@@ -470,7 +487,7 @@ impl <V, K> DelaunayTriangulation<V, K>
         self.get_left_triangle((edge.1, edge.0))
     }
 
-    fn insert_on_edge(&mut self, edge: (FixedVertexHandle, FixedVertexHandle), t: V) -> FixedVertexHandle {
+    fn insert_on_edge(&mut self, edge: (FixedVertexHandle, FixedVertexHandle), t: B) -> FixedVertexHandle {
         let new_handle = self.s.insert_vertex(t);
         let mut illegal_edges = Vec::new();
 
@@ -498,7 +515,7 @@ impl <V, K> DelaunayTriangulation<V, K>
 
     /// Returns information about the location of a point in a triangulation.
     pub fn get_position_in_triangulation(
-        &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V, V, K>> {
+        &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V, B, K>> {
         use PositionInTriangulation::*;
 
         match self.get_position_in_triangulation_fixed(point) {
@@ -604,8 +621,8 @@ impl <V, K> DelaunayTriangulation<V, K>
     ///
     /// Returns a handle to the new vertex. Use this handle with
     /// `DelaunayTriangulation::handle(..)` to refer to the vertex.
-    pub fn insert(&mut self, t: V) -> FixedVertexHandle {
-        let pos = t.position();
+    pub fn insert(&mut self, t: B) -> FixedVertexHandle {
+        let pos = t.borrow().position();
         let insertion_result = match self.get_position_in_triangulation_fixed(&pos) {
             PositionInTriangulation::OutsideConvexHull(v1, v2) => {
                 Result::Ok(self.insert_outside_convex_hull((v1, v2), t))
@@ -658,10 +675,38 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 }
 
-impl <V, K> DelaunayTriangulation<V, K> 
+impl <V, B, K> DelaunayTriangulation<V, B, K>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
+          V::Vector: TwoDimensional,
+          B: BorrowMut<V> {
+
+    /// Returns a mutable reference to the vertex data referenced by a 
+    /// `FixedVertexHandle`. May panic if the handle was not obtained from this
+    /// triangulation.
+    pub fn handle_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
+        self.s.mut_data(handle)
+    }
+
+    /// Checks if the triangulation contains an object and returns a mutable
+    /// reference to it. Note that this will return a reference, while
+    /// `lookup(..)` returns a vertex handle.
+    pub fn lookup_mut(&mut self, point: &V::Vector) -> Option<&mut V> {
+        let handle = self.points.lookup(point);
+        if let Some(entry) = handle {
+            Some(self.s.mut_data(entry.handle))
+
+        } else {
+            None
+        }
+    }
+}
+
+impl <V, B, K> DelaunayTriangulation<V, B, K> 
     where V: HasPosition2D, <V::Vector as VectorN>::Scalar: SpadeFloat,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar> ,
-          V::Vector: TwoDimensional
+          V::Vector: TwoDimensional,
+          B: Borrow<V>
 {
 
     /// Performs a natural neighbor interpolation for a given position.
@@ -868,59 +913,6 @@ impl <V, K> DelaunayTriangulation<V, K>
         result
     }
 
-    /// Estimates a normal for each vertex in the triangulation.
-    ///
-    /// `f` must yield a "height" value for each vertex,
-    /// `g` is a callback function that can be used to store the calculated normals.
-    ///
-    /// ```
-    /// # extern crate nalgebra;
-    /// # extern crate spade;
-    /// 
-    /// # use nalgebra::{Vector2, Vector3};
-    /// # use spade::{DelaunayTriangulation, DelaunayTriangle, HasPosition};
-    ///
-    /// struct PointWithHeight {
-    ///   point: Vector2<f32>,
-    ///   normal: Vector3<f32>,
-    ///   height: f32,
-    /// }
-    ///
-    /// impl HasPosition for PointWithHeight {
-    ///   type Vector = Vector2<f32>;
-    ///     fn position(&self) -> Vector2<f32> {
-    ///       self.point
-    ///     }
-    /// }
-    /// impl PointWithHeight {
-    ///   fn new(point: Vector2<f32>, height: f32) -> PointWithHeight {
-    ///     PointWithHeight { point: point, height: height, normal: Vector3::new(0., 0., 0.) }
-    ///   }
-    /// }
-    ///
-    /// fn main() {
-    ///   let mut delaunay = DelaunayTriangulation::default();
-    ///   // Insert some points here... (skipped)
-    ///   # delaunay.insert(PointWithHeight { point: Vector2::new(0.0, 0.0), height: 5., normal: Vector3::new(0., 0., 0.)});
-    ///   // Then, estimate all normals at once:
-    ///   delaunay.estimate_normals(&(|v: &PointWithHeight| v.height), &(|v: &mut PointWithHeight, n| v.normal = n));
-    ///   
-    ///   // And print them
-    ///   for vertex in delaunay.vertices() {
-    ///      println!("vertex: {:?}, normal: {:?}", vertex.position(), vertex.normal);
-    ///   }
-    /// }
-    /// ```
-    pub fn estimate_normals<F, G, RV>(&mut self, f: &F, g: G)
-        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
-              G: Fn(&mut V, RV),
-              RV: ThreeDimensional<Scalar=<V::Vector as VectorN>::Scalar> {
-        for v in 0 .. self.num_vertices() {
-            let normal = self.estimate_normal::<F, RV>(v, f);
-            g(self.s.mut_data(v), normal);
-        }
-    }
-
     /// Estimates a normal value for a given vertex.
     ///
     /// This assumes that the triangulation models some kind of height field, given by the
@@ -963,22 +955,6 @@ impl <V, K> DelaunayTriangulation<V, K>
         }
         // Normalize
         final_normal.clone() / final_normal.length2().sqrt()
-    }
-
-    /// Estimates gradients for all vertices in this triangulation.
-    ///
-    /// `f` yields the value for which a gradient should be calculated,
-    /// `g` can be used to store the gradient. See `estimate_normals` for a similar example.
-    ///
-    /// Internally, the normal for each vertex is calculated first. Then, an appropriate
-    /// gradient is calculated.
-    pub fn estimate_gradients<F, G>(&mut self, f: &F, g: &G) 
-        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
-              G: Fn(&mut V, V::Vector) {
-        for v in 0 .. self.num_vertices() {
-            let gradient = self.estimate_gradient::<F, G>(v, f);
-            g(self.s.mut_data(v), gradient);
-        }
     }
 
     /// Estimates and returns the gradient for a single vertex in this triangulation.
@@ -1180,6 +1156,81 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 }
 
+impl <V, B, K> DelaunayTriangulation<V, B, K> 
+    where V: HasPosition2D, <V::Vector as VectorN>::Scalar: SpadeFloat,
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> ,
+          V::Vector: TwoDimensional,
+          B: BorrowMut<V> {
+
+    /// Estimates a normal for each vertex in the triangulation.
+    ///
+    /// `f` must yield a "height" value for each vertex,
+    /// `g` is a callback function that can be used to store the calculated normals.
+    ///
+    /// ```
+    /// # extern crate nalgebra;
+    /// # extern crate spade;
+    /// 
+    /// # use nalgebra::{Vector2, Vector3};
+    /// # use spade::{DelaunayTriangulation, DelaunayTriangle, HasPosition};
+    ///
+    /// struct PointWithHeight {
+    ///   point: Vector2<f32>,
+    ///   normal: Vector3<f32>,
+    ///   height: f32,
+    /// }
+    ///
+    /// impl HasPosition for PointWithHeight {
+    ///   type Vector = Vector2<f32>;
+    ///     fn position(&self) -> Vector2<f32> {
+    ///       self.point
+    ///     }
+    /// }
+    /// impl PointWithHeight {
+    ///   fn new(point: Vector2<f32>, height: f32) -> PointWithHeight {
+    ///     PointWithHeight { point: point, height: height, normal: Vector3::new(0., 0., 0.) }
+    ///   }
+    /// }
+    ///
+    /// fn main() {
+    ///   let mut delaunay = DelaunayTriangulation::default();
+    ///   // Insert some points here... (skipped)
+    ///   # delaunay.insert(PointWithHeight { point: Vector2::new(0.0, 0.0), height: 5., normal: Vector3::new(0., 0., 0.)});
+    ///   // Then, estimate all normals at once:
+    ///   delaunay.estimate_normals(&(|v: &PointWithHeight| v.height), &(|v: &mut PointWithHeight, n| v.normal = n));
+    ///   
+    ///   // And print them
+    ///   for vertex in delaunay.vertices() {
+    ///      println!("vertex: {:?}, normal: {:?}", vertex.position(), vertex.normal);
+    ///   }
+    /// }
+    /// ```
+    pub fn estimate_normals<F, G, RV>(&mut self, f: &F, g: G)
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              G: Fn(&mut V, RV),
+              RV: ThreeDimensional<Scalar=<V::Vector as VectorN>::Scalar> {
+        for v in 0 .. self.num_vertices() {
+            let normal = self.estimate_normal::<F, RV>(v, f);
+            g(self.s.mut_data(v), normal);
+        }
+    }
+    /// Estimates gradients for all vertices in this triangulation.
+    ///
+    /// `f` yields the value for which a gradient should be calculated,
+    /// `g` can be used to store the gradient. See `estimate_normals` for a similar example.
+    ///
+    /// Internally, the normal for each vertex is calculated first. Then, an appropriate
+    /// gradient is calculated.
+    pub fn estimate_gradients<F, G>(&mut self, f: &F, g: &G) 
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              G: Fn(&mut V, V::Vector) {
+        for v in 0 .. self.num_vertices() {
+            let gradient = self.estimate_gradient::<F, G>(v, f);
+            g(self.s.mut_data(v), gradient);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{DelaunayTriangulation};
@@ -1192,7 +1243,7 @@ mod test {
 
     #[test]
     fn test_inserting_one_point() {
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         assert_eq!(d.num_vertices(), 0);
         d.insert(Vector2::new(0f32, 0f32));
         assert_eq!(d.num_vertices(), 1);
@@ -1200,7 +1251,7 @@ mod test {
 
     #[test]
     fn test_inserting_two_points() {
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         d.insert(Vector2::new(0f32, 0f32));
         d.insert(Vector2::new(0f32, 1f32));
         assert_eq!(d.num_vertices(), 2);
@@ -1208,7 +1259,7 @@ mod test {
 
     #[test]
     fn test_inserting_three_points() {
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         d.insert(Vector2::new(0f32, 0f32));
         d.insert(Vector2::new(1f32, 0f32));
         d.insert(Vector2::new(0f32, 1f32));
@@ -1217,7 +1268,7 @@ mod test {
 
     #[test]
     fn test_iterate_faces() {
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         d.insert(Vector2::new(0f32, 0f32));
         d.insert(Vector2::new(1f32, 0f32));
         d.insert(Vector2::new(1f32, 1f32));
@@ -1230,7 +1281,7 @@ mod test {
         // Just check if this won't crash
         const SIZE: usize = 10000;
         let mut points = random_points_with_seed::<f64>(SIZE, [1, 3, 3, 7]);
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for p in points.drain(..) {
             d.insert(p);
         }
@@ -1241,7 +1292,7 @@ mod test {
     fn test_insert_integral_points() {
         const SIZE: usize = 10000;
         let mut points = random_points_in_range(1000i64, SIZE, [100934, 1235, 701, 12355]);
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for p in points.drain(..) {
             d.insert(p);
         }
@@ -1252,7 +1303,7 @@ mod test {
         const NUM: usize = 100;
         let mut rng = XorShiftRng::from_seed([94, 62, 2010, 2016]);
         let range = Range::new(0., ::std::f64::consts::PI);
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for _ in 0 .. NUM {
             let ang = range.ind_sample(&mut rng);
             let vec = Vector2::new(ang.sin(), ang.cos()) * 100.;
@@ -1265,7 +1316,7 @@ mod test {
     fn test_insert_same_point() {
         const SIZE: usize = 30;
         let mut points = random_points_with_seed::<f64>(SIZE, [2, 123, 43, 7]);
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for p in &points {
             d.insert(*p);
         }
@@ -1278,7 +1329,7 @@ mod test {
     #[test]
     fn test_insert_on_edges() {
         // Just check if this won't crash
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         d.insert(Vector2::new(0., 0f32));
         d.insert(Vector2::new(1., 0.));
         d.insert(Vector2::new(0., 1.));
@@ -1293,7 +1344,7 @@ mod test {
 
     #[test]
     fn test_insert_points_on_line() {
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         d.insert(Vector2::new(0., 1f32));
         for i in -50 .. 50 {
             d.insert(Vector2::new(i as f32, 0.));
@@ -1303,7 +1354,7 @@ mod test {
     #[test]
     fn test_insert_points_on_line_2() {
         // This test inserts the line first
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
 
         for i in -50 .. 50 {
             d.insert(Vector2::new(i as f32, 0.));
@@ -1317,7 +1368,7 @@ mod test {
 
     #[test]
     fn test_insert_points_on_grid() {
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         d.insert(Vector2::new(0., 1f32));
         d.insert(Vector2::new(0.0, 0.0));
         d.insert(Vector2::new(1.0, 0.0));
@@ -1336,7 +1387,7 @@ mod test {
                       Vector2::new(-0.10310739, -0.37901995),
                       Vector2::new(-0.29053342, -0.20643954),
                       Vector2::new(-0.19144729, -0.42079023)];
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for point in points.iter().cloned() {
             d.insert(point);
         }
@@ -1392,7 +1443,7 @@ mod test {
             PointWithHeight::new(4.0, 0.0, 1.0),
             PointWithHeight::new(4.0, 1.0, 1.0),
         ];
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for point in points.drain(..) {
             d.insert(point);
         }
@@ -1411,7 +1462,7 @@ mod test {
         use cgmath::InnerSpace;
         let mut points = random_points_with_seed::<f64>(1000, [2, 23, 493, 712]);
         points.sort_by(|p1, p2| p1.magnitude2().partial_cmp(&p2.magnitude2()).unwrap());
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for point in &points {
             d.insert(*point);
         }
@@ -1430,7 +1481,7 @@ mod test {
             }
         }
         points.sort_by(|p1, p2| p1.magnitude2().partial_cmp(&p2.magnitude2()).unwrap());
-        let mut d: DelaunayTriangulation<_, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for point in &points {
             d.insert(*point);
         }

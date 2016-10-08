@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{SpadeNum, HasPosition};
+use traits::{SpadeNum, HasPosition2D};
 use vector_traits::TwoDimensional;
 use delaunay::DelaunayTriangulation;
 use primitives::{SimpleEdge, EdgeSideInfo};
 use bigvec::{BigVec2, AdaptiveInt};
 use exactpred::{orient2d, incircle};
+use std::borrow::Borrow;
 
 /// Determines how a delaunay triangulation performs its basic geometry computation.
 /// 
@@ -67,8 +68,10 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     }
 
     /// Creates a new delaunay triangulation using this kernel.
-    fn new_triangulation<T: HasPosition>() -> DelaunayTriangulation<T, Self>
-                         where T::Vector: TwoDimensional<Scalar=D>
+    fn new_triangulation<T, B>() -> DelaunayTriangulation<T, B, Self>
+        where T: HasPosition2D,
+              B: Borrow<T>,
+              T::Vector: TwoDimensional<Scalar=D>
     {
         DelaunayTriangulation::new()
     }

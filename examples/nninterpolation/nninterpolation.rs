@@ -26,7 +26,7 @@ use kiss3d::resource::Mesh;
 
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
-use spade::{DelaunayTriangulation, HasPosition, TrivialKernel};
+use spade::{DelaunayTriangulation, HasPosition, FloatKernel};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -35,6 +35,8 @@ const FREQUENCY: f64 = 1.;
 const NUM_POINTS: usize = 120;
 const MAX_HEIGHT: f64 = 1.5;
 const GRID_SUBDIVISIONS: usize = 300;
+
+type Delaunay = DelaunayTriangulation<VectorWithHeight, VectorWithHeight, FloatKernel>;
 
 fn print_help() {
     println!("Interpolation Demo");
@@ -214,8 +216,7 @@ fn main() {
     }
 }
 
-fn get_normals(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>)
-    -> Vec<(Vector3<f32>, Vector3<f32>)> {
+fn get_normals(delaunay: &Delaunay) -> Vec<(Vector3<f32>, Vector3<f32>)> {
     let mut result = Vec::new();
     for v in delaunay.vertices() {
         let n = v.normal;
@@ -226,9 +227,9 @@ fn get_normals(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>
 }
 
 fn get_interpolated_grid<F>(
-    delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>, f: F) 
+    delaunay: &Delaunay, f: F) 
     -> Vec<(Vector3<f32>, Vector3<f32>)> 
-    where F: Fn(&DelaunayTriangulation<VectorWithHeight, TrivialKernel>, &Vector2<f64>) -> f64
+    where F: Fn(&Delaunay, &Vector2<f64>) -> f64
 {
     let mut result = Vec::new();
     const GRID_SIZE: f64 = SAMPLE_REGION * 1.05;
@@ -262,14 +263,14 @@ fn get_interpolated_grid<F>(
     result
 } 
 
-fn generate_random_mesh() -> (Mesh, DelaunayTriangulation<VectorWithHeight, TrivialKernel>) {
+fn generate_random_mesh() -> (Mesh, Delaunay) {
     let mut delaunay = generate_random_triangulation();
     delaunay.estimate_gradients(&(|v| v.height), &(|v, g| v.gradient = g));
     delaunay.estimate_normals(&(|v| v.height), &(|v: &mut VectorWithHeight, n| v.normal = n));
     (create_mesh_from_triangulation(&delaunay), delaunay)
 }
 
-fn extract_edges(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>)
+fn extract_edges(delaunay: &Delaunay)
                  -> Vec<(Vector3<f32>, Vector3<f32>)> {
     let offset = Vector3::new(0., 0., -0.01);
     let mut lines = Vec::new();
@@ -281,11 +282,11 @@ fn extract_edges(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKerne
     lines
 }
 
-fn generate_random_triangulation() -> DelaunayTriangulation<VectorWithHeight, TrivialKernel> {
+fn generate_random_triangulation() -> Delaunay {
 
     let mut rng = ::rand::thread_rng();
     let seed = ::noise::Seed::new(rng.gen());
-    let mut delaunay = DelaunayTriangulation::new();
+    let mut delaunay = Delaunay::new();
 
     let range = Range::new(-SAMPLE_REGION, SAMPLE_REGION);
     for _ in 0 .. NUM_POINTS {
@@ -301,7 +302,7 @@ fn generate_random_triangulation() -> DelaunayTriangulation<VectorWithHeight, Tr
     delaunay
 }
 
-fn create_mesh_from_triangulation(delaunay: &DelaunayTriangulation<VectorWithHeight, TrivialKernel>) -> Mesh {
+fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
     let mut coords = Vec::new();
     let mut faces = Vec::new();
     for vertex in delaunay.vertices() {
