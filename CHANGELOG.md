@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - trait `ThreeDimensional`
   
 ### Changed
- - `SimpleEdge` and `SimpleTriangle` have a `DelaunayKernel`
- in their type signatures.
+ - Type signatures of `RTree` and `DelaunayTriangulation` have now an additional parameter, `B`.
+ This allows to insert pointer like objects (that is, an object `B: Borrow<T>`) into the tree.
 
 ## [0.1.1] - 2016-09-28
 ### Added
