@@ -958,7 +958,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     }
 
     /// Estimates and returns the gradient for a single vertex in this triangulation.
-    pub fn estimate_gradient<F, G>(&self, v: FixedVertexHandle, f: &F) -> V::Vector 
+    pub fn estimate_gradient<F>(&self, v: FixedVertexHandle, f: &F) -> V::Vector 
         where F: Fn(&V) -> <V::Vector as VectorN>::Scalar {
         use cgmath::Vector3;
         let normal = self.estimate_normal::<_, Vector3<_>>(v, f);
@@ -988,6 +988,12 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     /// The value that should be interpolated is given by `f`, the gradient of a vertex must
     /// be given by `g`.
     ///
+    /// # flatness
+    /// An additional flatness factor determines how flat the triangulation will be around
+    /// the datapoints. A flatness factor of 0.5 is the factor used in sibson's original interpolant.
+    /// A flatness of 0.0 or lower is nearly identical to sibson's original interpolant
+    /// (`nn_interpolation(..)`). A factor of (exactly) 1.0 should yield best performance since
+    /// an exponentiation can be omitted.
     /// # Example
     ///
     /// ```
@@ -1026,19 +1032,26 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     ///   delaunay.estimate_gradients(&(|v: &PointWithHeight| v.height),
     ///                               &(|v: &mut PointWithHeight, g| v.gradient = g));
     ///   
-    ///   // Now we can use the gradients for interpolation:
+    ///   // Now we can use the gradients for interpolation, flatness is set to 2.0:
     ///   let interpolated = delaunay.nn_interpolation_c1_sibson(
-    ///      &Vector2::new(0.5, 0.2), |v| v.height, |v| v.gradient);
+    ///      &Vector2::new(0.5, 0.2), 2.0, |v| v.height, |_, v| v.gradient);
     ///   println!("interpolated: {}", interpolated.unwrap());
     /// }
     /// ```
-    pub fn nn_interpolation_c1_sibson<F: Fn(&V) -> <V::Vector as VectorN>::Scalar, G: Fn(&V) -> V::Vector> (
-        &self, point: &V::Vector, f: F, g: G) -> Option<<V::Vector as VectorN>::Scalar> {
+    pub fn nn_interpolation_c1_sibson<F, G> (&self, point: &V::Vector, 
+                                             flatness: <V::Vector as VectorN>::Scalar,
+                                             f: F, g: G) 
+                                             -> Option<<V::Vector as VectorN>::Scalar> 
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              G: Fn(&Self, &VertexHandle<V, B, K>) -> V::Vector {
         
         let nns = self.get_natural_neighbors(point);
         let ws = self.get_weights(&nns, point);
         if ws.is_empty() {
             return None;
+        }
+        if ws.len() == 1 {
+            return Some(f(&*self.handle(*nns.first().unwrap())));
         }
         let mut sum_c0 = zero();
         let mut sum_c1 = zero();
@@ -1050,16 +1063,16 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             let pos_i = handle.position();
             let h_i = f(&*handle);
             let diff = pos_i - point.clone();
-            let r_i = diff.length2().sqrt();
+            let r_i2 = diff.length2();
+            let r_i = r_i2.powf(flatness);
             let c1_weight_i = ws[index] / r_i;
-            let grad_i = g(&*handle);
+            let grad_i = g(&self, &handle);
             let zeta_i = h_i + diff.dot(&grad_i);
             alpha += c1_weight_i * r_i;
-            beta += c1_weight_i * r_i * r_i;
+            beta += c1_weight_i * r_i2;
             sum_c1_weights += c1_weight_i;
             sum_c1 += zeta_i * c1_weight_i;
             sum_c0 += h_i * ws[index];
-
         }
         alpha /= sum_c1_weights;
         sum_c1 /= sum_c1_weights;
@@ -1072,8 +1085,10 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     ///
     /// This method is used in the same way as `nn_interpolation_c1_sibson`. The resulting
     /// interpolant is very similar to sibson's c1 interpolant but uses a different algorithm.
-    pub fn nn_interpolation_c1_farin<F: Fn(&V) -> <V::Vector as VectorN>::Scalar, G: Fn(&V) -> V::Vector> (
-        &self, point: &V::Vector, f: F, g: G) -> Option<<V::Vector as VectorN>::Scalar> {
+    pub fn nn_interpolation_c1_farin<F, G>(&self, point: &V::Vector, f: F, g: G) 
+                                           -> Option<<V::Vector as VectorN>::Scalar>
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
+              G: Fn(&Self, &VertexHandle<V, B, K>) -> V::Vector  {
         let nns = self.get_natural_neighbors(point);
         let ws = self.get_weights(&nns, point);
         if ws.is_empty() {
@@ -1091,7 +1106,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             // Calculates an edge control point.
             // The edge is given by handles[i2] -> handles[i1]
             let diff = handles[i1].position() - handles[i2].position();
-            let grad = g(&*handles[i2]);
+            let grad = g(&self, &handles[i2]);
             f(&*handles[i2]) - grad.dot(&diff) / three
         };
 
@@ -1225,7 +1240,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         where F: Fn(&V) -> <V::Vector as VectorN>::Scalar,
               G: Fn(&mut V, V::Vector) {
         for v in 0 .. self.num_vertices() {
-            let gradient = self.estimate_gradient::<F, G>(v, f);
+            let gradient = self.estimate_gradient::<F>(v, f);
             g(self.s.mut_data(v), gradient);
         }
     }

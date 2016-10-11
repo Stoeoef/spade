@@ -144,13 +144,18 @@ fn main() {
 
     let lines = extract_edges(&delaunay);
     let grid_c1 = get_interpolated_grid(&delaunay, |d, p| d.nn_interpolation_c1_sibson(
-        p, |v| v.height, |v| v.gradient).unwrap());
+        p, 
+        // Check out different smoothness factors
+        // 0.5,
+        // 2.0,
+        1.0,
+        |v| v.height, |_, v| v.gradient).unwrap());
 
     let grid_c0 = get_interpolated_grid(&delaunay, |d, p| d.nn_interpolation(
         p, |v| v.height).unwrap());
 
     let grid_farin = get_interpolated_grid(
-        &delaunay, |d, p| d.nn_interpolation_c1_farin(p, |v| v.height, |v| v.gradient).unwrap());
+        &delaunay, |d, p| d.nn_interpolation_c1_farin(p, |v| v.height, |_, v| v.gradient).unwrap());
 
 
     let normals = get_normals(&delaunay);

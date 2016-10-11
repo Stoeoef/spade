@@ -21,19 +21,19 @@ use bigvec::{BigVec2, AdaptiveInt};
 use exactpred::{orient2d, incircle};
 use std::borrow::Borrow;
 
-/// Determines how a delaunay triangulation performs its basic geometry computation.
+/// Determines how a delaunay triangulation performs its basic geometry computations.
 /// 
 /// Every delaunay triangulation is based on two basic geometry operations: orientation tests
 /// (on which side of a line lies a point?) and in-circle tests (is a point contained in the
-/// circumference of a triangle?). These questions can be answered *approximately* or *precise*,
-/// their calculation can take overflow issues into account (if handling integer coordinates).
+/// circumference of a triangle?). These questions can be answered *approximately* or *precisely*,
+/// their calculation can or cannot take overflow issues for integer coordinates into account.
 ///
 /// Since each application has different needs, a `DelaunayKernel` will define how these geometric
-/// queries are calculated for each triangulation. It is recommended to use one of the predefined
+/// queries are calculated for a triangulation. It is recommended to use one of the predefined
 /// kernels that fits your needs.
 pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
-    /// pa, pb, pc have to be ordered clockwise.
+    /// pa, pb, pc have to be ordered clockwise, otherwise the result is inverted.
     fn contained_in_circumference<V: TwoDimensional<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
         let adx = pa[0].clone() - pd[0].clone();
         let ady = pa[1].clone() - pd[1].clone();
@@ -85,15 +85,16 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     }
 }
 
-/// Offers fast, possibly approximative and possibly inaccurate geometric calculations.
+/// Offers fast and possibly inaccurate geometric calculations.
 ///
 /// Use this kernel if you are working with small integral coordinates (e.g. `Vector2<i64>`
 /// in the range &#177;100000) or if you are willing to risk crashes when using `Vector2<f64>`
-/// as coordinate. Offers best performance. Run this in debug mode to be notified early if
-/// something goes amiss (e.g. over / underflow, contradictory geometric calculations) since
-/// `DelaunayTriangulation` uses a few `debug_assert`s to keep its internal structure healthy.
+/// as coordinate vector. Offers best performance. Run in debug mode to be notified early if
+/// something goes amiss since `DelaunayTriangulation` uses a few `debug_assert`s to keep its
+/// internal structure healthy.
 ///
-/// If you run into said problems, consider using `FloatKernel` or `AdaptiveIntKernel`.
+/// If some debug assertions are not met or you run into over / underflow issues, consider 
+/// using `FloatKernel` or `AdaptiveIntKernel`.
 pub struct TrivialKernel { }
 
 impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }

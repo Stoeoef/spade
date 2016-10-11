@@ -105,7 +105,7 @@ pub trait HasPosition {
     fn position(&self) -> Self::Vector;
 }
 
-/// Like `HasPosition`, but will only work for two dimensional vectors.
+/// Like `HasPosition`, but is only implemented for two dimensional positions.
 pub trait HasPosition2D: HasPosition where Self::Vector: TwoDimensional { }
 
 impl <V: HasPosition> HasPosition2D for V where V::Vector: TwoDimensional { }
