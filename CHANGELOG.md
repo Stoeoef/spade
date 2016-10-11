@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.2.1] - 2016-10-11
+### Changed
+  - Function signatures of `nn_interpolation_c1_*` slightly modified.
+  - Sibson's c1 interpolant now comes with a flatness factor
+### Fixes
+  - Wrong documentation link in crate description
+  - Fixed signatures of `estimate_normal` and `estimate_gradient`
+  
 ## [0.2.0] - 2016-10-08
 ### Added
   - `DelaunayTriangulation`: `estimate_normal`, `estimate_normals`, `estimate_gradient`, `estimate_gradients`
@@ -43,5 +51,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.1.0 - 2016-09-23
 Initial commit
 
+[0.2.1] https://github.com/Stoeoef/spade/compare/v0.2.0...v0.2.1
 [0.2.0] https://github.com/Stoeoef/spade/compare/v0.1.1...v0.2.0
 [0.1.1] https://github.com/Stoeoef/spade/compare/v0.1.0...v0.1.1
