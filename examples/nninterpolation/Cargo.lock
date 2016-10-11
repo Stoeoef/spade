@@ -7,7 +7,7 @@ dependencies = [
  "nalgebra 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "noise 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "spade 0.2.0",
+ "spade 0.2.1",
 ]
 
 [[package]]
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "spade"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "cgmath 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clamp 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
