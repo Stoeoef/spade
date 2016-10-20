@@ -38,21 +38,6 @@ pub fn random_points_with_seed<S: SpadeNum + BaseFloat + Rand + SampleRange>(siz
     random_points_in_range(S::one(), size, seed)
 }
 
-pub fn random_points_with_seed_range_and_origin<S: SpadeNum + Copy + Rand + SampleRange>(
-    range: S, origin: Vector2<S>, size: usize, seed: [u32; 4])
-    -> Vec<Vector2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-range, range);
-    let mut points = Vec::new();
-    for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng) + origin.x;
-        let y = range.ind_sample(&mut rng) + origin.y;
-        points.push(Vector2::new(x, y));
-    }
-    points    
-}
-
-
 pub fn create_random_tree<S: SpadeNum + BaseFloat + Rand + SampleRange>(
     size: usize, seed: [u32; 4]) -> (
     RTree<Vector2<S>, Vector2<S>>, Vec<Vector2<S>>) {

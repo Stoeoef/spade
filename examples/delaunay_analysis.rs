@@ -20,10 +20,12 @@ extern crate time;
 extern crate num;
 
 use spade::{DelaunayTriangulation, DelaunayKernel, TwoDimensional,
-            AdaptiveIntKernel, TrivialKernel, FloatKernel};
-use spade::testutils::*;
+            AdaptiveIntKernel, TrivialKernel, FloatKernel, SpadeNum};
+use rand::{Rand, XorShiftRng, SeedableRng};
+use rand::distributions::{Range, IndependentSample};
+use rand::distributions::range::SampleRange;
 use time::Duration;
-use cgmath::Vector2;
+use cgmath::{Vector2, BaseNum};
 use std::path::Path;
 use std::fs::File;
 use std::io::{Write};
@@ -84,4 +86,30 @@ fn main() {
 
     println!("Done!");
 
+}
+
+pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed);
+    let range = Range::new(-range.clone(), range.clone());
+    let mut points = Vec::with_capacity(size);
+    for _ in 0 .. size {
+        let x = range.ind_sample(&mut rng);
+        let y = range.ind_sample(&mut rng);
+        points.push(Vector2::new(x, y));
+    }
+    points
+}
+
+pub fn random_points_with_seed_range_and_origin<S: SpadeNum + Copy + Rand + SampleRange>(
+    range: S, origin: Vector2<S>, size: usize, seed: [u32; 4])
+    -> Vec<Vector2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed);
+    let range = Range::new(-range, range);
+    let mut points = Vec::new();
+    for _ in 0 .. size {
+        let x = range.ind_sample(&mut rng) + origin.x;
+        let y = range.ind_sample(&mut rng) + origin.y;
+        points.push(Vector2::new(x, y));
+    }
+    points    
 }

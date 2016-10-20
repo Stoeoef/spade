@@ -22,10 +22,12 @@ extern crate glium;
 mod utils;
 use utils::exampleapplication::ExampleApplication;
 use utils::{Vertex, get_color_for_depth, push_rectangle, push_cross};
-use spade::testutils::random_points_with_seed;
-use spade::{RTree, RTreeNode};
-use cgmath::{Vector2, Vector3};
+use spade::{RTree, RTreeNode, SpadeNum};
+use cgmath::{Vector2, Vector3, BaseFloat, BaseNum};
 use cgmath::conv::*;
+use rand::{Rand, XorShiftRng, SeedableRng};
+use rand::distributions::{Range, IndependentSample};
+use rand::distributions::range::SampleRange;
 use glium::{VertexBuffer};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
@@ -187,4 +189,20 @@ fn print_help() {
     println!("M - change lookup mode");
     println!("A - add 10 random points.");
     println!("B - add 100 random points.");
+}
+
+pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed);
+    let range = Range::new(-range.clone(), range.clone());
+    let mut points = Vec::with_capacity(size);
+    for _ in 0 .. size {
+        let x = range.ind_sample(&mut rng);
+        let y = range.ind_sample(&mut rng);
+        points.push(Vector2::new(x, y));
+    }
+    points
+}
+
+pub fn random_points_with_seed<S: SpadeNum + BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+    random_points_in_range(S::one(), size, seed)
 }

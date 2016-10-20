@@ -1504,12 +1504,13 @@ mod tests {
     #[test]
     fn test_higher_dimensions() {
         use cgmath::Vector4;
-        use rand::{Rand, XorShiftRng, SeedableRng};
+        use rand::{XorShiftRng, SeedableRng, Rng};
         let mut tree: RTree<Vector4<f32>, Vector4<f32>> = RTree::new();
         let mut rng = XorShiftRng::from_seed([1, 2, 3, 1992]);
         let mut entries = Vec::new();
         for _ in 0 .. 1000 {
-            let entry = Rand::rand(&mut rng);
+            let (x, y, z, w) = (rng.next_f32(), rng.next_f32(), rng.next_f32(), rng.next_f32());
+            let entry = Vector4::new(x, y, z, w);
             entries.push(entry);
             tree.insert(entry);
         }

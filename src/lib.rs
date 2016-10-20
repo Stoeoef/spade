@@ -33,12 +33,14 @@ extern crate num;
 extern crate cgmath;
 extern crate nalgebra;
 extern crate clamp;
+
 #[cfg(test)]
 extern crate approx;
-
+#[cfg(test)]
 extern crate rand;
 
-pub mod testutils;
+#[cfg(test)]
+mod testutils;
 
 mod traits;
 mod vector_traits;

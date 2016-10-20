@@ -18,10 +18,12 @@ extern crate spade;
 extern crate cgmath;
 extern crate time;
 
-use spade::{RTree};
-use spade::testutils::*;
+use rand::{Rand, XorShiftRng, SeedableRng};
+use rand::distributions::{Range, IndependentSample};
+use rand::distributions::range::SampleRange;
+use spade::{RTree, SpadeNum};
 use time::Duration;
-use cgmath::Vector2;
+use cgmath::{Vector2};
 use std::path::Path;
 use std::fs::File;
 use std::io::{Write, stdout};
@@ -89,4 +91,18 @@ fn run_compare_operations_bench() {
     print_measurements("unsuccessful lookup", &unsuccsessful_lookup_times);
 
     println!("Done!");
+}
+
+pub fn random_points_with_seed<S: SpadeNum + Copy + Rand + SampleRange>(
+    size: usize, seed: [u32; 4])
+    -> Vec<Vector2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed);
+    let range = Range::new(-S::one(), S::one());
+    let mut points = Vec::new();
+    for _ in 0 .. size {
+        let x = range.ind_sample(&mut rng);
+        let y = range.ind_sample(&mut rng);
+        points.push(Vector2::new(x, y));
+    }
+    points    
 }

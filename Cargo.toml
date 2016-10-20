@@ -14,10 +14,9 @@ cgmath = ">=0.11.0"
 nalgebra = ">=0.9.0"
 num = "0.1.*"
 clamp = "0.1.*"
-rand = "0.3.*"
-noise = "0.2.*"
 
 [dev-dependencies]
+rand = "0.3.*"
 time = "0.1.*"
 approx = "0.1.*"
 
