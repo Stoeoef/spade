@@ -398,7 +398,6 @@ impl <T, B> DirectoryNodeData<T, B>
         best_axis
     }
 
-    #[inline(never)]
     fn choose_subtree(&mut self, node: &RTreeNode<T, B>) -> &mut DirectoryNodeData<T, B> {
         assert!(self.depth >= 2, "Cannot choose subtree on this level");
         let insertion_mbr = node.mbr();
@@ -445,8 +444,8 @@ impl <T, B> DirectoryNodeData<T, B>
                     zero()
                 };
                 // Calculate area increase and area
-                let area_increase = new_mbr.area() - mbr.area();
                 let area = new_mbr.area();
+                let area_increase = area.clone() - mbr.area();
                 let new_min = (overlap_increase, area_increase, area);
                 if new_min < min || index == 0 {
                     min = new_min;

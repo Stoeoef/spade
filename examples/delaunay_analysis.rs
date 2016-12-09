@@ -52,7 +52,7 @@ fn bench<V: TwoDimensional, K: DelaunayKernel<V::Scalar>>(vs: &[V], chunk_size: 
 
 fn main() {
 
-    const SIZE: usize = 4000000;
+    const SIZE: usize = 400000;
     const CHUNK_SIZE: usize = SIZE / 100;
 
     let seed = [661311, 350191, 123021, 231261];
