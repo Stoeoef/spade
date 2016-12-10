@@ -38,11 +38,13 @@ impl <N: Num + Clone> BigVec2<N> {
 
 impl <N: SpadeNum> VectorN for BigVec2<N> {
     type Scalar = N;
-    type B = Self;
 
     fn dimensions() -> usize {
         2
     }
+
+    fn nth(&self, index: usize) -> &N { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut N { &mut self[index] }
 
     fn from_value(val: N) -> Self {
         BigVec2::new(val.clone(), val.clone())

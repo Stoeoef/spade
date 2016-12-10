@@ -41,9 +41,10 @@ const ICCERRBOUND_C: f64 = (44.0 + 576.0 * EPSILON) * EPSILON * EPSILON;
 
 pub fn orient2d<V: VectorN<Scalar=f64>>(pa: &V, pb: &V, pc: &V) -> f64
 {
-    let pa = [pa.borrow()[0], pa.borrow()[1]];
-    let pb = [pb.borrow()[0], pb.borrow()[1]];
-    let pc = [pc.borrow()[0], pc.borrow()[1]];
+    let pa = [*pa.nth(0), *pa.nth(1)];
+    let pb = [*pb.nth(0), *pb.nth(1)];
+    let pc = [*pc.nth(0), *pc.nth(1)];
+
     let detleft = (pa[0] - pc[0]) * (pb[1] - pc[1]);
     let detright = (pa[1] - pc[1]) * (pb[0] - pc[0]);
     let det = detleft - detright;
@@ -133,10 +134,11 @@ fn orient2dadapt(pa: [f64; 2], pb: [f64; 2], pc: [f64; 2],
 }
 
 pub fn incircle<V: VectorN<Scalar=f64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> f64 {
-    let pa = [pa.borrow()[0], pa.borrow()[1]];
-    let pb = [pb.borrow()[0], pb.borrow()[1]];
-    let pc = [pc.borrow()[0], pc.borrow()[1]];
-    let pd = [pd.borrow()[0], pd.borrow()[1]];
+    let pa = [*pa.nth(0), *pa.nth(1)];
+    let pb = [*pb.nth(0), *pb.nth(1)];
+    let pc = [*pc.nth(0), *pc.nth(1)];
+    let pd = [*pd.nth(0), *pd.nth(1)];
+
     let adx = pa[0] - pd[0];
     let bdx = pb[0] - pd[0];
     let cdx = pc[0] - pd[0];

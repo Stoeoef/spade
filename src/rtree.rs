@@ -325,7 +325,7 @@ impl <T, B> DirectoryNodeData<T, B>
         let axis = self.get_split_axis();
         assert!(self.children.len() >= 2);
         // Sort along axis
-        self.children.sort_by(|l, r| l.mbr().lower().borrow()[axis].partial_cmp(&r.mbr().lower().borrow()[axis]).unwrap());
+        self.children.sort_by(|l, r| l.mbr().lower().nth(axis).partial_cmp(&r.mbr().lower().nth(axis)).unwrap());
         let mut best = (zero(), zero());
         let mut best_index = self.options.min_size;
 
@@ -375,8 +375,8 @@ impl <T, B> DirectoryNodeData<T, B>
         let mut best_axis = 0;
         for axis in 0 .. T::Vector::dimensions() {
             // Sort children along the current axis
-            self.children.sort_by(|l, r| l.mbr().lower().borrow()[axis]
-                                  .partial_cmp(&r.mbr().lower().borrow()[axis]).unwrap());
+            self.children.sort_by(|l, r| l.mbr().lower().nth(axis)
+                                  .partial_cmp(&r.mbr().lower().nth(axis)).unwrap());
             for k in self.options.min_size .. self.children.len() - self.options.min_size + 1 {
                 let mut first_mbr = self.children[k - 1].mbr();
                 let mut second_mbr = self.children[k].mbr();
@@ -594,7 +594,7 @@ impl <T, B> DirectoryNodeData<T, B>
             let min_point = mbr.min_point(point);
             for dim in 0 .. T::Vector::dimensions() {
                 for mut p in [mbr.lower(), mbr.upper()].iter_mut() {
-                    p.borrow_mut()[dim] = min_point.borrow()[dim].clone();
+                    *p.nth_mut(dim) = min_point.nth(dim).clone();
                     let distance = p.sub(point).length2();
                     if distance < smallest_min_max || dim == 0 {
                         smallest_min_max = distance;

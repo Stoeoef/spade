@@ -18,26 +18,25 @@ use nalgebra as na;
 use cgmath as cg;
 use nalgebra::{Repeat};
 
-use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
-use std::borrow::{Borrow, BorrowMut};
 use traits::SpadeNum;
 use num::{zero};
 use misc::{min_inline, max_inline};
 
 /// Abstraction over vectors in different dimensions.
 pub trait VectorN where Self: Clone,
-Self: Borrow<<Self as VectorN>::B>,
-Self: BorrowMut<<Self as VectorN>::B>,
 Self: Debug,
 Self: PartialEq {
     /// The vector's internal scalar type.
     type Scalar: SpadeNum;
-    type B: Index<usize, Output=<Self as VectorN>::Scalar> +
-        IndexMut<usize, Output=<Self as VectorN>::Scalar> + ?Sized;
 
     /// Creates a new vector with all compoenents set to a certain value.
     fn from_value(value: Self::Scalar) -> Self;
+
+    /// Returns the nth element of the vector.
+    fn nth(&self, index: usize) -> &Self::Scalar;
+    /// Returns a mutable reference to the nth element of the vector.
+    fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar;
 
     /// Creates a new vector with all components initialized to zero.
     fn new() -> Self {
@@ -67,9 +66,7 @@ Self: PartialEq {
     fn component_wise<F: Fn(Self::Scalar, Self::Scalar) -> Self::Scalar>(&self, rhs: &Self, f: F) -> Self {
         let mut result = self.clone();
         for i in 0 .. Self::dimensions() {
-            result.borrow_mut()[i] = 
-                f(self.borrow()[i].clone(), 
-                  rhs.borrow()[i].clone());
+            *result.nth_mut(i) = f(self.nth(i).clone(), rhs.nth(i).clone());
         }
         result
     }
@@ -78,7 +75,7 @@ Self: PartialEq {
     fn map<F: Fn(Self::Scalar) -> O::Scalar, O: VectorN>(&self, f: F) -> O {
         let mut result = O::new();
         for i in 0 .. Self::dimensions() {
-            result.borrow_mut()[i]  = f(self.borrow()[i].clone());
+            *result.nth_mut(i)  = f(self.nth(i).clone());
         }
         result
     }
@@ -96,7 +93,7 @@ Self: PartialEq {
     /// Fold operation over all vector components.
     fn fold<T, F: Fn(T, Self::Scalar) -> T>(&self, mut acc: T, f: F) -> T {
         for i in 0 .. Self::dimensions() {
-            acc = f(acc, self.borrow()[i].clone());
+            acc = f(acc, self.nth(i).clone());
         }
         acc
     }
@@ -104,7 +101,7 @@ Self: PartialEq {
     /// Checks if a property holds for all components.
     fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
         for i in 0 .. Self::dimensions() {
-            if !f(self.borrow()[i].clone(), rhs.borrow()[i].clone()) {
+            if !f(self.nth(i).clone(), rhs.nth(i).clone()) {
                 return false;
             }
         }
@@ -151,10 +148,22 @@ impl <S: SpadeNum + na::BaseNum> ThreeDimensional for na::Vector3<S> {
     }
 }
 
+impl <S: SpadeNum + Copy> ThreeDimensional for [S; 3] {
+    fn cross(&self, other: &Self) -> Self {
+        [
+            self[1] * other[2] - self[2] * other[1],
+            self[2] * other[0] - self[0] * other[2],
+            self[0] * other[1] - self[1] * other[0]
+        ]
+    }
+}
+
 impl <S: SpadeNum + Copy> VectorN for [S; 2] {
     type Scalar = S;
-    type B = [S];
     fn dimensions() -> usize { 2 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
     
     fn from_value(value: Self::Scalar) -> Self {
         [value; 2]
@@ -163,8 +172,10 @@ impl <S: SpadeNum + Copy> VectorN for [S; 2] {
 
 impl <S: SpadeNum + Copy> VectorN for [S; 3] {
     type Scalar = S;
-    type B = [S];
     fn dimensions() -> usize { 3 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
     
     fn from_value(value: Self::Scalar) -> Self {
         [value; 3]
@@ -173,8 +184,11 @@ impl <S: SpadeNum + Copy> VectorN for [S; 3] {
 
 impl <S: SpadeNum + Copy> VectorN for [S; 4] {
     type Scalar = S;
-    type B = [S];
+    
     fn dimensions() -> usize { 4 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
     
     fn from_value(value: Self::Scalar) -> Self {
         [value; 4]
@@ -183,9 +197,12 @@ impl <S: SpadeNum + Copy> VectorN for [S; 4] {
 
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     type Scalar = S;
-    type B = Self;
     
     fn dimensions() -> usize { 2 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
+
     fn from_value(value: Self::Scalar) -> Self {
         cg::Array::from_value(value)
     }
@@ -193,9 +210,12 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
 
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
     type Scalar = S;
-    type B = Self;
-
+    
     fn dimensions() -> usize { 3 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
+
     fn from_value(value: Self::Scalar) -> Self {
         cg::Array::from_value(value)
     }
@@ -203,9 +223,12 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
 
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
     type Scalar = S;
-    type B = Self;
-
+    
     fn dimensions() -> usize { 4 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
+
     fn from_value(value: Self::Scalar) -> Self {
         cg::Array::from_value(value)
     }
@@ -213,9 +236,12 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
 
 impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
     type Scalar = S;
-    type B = Self;
-
+    
     fn dimensions() -> usize { 2 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
+
     fn from_value(value: Self::Scalar) -> Self {
         na::Vector2::repeat(value)
     }
@@ -223,9 +249,12 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
 
 impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
     type Scalar = S;
-    type B = Self;
-
+    
     fn dimensions() -> usize { 3 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
+
     fn from_value(value: Self::Scalar) -> Self {
         na::Vector3::repeat(value)
     }
@@ -233,9 +262,12 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
 
 impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
     type Scalar = S;
-    type B = Self;
-
+    
     fn dimensions() -> usize { 4 }
+
+    fn nth(&self, index: usize) -> &S { &self[index] }
+    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
+
     fn from_value(value: Self::Scalar) -> Self {
         na::Vector4::repeat(value)
     }

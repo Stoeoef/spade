@@ -926,17 +926,18 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let neighbor_positions: Vec<_> = {
             let handle = self.handle(v);
             let v_2d = handle.position();
-            v_pos.borrow_mut()[0] = v_2d.borrow()[0];
-            v_pos.borrow_mut()[1] = v_2d.borrow()[1];
-            v_pos.borrow_mut()[2] = f(&*handle);
+            *v_pos.nth_mut(0) = *v_2d.nth(0);
+            *v_pos.nth_mut(1) = *v_2d.nth(1);
+            *v_pos.nth_mut(2)
+ = f(&*handle);
 
             handle.neighbors().map(
                 |n| {
                     let pos = n.position();
                     let mut result = RV::new();
-                    result.borrow_mut()[0] = pos.borrow()[0];
-                    result.borrow_mut()[1] = pos.borrow()[1];
-                    result.borrow_mut()[2] = f(&*n);
+                    *result.nth_mut(0) = *pos.nth(0);
+                    *result.nth_mut(1) = *pos.nth(1);
+                    *result.nth_mut(2) = f(&*n);
                     result
                 }).collect()
         };
@@ -948,7 +949,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             let d0 = v_pos.sub(&p0);
             let d1 = v_pos.sub(&p1);
             let normal = d0.cross(&d1);
-            if normal.borrow()[2] > zero() {
+            if *normal.nth(2) > zero() {
                 final_normal = final_normal.add(&normal);
             }
 
@@ -964,8 +965,8 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let normal = self.estimate_normal::<_, Vector3<_>>(v, f);
         // Calculate gradient from normal
         let mut gradient = V::Vector::new();
-        gradient.borrow_mut()[0] = normal.x;
-        gradient.borrow_mut()[1] = normal.y;
+        *gradient.nth_mut(0) = normal.x;
+        *gradient.nth_mut(1) = normal.y;
         let g2 = gradient.length2();
         if g2 != zero() {
             let one = <V::Vector as VectorN>::Scalar::one();

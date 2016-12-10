@@ -100,8 +100,8 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
     /// Determines on which side of this edge a given point lies.
     pub fn side_query(&self, q: &V) -> EdgeSideInfo<V::Scalar> {
         let (a, b) = (&self.from, &self.to);
-        let signed_side = (b.borrow()[0].clone() - a.borrow()[0].clone()) * (q.borrow()[1].clone() - a.borrow()[1].clone()) 
-            - (b.borrow()[1].clone() - a.borrow()[1].clone()) * (q.borrow()[0].clone() - a.borrow()[0].clone());
+        let signed_side = (b.nth(0).clone() - a.nth(0).clone()) * (q.nth(1).clone() - a.nth(1).clone()) 
+            - (b.nth(1).clone() - a.nth(1).clone()) * (q.nth(0).clone() - a.nth(0).clone());
         EdgeSideInfo { signed_side: signed_side }
     }
 }
@@ -186,7 +186,7 @@ impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
     pub fn double_area(&self) -> V::Scalar {
         let b = self.v1.sub(&self.v0);
         let c = self.v2.sub(&self.v0);
-        (b.borrow()[0].clone() * c.borrow()[1].clone() - b.borrow()[1].clone() * c.borrow()[0].clone()).abs()
+        (b.nth(0).clone() * c.nth(1).clone() - b.nth(1).clone() * c.nth(0).clone()).abs()
     }
 
 }
@@ -237,23 +237,23 @@ impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
         let b = self.v1.sub(&self.v0);
         let c = self.v2.sub(&self.v0);
         // Calculate circumcenter position
-        let d = two * (b.borrow()[0] * c.borrow()[1] - c.borrow()[0] * b.borrow()[1]);
+        let d = two * (*b.nth(0) * *c.nth(1) - *c.nth(0) * *b.nth(1));
         let len_b = b.dot(&b);
         let len_c = c.dot(&c);
-        let x = (len_b * c.borrow()[1] - len_c * b.borrow()[1]) / d;
-        let y = (-len_b * c.borrow()[0] + len_c * b.borrow()[0]) / d;
+        let x = (len_b * *c.nth(1) - len_c * *b.nth(1)) / d;
+        let y = (-len_b * *c.nth(0) + len_c * *b.nth(0)) / d;
         let mut result = V::new();
-        result.borrow_mut()[0] = x;
-        result.borrow_mut()[1] = y;
+        *result.nth_mut(0) = x;
+        *result.nth_mut(1) = y;
         result.add(&self.v0)
     }
 
     /// Returns the barycentric coordinates of a point.
     pub fn barycentric_interpolation(&self, coord: &V) -> Vector3<V::Scalar> {
         let (v1, v2, v3) = (self.v0.clone(), self.v1.clone(), self.v2.clone());
-        let (x, y) = (coord.borrow()[0], coord.borrow()[1]);
-        let (x1, x2, x3) = (v1.borrow()[0], v2.borrow()[0], v3.borrow()[0]);
-        let (y1, y2, y3) = (v1.borrow()[1], v2.borrow()[1], v3.borrow()[1]);
+        let (x, y) = (*coord.nth(0), *coord.nth(1));
+        let (x1, x2, x3) = (*v1.nth(0), *v2.nth(0), *v3.nth(0));
+        let (y1, y2, y3) = (*v1.nth(1), *v2.nth(1), *v3.nth(1));
         let det = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
         let lambda1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det;
         let lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det;
@@ -316,8 +316,8 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        let dx = self.center.borrow()[0] - point.borrow()[0];
-        let dy = self.center.borrow()[1] - point.borrow()[1];
+        let dx = *self.center.nth(0) - *point.nth(0);
+        let dy = *self.center.nth(1) - *point.nth(1);
         let dist = ((dx * dx + dy * dy).sqrt() - self.radius).max(zero());
         dist * dist
     }
@@ -325,8 +325,8 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
     // Since containment checks do not require the calculation of the square root
     // we can redefine this method.
     fn contains(&self, point: &V) -> bool {
-        let dx = self.center.borrow()[0] - point.borrow()[0];
-        let dy = self.center.borrow()[1] - point.borrow()[1];
+        let dx = *self.center.nth(0) - *point.nth(0);
+        let dy = *self.center.nth(1) - *point.nth(1);
         let r2 = self.radius * self.radius;
         dx * dx + dy * dy <= r2
     }

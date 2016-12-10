@@ -162,19 +162,19 @@ impl <V> BoundingRect<V> where V: VectorN {
         let u = self.upper();
         let (mut min, mut max) = (V::new(), V::new());
         for i in 0 .. V::dimensions() {
-            if (l.borrow()[i].clone() - point.borrow()[i].clone()).abs() < (u.borrow()[i].clone() - point.borrow()[i].clone()).abs() { 
-                min.borrow_mut()[i] = l.borrow()[i].clone();
-                max.borrow_mut()[i] = u.borrow()[i].clone();
+            if (l.nth(i).clone() - point.nth(i).clone()).abs() < (u.nth(i).clone() - point.nth(i).clone()).abs() { 
+                *min.nth_mut(i) = l.nth(i).clone();
+                *max.nth_mut(i) = u.nth(i).clone();
             } else {
-                min.borrow_mut()[i] = u.borrow()[i].clone();
-                max.borrow_mut()[i] = l.borrow()[i].clone();
+                *min.nth_mut(i) = u.nth(i).clone();
+                *max.nth_mut(i) = l.nth(i).clone();
             }
         }
         let mut result = zero();
         for i in 0 .. V::dimensions() {
             let mut p = min.clone();
             // Only set one component to the maximum distance
-            p.borrow_mut()[i] = max.borrow()[i].clone();
+            *p.nth_mut(i) = max.nth(i).clone();
             let new_dist = p.sub(point).length2();
             if new_dist < result || i == 0 {
                 result = new_dist
