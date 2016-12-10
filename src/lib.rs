@@ -18,8 +18,9 @@
 //! The first major datastructure is an n-dimensional r*-tree ([wikipedia](https://en.wikipedia.org/wiki/R-tree)) for efficient nearest-neighbor and point lookup queries.
 //! The second datastructures implements a 2D delaunay triangulation ([wikipedia](https://en.wikipedia.org/wiki/Delaunay_triangulation)) backed by an r-tree for fast 
 //! nearest neighbor lookup. The triangulation also implements natural neighbor interpolation ([wikipedia](https://en.wikipedia.org/wiki/Natural_neighbor)) 
-//! which offers a smooth interpolation in a delaunay triangulation.
-//! All classes are purely written in (safe) rust, the package currently supports vectors from the nalgebra and cgmath crates.
+//! which offers smooth interpolation in a delaunay triangulation.
+//! All classes are purely written in (safe) rust.
+//! The datastructures take either fixed size arrays or vectors of the nalgebra or cgmath crate as input.
 //!
 //! # Features
 //! * An n-dimensional R-Tree: `RTree`
@@ -28,7 +29,6 @@
 //!   * Uses exact predicates to avoid floating point rounding issues, see: `FloatKernel`
 //!   * Natural neighbor interpolation
 
-// #![warn(missing_docs)]
 extern crate num;
 extern crate cgmath;
 extern crate nalgebra;
@@ -43,8 +43,8 @@ extern crate rand;
 mod testutils;
 
 mod traits;
-mod vector_traits;
 mod rtree;
+mod vector_traits;
 mod misc;
 mod boundingvolume;
 mod bigvec;
@@ -62,4 +62,4 @@ pub use delaunay::*;
 pub use traits::*;
 pub use boundingvolume::*;
 pub use kernels::*;
-pub use vector_traits::*;
+pub use vector_traits::{VectorN, TwoDimensional, ThreeDimensional};

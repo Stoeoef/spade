@@ -17,7 +17,7 @@
 //! its structure. The main data structure is `DelaunayTriangulation`.
 use num::{One, Float, Zero, one, zero};
 use traits::{SpatialObject, HasPosition2D, SpadeFloat, HasPosition};
-use vector_traits::{VectorN, TwoDimensional, ThreeDimensional};
+use vector_traits::{VectorN, VectorNExtensions, TwoDimensional, ThreeDimensional};
 use kernels::{DelaunayKernel, TrivialKernel};
 use rtree::RTree;
 use boundingvolume::BoundingRect;
@@ -28,8 +28,8 @@ use planarsubdivision::{PlanarSubdivision, FixedVertexHandle, EdgeHandle, AllEdg
                         AllVerticesIterator, VertexHandle, SectorInfo};
 
 /// Yields information about a point's position in triangulation.
-#[derive(Debug)]
-pub enum PositionInTriangulation<H> {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum PositionInTriangulation<H: Copy> {
     /// The point is contained in a triangle. The three given handles are ordered counterclockwise.
     InTriangle([H; 3]),
     /// The point is outside the convex hull. The two given handles mark an edge on the convex
@@ -118,7 +118,7 @@ fn calculate_convex_polygon_double_area<V>(
     sum
 }
 
-/// An entry of the delaunay triangulation's r-tree.
+/// An entry of the delaunay triangulation's internal r-tree.
 #[derive(Clone, Debug)]
 struct PointEntry<V> 
     where V: TwoDimensional
@@ -140,14 +140,15 @@ impl<V> HasPosition for PointEntry<V>
 /// A delaunay triangulation is a special triangulation of a set of points that fulfills some
 /// suitable properties for geometric operations like interpolation.
 ///
-/// This triangulation works with `Vector2`-vectors from the `cgmath` and `nalgebra` package.
 /// Objects that are inserted into the triangulation have to implement the `HasPosition2D` trait.
+/// The trait is implemented for all types that implement `TwoDimensional`, like `Vector2` from
+/// the `cgmath` and `nalgebra` package or `[S; 2]` for `S: SpadeNum`.
 /// 
-/// Implementing delaunay triangulations is all about precision: the various geometric queries
-/// can fail if imprecise calculations are used (like native `f32` / `f64` operations), 
-/// resulting in crashes at run time. To prevent those crashes, Spade offers a few "calculation
-/// kernels" that can fit the individual needs of an application. Refer to the following table
-/// and the documentation of each kernel for more information:
+/// A straightforward delaunay triangulation implementation will suffer from precision problems:
+/// various geometric queries can fail if imprecise calculations (like native `f32` / `f64` operations)
+/// are used. Those failures can yield to incorrect results or panics at runtime.
+/// To prevent those crashes, Spade offers a few "calculation kernels" that may fit the individual needs
+/// of an application. Refer to the following table and the documentation of each kernel for more information:
 ///
 /// |  |  Vector types: | When to use: | Properties: |
 /// |-------------------|-------------------------------------------|------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
@@ -162,10 +163,10 @@ impl<V> HasPosition for PointEntry<V>
 /// # extern crate spade;
 /// use spade::{DelaunayKernel, FloatKernel};
 /// # fn main() {
-/// let mut triangulation = FloatKernel::new_triangulation();
-/// // Once you insert the first piece of data, type inference is able to fully determine the
-/// // triangulation's type - in this case, it contains nalgebra::Vector2<f64>.
-/// triangulation.insert(nalgebra::Vector2::new(332f64, 123f64));
+/// // If using Vector2 from cgmath or nalgebra, the additional type
+/// // specification can be omitted.
+/// let mut triangulation = FloatKernel::new_triangulation::<[f64; 2], _>();
+/// triangulation.insert([332f64, 123f64]);
 /// # }
 /// ```
 ///
@@ -1369,6 +1370,7 @@ mod test {
 
     #[test]
     fn test_insert_points_on_line_2() {
+        use super::PositionInTriangulation;
         // This test inserts the line first
         let mut d: DelaunayTriangulation<_, _, _> = Default::default();
 
@@ -1376,9 +1378,13 @@ mod test {
             d.insert(Vector2::new(i as f32, 0.));
         }
         
+        assert_eq!(d.get_position_in_triangulation(&Vector2::new(10., 12.)),
+                   PositionInTriangulation::NoTriangulationPresent);
+
         for i in -10 .. 10 {
             d.insert(Vector2::new(i as f32, 0.5 * (i as f32)));
         }
+
     }
 
 
@@ -1486,7 +1492,8 @@ mod test {
 
     #[test]
     fn test_insert_points_on_grid_with_increasing_distance() {
-        // This test inserts points on a grid in increasing order from (0., 0.)
+        // This test inserts points on a grid with increasing distance 
+        // from (0., 0.)
         use cgmath::InnerSpace;
         let mut points = Vec::new();
         const SIZE: i32 = 7;

@@ -16,7 +16,7 @@
 use misc::min_inline;
 use std::sync::Arc;
 use traits::{SpatialObject};
-use vector_traits::VectorN;
+use vector_traits::{VectorN, VectorNExtensions};
 use num::{zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
@@ -1005,8 +1005,9 @@ pub enum RTreeNode<T, B>
 /// the `primitives` module. If your object is not among those, consider
 /// implementing the `SpatialObject` trait.
 /// 
-/// Note that the `rtree`-infrastructure works with 2, 3 and 4 dimensional vectors from the `nalgebra`
-/// and `cgmath` package with both integral and floating point scalar types:
+/// Note that the `rtree`-structures work with fixed arrays of size 2, 3 or 4 or
+/// with the vector types provided by the `nalgebra` and `cgmath` packages.
+/// Both integral and floating point scalar types are supported.
 ///
 /// ```
 /// # extern crate nalgebra;
@@ -1023,7 +1024,7 @@ pub enum RTreeNode<T, B>
 /// # Basic Example
 ///
 /// ```
-/// extern crate cgmath; // Alternativeley: use nalgebra
+/// extern crate cgmath; // Alternatively: use nalgebra or [f32; 2]
 /// extern crate spade;
 ///
 /// use spade::RTree;
@@ -1072,7 +1073,7 @@ pub enum RTreeNode<T, B>
 /// ```
 
 #[derive(Clone)]
-pub struct RTree<T, B> where T: SpatialObject, B: Borrow<T> {
+pub struct RTree<T, B = T> where T: SpatialObject, B: Borrow<T> {
 
     root: DirectoryNodeData<T, B>,
     size: usize,
@@ -1179,7 +1180,7 @@ impl<T, B> RTree<T, B>
     }
 
     /// Returns an object close to a given point. This operation is faster than
-    /// ```nearest_neighbor``` but will not neccessarily yield the real nearest neighbor.
+    /// `nearest_neighbor` but will not neccessarily yield the real nearest neighbor.
     #[inline(never)]
     pub fn close_neighbor(&self, query_point: &T::Vector) -> Option<&T> {
         if self.size > 0 {

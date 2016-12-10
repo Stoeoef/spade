@@ -23,41 +23,60 @@ use traits::SpadeNum;
 use num::{zero};
 use misc::{min_inline, max_inline};
 
-/// Abstraction over vectors in different dimensions.
-pub trait VectorN where Self: Clone,
-Self: Debug,
-Self: PartialEq {
+/// Abstraction over vectors with a fixed number of dimensions.
+/// Spade will work with any vector type implementing this trait, at the
+/// moment vectors of the `cgmath` and `nalgebra` crates are supported.
+/// Also, the trait is implemented for fixed arrays of length 2, 3 and 4, allowing
+/// to use spade's datastructures to use fixed size arrays as input.
+/// That means that the trait's methods are also implemented for
+/// these array types, thus be careful when importing `VectorN`.
+///
+/// Implement this if you want spade to support your own vector types.
+/// Also consider adding an (empty) implementation of `TwoDimensional`
+/// or `ThreeDimensional` if appropriate.
+pub trait VectorN
+    where Self: Clone,
+          Self: Debug,
+          Self: PartialEq {
     /// The vector's internal scalar type.
     type Scalar: SpadeNum;
+
+    /// The (fixed) number of dimensions of this vector type.
+    fn dimensions() -> usize;
 
     /// Creates a new vector with all compoenents set to a certain value.
     fn from_value(value: Self::Scalar) -> Self;
 
-    /// Returns the nth element of the vector.
+    /// Returns the nth element of this vector.
     fn nth(&self, index: usize) -> &Self::Scalar;
-    /// Returns a mutable reference to the nth element of the vector.
+    /// Returns a mutable reference to the nth element of this vector.
     fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar;
+}
 
+/// Adds some private methods to the ```VectorN``` trait.
+pub trait VectorNExtensions : VectorN {
     /// Creates a new vector with all components initialized to zero.
     fn new() -> Self {
         Self::from_value(zero())
     }
 
-    /// The (fixed) number of dimensions of this vector trait.
-    fn dimensions() -> usize;
-
+    /// Adds two vectors.
     fn add(&self, rhs: &Self) -> Self {
         self.component_wise(rhs, |l, r| l + r)
     }
 
+    /// Substracts two vectors.
     fn sub(&self, rhs: &Self) -> Self {
         self.component_wise(rhs, |l, r| l - r)
     }
 
+    /// Divides this vector with a scalar value.
     fn div(&self, scalar: Self::Scalar) -> Self {
         self.map(|x| x / scalar.clone())
     }
 
+
+    /// Multiplies this vector with a scalar value.
     fn mul(&self, scalar: Self::Scalar) -> Self {
         self.map(|x| x * scalar.clone())
     }
@@ -98,7 +117,7 @@ Self: PartialEq {
         acc
     }
 
-    /// Checks if a property holds for all components.
+    /// Checks if a property holds for all components of this and another vector.
     fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
         for i in 0 .. Self::dimensions() {
             if !f(self.nth(i).clone(), rhs.nth(i).clone()) {
@@ -119,6 +138,8 @@ Self: PartialEq {
     }
 }
 
+impl <T> VectorNExtensions for T where T: VectorN { }
+
 /// A two dimensional Vector.
 /// Some datastructures will only work if two dimensional vectors are given,
 /// this trait makes sure that only such vectors can be passed.
@@ -133,30 +154,23 @@ impl <S: SpadeNum + Copy> TwoDimensional for [S; 2] { }
 /// sure that only such vectors can be used.
 pub trait ThreeDimensional : VectorN {
     /// The cross product of this vector and another.
-    fn cross(&self, other: &Self) -> Self;
-}
-
-impl <S: SpadeNum + cg::BaseNum> ThreeDimensional for cg::Vector3<S> {
     fn cross(&self, other: &Self) -> Self {
-        cg::Vector3::cross(*self, *other)
+        let mut result = Self::new();
+        *result.nth_mut(0) = self.nth(1).clone() * other.nth(2).clone() 
+            - self.nth(2).clone() * other.nth(1).clone();
+        *result.nth_mut(1) = self.nth(2).clone() * other.nth(0).clone()
+            - self.nth(0).clone() * other.nth(2).clone();
+        *result.nth_mut(2) = self.nth(0).clone() * other.nth(1).clone()
+            - self.nth(1).clone() * other.nth(0).clone();
+        result
     }
 }
 
-impl <S: SpadeNum + na::BaseNum> ThreeDimensional for na::Vector3<S> {
-    fn cross(&self, other: &Self) -> Self {
-        na::cross(self, other)
-    }
-}
+impl <S: SpadeNum + cg::BaseNum> ThreeDimensional for cg::Vector3<S> { }
 
-impl <S: SpadeNum + Copy> ThreeDimensional for [S; 3] {
-    fn cross(&self, other: &Self) -> Self {
-        [
-            self[1] * other[2] - self[2] * other[1],
-            self[2] * other[0] - self[0] * other[2],
-            self[0] * other[1] - self[1] * other[0]
-        ]
-    }
-}
+impl <S: SpadeNum + na::BaseNum> ThreeDimensional for na::Vector3<S> { }
+
+impl <S: SpadeNum + Copy> ThreeDimensional for [S; 3] { }
 
 impl <S: SpadeNum + Copy> VectorN for [S; 2] {
     type Scalar = S;

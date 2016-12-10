@@ -14,12 +14,14 @@
 // limitations under the License.
 
 use num::{Signed, zero, one};
-use vector_traits::VectorN;
+use vector_traits::{VectorN, VectorNExtensions};
 use misc::max_inline;
 
 /// An axis aligned minimal bounding rectangle.
 ///
-/// A axis aligned minimal bounding rectangle is the smallest rectangle that completly surrounds an object and is aligned along the two axis in the plane.
+/// A axis aligned minimal bounding rectangle is the smallest rectangle that completly surrounds an object and is aligned along all axis.
+/// The vector type `V`'s dimension determines if this is a rectangle, a box or
+/// a higher dimensional volume.
 #[derive(Clone, PartialEq, Debug)]
 pub struct BoundingRect<V: VectorN> {
     lower: V,

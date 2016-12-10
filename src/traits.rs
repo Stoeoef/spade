@@ -21,7 +21,7 @@ use num::{Signed, BigInt, BigRational, zero};
 use num::rational::Ratio;
 use boundingvolume::BoundingRect;
 use bigvec::{AdaptiveInt};
-use vector_traits::{VectorN, TwoDimensional};
+use vector_traits::{VectorN, VectorNExtensions, TwoDimensional};
 use std::fmt::Debug;
 
 /// Scalar that can be used for spade's datastructures will need to implement

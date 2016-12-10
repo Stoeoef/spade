@@ -22,7 +22,7 @@
 
 use cgmath::{Vector3, Zero, One};
 use traits::{SpadeFloat, SpadeNum, SpatialObject};
-use vector_traits::{VectorN, TwoDimensional};
+use vector_traits::{VectorN, VectorNExtensions, TwoDimensional};
 use num::{Float, one, zero, Signed};
 use boundingvolume::BoundingRect;
 use kernels::{TrivialKernel, DelaunayKernel};

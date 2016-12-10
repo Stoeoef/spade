@@ -361,7 +361,6 @@ impl <V, B> VertexEntry<V, B>
 ///   assert_eq!(*vertex_handle, Vector2::new(0.0, 1.0));
 /// # }
 /// ```
-
 pub struct VertexHandle<'a, V, B, K> 
     where V: HasPosition2D + 'a, 
           K: 'a,
@@ -382,6 +381,12 @@ impl <'a, V, B, K> Clone for VertexHandle<'a, V, B, K>
     }
 }
 
+impl <'a, V, B, K> Copy for VertexHandle<'a, V, B, K>
+    where V: HasPosition2D + 'a, 
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a { }
+
 impl <'a, V, B, K> Debug for VertexHandle<'a, V, B, K> 
     where V: HasPosition2D + Debug + 'a,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
@@ -393,6 +398,19 @@ impl <'a, V, B, K> Debug for VertexHandle<'a, V, B, K>
         write!(f, " }}")
     }
 }
+
+impl <'a, V, B, K> PartialEq for VertexHandle<'a, V, B, K> 
+    where V: HasPosition2D + 'a, 
+          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
+          V::Vector: TwoDimensional,
+          B: Borrow<V> + 'a {
+    fn eq(&self, other: &Self) -> bool {
+        self.fixed == other.fixed
+    }
+}
+
+
+
 
 struct CircularIterator<T, F> where 
     for <'a> F: Fn(&'a T) -> T, T: PartialEq {
