@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.0] - 2016-12-10
+### Changed
+  - `VectorN` trait trimmed down, now contains only a small set of functions.
+  
+### Added
+  - `[S; 2]`, `[S; 3]` and `[S; 4]` now implement `VectorN` and `TwoDimensional` or `ThreeDimensional` when appropriate. This change allows to insert fixed size arrays that encode positions directly into `RTree` or `DelaunayInterpolation`.
+  
+### Removed
+  - Removed dependencies on crate `rand` and crate `noise`
+  
 ## [0.2.1] - 2016-10-11
 ### Changed
   - Function signatures of `nn_interpolation_c1_*` slightly modified.
@@ -51,6 +61,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## 0.1.0 - 2016-09-23
 Initial commit
 
+[0.3.0] https://github.com/Stoeoef/spade/compare/v0.2.1...v0.3.0
 [0.2.1] https://github.com/Stoeoef/spade/compare/v0.2.0...v0.2.1
 [0.2.0] https://github.com/Stoeoef/spade/compare/v0.1.1...v0.2.0
 [0.1.1] https://github.com/Stoeoef/spade/compare/v0.1.0...v0.1.1
