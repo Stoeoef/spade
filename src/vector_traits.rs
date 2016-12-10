@@ -18,24 +18,23 @@ use nalgebra as na;
 use cgmath as cg;
 use nalgebra::{Repeat};
 
-use std::ops::{Add, Sub, Index, IndexMut, Div, Mul};
+use std::ops::{Index, IndexMut};
 use std::fmt::Debug;
+use std::borrow::{Borrow, BorrowMut};
 use traits::SpadeNum;
 use num::{zero};
 use misc::{min_inline, max_inline};
 
 /// Abstraction over vectors in different dimensions.
 pub trait VectorN where Self: Clone,
-Self: Add<Self, Output=Self>,
-Self: Sub<Self, Output=Self>,
-Self: Div<<Self as VectorN>::Scalar, Output=Self>,
-Self: Mul<<Self as VectorN>::Scalar, Output=Self>,
-Self: Index<usize, Output=<Self as VectorN>::Scalar>,
-Self: IndexMut<usize, Output=<Self as VectorN>::Scalar>,
+Self: Borrow<<Self as VectorN>::B>,
+Self: BorrowMut<<Self as VectorN>::B>,
 Self: Debug,
 Self: PartialEq {
     /// The vector's internal scalar type.
     type Scalar: SpadeNum;
+    type B: Index<usize, Output=<Self as VectorN>::Scalar> +
+        IndexMut<usize, Output=<Self as VectorN>::Scalar> + ?Sized;
 
     /// Creates a new vector with all compoenents set to a certain value.
     fn from_value(value: Self::Scalar) -> Self;
@@ -48,11 +47,29 @@ Self: PartialEq {
     /// The (fixed) number of dimensions of this vector trait.
     fn dimensions() -> usize;
 
+    fn add(&self, rhs: &Self) -> Self {
+        self.component_wise(rhs, |l, r| l + r)
+    }
+
+    fn sub(&self, rhs: &Self) -> Self {
+        self.component_wise(rhs, |l, r| l - r)
+    }
+
+    fn div(&self, scalar: Self::Scalar) -> Self {
+        self.map(|x| x / scalar.clone())
+    }
+
+    fn mul(&self, scalar: Self::Scalar) -> Self {
+        self.map(|x| x * scalar.clone())
+    }
+
     /// Applies a binary operation component wise.
     fn component_wise<F: Fn(Self::Scalar, Self::Scalar) -> Self::Scalar>(&self, rhs: &Self, f: F) -> Self {
         let mut result = self.clone();
         for i in 0 .. Self::dimensions() {
-            result[i] = f(self[i].clone(), rhs[i].clone());
+            result.borrow_mut()[i] = 
+                f(self.borrow()[i].clone(), 
+                  rhs.borrow()[i].clone());
         }
         result
     }
@@ -61,7 +78,7 @@ Self: PartialEq {
     fn map<F: Fn(Self::Scalar) -> O::Scalar, O: VectorN>(&self, f: F) -> O {
         let mut result = O::new();
         for i in 0 .. Self::dimensions() {
-            result[i]  = f(self[i].clone());
+            result.borrow_mut()[i]  = f(self.borrow()[i].clone());
         }
         result
     }
@@ -79,7 +96,7 @@ Self: PartialEq {
     /// Fold operation over all vector components.
     fn fold<T, F: Fn(T, Self::Scalar) -> T>(&self, mut acc: T, f: F) -> T {
         for i in 0 .. Self::dimensions() {
-            acc = f(acc, self[i].clone());
+            acc = f(acc, self.borrow()[i].clone());
         }
         acc
     }
@@ -87,7 +104,7 @@ Self: PartialEq {
     /// Checks if a property holds for all components.
     fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
         for i in 0 .. Self::dimensions() {
-            if !f(self[i].clone(), rhs[i].clone()) {
+            if !f(self.borrow()[i].clone(), rhs.borrow()[i].clone()) {
                 return false;
             }
         }
@@ -112,6 +129,7 @@ pub trait TwoDimensional : VectorN { }
 
 impl <S: SpadeNum + cg::BaseNum> TwoDimensional for cg::Vector2<S> { }
 impl <S: SpadeNum + na::BaseNum> TwoDimensional for na::Vector2<S> { }
+impl <S: SpadeNum + Copy> TwoDimensional for [S; 2] { }
 
 /// A three dimensional Vector.
 /// Some algorithms will only work with three dimensional vectors, this trait makes
@@ -133,8 +151,39 @@ impl <S: SpadeNum + na::BaseNum> ThreeDimensional for na::Vector3<S> {
     }
 }
 
+impl <S: SpadeNum + Copy> VectorN for [S; 2] {
+    type Scalar = S;
+    type B = [S];
+    fn dimensions() -> usize { 2 }
+    
+    fn from_value(value: Self::Scalar) -> Self {
+        [value; 2]
+    }
+}
+
+impl <S: SpadeNum + Copy> VectorN for [S; 3] {
+    type Scalar = S;
+    type B = [S];
+    fn dimensions() -> usize { 3 }
+    
+    fn from_value(value: Self::Scalar) -> Self {
+        [value; 3]
+    }
+}
+
+impl <S: SpadeNum + Copy> VectorN for [S; 4] {
+    type Scalar = S;
+    type B = [S];
+    fn dimensions() -> usize { 4 }
+    
+    fn from_value(value: Self::Scalar) -> Self {
+        [value; 4]
+    }
+}
+
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     type Scalar = S;
+    type B = Self;
     
     fn dimensions() -> usize { 2 }
     fn from_value(value: Self::Scalar) -> Self {
@@ -144,7 +193,8 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
 
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
     type Scalar = S;
-    
+    type B = Self;
+
     fn dimensions() -> usize { 3 }
     fn from_value(value: Self::Scalar) -> Self {
         cg::Array::from_value(value)
@@ -153,7 +203,8 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
 
 impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
     type Scalar = S;
-    
+    type B = Self;
+
     fn dimensions() -> usize { 4 }
     fn from_value(value: Self::Scalar) -> Self {
         cg::Array::from_value(value)
@@ -162,7 +213,8 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
 
 impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
     type Scalar = S;
-    
+    type B = Self;
+
     fn dimensions() -> usize { 2 }
     fn from_value(value: Self::Scalar) -> Self {
         na::Vector2::repeat(value)
@@ -171,7 +223,8 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
 
 impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
     type Scalar = S;
-    
+    type B = Self;
+
     fn dimensions() -> usize { 3 }
     fn from_value(value: Self::Scalar) -> Self {
         na::Vector3::repeat(value)
@@ -180,7 +233,8 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
 
 impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
     type Scalar = S;
-    
+    type B = Self;
+
     fn dimensions() -> usize { 4 }
     fn from_value(value: Self::Scalar) -> Self {
         na::Vector4::repeat(value)

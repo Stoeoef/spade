@@ -378,7 +378,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         }
         // The point does not lie on the same line as all other points.
         // Start creating a triangulation
-        let dir = to.clone() - from.clone();
+        let dir = to.sub(&from);
         let mut vertices: Vec<_> = self.s.vertices().map(
             |v| (v.fix(), dir.dot(&v.position()))).collect();
         // Sort vertices according to their position on the line
@@ -926,17 +926,17 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let neighbor_positions: Vec<_> = {
             let handle = self.handle(v);
             let v_2d = handle.position();
-            v_pos[0] = v_2d[0];
-            v_pos[1] = v_2d[1];
-            v_pos[2] = f(&*handle);
+            v_pos.borrow_mut()[0] = v_2d.borrow()[0];
+            v_pos.borrow_mut()[1] = v_2d.borrow()[1];
+            v_pos.borrow_mut()[2] = f(&*handle);
 
             handle.neighbors().map(
                 |n| {
                     let pos = n.position();
                     let mut result = RV::new();
-                    result[0] = pos[0];
-                    result[1] = pos[1];
-                    result[2] = f(&*n);
+                    result.borrow_mut()[0] = pos.borrow()[0];
+                    result.borrow_mut()[1] = pos.borrow()[1];
+                    result.borrow_mut()[2] = f(&*n);
                     result
                 }).collect()
         };
@@ -945,16 +945,16 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             let p0 = neighbor_positions[index].clone();
             let p1 = neighbor_positions[
                 (index + 1) % neighbor_positions.len()].clone();
-            let d0 = v_pos.clone() - p0;
-            let d1 = v_pos.clone() - p1;
+            let d0 = v_pos.sub(&p0);
+            let d1 = v_pos.sub(&p1);
             let normal = d0.cross(&d1);
-            if normal[2] > zero() {
-                final_normal = final_normal + normal;
+            if normal.borrow()[2] > zero() {
+                final_normal = final_normal.add(&normal);
             }
 
         }
         // Normalize
-        final_normal.clone() / final_normal.length2().sqrt()
+        final_normal.div(final_normal.length2().sqrt())
     }
 
     /// Estimates and returns the gradient for a single vertex in this triangulation.
@@ -964,14 +964,14 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let normal = self.estimate_normal::<_, Vector3<_>>(v, f);
         // Calculate gradient from normal
         let mut gradient = V::Vector::new();
-        gradient[0] = normal.x;
-        gradient[1] = normal.y;
+        gradient.borrow_mut()[0] = normal.x;
+        gradient.borrow_mut()[1] = normal.y;
         let g2 = gradient.length2();
         if g2 != zero() {
             let one = <V::Vector as VectorN>::Scalar::one();
             let d2 = one - normal.z * normal.z;
             let a2 = d2 / (one - d2);
-            gradient = gradient * (a2 / g2).sqrt();
+            gradient = gradient.mul((a2 / g2).sqrt());
         }
       
         gradient
@@ -1062,7 +1062,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             let handle = self.s.handle(*fixed_handle);
             let pos_i = handle.position();
             let h_i = f(&*handle);
-            let diff = pos_i - point.clone();
+            let diff = pos_i.sub(point);
             let r_i2 = diff.length2();
             let r_i = r_i2.powf(flatness);
             let c1_weight_i = ws[index] / r_i;
@@ -1105,7 +1105,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let get_edge_height = |i2: usize, i1: usize| {
             // Calculates an edge control point.
             // The edge is given by handles[i2] -> handles[i1]
-            let diff = handles[i1].position() - handles[i2].position();
+            let diff = handles[i1].position().sub(&handles[i2].position());
             let grad = g(&self, &handles[i2]);
             f(&*handles[i2]) - grad.dot(&diff) / three
         };

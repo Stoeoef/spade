@@ -102,20 +102,20 @@ impl <V> BoundingRect<V> where V: VectorN {
 
     /// Returns the rectangle's area.
     pub fn area(&self) -> V::Scalar {
-        let diag = self.upper() - self.lower();
+        let diag = self.upper().sub(&self.lower());
         diag.fold(one(), |acc, value| max_inline(acc * value, zero()))
     }
 
     /// Returns half of the rectangle's margin, thus `width + height`.
     pub fn half_margin(&self) -> V::Scalar {
-        let diag = self.upper() - self.lower();
+        let diag = self.upper().sub(&self.lower());
         diag.fold(zero(), |acc, value| max_inline(acc + value, zero()))
     }
 
     /// Returns the rectangle's center.
     pub fn center(&self) -> V {
         let two = one::<V::Scalar>() + one::<V::Scalar>();
-        self.lower() + (self.upper() - self.lower()) / two
+        self.lower().add(&(self.upper().sub(&self.lower()).div(two)))
     }
 
     /// Returns the intersection of this and another bounding rectangle.
@@ -143,15 +143,15 @@ impl <V> BoundingRect<V> where V: VectorN {
 
     #[doc(hidden)]
     pub fn min_dist2(&self, point: &V) -> V::Scalar {
-        (self.min_point(point) - point.clone()).length2()
+        self.min_point(point).sub(point).length2()
     }
 
     #[doc(hidden)]
     pub fn max_dist2(&self, point: &V) -> V::Scalar {
         let l = self.lower();
         let u = self.upper();
-        let d1: V = (l - point.clone()).map(|v| v.abs());
-        let d2: V = (u - point.clone()).map(|v| v.abs());
+        let d1: V = l.sub(point).map(|v| v.abs());
+        let d2: V = u.sub(point).map(|v| v.abs());
         let max_delta = d1.max_vec(&d2);
         max_delta.length2()
     }
@@ -162,20 +162,20 @@ impl <V> BoundingRect<V> where V: VectorN {
         let u = self.upper();
         let (mut min, mut max) = (V::new(), V::new());
         for i in 0 .. V::dimensions() {
-            if (l[i].clone() - point[i].clone()).abs() < (u[i].clone() - point[i].clone()).abs() { 
-                min[i] = l[i].clone();
-                max[i] = u[i].clone();
+            if (l.borrow()[i].clone() - point.borrow()[i].clone()).abs() < (u.borrow()[i].clone() - point.borrow()[i].clone()).abs() { 
+                min.borrow_mut()[i] = l.borrow()[i].clone();
+                max.borrow_mut()[i] = u.borrow()[i].clone();
             } else {
-                min[i] = u[i].clone();
-                max[i] = l[i].clone();
+                min.borrow_mut()[i] = u.borrow()[i].clone();
+                max.borrow_mut()[i] = l.borrow()[i].clone();
             }
         }
         let mut result = zero();
         for i in 0 .. V::dimensions() {
             let mut p = min.clone();
             // Only set one component to the maximum distance
-            p[i] = max[i].clone();
-            let new_dist = (p - point.clone()).length2();
+            p.borrow_mut()[i] = max.borrow()[i].clone();
+            let new_dist = p.sub(point).length2();
             if new_dist < result || i == 0 {
                 result = new_dist
             }

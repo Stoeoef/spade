@@ -38,6 +38,7 @@ impl <N: Num + Clone> BigVec2<N> {
 
 impl <N: SpadeNum> VectorN for BigVec2<N> {
     type Scalar = N;
+    type B = Self;
 
     fn dimensions() -> usize {
         2

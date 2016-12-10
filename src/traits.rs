@@ -125,7 +125,7 @@ impl <S>  SpatialObject for S where S: HasPosition {
     }
 
     fn distance2(&self, point: &S::Vector) -> <S::Vector as VectorN>::Scalar {
-        (self.position() - point.clone()).length2()
+        self.position().sub(point).length2()
     }
 
     fn contains(&self, point: &S::Vector) -> bool {

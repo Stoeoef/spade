@@ -35,6 +35,10 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
     /// pa, pb, pc have to be ordered clockwise, otherwise the result is inverted.
     fn contained_in_circumference<V: TwoDimensional<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
+        let pa = [&pa.borrow()[0], &pa.borrow()[1]];
+        let pb = [&pb.borrow()[0], &pb.borrow()[1]];
+        let pc = [&pc.borrow()[0], &pc.borrow()[1]];
+        let pd = [&pd.borrow()[0], &pd.borrow()[1]];
         let adx = pa[0].clone() - pd[0].clone();
         let ady = pa[1].clone() - pd[1].clone();
         let bdx = pb[0].clone() - pd[0].clone();
@@ -110,7 +114,7 @@ pub struct AdaptiveIntKernel { }
 impl DelaunayKernel<i64> for AdaptiveIntKernel {
     fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
         let to_bigvec = |v: &V| BigVec2::new(
-            AdaptiveInt::from_i64(&v[0]), AdaptiveInt::from_i64(&v[1]));
+            AdaptiveInt::from_i64(&v.borrow()[0]), AdaptiveInt::from_i64(&v.borrow()[1]));
         // Cast input to adaptive ints to prevent overflows
         let v1: BigVec2<_> = to_bigvec(v1);
         let v2: BigVec2<_> = to_bigvec(v2);

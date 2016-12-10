@@ -325,7 +325,7 @@ impl <T, B> DirectoryNodeData<T, B>
         let axis = self.get_split_axis();
         assert!(self.children.len() >= 2);
         // Sort along axis
-        self.children.sort_by(|l, r| l.mbr().lower()[axis].partial_cmp(&r.mbr().lower()[axis]).unwrap());
+        self.children.sort_by(|l, r| l.mbr().lower().borrow()[axis].partial_cmp(&r.mbr().lower().borrow()[axis]).unwrap());
         let mut best = (zero(), zero());
         let mut best_index = self.options.min_size;
 
@@ -362,7 +362,7 @@ impl <T, B> DirectoryNodeData<T, B>
         self.children.sort_by(|l, r| {
             let l_center = l.mbr().center();
             let r_center = r.mbr().center();
-            (l_center - center.clone()).length2().partial_cmp(&(r_center - center.clone()).length2()).unwrap()
+            l_center.sub(&center).length2().partial_cmp(&(r_center.sub(&center)).length2()).unwrap()
         });
         let num_children = self.children.len();
         let result = self.children.split_off(num_children - self.options.reinsertion_count);
@@ -375,8 +375,8 @@ impl <T, B> DirectoryNodeData<T, B>
         let mut best_axis = 0;
         for axis in 0 .. T::Vector::dimensions() {
             // Sort children along the current axis
-            self.children.sort_by(|l, r| l.mbr().lower()[axis]
-                                  .partial_cmp(&r.mbr().lower()[axis]).unwrap());
+            self.children.sort_by(|l, r| l.mbr().lower().borrow()[axis]
+                                  .partial_cmp(&r.mbr().lower().borrow()[axis]).unwrap());
             for k in self.options.min_size .. self.children.len() - self.options.min_size + 1 {
                 let mut first_mbr = self.children[k - 1].mbr();
                 let mut second_mbr = self.children[k].mbr();
@@ -594,8 +594,8 @@ impl <T, B> DirectoryNodeData<T, B>
             let min_point = mbr.min_point(point);
             for dim in 0 .. T::Vector::dimensions() {
                 for mut p in [mbr.lower(), mbr.upper()].iter_mut() {
-                    p[dim] = min_point[dim].clone();
-                    let distance = (p.clone() - point.clone()).length2();
+                    p.borrow_mut()[dim] = min_point.borrow()[dim].clone();
+                    let distance = p.sub(point).length2();
                     if distance < smallest_min_max || dim == 0 {
                         smallest_min_max = distance;
                     }
@@ -942,7 +942,7 @@ impl <T, B> RTreeNode<T, B>
             &RTreeNode::DirectoryNode(ref data) => 
                 data.nearest_neighbors_with_min_dist(point, nearest_distance, min_dist, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.borrow().distance2(point.borrow());
+                let distance = t.borrow().distance2(point);
                 if distance <= min_dist {
                     return None;
                 }
@@ -1324,6 +1324,15 @@ mod tests {
         tree.insert(Vector2::new(13, 37));
         assert!(tree.lookup(&Vector2::new(13, 37)).is_some())
     }
+
+    #[test]
+    fn test_tree_with_array_vectors() {
+        // This test should compile
+        let mut tree = RTree::<[i32; 3], _>::new();
+        tree.insert([13i32, 37, 12]);
+        assert!(tree.lookup(&[13, 37, 12]).is_some())
+    }
+
 
     #[test]
     fn test_nearest_neighbor() {

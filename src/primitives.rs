@@ -89,9 +89,9 @@ impl <V> SimpleEdge<V> where V: VectorN {
     /// edge's start and end point and returns `true` if the projected
     /// points lies between `from` and `to`.
     pub fn is_projection_on_edge(&self, query_point: &V) -> bool {
-        let (p1, p2) = (self.from.clone(), self.to.clone());
-        let dir = p2 - p1.clone();
-        let s = (query_point.clone() - p1).dot(&dir);
+        let (p1, p2) = (&self.from, &self.to);
+        let dir = p2.sub(p1);
+        let s = query_point.sub(p1).dot(&dir);
         zero::<V::Scalar>() <= s && s <= dir.length2()
     }
 }
@@ -100,8 +100,8 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
     /// Determines on which side of this edge a given point lies.
     pub fn side_query(&self, q: &V) -> EdgeSideInfo<V::Scalar> {
         let (a, b) = (&self.from, &self.to);
-        let signed_side = (b[0].clone() - a[0].clone()) * (q[1].clone() - a[1].clone()) 
-            - (b[1].clone() - a[1].clone()) * (q[0].clone() - a[0].clone());
+        let signed_side = (b.borrow()[0].clone() - a.borrow()[0].clone()) * (q.borrow()[1].clone() - a.borrow()[1].clone()) 
+            - (b.borrow()[1].clone() - a.borrow()[1].clone()) * (q.borrow()[0].clone() - a.borrow()[0].clone());
         EdgeSideInfo { signed_side: signed_side }
     }
 }
@@ -109,17 +109,17 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
 impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
     /// Yields the nearest point on this edge.
     pub fn nearest_point(&self, query_point: &V) -> V {
-        let (p1, p2) = (self.from.clone(), self.to.clone());
-        let dir = p2.clone() - p1.clone();
+        let (p1, p2) = (&self.from, &self.to);
+        let dir = p2.sub(p1);
         let s = self.project_point(query_point);
         if V::Scalar::zero() < s && s < one() {
-            p1 + dir * s
+            p1.add(&dir.mul(s))
 
         } else {
             if s <= V::Scalar::zero() {
-                p1
+                p1.clone()
             } else {
-                p2
+                p2.clone()
             }
         }
     }
@@ -129,7 +129,7 @@ impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
     /// and end point.
     pub fn projection_distance2(&self, query_point: &V) -> V::Scalar {
         let s = self.project_point(query_point);
-        let p = self.from.clone() + (self.to.clone() - self.from.clone()) * s;
+        let p = self.from.add(&self.to.sub(&self.from).mul(s));
         p.distance2(query_point)
     }
 
@@ -141,9 +141,9 @@ impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
     /// point lies "before" `self.from`. Analogously, a value close to 1. or greater than 1. is
     /// returned if the projected point is equal to or lies behind `self.to`.
     pub fn project_point(&self, query_point: &V) -> V::Scalar {
-        let (p1, p2) = (self.from.clone(), self.to.clone());
-        let dir = p2 - p1.clone();
-        (query_point.clone() - p1).dot(&dir) / dir.length2()
+        let (ref p1, ref p2) = (self.from.clone(), self.to.clone());
+        let dir = p2.sub(p1);
+        query_point.sub(p1).dot(&dir) / dir.length2()
     }
 }
 
@@ -156,7 +156,7 @@ impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
 
     fn distance2(&self, point: &V) -> V::Scalar {
         let nn = self.nearest_point(point);
-        (point.clone() - nn).length2()
+        point.sub(&nn).length2()
     }
 }
 
@@ -184,9 +184,9 @@ impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
 
     /// Returns the triangle's doubled area.
     pub fn double_area(&self) -> V::Scalar {
-        let b = self.v1.clone() - self.v0.clone();
-        let c = self.v2.clone() - self.v0.clone();
-        (b[0].clone() * c[1].clone() - b[1].clone() * c[0].clone()).abs()
+        let b = self.v1.sub(&self.v0);
+        let c = self.v2.sub(&self.v0);
+        (b.borrow()[0].clone() * c.borrow()[1].clone() - b.borrow()[1].clone() * c.borrow()[0].clone()).abs()
     }
 
 }
@@ -234,26 +234,26 @@ impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
     pub fn circumcenter(&self) -> V {
         let one: V::Scalar = One::one();
         let two = one + one;
-        let b = self.v1.clone() - self.v0.clone();
-        let c = self.v2.clone() - self.v0.clone();
+        let b = self.v1.sub(&self.v0);
+        let c = self.v2.sub(&self.v0);
         // Calculate circumcenter position
-        let d = two * (b[0] * c[1] - c[0] * b[1]);
+        let d = two * (b.borrow()[0] * c.borrow()[1] - c.borrow()[0] * b.borrow()[1]);
         let len_b = b.dot(&b);
         let len_c = c.dot(&c);
-        let x = (len_b * c[1] - len_c * b[1]) / d;
-        let y = (-len_b * c[0] + len_c * b[0]) / d;
+        let x = (len_b * c.borrow()[1] - len_c * b.borrow()[1]) / d;
+        let y = (-len_b * c.borrow()[0] + len_c * b.borrow()[0]) / d;
         let mut result = V::new();
-        result[0] = x;
-        result[1] = y;
-        result + self.v0.clone()
+        result.borrow_mut()[0] = x;
+        result.borrow_mut()[1] = y;
+        result.add(&self.v0)
     }
 
     /// Returns the barycentric coordinates of a point.
     pub fn barycentric_interpolation(&self, coord: &V) -> Vector3<V::Scalar> {
         let (v1, v2, v3) = (self.v0.clone(), self.v1.clone(), self.v2.clone());
-        let (x, y) = (coord[0], coord[1]);
-        let (x1, x2, x3) = (v1[0], v2[0], v3[0]);
-        let (y1, y2, y3) = (v1[1], v2[1], v3[1]);
+        let (x, y) = (coord.borrow()[0], coord.borrow()[1]);
+        let (x1, x2, x3) = (v1.borrow()[0], v2.borrow()[0], v3.borrow()[0]);
+        let (y1, y2, y3) = (v1.borrow()[1], v2.borrow()[1], v3.borrow()[1]);
         let det = (y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3);
         let lambda1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det;
         let lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det;
@@ -312,12 +312,12 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
 
     fn mbr(&self) -> BoundingRect<V> {
         let r = V::from_value(self.radius);
-        BoundingRect::from_corners(&(self.center.clone() - r.clone()), &(self.center.clone() + r.clone()))
+        BoundingRect::from_corners(&self.center.sub(&r), &self.center.add(&r))
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        let dx = self.center[0] - point[0];
-        let dy = self.center[1] - point[1];
+        let dx = self.center.borrow()[0] - point.borrow()[0];
+        let dy = self.center.borrow()[1] - point.borrow()[1];
         let dist = ((dx * dx + dy * dy).sqrt() - self.radius).max(zero());
         dist * dist
     }
@@ -325,8 +325,8 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
     // Since containment checks do not require the calculation of the square root
     // we can redefine this method.
     fn contains(&self, point: &V) -> bool {
-        let dx = self.center[0] - point[0];
-        let dy = self.center[1] - point[1];
+        let dx = self.center.borrow()[0] - point.borrow()[0];
+        let dy = self.center.borrow()[1] - point.borrow()[1];
         let r2 = self.radius * self.radius;
         dx * dx + dy * dy <= r2
     }

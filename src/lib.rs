@@ -28,7 +28,7 @@
 //!   * Uses exact predicates to avoid floating point rounding issues, see: `FloatKernel`
 //!   * Natural neighbor interpolation
 
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 extern crate num;
 extern crate cgmath;
 extern crate nalgebra;
