@@ -27,7 +27,7 @@ use misc::{min_inline, max_inline};
 /// Spade will work with any vector type implementing this trait, at the
 /// moment vectors of the `cgmath` and `nalgebra` crates are supported.
 /// Also, the trait is implemented for fixed arrays of length 2, 3 and 4, allowing
-/// to use spade's datastructures to use fixed size arrays as input.
+/// to use spade's datastructures with fixed size arrays as point coordinates.
 /// That means that the trait's methods are also implemented for
 /// these array types, thus be careful when importing `VectorN`.
 ///
