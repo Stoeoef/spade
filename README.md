@@ -43,6 +43,12 @@ The delaunay triangulation of a height field is shown with orange lines, the gre
 
 ![Delaunay triangulation with a grid showing interpolated values](/images/nninterpolation.png?raw=true)
 
+## C¹ interpolants
+Naive natural neighbor interpolation is not smooth at the data points. Other interpolants have been proposed which, given a gradient for each data point, will approximate those gradients and yield a completely smooth surface. Spade can approximate those gradients for you.
+The following picture presents a side by side comparison of all implemented interpolants.
+High resolutions: [left](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationC0.png), [middle](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationSibson.png), [right](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationFarin.png)
+![Side by side comparison of interpolation methods](/images/InterpolationMethods.png?raw=true)
+
 # Performance
 The following measurements were taken on an Intel Core i7-3517u.
 ![Performance of opererations on the r-tree implementation](/images/rtree_analysis.png?raw_true)
