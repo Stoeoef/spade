@@ -32,6 +32,7 @@ use glium::{VertexBuffer};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 
+#[derive(Clone, Copy)]
 enum LookupMode {
     Nearest,
     NearestN,
@@ -123,9 +124,18 @@ fn main() {
                     }
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
-                    app.tree.insert(last_point.clone());
+                    app.tree.insert(last_point);
                     update_buffers(&mut app, draw_tree_nodes);
                     dirty = true;
+                },
+                Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
+                    let nn = app.tree.nearest_neighbor(&last_point).cloned();
+                    if let Some(p) = nn {
+                        app.tree.remove(&p);
+                        update_buffers(&mut app, draw_tree_nodes);
+                        update_selection(&mut app, last_point, lookup_mode);
+                        dirty = true;
+                    }
                 },                    
                 Event::MouseMoved(x, y) => {
                     let (w, h) = app.display.get_framebuffer_dimensions();
@@ -134,33 +144,7 @@ fn main() {
                     let x = (x as f32 / w as f32) * 2. - 1.;
                     let y = (y as f32 / h as f32) * 2. - 1.;
                     last_point = Vector2::new(x, y);
-                    let color = Vector3::new(1.0, 0.0, 0.0);
-                    const LOOKUP_RADIUS2: f32 = 0.2 * 0.2;
-                    const N: usize = 10;
-                    let mut vertices = Vec::new();
-                    let mut points = Vec::new();
-                    match lookup_mode {
-                        LookupMode::Nearest => {
-                            points.extend(
-                                app.tree.nearest_neighbor(&last_point).iter().cloned());
-                        },
-                        LookupMode::InCircle => {
-                            points.extend(app.tree.lookup_in_circle(
-                                &last_point, &LOOKUP_RADIUS2).iter().cloned());
-                        },
-                        LookupMode::NearestN => {
-                            points.extend(app.tree.nearest_n_neighbors(
-                                &last_point, N));
-                        },
-                        LookupMode::CloseN => {
-                            points.extend(app.tree.close_neighbor(&last_point).iter().cloned());
-                        },
-                    }
-                    for point in points.iter().cloned() {
-                        push_cross(&mut vertices, point, &color);
-                    }
-
-                    app.selection_buffer = VertexBuffer::new(&app.display, &vertices).unwrap();
+                    update_selection(&mut app, last_point, lookup_mode);
                     dirty = true;
                 },
                 _ => (),
@@ -180,6 +164,36 @@ fn update_buffers(app: &mut ExampleApplication, draw_tree_nodes: bool) {
         app.edges_buffer = VertexBuffer::new(&app.display, &[]).unwrap();
     }
     app.vertices_buffer = VertexBuffer::new(&app.display, &vertices).unwrap();
+}
+
+fn update_selection(app: &mut ExampleApplication, point: Vector2<f32>, lookup_mode: LookupMode) {
+    let color = Vector3::new(1.0, 0.0, 0.0);
+    const LOOKUP_RADIUS2: f32 = 0.2 * 0.2;
+    const N: usize = 10;
+    let mut vertices = Vec::new();
+    let mut points = Vec::new();
+    match lookup_mode {
+        LookupMode::Nearest => {
+            points.extend(
+                app.tree.nearest_neighbor(&point).iter().cloned());
+        },
+        LookupMode::InCircle => {
+            points.extend(app.tree.lookup_in_circle(
+                &point, &LOOKUP_RADIUS2).iter().cloned());
+        },
+        LookupMode::NearestN => {
+            points.extend(app.tree.nearest_n_neighbors(
+                &point, N));
+        },
+        LookupMode::CloseN => {
+            points.extend(app.tree.close_neighbor(&point).iter().cloned());
+        },
+    }
+    for point in points.iter().cloned() {
+        push_cross(&mut vertices, point, &color);
+    }
+
+    app.selection_buffer = VertexBuffer::new(&app.display, &vertices).unwrap();
 }
 
 

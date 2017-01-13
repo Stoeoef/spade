@@ -1297,6 +1297,9 @@ impl <T, B> RTree<T, B>
             return false;
         }
         let result = self.root.remove(obj);
+        if self.root.children.is_empty() {
+            self.root.depth = 1;
+        }
         if result {
             self.size -= 1;
         }
@@ -1465,20 +1468,22 @@ mod tests {
         }
 
         let mut tree = RTree::new();
-        for triangle in triangles.iter().cloned() {
-            tree.insert(triangle);
-        }
+        for _ in 0 .. 2 {
+            for triangle in triangles.iter().cloned() {
+                tree.insert(triangle);
+            }
 
-        // Try to remove a triangle that is not contained
-        let triangle = SimpleTriangle::new(Vector2::new(0.0, 0.0), 
-                                           Vector2::new(1.0, 0.0), 
-                                           Vector2::new(1.0, 1.0));
-        assert!(!tree.remove(&triangle));
-        let mut size = 200usize;
-        for triangle in &triangles {
-            assert!(tree.remove(triangle));
-            size -= 1;
-            assert_eq!(tree.size(), size);
+            // Try to remove a triangle that is not contained
+            let triangle = SimpleTriangle::new(Vector2::new(0.0, 0.0), 
+                                               Vector2::new(1.0, 0.0), 
+                                               Vector2::new(1.0, 1.0));
+            assert!(!tree.remove(&triangle));
+            let mut size = 200usize;
+            for triangle in &triangles {
+                assert!(tree.remove(triangle));
+                size -= 1;
+                assert_eq!(tree.size(), size);
+            }
         }
     }
 
