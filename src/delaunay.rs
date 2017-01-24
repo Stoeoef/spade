@@ -680,6 +680,9 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     ///
     /// This operation runs in O(n²), where n is the degree of the
     /// removed vertex.
+    /// *Note*: This operation will invalidate a single vertex handle.
+    /// Do not rely on any fixed vertex handle created before the removal
+    /// to be valid.
     /// *Note*: This method does not yet support the removal of vertices of
     /// the convex hull. Attempting to remove these will result in a panic. This
     /// feature will be implemented in a later release.
