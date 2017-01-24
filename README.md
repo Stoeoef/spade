@@ -24,7 +24,7 @@ The documentation can be found under [docs.rs](https://docs.rs/spade/)
 # Using spade
 Add this to your `Cargo.toml`:
 ```
-spade = "0.2.*"
+spade = "0.3.*"
 ```
 # Feedback
 Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Please do post an issue on GitHub. Please do report bugs as well. If you're in for an adventure, pull requests of any kind are very welcome.
@@ -42,6 +42,12 @@ Note that the implementation tries prevent any boxes from overlapping, resulting
 The delaunay triangulation of a height field is shown with orange lines, the green grid shows the natural neighbor interpolated heights. In contrast to barycentric interpolation (the gray polygons), natural neighbor interpolation is smooth (C¹ differentiable, except for the data points themselves). You can find this example in `/examples/nninterpolation`, run it with `cargo run`.
 
 ![Delaunay triangulation with a grid showing interpolated values](/images/nninterpolation.png?raw=true)
+
+## C¹ interpolants
+Naive natural neighbor interpolation is not smooth at the data points. Other interpolants have been proposed which, given a gradient for each data point, will approximate those gradients and yield a completely smooth surface. Spade can approximate those gradients for you.
+The following picture presents a side by side comparison of all implemented interpolants.
+High resolutions: [left](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationC0.png), [middle](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationSibson.png), [right](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationFarin.png)
+![Side by side comparison of interpolation methods](/images/InterpolationMethods.png?raw=true)
 
 # Performance
 The following measurements were taken on an Intel Core i7-3517u.
