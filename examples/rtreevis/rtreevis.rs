@@ -22,7 +22,7 @@ extern crate glium;
 mod utils;
 use utils::exampleapplication::ExampleApplication;
 use utils::{Vertex, get_color_for_depth, push_rectangle, push_cross};
-use spade::{RTree, RTreeNode, SpadeNum};
+use spade::{RTree, RTreeNode, SpadeNum, DelaunayKernel, DelaunayTriangulation, HasPosition};
 use cgmath::{Vector2, Vector3, BaseFloat, BaseNum};
 use cgmath::conv::*;
 use rand::{Rand, XorShiftRng, SeedableRng};
@@ -51,8 +51,7 @@ impl std::fmt::Display for LookupMode {
     }
 }
 
-fn get_tree_edges(tree: &RTree<Vector2<f32>, Vector2<f32>>) -> (Vec<Vertex>, Vec<Vertex>) {
-    let mut edges = Vec::new();
+fn get_tree_edges(tree: &RTree<Vector2<f32>, Vector2<f32>>, buffer: &mut Vec<Vertex>) -> Vec<Vertex> {
     let mut vertices = Vec::new();
     let vertex_color = Vector3::new(0.0, 0.0, 1.0);
     let mut to_visit = vec![tree.root()];
@@ -63,12 +62,23 @@ fn get_tree_edges(tree: &RTree<Vector2<f32>, Vector2<f32>>) -> (Vec<Vertex>, Vec
                     array2(*point), array3(vertex_color.clone()))),
                 &RTreeNode::DirectoryNode(ref data) => {
                     to_visit.push(data);
-                    push_rectangle(&mut edges, &data.mbr(), &get_color_for_depth(data.depth()));
+                    push_rectangle(buffer, &data.mbr(), &get_color_for_depth(data.depth()));
                 }                
             }
         }
     }
-    (vertices, edges)
+    vertices
+}
+
+fn get_delaunay_edges<K: DelaunayKernel<f32>>(del: &mut DelaunayTriangulation<Vector2<f32>, Vector2<f32>, K>,
+                                         edges_buffer: &mut Vec<Vertex>) {
+    let color = [0.1, 0.1, 0.2];
+    for edge in del.edges() {
+        let from = edge.from_handle().position();
+        let to = edge.to_handle().position();
+        edges_buffer.push(Vertex::new(array2(from), color));
+        edges_buffer.push(Vertex::new(array2(to), color));
+    }
 }
 
 fn main() {
@@ -125,6 +135,7 @@ fn main() {
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
                     app.tree.insert(last_point);
+                    app.delaunay.insert(last_point);
                     update_buffers(&mut app, draw_tree_nodes);
                     dirty = true;
                 },
@@ -132,6 +143,8 @@ fn main() {
                     let nn = app.tree.nearest_neighbor(&last_point).cloned();
                     if let Some(p) = nn {
                         app.tree.remove(&p);
+                        let handle = app.delaunay.lookup(&p).unwrap().fix();
+                        app.delaunay.remove(handle);
                         update_buffers(&mut app, draw_tree_nodes);
                         update_selection(&mut app, last_point, lookup_mode);
                         dirty = true;
@@ -157,12 +170,13 @@ fn main() {
 }
 
 fn update_buffers(app: &mut ExampleApplication, draw_tree_nodes: bool) {
-    let (vertices, edges) = get_tree_edges(&app.tree);
-    if draw_tree_nodes {
-        app.edges_buffer = VertexBuffer::new(&app.display, &edges).unwrap();
-    } else {
-        app.edges_buffer = VertexBuffer::new(&app.display, &[]).unwrap();
+    let mut edges = Vec::new();
+    let vertices = get_tree_edges(&app.tree, &mut edges);
+    if !draw_tree_nodes {
+        edges.clear();
     }
+    get_delaunay_edges(&mut app.delaunay, &mut edges);
+    app.edges_buffer = VertexBuffer::new(&app.display, &edges).unwrap();
     app.vertices_buffer = VertexBuffer::new(&app.display, &vertices).unwrap();
 }
 

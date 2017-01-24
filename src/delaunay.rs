@@ -25,7 +25,8 @@ use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
 use std::borrow::{Borrow, BorrowMut};
 use planarsubdivision::{PlanarSubdivision, FixedVertexHandle, EdgeHandle, AllEdgesIterator,
-                        AllVerticesIterator, VertexHandle, SectorInfo};
+                        AllVerticesIterator, VertexHandle, SectorInfo, VertexEntry};
+use std::collections::{HashSet};
 
 /// Yields information about a point's position in triangulation.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -673,6 +674,104 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
                 }
             }
         }
+    }
+
+    /// Removes a vertex from the triangulation.
+    ///
+    /// This operation runs in O(n²), where n is the degree of the
+    /// removed vertex.
+    /// *Note*: This method does not yet support the removal of vertices of
+    /// the convex hull. Attempting to remove these will result in a panic. This
+    /// feature will be implemented in a later release.
+    pub fn remove(&mut self, vertex: FixedVertexHandle) -> B {
+        let VertexEntry { neighbors, data, .. }  = self.s.remove(vertex);
+        // Remove deleted point from internal rtree
+        let vertex_pos = data.borrow().position();
+        assert!(self.points.lookup_and_remove(&vertex_pos).is_some());
+
+        // Update rtree if necessary
+        if let Some(updated) = self.s.entry_option(vertex) {
+            let entry = self.points.lookup_mut(&updated.data.borrow().position()).unwrap();
+            entry.handle = vertex;
+        }
+
+        // Check if point is part of the convex hull.
+        // In this case, we'll need to insert another edge
+        for i in 1 .. neighbors.len() + 1 {
+            let cw = neighbors[(i - 1) % neighbors.len()];
+            let cw_pos = self.s.handle(cw).position();
+            let ccw  = neighbors[i % neighbors.len()];
+            let ccw_pos = self.s.handle(ccw).position();
+            let edge = SimpleEdge::new(vertex_pos.clone(), cw_pos.clone());
+            if K::side_query(&edge, &ccw_pos).is_on_right_side() {
+                panic!("removal of points of the convex hull not supported yet");
+                // self.s.connect(cw, ccw);
+                // break;
+            }
+        }
+
+        // Fill the hole
+        let mut dcel = ::dcel::DCEL::new();
+        for n in &neighbors {
+            dcel.insert_vertex(*n);
+        }
+
+        let mut border_edges = HashSet::new();
+
+        // Create border
+        let mut loop_edges = Vec::new();
+        for i in 0 .. neighbors.len() - 1 {
+            let edge = dcel.connect(i, i + 1, 0);
+            loop_edges.push(edge);
+            border_edges.insert(edge);
+            border_edges.insert(dcel.edge(edge).sym().fix());
+        }
+        let last = dcel.create_face(*loop_edges.last().unwrap(), *loop_edges.first().unwrap());
+        border_edges.insert(last);
+        border_edges.insert(dcel.edge(last).sym().fix());
+
+        let mut todo = Vec::new();
+        for i in 2 .. neighbors.len() - 1 {
+            let edge = dcel.create_face(last, loop_edges[i]);
+            todo.push(edge);
+        }
+        // Legalize edges
+        // TODO: This should go into a submethod...
+        while let Some(fixed_edge_handle) = todo.pop() {
+            let (h0, h1, hl, hr, e1, e2, e3, e4);
+            {
+                let edge = dcel.edge(fixed_edge_handle);
+                h0 = *edge.from();
+                h1 = *edge.to();
+                hl = *edge.ccw().to();
+                hr = *edge.cw().to();
+                e1 = edge.cw().fix();
+                e2 = edge.ccw().fix();
+                e3 = edge.sym().cw().fix();
+                e4 = edge.sym().ccw().fix();
+            }
+            let v0 = self.s.handle(h0).position();
+            let v1 = self.s.handle(h1).position();
+            let vl = self.s.handle(hl).position();
+            let vr = self.s.handle(hr).position();
+            if !K::contained_in_circumference(&v0, &v1, &vl, &vr) {
+                // Flip edge
+                dcel.flip_cw(fixed_edge_handle);
+                
+                for e in &[e1, e2, e3, e4] {
+                    if !border_edges.contains(e) {
+                        todo.push(*e);
+                    }
+                }
+            }
+        }
+
+        for edge in dcel.edges() {
+            if !border_edges.contains(&edge.fix()) {
+                self.s.connect(*edge.from(), *edge.to());
+            }
+        }
+        data
     }
 }
 
@@ -1508,5 +1607,31 @@ mod test {
         for point in &points {
             d.insert(*point);
         }
+    }
+
+    #[test]
+    fn test_remove_inner() {
+        use ::rand::{SeedableRng, Rng};
+
+        let mut points = random_points_with_seed::<f64>(1000, [22, 231, 493, 712]);
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
+        for point in &points {
+            d.insert(*point);
+        }
+        // Insert an outer quad since we don't want to remove vertices from
+        // the convex hull.
+        d.insert(Vector2::new(-2.0, -2.0));
+        d.insert(Vector2::new(-2.0, 2.0));
+        d.insert(Vector2::new(2.0, -2.0));
+        d.insert(Vector2::new(2.0, 2.0));
+        // Now remove all inner points
+        let mut rng = ::rand::XorShiftRng::from_seed([10, 10, 20, 1203031]);
+        rng.shuffle(&mut points);
+        assert_eq!(d.num_vertices(), 1004);
+        for point in &points {
+            let handle = d.lookup(point).unwrap().fix();
+            d.remove(handle);
+        }
+        assert_eq!(d.num_vertices(), 4);
     }
 }

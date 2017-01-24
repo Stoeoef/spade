@@ -122,7 +122,7 @@ impl<V, B, K> PlanarSubdivision<V, B, K> where
                     true
                 }
             });
-            self.mut_entry(from).neighbors.insert(sector, to);
+            self.entry_mut(from).neighbors.insert(sector, to);
 
             if i == 0 {
                 to_index = sector;
@@ -141,9 +141,30 @@ impl<V, B, K> PlanarSubdivision<V, B, K> where
         } else {
             return false
         }
-        self.mut_entry(v1).neighbors.remove(v1_index);
-        self.mut_entry(v2).neighbors.remove(v2_index);
+        self.entry_mut(v1).neighbors.remove(v1_index);
+        self.entry_mut(v2).neighbors.remove(v2_index);
         true
+    }
+
+    pub fn remove(&mut self, vertex: FixedVertexHandle) -> VertexEntry<V, B> {
+        let fixed_neighbors = self.entry(vertex).neighbors.clone();
+        for n in &fixed_neighbors {
+            // Disconnect vertex from all other vertices
+            self.disconnect(*n, vertex);
+        }
+        let mut result = self.vertices.swap_remove(vertex);
+        result.neighbors = fixed_neighbors;
+        let old_handle = self.vertices.len();
+        let new_handle = vertex;
+        if old_handle != new_handle {
+            let neighbors = self.entry(new_handle).neighbors.clone();
+            // Replace old_handle with new_handle for all neighbors
+            for n in neighbors {
+                self.entry_mut(n).replace_handle(old_handle, new_handle);
+            }
+            result.replace_handle(old_handle, new_handle);
+        }
+        result
     }
 
     fn entry(&self, handle: FixedVertexHandle)
@@ -151,7 +172,7 @@ impl<V, B, K> PlanarSubdivision<V, B, K> where
         &self.vertices[handle.clone()]
     }
 
-    fn entry_option(&self, handle: FixedVertexHandle)
+    pub fn entry_option(&self, handle: FixedVertexHandle)
                     -> Option<&VertexEntry<V, B>> 
     {
         self.vertices.get(handle)
@@ -160,10 +181,10 @@ impl<V, B, K> PlanarSubdivision<V, B, K> where
     pub fn update_vertex(&mut self, handle: FixedVertexHandle,
                          vertex: B) {
         assert_eq!(vertex.borrow().position(), self.handle(handle).position());
-        self.mut_entry(handle).data = vertex;
+        self.entry_mut(handle).data = vertex;
     }
 
-    fn mut_entry(&mut self, handle: FixedVertexHandle)
+    fn entry_mut(&mut self, handle: FixedVertexHandle)
              -> &mut VertexEntry<V, B> {
         &mut self.vertices[handle]
     }
@@ -178,8 +199,8 @@ impl<V, B, K> PlanarSubdivision<V, B, K> where
             let new2 = rev.ccw().to_handle().fix();
             (edge_handle.fix(), rev.fix(), new1, new2)
         };
-        self.mut_entry(edge.from_handle).neighbors.remove(edge.to_index);
-        self.mut_entry(rev.from_handle).neighbors.remove(rev.to_index);
+        self.entry_mut(edge.from_handle).neighbors.remove(edge.to_index);
+        self.entry_mut(rev.from_handle).neighbors.remove(rev.to_index);
         self.connect(new1, new2);
     }
 
@@ -218,7 +239,7 @@ impl<V, B, K> PlanarSubdivision<V, B, K> where
     B: BorrowMut<V> {
 
     pub fn mut_data(&mut self, fixed_handle: FixedVertexHandle) -> &mut V {
-        self.mut_entry(fixed_handle).data.borrow_mut()
+        self.entry_mut(fixed_handle).data.borrow_mut()
     }
 }
 
@@ -316,24 +337,34 @@ impl <V: HasPosition2D, B> Default for PlanarSubdivision<V, B, TrivialKernel>
 }
 
 #[derive(Clone)]
-struct VertexEntry<V, B> 
+pub struct VertexEntry<V, B> 
     where V: HasPosition2D,
           V::Vector: TwoDimensional,
           B: Borrow<V> {
     __v: PhantomData<V>,
-    data: B,
-    neighbors: Vec<FixedVertexHandle>,
+    pub data: B,
+    pub neighbors: Vec<FixedVertexHandle>,
 }
 
 impl <V, B> VertexEntry<V, B> 
     where V: HasPosition2D,
           V::Vector: TwoDimensional,
           B: Borrow<V> {
+
     fn new(data: B) -> VertexEntry<V, B> {
         VertexEntry {
             __v: Default::default(),
             data: data,
             neighbors: Vec::with_capacity(6),
+        }
+    }
+
+    fn replace_handle(&mut self, old_handle: FixedVertexHandle, new_handle: FixedVertexHandle) {
+        for n in self.neighbors.iter_mut() {
+            if *n == old_handle {
+                *n = new_handle;
+                break;
+            }
         }
     }
 }
@@ -941,5 +972,25 @@ mod test {
             subdiv.insert_vertex(Vector2::new(i as f32, 10.));
         }
         assert_eq!(subdiv.edges().count(), 5);
+    }
+
+    #[test]
+    fn test_remove() {
+        let (mut subdiv, _, _, _) = create_subdiv_with_triangle();
+        // This test relies on the vertex handles being enumerated from 0 to 2
+        subdiv.remove(1);
+        assert_eq!(subdiv.num_vertices(), 2);
+        assert_eq!(subdiv.edges().count(), 1);
+        assert!(EdgeHandle::from_neighbors(&subdiv, 0, 1).is_some());
+        assert!(subdiv.entry_option(0).is_some());
+        assert!(subdiv.entry_option(1).is_some());
+        assert!(subdiv.entry_option(2).is_none());
+        subdiv.remove(1);
+        assert_eq!(subdiv.num_vertices(), 1);
+        assert_eq!(subdiv.edges().count(), 0);
+        assert_eq!(subdiv.handle(0).num_neighbors(), 0);
+        let h4 = subdiv.insert_vertex(Vector2::new(10., 20.));
+        assert_eq!(h4, 1);
+        subdiv.connect(0, h4);
     }
 }

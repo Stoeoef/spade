@@ -50,6 +50,7 @@ mod boundingvolume;
 mod bigvec;
 mod exactpred;
 mod kernels;
+mod dcel;
 
 pub mod primitives;
 

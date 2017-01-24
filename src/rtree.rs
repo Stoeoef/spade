@@ -1313,7 +1313,7 @@ impl <T, B> RTree<T, B>
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::{RTree};
     use boundingvolume::BoundingRect;
     use primitives::SimpleTriangle;
