@@ -74,8 +74,8 @@ fn get_delaunay_edges<K: DelaunayKernel<f32>>(del: &mut DelaunayTriangulation<Ve
                                          edges_buffer: &mut Vec<Vertex>) {
     let color = [0.1, 0.1, 0.2];
     for edge in del.edges() {
-        let from = edge.from_handle().position();
-        let to = edge.to_handle().position();
+        let from = edge.from().position();
+        let to = edge.to().position();
         edges_buffer.push(Vertex::new(array2(from), color));
         edges_buffer.push(Vertex::new(array2(to), color));
     }

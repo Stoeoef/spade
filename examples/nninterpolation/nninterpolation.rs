@@ -280,8 +280,8 @@ fn extract_edges(delaunay: &Delaunay)
     let offset = Vector3::new(0., 0., -0.01);
     let mut lines = Vec::new();
     for edge in delaunay.edges() {
-        let from_pos = Cast::from(edge.from_handle().position_3d() + offset);
-        let to_pos = Cast::from(edge.to_handle().position_3d() + offset);
+        let from_pos = Cast::from(edge.from().position_3d() + offset);
+        let to_pos = Cast::from(edge.to().position_3d() + offset);
         lines.push((from_pos, to_pos));
     }
     lines
@@ -314,9 +314,10 @@ fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
         coords.push(Cast::from(vertex.position_3d().to_point()));
     }
     for triangle in delaunay.triangles() {
-        let h0 = triangle.0[0].fix();
-        let h1 = triangle.0[1].fix();
-        let h2 = triangle.0[2].fix();
+        let triangle = triangle.as_triangle();
+        let h0 = triangle[0].fix();
+        let h1 = triangle[1].fix();
+        let h2 = triangle[2].fix();
         faces.push(Cast::from(Point3::new(h0, h1, h2)));
     }
     return Mesh::new(coords, faces, None, None, false);
