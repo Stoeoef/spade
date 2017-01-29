@@ -839,6 +839,12 @@ impl <'a, V> Clone for FaceHandle<'a, V> where V: 'a {
     }
 }
 
+impl <'a, V> PartialEq for FaceHandle<'a, V> where V: 'a {
+    fn eq(&self, other: &Self) -> bool {
+        self.handle == other.handle
+    }
+}
+
 impl <'a, V> ::std::fmt::Debug for FaceHandle<'a, V> where V: 'a {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "FaceHandle({:?})", self.handle)
