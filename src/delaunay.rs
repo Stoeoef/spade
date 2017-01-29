@@ -25,8 +25,8 @@ use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::{HashSet};
-use dcel::{DCEL, VertexHandle, EdgeHandle, FaceHandle, EdgesIterator, VerticesIterator, SectorInfo,
-           FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle, VertexRemovalResult, FacesIterator, sector_info};
+use dcel::{DCEL, VertexHandle, EdgeHandle, FaceHandle, EdgesIterator, VerticesIterator,
+           FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle, VertexRemovalResult, FacesIterator};
 
 /// Yields information about a point's position in triangulation.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -293,6 +293,10 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         self.s.vertices()
     }
 
+    pub fn infinite_face(&self) -> FaceHandle<B> {
+        self.s.face(0)
+    }
+
     fn initial_insertion(&mut self, t: B) -> Result<FixedVertexHandle, FixedVertexHandle> {
         assert!(self.all_points_on_line);
         // Inserts points if no points are present or if all points
@@ -408,21 +412,18 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     
     fn insert_into_triangle(&mut self, face: FixedFaceHandle, t: B) -> FixedVertexHandle {
         let new_handle = self.s.insert_vertex(t);
-        let (first_vertex, second_vertex, third_vertex) = {
-            let vertices = self.s.face(face).as_triangle();
-            
-            (vertices[0].fix(), vertices[1].fix(), vertices[2].fix())
+        let (e0, e1, e2) = {
+            let face = self.s.face(face);
+            let adj = face.adjacent_edge().unwrap();
+            (adj.o_prev().fix(), adj.fix(), adj.o_next().fix())
         };
-        let e12 = EdgeHandle::from_neighbors(&self.s, first_vertex, second_vertex).unwrap().fix();
-        let e23 = EdgeHandle::from_neighbors(&self.s, second_vertex, third_vertex).unwrap().fix();
-        let e31 = EdgeHandle::from_neighbors(&self.s, third_vertex, first_vertex).unwrap().fix();
 
-        let mut last_edge = self.s.connect_edge_to_isolated_vertex(e31, new_handle);
+        let mut last_edge = self.s.connect_edge_to_isolated_vertex(e2, new_handle);
         last_edge = self.s.edge(last_edge).sym().fix();
-        last_edge = self.s.create_face(e12, last_edge);
+        last_edge = self.s.create_face(e0, last_edge);
         last_edge = self.s.edge(last_edge).sym().fix();
-        self.s.create_face(e23, last_edge);
-        self.legalize_edges(vec![e12, e23, e31], new_handle);
+        self.s.create_face(e1, last_edge);
+        self.legalize_edges(vec![e0, e1, e2], new_handle);
         new_handle
     }
 
@@ -510,82 +511,57 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         }
     }
 
-    fn get_position_in_triangulation_from_start_point_fixed(
-        &self, start: FixedVertexHandle, point: &V::Vector) -> 
-        PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
-        let mut cur_handle = self.s.vertex(start);
+
+    fn get_position_in_triangulation_from_start_point_fixed(&self, start: FixedVertexHandle, point: &V::Vector) -> 
+        PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> 
+    {
+        let mut cur_edge = self.s.vertex(start).out_edge().expect("Cannot start search with an isolated vertex");
+        let mut cur_query = K::side_query(&to_simple_edge(&cur_edge), &point);
+        // Invariant: point must not be on the right side of cur_edge
+        if cur_query.is_on_right_side() {
+            cur_edge = cur_edge.sym();
+            cur_query = cur_query.sym();
+        }
         loop {
-            let from_pos = (*cur_handle).borrow().position();
-            let right_edge = match sector_info::<V, B, K>(cur_handle, point) {
-                SectorInfo::NoSector => panic!("Found isolated point. This is a bug."),
-                SectorInfo::InSector(right_edge) => right_edge
-            };
-            let ccw_handle = self.s.edge(right_edge).from();
-            let cw_handle = self.s.edge(right_edge).o_next().to();
-            let cw_pos = (*cw_handle).borrow().position();
-            let ccw_pos = (*ccw_handle).borrow().position();
-            let edge = SimpleEdge::new(cw_pos.clone(), ccw_pos.clone());
-            if cw_pos == *point {
-                return PositionInTriangulation::OnPoint(cw_handle.fix());
-            }
-            if ccw_pos == *point {
-                return PositionInTriangulation::OnPoint(ccw_handle.fix());
-            }
-            if from_pos == *point {
-                return PositionInTriangulation::OnPoint(cur_handle.fix());
-            }
-            if K::point_on_edge(
-                &SimpleEdge::new(from_pos.clone(), cw_pos.clone()), point) {
-                let edge = EdgeHandle::from_neighbors(&self.s, cw_handle.fix(), cur_handle.fix());
-                return PositionInTriangulation::OnEdge(edge.unwrap().fix());
-            }
-            if K::point_on_edge(
-                &SimpleEdge::new(from_pos.clone(), ccw_pos.clone()), point) {
-                let edge = EdgeHandle::from_neighbors(&self.s, ccw_handle.fix(), cur_handle.fix());
-                return PositionInTriangulation::OnEdge(edge.unwrap().fix());
-            }
-
-            // Check if the segment is a reflex angle (> 180°)
-            let query = K::side_query(&edge, &from_pos);
-            if query.is_on_right_side_or_on_line() {
-                // The segment forms a reflex angle and is part of the convex hull
-                // In some rare cases, we must keep marching towards the point,
-                // otherwise we will return an edge e of the convex hull with
-                // point being on the right side of e.
-                let cw_edge = SimpleEdge::new(from_pos.clone(), cw_pos.clone());
-                let ccw_edge = SimpleEdge::new(from_pos.clone(), ccw_pos.clone());
-
-                let cw_edge_feasible = K::side_query(&cw_edge, point).is_on_left_side();
-                let ccw_edge_feasible = K::side_query(&ccw_edge, point).is_on_right_side();
-                match (cw_edge_feasible, ccw_edge_feasible) {
-                    (_, true) => {
-                        // Both edges are part of the convex hull, return any of them
-                        let ccw_edge = EdgeHandle::from_neighbors(&self.s, ccw_handle.fix(), cur_handle.fix());
-                        return PositionInTriangulation::OutsideConvexHull(ccw_edge.unwrap().fix());
-                    },
-                    (true, false) => {
-                        let cw_edge = EdgeHandle::from_neighbors(&self.s, cur_handle.fix(), cw_handle.fix());
-                        return PositionInTriangulation::OutsideConvexHull(cw_edge.unwrap().fix());
-                    },
-                    (false, false) => { 
-                        // Continue walking
-                        let distance_cw = cw_pos.distance2(point);
-                        let distance_ccw = ccw_pos.distance2(point);
-                        cur_handle = if distance_cw < distance_ccw { cw_handle } else { ccw_handle };
-                        continue;
-                    },
+            assert!(cur_query.is_on_left_side_or_on_line());
+            if cur_edge.face() == self.infinite_face() {
+                if cur_query.is_on_line() {
+                    cur_edge = cur_edge.sym();
+                } else {
+                    return PositionInTriangulation::OutsideConvexHull(cur_edge.fix());
                 }
             }
-            // Check if point is contained within the triangle formed by this segment
-            if K::side_query(&edge, point).is_on_left_side() {
-                // Point lies inside of a triangle
-                let edge = EdgeHandle::from_neighbors(&self.s, cw_handle.fix(), ccw_handle.fix()).unwrap();
-                return PositionInTriangulation::InTriangle(edge.face().fix());
+            let from_pos = (*cur_edge.from()).borrow().position();
+            if &from_pos == point {
+                return PositionInTriangulation::OnPoint(cur_edge.from().fix());
             }
-            // We didn't reach the point yet - continue walking
-            let distance_cw = cw_pos.distance2(point);
-            let distance_ccw = ccw_pos.distance2(point);
-            cur_handle = if distance_cw < distance_ccw { cw_handle } else { ccw_handle };
+            let to_pos = (*cur_edge.to()).borrow().position();
+            if &to_pos == point {
+                return PositionInTriangulation::OnPoint(cur_edge.to().fix());
+            }
+       
+            // Check if cur_edge.o_next is also on the left side
+            let next = cur_edge.o_next();
+            let next_query = K::side_query(&to_simple_edge(&next), &point);
+            if next_query.is_on_right_side_or_on_line() {
+                // We continue walking into the face right of next
+                cur_edge = next.sym();
+                cur_query = next_query.sym();
+            } else {
+                // Check if cur_edge.o_prev is also on the left side
+                let prev = cur_edge.o_prev();
+                let prev_query = K::side_query(&to_simple_edge(&prev), &point);
+                if prev_query.is_on_right_side_or_on_line() {
+                    // We continue walking into the face right of prev
+                    cur_edge = prev.sym();
+                    cur_query = prev_query.sym();
+                } else {
+                    if cur_query.is_on_line() {
+                        return PositionInTriangulation::OnEdge(cur_edge.fix());
+                    }
+                    return PositionInTriangulation::InTriangle(cur_edge.face().fix());
+                }
+            }
         }
     }
 
@@ -598,7 +574,8 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     /// `DelaunayTriangulation::handle(..)` to refer to the vertex.
     pub fn insert(&mut self, t: B) -> FixedVertexHandle {
         let pos = t.borrow().position();
-        let insertion_result = match self.get_position_in_triangulation_fixed(&pos) {
+        let position_in_triangulation = self.get_position_in_triangulation_fixed(&pos);
+        let insertion_result = match position_in_triangulation {
             PositionInTriangulation::OutsideConvexHull(edge) => {
                 Result::Ok(self.insert_outside_convex_hull(edge, t))
             },
@@ -1466,11 +1443,29 @@ mod test {
         d.sanity_check();
     }
 
+
+    #[test]
+    fn test_insert_same_point_small() {
+        let mut d: DelaunayTriangulation<_, _, FloatKernel> = FloatKernel::new_triangulation();
+        let points = vec![Vector2::new(0.0, 0.0),
+                          Vector2::new(0.0, 1.0),
+                          Vector2::new(1.0, 0.0),
+                          Vector2::new(0.2, 0.1)];
+        for p in &points {
+            d.insert(*p);
+        }
+        for p in &points {
+            d.insert(*p);
+        }
+        assert_eq!(d.num_vertices(), points.len());
+        d.sanity_check();
+    }
+
     #[test]
     fn test_insert_same_point() {
-        const SIZE: usize = 30;
+        const SIZE: usize = 300;
         let mut points = random_points_with_seed::<f64>(SIZE, [2, 123, 43, 7]);
-        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
+        let mut d: DelaunayTriangulation<_, _, FloatKernel> = FloatKernel::new_triangulation();
         for p in &points {
             d.insert(*p);
         }
@@ -1507,18 +1502,6 @@ mod test {
         d.insert(Vector2::new(0.5, 1.));
         d.insert(Vector2::new(0.7, 0.));
         d.sanity_check();
-
-
-
-
-
-
-
-
-
-
-
-
     }
 
     #[test]

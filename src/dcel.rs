@@ -1,64 +1,6 @@
-use traits::{HasPosition2D};
-use vector_traits::{VectorN, TwoDimensional};
-use kernels::DelaunayKernel;
-use primitives::SimpleEdge;
-use std::borrow::Borrow;
-
 pub type FixedVertexHandle = usize;
 pub type FixedEdgeHandle = usize;
 pub type FixedFaceHandle = usize;
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum SectorInfo {
-    NoSector,
-    InSector(FixedEdgeHandle),
-}
-
-/// Returns information about the sector in which a given point is contained.
-/// A "Sector" is the circle segment between two adjacent out edges.
-pub fn sector_info<'a, V, B, K>(handle: VertexHandle<'a, B>, point: &V::Vector) -> SectorInfo
-    where V: HasPosition2D + 'a, 
-          K: DelaunayKernel<<V::Vector as VectorN>::Scalar> + 'a,
-          V::Vector: TwoDimensional,
-          B: Borrow<V> + 'a
-{
-    let ref dcel = handle.dcel;
-    if let Some(out_edge) = dcel.vertices[handle.fix()].out_edge {
-        let mut cur_edge = dcel.edge(out_edge);
-        let vertex_pos = (*dcel.vertex(handle.fix())).borrow().position();
-        let cw = cur_edge.to().fix();
-        let cw_pos = (*dcel.vertex(cw)).borrow().position();
-        let mut cw_edge = SimpleEdge::new(vertex_pos.clone(), cw_pos.clone());
-        let mut cw_query = K::side_query(&cw_edge, point);
-        loop {
-            cur_edge = cur_edge.ccw();
-            let ccw = cur_edge.to().fix();
-            let ccw_pos = (*dcel.vertex(ccw)).borrow().position();
-
-            let ccw_edge = SimpleEdge::new(vertex_pos.clone(), ccw_pos.clone());
-            let ccw_query = K::side_query(&ccw_edge, point);
-            let is_cw_left = cw_query.is_on_left_side_or_on_line();
-            let is_ccw_right = ccw_query.is_on_right_side_or_on_line();
-
-            // Check if segment forms an angle sharper than 180 deg
-            let contained = (is_cw_left || is_ccw_right)
-                && ((is_cw_left && is_ccw_right) 
-                    || K::side_query(&ccw_edge, &cw_edge.to).is_on_left_side_or_on_line());
-            if contained {
-                return SectorInfo::InSector(cur_edge.sym().fix());
-            }
-            cw_edge = ccw_edge;
-            cw_query = ccw_query;
-
-            if cur_edge.fix() == out_edge {
-                panic!("Found isolated edge.");
-            }
-        }
-        
-    } else {
-        return SectorInfo::NoSector;
-    }
-}
 
 pub struct VertexRemovalResult<V> {
     pub updated_vertex: Option<FixedVertexHandle>,
