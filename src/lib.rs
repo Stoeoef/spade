@@ -55,9 +55,8 @@ mod dcel;
 pub mod primitives;
 
 mod delaunay;
-mod planarsubdivision;
 
-pub use planarsubdivision::{VertexHandle, AllEdgesIterator, AllVerticesIterator, FixedVertexHandle};
+pub use dcel::{VertexHandle, EdgesIterator, VerticesIterator, FixedVertexHandle};
 pub use rtree::*;
 pub use delaunay::*;
 pub use traits::*;

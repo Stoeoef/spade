@@ -74,6 +74,10 @@ impl <S> EdgeSideInfo<S> where S: SpadeNum  {
     pub fn is_on_line(&self) -> bool {
         self.signed_side.abs() == zero()
     }
+
+    pub fn sym(&self) -> EdgeSideInfo<S> {
+        EdgeSideInfo { signed_side: -self.signed_side.clone() }
+    }
 }
 
 impl <V> SimpleEdge<V> where V: VectorN {
