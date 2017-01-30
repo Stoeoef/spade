@@ -25,6 +25,7 @@ use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
 use time::Duration;
+use num::Zero;
 use cgmath::{Vector2, BaseNum};
 use std::path::Path;
 use std::fs::File;
@@ -54,11 +55,18 @@ fn main() {
 
     const SIZE: usize = 400000;
     const CHUNK_SIZE: usize = SIZE / 100;
+    const DO_RANDOM_WALK: bool = true;
 
     let seed = [661311, 350191, 123021, 231261];
-    let vertices_f64 = random_points_with_seed_range_and_origin::<f64>(
-        20.0, Vector2::new(1e10, -1e10), SIZE, seed);
-    let vertices_i64 = random_points_in_range::<i64>(10000, SIZE, seed);
+    let (vertices_f64, vertices_i64);
+    if DO_RANDOM_WALK {
+        vertices_f64 = random_walk_with_seed_and_origin::<f64>(0.001, SIZE, seed);
+        vertices_i64 = random_walk_with_seed_and_origin::<i64>(3, SIZE, seed);
+    } else {
+        vertices_f64 = random_points_with_seed_range_and_origin::<f64>(
+            20.0, Vector2::new(1e10, -1e10), SIZE, seed);
+        vertices_i64 = random_points_in_range::<i64>(10000, SIZE, seed);
+    }
     let vertices_large_range = random_points_in_range::<i64>(
         1000000000, SIZE, seed);
 
@@ -112,4 +120,18 @@ pub fn random_points_with_seed_range_and_origin<S: SpadeNum + Copy + Rand + Samp
         points.push(Vector2::new(x, y));
     }
     points    
+}
+
+pub fn random_walk_with_seed_and_origin<S: SpadeNum + Rand + SampleRange + BaseNum>(step: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed);
+    let rand_range = Range::new(-step, step);
+    let mut points = Vec::new();
+    let mut last = Vector2::zero();
+    for _ in 0 .. size {
+        let x = rand_range.ind_sample(&mut rng);
+        let y = rand_range.ind_sample(&mut rng);
+        last = last + Vector2::new(x, y);
+        points.push(last);
+    }
+    points
 }
