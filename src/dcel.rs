@@ -152,6 +152,15 @@ impl <V> DCEL<V> {
         edge_index
     }
 
+    pub fn clear_edges_and_faces(&mut self) {
+        self.edges.clear();
+        self.faces.clear();
+        self.faces.push(FaceEntry { adjacent_edge: None });
+        for vertex in &mut self.vertices {
+            vertex.out_edge = None;
+        }
+    }
+
     pub fn remove_vertex(&mut self, vertex_handle: FixedVertexHandle,
                          remaining_face: Option<FixedFaceHandle>) -> VertexRemovalResult<V> {
         while let Some(out_edge) = self.vertices[vertex_handle].out_edge {

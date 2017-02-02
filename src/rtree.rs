@@ -1254,6 +1254,9 @@ impl<T, B> RTree<T, B>
         if self.size > 0 {
             let result = self.root.lookup_and_remove(query_point);
             if result.is_some() {
+                if self.root.children.is_empty() {
+                    self.root.depth = 1;
+                }
                 self.size -= 1;
             }
             result
@@ -1452,6 +1455,7 @@ mod test {
             assert_eq!(tree.lookup_and_remove(point).as_ref(), Some(point));
         }
         assert!(tree.root.children.is_empty());
+        tree.insert(Vector2::new(20., 10.));
     }
 
     #[test]
@@ -1486,6 +1490,7 @@ mod test {
             }
         }
     }
+
 
     #[test]
     fn test_iteration() {

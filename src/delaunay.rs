@@ -245,6 +245,11 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         }
     }
 
+    pub fn nearest_neighbor(&self, point: &V::Vector) -> Option<VertexHandle<B>> {
+        let handle = self.points.nearest_neighbor(point);
+        handle.map(|h| self.s.vertex(h.handle))
+    }
+
     /// Creates a dynamic vertex handle from a fixed handle.
     /// May panic if the handle was not obtained from this triangulation.
     pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<B> {
@@ -273,6 +278,22 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     /// Returns the number of vertices in this triangulation.
     pub fn num_vertices(&self) -> usize {
         self.s.num_vertices()
+    }
+
+    /// Returns the number of faces in this triangulation.
+    pub fn num_faces(&self) -> usize {
+        self.s.num_faces()
+    }
+
+    /// Returns the number of finite faces in this triangulation.
+    /// As there is always exactly one face, `self.num_faces() - 1`.
+    pub fn num_finite_faces(&self) -> usize {
+        self.s.num_faces() - 1
+    }
+
+    /// Returns the number of edges in this triangulation.
+    pub fn num_edges(&self) -> usize {
+        self.s.num_edges()
     }
 
     /// Returns an iterator over all triangles.
@@ -636,6 +657,20 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     /// *Note*: This operation will invalidate a single vertex handle.
     /// Do not rely on any fixed vertex handle created before the removal
     /// to be valid.
+    pub fn lookup_and_remove(&mut self, point: &V::Vector) -> Option<B> {
+        let handle = self.lookup(point).map(|h| h.fix());
+        handle.map(|h| self.remove(h))
+    }
+
+
+
+    /// Removes a vertex from the triangulation.
+    ///
+    /// This operation runs in O(n²), where n is the degree of the
+    /// removed vertex.
+    /// *Note*: This operation will invalidate a single vertex handle.
+    /// Do not rely on any fixed vertex handle created before the removal
+    /// to be valid.
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> B {
         let mut neighbors = Vec::new();
         let mut ch_removal = false;
@@ -672,16 +707,22 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let vertex_pos = data.borrow().position();
         assert!(self.points.lookup_and_remove(&vertex_pos).is_some());
 
-        if ch_removal {
-            // We removed a vertex from the convex hull
-            self.repair_convex_hull(&neighbors);
-        } else {
-            let loop_edges: Vec<_> = {
-                let first = EdgeHandle::from_neighbors(&self.s, neighbors[0], neighbors[1]).unwrap();
-                first.o_next_iterator().map(|e| e.fix()).collect()
-            };
-            self.fill_hole(loop_edges);
-        };
+        if !self.all_points_on_line {
+            if ch_removal {
+                // We removed a vertex from the convex hull
+                self.repair_convex_hull(&neighbors);
+                if self.s.num_faces() == 1 {
+                    self.make_degenerate(); 
+                }
+            } else {
+                let loop_edges: Vec<_> = {
+                    let first = EdgeHandle::from_neighbors(
+                        &self.s, neighbors[0], neighbors[1]).unwrap();
+                    first.o_next_iterator().map(|e| e.fix()).collect()
+                };
+                self.fill_hole(loop_edges);
+            }
+    }
         data
     }
 
@@ -772,6 +813,12 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
                 self.fill_hole(edges);
             }
         }
+    }
+
+    fn make_degenerate(&mut self) {
+        // Assume all points lie on a line.
+        self.s.clear_edges_and_faces();
+        self.all_points_on_line = true;
     }
 
     #[cfg(test)]
@@ -1800,8 +1847,7 @@ mod test {
 
     #[test]
     fn test_removal_and_insertion() {
-        use cgmath::InnerSpace;
-        let mut points = random_points_with_seed::<f64>(1000, [10221, 325611, 20493, 72212]);
+        let points = random_points_with_seed::<f64>(1000, [10221, 325611, 20493, 72212]);
         let mut d: DelaunayTriangulation<_, _, _> = Default::default();
         for point in &points {
             d.insert(*point);
@@ -1820,4 +1866,27 @@ mod test {
         }
         d.sanity_check();
     }
+
+    #[test]
+    fn test_remove_until_degenerate() {
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
+        d.insert(Vector2::new(0., 0f32));
+        d.insert(Vector2::new(1., 0.));
+        d.insert(Vector2::new(0., 1.));
+        d.insert(Vector2::new(0., 0.5));
+        d.insert(Vector2::new(0., 0.25));        
+        d.insert(Vector2::new(0., 0.75));        
+        assert_eq!(d.num_finite_faces(), 4);
+        assert!(d.lookup_and_remove(&Vector2::new(1., 0.)).is_some());
+        d.sanity_check();
+        assert_eq!(d.num_faces(), 1);
+        while d.num_vertices() != 0 {
+            d.remove(0);
+        }
+        d.sanity_check();
+        d.insert(Vector2::new(0.5, 0.5));
+        d.insert(Vector2::new(0.2, 0.5));
+        d.insert(Vector2::new(1.5, 0.0));
+        d.sanity_check();
+    }        
 }
