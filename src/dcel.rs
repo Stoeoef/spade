@@ -152,9 +152,10 @@ impl <V> DCEL<V> {
         edge_index
     }
 
-    pub fn remove_vertex(&mut self, vertex_handle: FixedVertexHandle) -> VertexRemovalResult<V> {
+    pub fn remove_vertex(&mut self, vertex_handle: FixedVertexHandle,
+                         remaining_face: Option<FixedFaceHandle>) -> VertexRemovalResult<V> {
         while let Some(out_edge) = self.vertices[vertex_handle].out_edge {
-            self.remove_edge(out_edge);
+            self.remove_edge(out_edge, remaining_face);
         }
         let data = self.vertices.swap_remove(vertex_handle).data;
         let updated_vertex = if self.vertices.len() == vertex_handle {
@@ -247,7 +248,8 @@ impl <V> DCEL<V> {
         new_edge_index
     }
 
-    pub fn remove_edge(&mut self, edge_handle: FixedEdgeHandle) {
+    pub fn remove_edge(&mut self, edge_handle: FixedEdgeHandle, 
+                       remaining_face: Option<FixedFaceHandle>) {
         let edge = self.edges[edge_handle];
 
         let twin = self.edges[edge.twin];
@@ -257,19 +259,24 @@ impl <V> DCEL<V> {
         self.edges[edge.next].prev = twin.prev;
         self.edges[twin.prev].next = edge.next;
 
+        let (to_remove, to_keep) = if remaining_face == Some(twin.face) {
+            (edge, twin)
+        } else {
+            (twin, edge)
+        };
         
         if edge.prev == edge.twin && edge.next == edge.twin {
             // We remove an isolated edge
-            self.faces[edge.face].adjacent_edge = None;
+            self.faces[to_keep.face].adjacent_edge = None;
         } else {
             let new_adjacent_edge = if edge.prev != edge.twin {
                 edge.prev
             } else {
                 edge.next
             };
-            self.faces[edge.face].adjacent_edge = Some(new_adjacent_edge);
+            self.faces[to_keep.face].adjacent_edge = Some(new_adjacent_edge);
+            self.edges[new_adjacent_edge].face = to_keep.face;
         }
-        
 
         if edge.prev == edge.twin {
             self.vertices[edge.origin].out_edge = None;
@@ -293,12 +300,11 @@ impl <V> DCEL<V> {
             self.swap_out_edge(edge_handle);
         }
         if edge.face != twin.face {
-            // Remove twin.face
-            let neighs: Vec<_> = self.face(edge.face).adjacent_edges().map(|e| e.fix()).collect();
+            let neighs: Vec<_> = self.face(to_keep.face).adjacent_edges().map(|e| e.fix()).collect();
             for n in neighs {
-                self.edges[n].face = edge.face
+                self.edges[n].face = to_keep.face
             }
-            self.remove_face(twin.face);
+            self.remove_face(to_remove.face);
         }
     }
 
@@ -325,24 +331,25 @@ impl <V> DCEL<V> {
             if self.vertices[edge.origin].out_edge == Some(old_handle) {
                 self.vertices[edge.origin].out_edge = Some(edge_handle);
             }
+            self.faces[edge.face].adjacent_edge = Some(edge_handle);
 
-            if self.faces[edge.face].adjacent_edge == Some(old_handle) {
-                self.faces[edge.face].adjacent_edge = Some(edge_handle);
-            }
         }
     }
 
-    pub fn create_face(&mut self, prev_edge_handle: FixedEdgeHandle, next_edge_handle: FixedEdgeHandle) -> FixedEdgeHandle {
+    pub fn create_face(&mut self, 
+                       prev_edge_handle: FixedEdgeHandle, 
+                       next_edge_handle: FixedEdgeHandle) -> FixedEdgeHandle {
         let edge_index = self.connect_edge_to_edge(prev_edge_handle, next_edge_handle);
         
         let new_face = self.num_faces();
 
         self.faces.push(FaceEntry {
-            adjacent_edge: Some(next_edge_handle)
+            adjacent_edge: Some(edge_index)
         });
 
-        // Set the left face of the new edge to the new face
+        // Set the face to the left of the new edge
         let mut cur_edge = edge_index;
+
         loop {
             self.edges[cur_edge].face = new_face;
             cur_edge = self.edges[cur_edge].next;
@@ -500,6 +507,14 @@ impl <'a, V> CCWIterator<'a, V> where V: 'a {
             dcel: dcel,
             current: None,
             until: dcel.vertices[vertex].out_edge,
+        }
+    }
+
+    fn from_edge(dcel: &'a DCEL<V>, edge: FixedEdgeHandle) -> CCWIterator<'a, V> {
+        CCWIterator {
+            dcel: dcel,
+            current: None,
+            until: Some(edge),
         }
     }
 }
@@ -757,6 +772,10 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
             dcel: self.dcel,
             handle: self.dcel.edges[self.handle].prev,
         }.sym()
+    }
+
+    pub fn ccw_iter(&self) -> CCWIterator<'a, V> {
+        CCWIterator::from_edge(self.dcel, self.handle)
     }
 
     pub fn from_neighbors(

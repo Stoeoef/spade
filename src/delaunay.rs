@@ -429,9 +429,9 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
 
     fn is_ch_edge(&self, edge: FixedEdgeHandle) -> bool {
         let edge = self.s.edge(edge);
-        let cw_pos = (*edge.cw().to()).borrow().position();
-        let query = K::side_query(&to_simple_edge(&edge), &cw_pos);
-        query.is_on_left_side_or_on_line()
+        let sym = edge.sym();
+        let inf = self.infinite_face();
+        edge.face() == inf || sym.face() == inf
     }
 
     fn get_left_triangle(&self, edge: (FixedVertexHandle, FixedVertexHandle)) 
@@ -535,13 +535,13 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             if &from_pos == point {
                 return PositionInTriangulation::OnPoint(cur_edge.from().fix());
             }
-            let to_pos = (*cur_edge.to()).borrow().position();
+            // Check if cur_edge.o_next is also on the left side
+            let next = cur_edge.o_next();
+            let to_pos = (*next.from()).borrow().position();
             if &to_pos == point {
                 return PositionInTriangulation::OnPoint(cur_edge.to().fix());
             }
        
-            // Check if cur_edge.o_next is also on the left side
-            let next = cur_edge.o_next();
             let next_query = K::side_query(&to_simple_edge(&next), &point);
             if next_query.is_on_right_side_or_on_line() {
                 // We continue walking into the face right of next
@@ -636,15 +636,25 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
     /// *Note*: This operation will invalidate a single vertex handle.
     /// Do not rely on any fixed vertex handle created before the removal
     /// to be valid.
-    /// *Note*: This method does not yet support the removal of vertices of
-    /// the convex hull. Attempting to remove these will result in a panic. This
-    /// feature will be implemented in a later release.
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> B {
-        let mut neighbors: Vec<_> = 
-            self.handle(vertex).ccw_out_edges().map(|e| e.to().fix()).collect();
+        let mut neighbors = Vec::new();
+        let mut ch_removal = false;
+        for edge in self.handle(vertex).ccw_out_edges() {
+            if edge.face() == self.infinite_face() {
+                ch_removal = true;
+                neighbors.clear();
+                let next = edge.ccw();
+                for edge in next.ccw_iter() {
+                    neighbors.push(edge.to().fix());
+                }
+                break;
+            }
+            neighbors.push(edge.to().fix());
+        }
         
-        let VertexRemovalResult { updated_vertex, data } = self.s.remove_vertex(vertex);
-
+        let infinite = self.infinite_face().fix();
+        let VertexRemovalResult { updated_vertex, data } = 
+            self.s.remove_vertex(vertex, Some(infinite));
         if let Some(updated_vertex) = updated_vertex {
             // Update rtree if necessary
             let pos = (*self.handle(vertex)).borrow().position();
@@ -653,6 +663,7 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
             for mut n in &mut neighbors {
                 if *n == updated_vertex {
                     *n = vertex;
+                    break;
                 }
             }
         }
@@ -661,26 +672,21 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
         let vertex_pos = data.borrow().position();
         assert!(self.points.lookup_and_remove(&vertex_pos).is_some());
 
-        // Check if point is part of the convex hull.
-        // In this case, we'll need to insert another edge
-        for i in 1 .. neighbors.len() + 1 {
-            let cw = neighbors[(i - 1) % neighbors.len()];
-            let cw_pos = (*self.s.vertex(cw)).borrow().position();
-            let ccw  = neighbors[i % neighbors.len()];
-            let ccw_pos = (*self.s.vertex(ccw)).borrow().position();
-            let edge = SimpleEdge::new(vertex_pos.clone(), cw_pos.clone());
-            if K::side_query(&edge, &ccw_pos).is_on_right_side() {
-                panic!("removal of points of the convex hull not supported yet");
-                // self.s.connect(cw, ccw);
-                // break;
-            }
-        }
-
-        let mut border_edges = HashSet::new();
-        let loop_edges: Vec<_> = {
-            let first = EdgeHandle::from_neighbors(&self.s, neighbors[0], neighbors[1]).unwrap();
-            first.o_next_iterator().map(|e| e.fix()).collect()
+        if ch_removal {
+            // We removed a vertex from the convex hull
+            self.repair_convex_hull(&neighbors);
+        } else {
+            let loop_edges: Vec<_> = {
+                let first = EdgeHandle::from_neighbors(&self.s, neighbors[0], neighbors[1]).unwrap();
+                first.o_next_iterator().map(|e| e.fix()).collect()
+            };
+            self.fill_hole(loop_edges);
         };
+        data
+    }
+
+    fn fill_hole(&mut self, loop_edges: Vec<FixedEdgeHandle>) {
+        let mut border_edges = HashSet::new();
         
         for e in &loop_edges {
             border_edges.insert(*e);
@@ -691,12 +697,11 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
 
         // Fill the hole
         let mut todo = Vec::new();
-        for i in 2 .. neighbors.len() - 1 {
+        for i in 2 .. loop_edges.len() - 1 {
             let edge = self.s.create_face(last_edge, loop_edges[i]);
             todo.push(edge);
         }
         // Legalize edges
-        // TODO: This should be moved into a submethod...
         while let Some(fixed_edge_handle) = todo.pop() {
             let (v0, v1, vl, vr, e1, e2, e3, e4);
             {
@@ -721,7 +726,52 @@ impl <V, B, K> DelaunayTriangulation<V, B, K>
                 }
             }
         }
-        data
+    }
+
+    fn repair_convex_hull(&mut self, vertices: &Vec<FixedVertexHandle>) {
+        let mut ch: Vec<FixedVertexHandle> = Vec::new();
+        for v in vertices {
+            let vertex = self.s.vertex(*v);
+            let v_pos = (*vertex).borrow().position();
+            loop {
+                if ch.len() >= 2 {
+                    let p0 = (*self.s.vertex(ch[ch.len() - 2])).borrow().position();
+                    let p1 = (*self.s.vertex(ch[ch.len() - 1])).borrow().position();
+                    let edge = SimpleEdge::new(p0, p1);
+                    if K::side_query(&edge, &v_pos).is_on_left_side() {
+                        ch.pop();
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            ch.push(*v);
+        }
+        for vs in ch.windows(2) {
+            let v0 = vs[0];
+            let v1 = vs[1];
+            if EdgeHandle::from_neighbors(&self.s, v0, v1).is_none() {
+                let mut edges = Vec::new();
+                let pos = vertices.iter().position(|v| *v == v0).unwrap();
+                {
+                    let mut cur_edge = EdgeHandle::from_neighbors(
+                        &self.s, v0, vertices[pos + 1]).unwrap();
+                    loop {
+                        edges.push(cur_edge.fix());
+                        cur_edge = cur_edge.o_next();
+                        if cur_edge.from().fix() == v1 {
+                            break;
+                        }
+                    }
+                }
+                let first = self.s.edge(*edges.first().unwrap()).fix();
+                let last = self.s.edge(*edges.last().unwrap()).fix();
+                edges.push(self.s.create_face(last, first));
+                self.fill_hole(edges);
+            }
+        }
     }
 
     #[cfg(test)]
@@ -1329,7 +1379,7 @@ mod test {
     use super::{DelaunayTriangulation};
     use cgmath::{Vector2};
     use testutils::*;
-    use rand::{SeedableRng, XorShiftRng};
+    use rand::{SeedableRng, XorShiftRng, Rng};
     use rand::distributions::{Range, IndependentSample};
     use traits::{HasPosition};
     use kernels::{FloatKernel, DelaunayKernel};
@@ -1729,6 +1779,45 @@ mod test {
             d.remove(handle);
         }
         assert_eq!(d.num_vertices(), 4);
+        d.sanity_check();
+    }
+    
+    #[test]
+    fn test_remove_outer() {
+        use cgmath::InnerSpace;
+        let mut points = random_points_with_seed::<f64>(1000, [1022, 35611, 2493, 7212]);
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
+        for point in &points {
+            d.insert(*point);
+        }
+        points.sort_by(|p1, p2| p1.magnitude2().partial_cmp(&p2.magnitude2()).unwrap());
+        for point in points[3 ..].iter().rev() {
+            let handle = d.lookup(point).unwrap().fix();
+            d.remove(handle);
+        }
+        d.sanity_check();
+    }
+
+    #[test]
+    fn test_removal_and_insertion() {
+        use cgmath::InnerSpace;
+        let mut points = random_points_with_seed::<f64>(1000, [10221, 325611, 20493, 72212]);
+        let mut d: DelaunayTriangulation<_, _, _> = Default::default();
+        for point in &points {
+            d.insert(*point);
+        }
+        let mut rng = XorShiftRng::from_seed([92211, 88213, 3992, 2991]);
+        for _ in 0 .. 1000 {
+            if rng.gen() {
+                // Insert new random point
+                d.insert(rng.gen());
+            } else {
+                // Remove random point
+                let range = Range::new(0, d.num_vertices());
+                let handle = range.ind_sample(&mut rng);
+                d.remove(handle);
+            }
+        }
         d.sanity_check();
     }
 }
