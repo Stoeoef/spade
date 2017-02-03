@@ -51,6 +51,7 @@ mod bigvec;
 mod exactpred;
 mod kernels;
 mod dcel;
+mod lookup;
 
 pub mod primitives;
 
@@ -63,3 +64,5 @@ pub use traits::*;
 pub use boundingvolume::*;
 pub use kernels::*;
 pub use vector_traits::{VectorN, TwoDimensional, ThreeDimensional};
+pub use lookup::{LookupStructure, DelaunayLookupStructure, RTreeDelaunayLookup,
+                 TriangulationWalkLookup};

@@ -383,6 +383,10 @@ impl <V> DCEL<V> {
         VerticesIterator::new(&self)
     }
 
+    pub fn fixed_vertices(&self) -> FixedVerticesIterator {
+        (0 .. self.num_vertices())
+    }
+
     pub fn faces(&self) -> FacesIterator<V> {
         FacesIterator::new(&self)
     }
@@ -578,6 +582,7 @@ impl <'a, V> Iterator for FacesIterator<'a, V> where V: 'a {
     }
 }
 
+type FixedVerticesIterator = ::std::ops::Range<usize>;
 
 pub struct VerticesIterator<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,

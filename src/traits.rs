@@ -80,7 +80,7 @@ pub trait SpatialObject {
 /// extern crate spade;
 ///
 /// use cgmath::Vector3;
-/// use spade::{RTree, HasPosition};
+/// use spade::{RTree, HasPosition, LookupStructure};
 ///
 /// struct MyPoint {
 ///   position: Vector3<f32>,
@@ -132,3 +132,6 @@ impl <S>  SpatialObject for S where S: HasPosition {
         self.position() == *point
     }
 }
+
+
+

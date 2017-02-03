@@ -13,13 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use traits::{SpadeNum, HasPosition2D};
+use traits::{SpadeNum};
 use vector_traits::TwoDimensional;
-use delaunay::DelaunayTriangulation;
 use primitives::{SimpleEdge, EdgeSideInfo};
 use bigvec::{BigVec2, AdaptiveInt};
 use exactpred::{orient2d, incircle};
-use std::borrow::Borrow;
 
 /// Determines how a delaunay triangulation performs its basic geometry computations.
 /// 
@@ -61,7 +59,7 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     }
 
     /// Returns an `EdgeSideInfo` yielding on which side of a line a point lies.
-    fn side_query<V: TwoDimensional<Scalar=D>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<D> {
+    fn side_query<Ve: TwoDimensional<Scalar=D>>(edge: &SimpleEdge<Ve>, position: &Ve) -> EdgeSideInfo<D> {
         edge.side_query(position)
     }
 
@@ -70,15 +68,6 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     fn is_ordered_ccw<V: TwoDimensional<Scalar=D>>(v0: &V, v1: &V, v2: &V) -> bool {
         let edge = SimpleEdge::new(v0.clone(), v1.clone());
         Self::side_query(&edge, v2).is_on_left_side_or_on_line()
-    }
-
-    /// Creates a new delaunay triangulation using this kernel.
-    fn new_triangulation<T, B>() -> DelaunayTriangulation<T, B, Self>
-        where T: HasPosition2D,
-              B: Borrow<T>,
-              T::Vector: TwoDimensional<Scalar=D>
-    {
-        DelaunayTriangulation::new()
     }
 
     /// Returns if a point lies on the infinite edge going through

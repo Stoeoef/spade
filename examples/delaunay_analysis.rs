@@ -19,8 +19,10 @@ extern crate cgmath;
 extern crate time;
 extern crate num;
 
-use spade::{DelaunayTriangulation, DelaunayKernel, TwoDimensional,
-            AdaptiveIntKernel, TrivialKernel, FloatKernel, SpadeNum};
+use spade::{DelaunayTriangulation, DelaunayKernel, TwoDimensional, RTree,
+            AdaptiveIntKernel, TrivialKernel, FloatKernel, SpadeNum,
+            DelaunayLookupStructure,
+            TriangulationWalkLookup};
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
@@ -31,67 +33,204 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Write};
 
-fn bench<V: TwoDimensional, K: DelaunayKernel<V::Scalar>>(vs: &[V], chunk_size: usize, title: &str)
-                                                   -> Vec<i64> {
-    println!("{}", title);
-    let mut delaunay: DelaunayTriangulation<V, V, K> = DelaunayTriangulation::new();
-    let mut result = Vec::new();
-    let mut sum = 0;
-    for chunk in vs.chunks(chunk_size) {
-        let time = Duration::span(|| {
-            for vertex in chunk.iter() {
-                delaunay.insert(vertex.clone());
-            }
-        });
-        sum += time.num_nanoseconds().unwrap();
-        result.push(time.num_nanoseconds().unwrap() / chunk_size as i64);
-    };
-    assert!(delaunay.num_vertices() > vs.len() / 2);
-    println!("time / op: {:?}ns", sum / vs.len() as i64);
-    result
+type TWL<T> = TriangulationWalkLookup<T>;
+type Delaunay<Scalar, K, L> = DelaunayTriangulation<Vector2<Scalar>, K, L>;
+
+struct BenchSetup<'a, V, K, L> where
+    V: TwoDimensional + 'a,
+    K: DelaunayKernel<V::Scalar>,
+    L: DelaunayLookupStructure<V> {
+
+    title: &'static str,
+    delaunay: DelaunayTriangulation<V, K, L>,
+    vertices: &'a [V],
+    chunk_size: usize,
+}
+
+trait Benchmark {
+    fn do_bench(&mut self) -> BenchResult;
+}
+
+struct BenchResult {
+    measurements: Vec<i64>,
+    title: &'static str,
+}
+
+impl <'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L> where
+    V: TwoDimensional + 'a,
+    K: DelaunayKernel<V::Scalar>,
+    L: DelaunayLookupStructure<V> {
+    
+    fn do_bench(&mut self) -> BenchResult {
+        println!("{}", self.title);
+        let mut result = Vec::new();
+        let mut sum = 0;
+        // let mut delaunay = self.delaunay.clone();
+        let vertices = self.vertices;
+        for chunk in vertices.chunks(self.chunk_size) {
+            let time = Duration::span(|| {
+                for vertex in chunk.iter() {
+                    self.delaunay.insert(vertex.clone());
+                }
+            });
+            sum += time.num_nanoseconds().unwrap();
+            result.push(time.num_nanoseconds().unwrap() / self.chunk_size as i64);
+        };
+        assert!(self.delaunay.num_vertices() > self.vertices.len() / 2);
+        println!("time / op: {:?}ns", sum / self.vertices.len() as i64);
+        BenchResult {
+            measurements: result,
+            title: self.title,
+        }
+    }
 }
 
 fn main() {
 
     const SIZE: usize = 400000;
     const CHUNK_SIZE: usize = SIZE / 100;
-    const DO_RANDOM_WALK: bool = true;
 
     let seed = [661311, 350191, 123021, 231261];
-    let (vertices_f64, vertices_i64);
-    if DO_RANDOM_WALK {
-        vertices_f64 = random_walk_with_seed_and_origin::<f64>(0.001, SIZE, seed);
-        vertices_i64 = random_walk_with_seed_and_origin::<i64>(3, SIZE, seed);
-    } else {
-        vertices_f64 = random_points_with_seed_range_and_origin::<f64>(
+    let vertices_f64_walk = random_walk_with_seed_and_origin::<f64>(0.001, SIZE, seed);
+    let vertices_i64_walk = random_walk_with_seed_and_origin::<i64>(3, SIZE, seed);
+    let vertices_f64_uniform = random_points_with_seed_range_and_origin::<f64>(
             20.0, Vector2::new(1e10, -1e10), SIZE, seed);
-        vertices_i64 = random_points_in_range::<i64>(10000, SIZE, seed);
+    let vertices_i64_uniform = random_points_in_range::<i64>(10000, SIZE, seed);
+
+    // let vertices_large_range = random_points_in_range::<i64>(
+    //     1000000000, SIZE, seed);
+
+    let mut benches: Vec<Box<Benchmark>> = vec![
+        // F64 Benchmarks
+        Box::new(BenchSetup {
+            title: "f64T - uniform - tree lookup",
+            delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
+            vertices: &vertices_f64_uniform,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+        // Box::new(BenchSetup {
+        //     title: "f64T - uniform - walk lookup",
+        //     delaunay: Delaunay::<f64, TrivialKernel, TWL<_>>::new(),
+        //     vertices: &vertices_f64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        Box::new(BenchSetup {
+            title: "f64T - random walk - tree lookup",
+            delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
+            vertices: &vertices_f64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+        Box::new(BenchSetup {
+            title: "f64T - random walk - walk lookup",
+            delaunay: Delaunay::<f64, TrivialKernel, TWL<_>>::new(),
+            vertices: &vertices_f64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+        // Float Kernel Benchmarks
+        Box::new(BenchSetup {
+            title: "f64F - uniform - tree lookup",
+            delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
+            vertices: &vertices_f64_uniform,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+        // Box::new(BenchSetup {
+        //     title: "f64F - uniform - walk lookup",
+        //     delaunay: Delaunay::<f64, FloatKernel, TWL<_>>::new(),
+        //     vertices: &vertices_f64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        Box::new(BenchSetup {
+            title: "f64F - random walk - tree lookup",
+            delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
+            vertices: &vertices_f64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+        Box::new(BenchSetup {
+            title: "f64F - random walk - walk lookup",
+            delaunay: Delaunay::<f64, FloatKernel, TWL<_>>::new(),
+            vertices: &vertices_f64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+        // i64 Benchmarks
+        Box::new(BenchSetup {
+            title: "i64T - uniform - tree lookup",
+            delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
+            vertices: &vertices_i64_uniform,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+        // Box::new(BenchSetup {
+        //     title: "i64T - uniform - walk lookup",
+        //     delaunay: Delaunay::<i64, TrivialKernel, TWL<_>>::new(),
+        //     vertices: &vertices_i64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        Box::new(BenchSetup {
+            title: "i64T - random walk - tree lookup",
+            delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
+            vertices: &vertices_i64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+        Box::new(BenchSetup {
+            title: "i64T - random walk - walk lookup",
+            delaunay: Delaunay::<i64, TrivialKernel, TWL<_>>::new(),
+            vertices: &vertices_i64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+        // Adaptive Int Benchmarks
+        Box::new(BenchSetup {
+            title: "i64A - uniform - tree lookup",
+            delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
+            vertices: &vertices_i64_uniform,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+        // Box::new(BenchSetup {
+        //     title: "i64A - uniform - walk lookup",
+        //     delaunay: Delaunay::<i64, AdaptiveIntKernel, TWL<_>>::new(),
+        //     vertices: &vertices_i64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        Box::new(BenchSetup {
+            title: "i64A - random walk - tree lookup",
+            delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
+            vertices: &vertices_i64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+        Box::new(BenchSetup {
+            title: "i64A - random walk - walk lookup",
+            delaunay: Delaunay::<i64, AdaptiveIntKernel, TWL<_>>::new(),
+            vertices: &vertices_i64_walk,
+            chunk_size: CHUNK_SIZE,
+        }),
+
+    ];
+    let mut results = Vec::new();
+    for config in &mut benches {
+        results.push(config.do_bench());
     }
-    let vertices_large_range = random_points_in_range::<i64>(
-        1000000000, SIZE, seed);
-
-    let f64_time = bench::<_, TrivialKernel>(&vertices_f64, CHUNK_SIZE, "f64 benchmark");
-    let i64_time = bench::<_, TrivialKernel>(&vertices_i64, CHUNK_SIZE, "i64 benchmark");
-    let apt_time = bench::<_, AdaptiveIntKernel>(&vertices_large_range, CHUNK_SIZE, 
-                                                 "AdaptiveIntKernel benchmark");
-    let floatk_time = bench::<_, FloatKernel>(&vertices_f64, CHUNK_SIZE, "FloatKernel benchmark");
-
 
     let mut result_file = File::create(&Path::new("delaunay_analysis.dat")).unwrap();
-    let mut print_measurements = |description: &str, measurements: &Vec<i64>| {
-        write!(result_file, "\"{}\"\n", description).unwrap();
-        for (index, time) in measurements.iter().enumerate() {
+    let mut print_measurements = |r: &BenchResult| {
+        write!(result_file, "\"{}\"\n", r.title).unwrap();
+        for (index, time) in r.measurements.iter().enumerate() {
             let size = index * CHUNK_SIZE;
             write!(result_file, "{} {}\n", size, time).unwrap();
         }
         write!(result_file, "\n\n").unwrap();
     };
 
-    print_measurements("f64", &f64_time);
-    print_measurements("i64", &i64_time);
-    print_measurements("Adaptive", &apt_time);
-    print_measurements("FloatKernel", &floatk_time);
-
+    for result in &results {
+        print_measurements(result);
+    }
     println!("Done!");
 
 }

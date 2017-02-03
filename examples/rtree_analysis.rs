@@ -21,7 +21,7 @@ extern crate time;
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-use spade::{RTree, SpadeNum};
+use spade::{RTree, SpadeNum, LookupStructure};
 use time::Duration;
 use cgmath::{Vector2};
 use std::path::Path;

@@ -20,7 +20,7 @@ use vector_traits::{VectorN, VectorNExtensions};
 use num::{zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
-use std::borrow::{Borrow, BorrowMut};
+use lookup::{LookupStructure};
 
 #[doc(hidden)]
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -64,26 +64,24 @@ impl RTreeOptions {
         self
     }
 
-    pub fn build<T: SpatialObject, B: Borrow<T>>(self) -> RTree<T, B> {
+    pub fn build<T: SpatialObject>(self) -> RTree<T> {
         RTree::new_with_options(self)
     }
 }
 
 #[doc(hidden)]
-pub struct NearestNeighborIterator<'a, T, B>
-    where T: SpatialObject + 'a,
-          B: Borrow<T> + 'a {
+pub struct NearestNeighborIterator<'a, T>
+    where T: SpatialObject + 'a {
     next_items: Vec<&'a T>,
     min_dist: <T::Vector as VectorN>::Scalar,
-    tree: &'a RTree<T, B>,
+    tree: &'a RTree<T>,
     query_point: T::Vector,
 }
 
-impl<'a, T, B> NearestNeighborIterator<'a, T, B>
-    where T: SpatialObject + 'a, 
-          B: Borrow<T>
+impl<'a, T> NearestNeighborIterator<'a, T>
+    where T: SpatialObject + 'a,
 {
-    fn new(tree: &'a RTree<T, B>, query_point: T::Vector) -> NearestNeighborIterator<'a, T, B> {
+    fn new(tree: &'a RTree<T>, query_point: T::Vector) -> NearestNeighborIterator<'a, T> {
         NearestNeighborIterator {
             next_items: Vec::new(),
             min_dist: zero(),
@@ -93,10 +91,8 @@ impl<'a, T, B> NearestNeighborIterator<'a, T, B>
     }
 }
 
-impl <'a, T, B> Iterator for NearestNeighborIterator<'a, T, B> 
-    where T: SpatialObject + 'a,
-          B: Borrow<T>
-{
+impl <'a, T> Iterator for NearestNeighborIterator<'a, T> 
+    where T: SpatialObject + 'a {
     type Item = &'a T;
     
     fn next(&mut self) -> Option<&'a T> {
@@ -117,30 +113,23 @@ impl <'a, T, B> Iterator for NearestNeighborIterator<'a, T, B>
 
 /// Iterates over all entries in an r-tree.
 /// Returned by `RTree::iter()`
-pub struct RTreeIterator<'a, T, B> 
-    where T: SpatialObject + 'a,
-          B: Borrow<T> + 'a
-    
-{
-    data: &'a DirectoryNodeData<T, B>,
+pub struct RTreeIterator<'a, T> 
+    where T: SpatialObject + 'a {
+    data: &'a DirectoryNodeData<T>,
     cur_index: usize, 
-    cur_iterator: Option<Box<RTreeNodeIterator<'a, T, B>>>,
+    cur_iterator: Option<Box<RTreeNodeIterator<'a, T>>>,
 }
 
 #[allow(missing_docs)]
-pub enum RTreeNodeIterator<'a, T, B> 
-    where T: SpatialObject + 'a,
-          B: Borrow<T> + 'a
-{
+pub enum RTreeNodeIterator<'a, T> 
+    where T: SpatialObject + 'a {
     LeafIterator(Once<&'a T>),
-    DirectoryNodeIterator(RTreeIterator<'a, T, B>),
+    DirectoryNodeIterator(RTreeIterator<'a, T>),
 }
 
-impl <'a, T, B> RTreeIterator<'a, T, B> 
-    where T: SpatialObject,
-          B: Borrow<T>
-{
-    fn new(data: &'a DirectoryNodeData<T, B>) -> RTreeIterator<'a, T, B> {
+impl <'a, T> RTreeIterator<'a, T> 
+    where T: SpatialObject {
+    fn new(data: &'a DirectoryNodeData<T>) -> RTreeIterator<'a, T> {
         RTreeIterator {
             data: data,
             cur_index: 0,
@@ -150,10 +139,8 @@ impl <'a, T, B> RTreeIterator<'a, T, B>
     }
 }
 
-impl <'a, T, B> Iterator for RTreeIterator<'a, T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
+impl <'a, T> Iterator for RTreeIterator<'a, T>
+    where T: SpatialObject {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
@@ -185,24 +172,21 @@ impl <'a, T, B> Iterator for RTreeIterator<'a, T, B>
     }
 }
 
-impl <'a, T, B> RTreeNodeIterator<'a, T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
+impl <'a, T> RTreeNodeIterator<'a, T>
+    where T: SpatialObject {
 
-    fn new(node: &'a RTreeNode<T, B>) -> RTreeNodeIterator<'a, T, B> {
+    fn new(node: &'a RTreeNode<T>) -> RTreeNodeIterator<'a, T> {
         use RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
         match node {
-            &RTreeNode::Leaf(ref b) => LeafIterator(::std::iter::once(b.borrow())),
+            &RTreeNode::Leaf(ref b) => LeafIterator(::std::iter::once(b)),
             &RTreeNode::DirectoryNode(ref data) => 
                 DirectoryNodeIterator(RTreeIterator::new(data)),
         }
     }
 }
 
-impl <'a, T, B> Iterator for RTreeNodeIterator<'a, T, B>
-    where T: SpatialObject,
-          B: Borrow<T> {
+impl <'a, T> Iterator for RTreeNodeIterator<'a, T>
+    where T: SpatialObject {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
@@ -215,11 +199,9 @@ impl <'a, T, B> Iterator for RTreeNodeIterator<'a, T, B>
 }
 
 #[doc(hidden)]
-impl <T, B> DirectoryNodeData<T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
-    pub fn children(&self) -> &Vec<RTreeNode<T,B>> {
+impl <T> DirectoryNodeData<T>
+    where T: SpatialObject {
+    pub fn children(&self) -> &Vec<RTreeNode<T>> {
         &self.children
     }
 
@@ -231,7 +213,7 @@ impl <T, B> DirectoryNodeData<T, B>
         self.bounding_box.clone().unwrap()
     }
 
-    fn new(depth: usize, options: Arc<RTreeOptions>) -> DirectoryNodeData<T, B> {
+    fn new(depth: usize, options: Arc<RTreeOptions>) -> DirectoryNodeData<T> {
         DirectoryNodeData {
             bounding_box: None,
             children: Box::new(Vec::with_capacity(options.max_size + 1)),
@@ -240,8 +222,8 @@ impl <T, B> DirectoryNodeData<T, B>
         }
     }
 
-    fn new_parent(mut children: Box<Vec<RTreeNode<T, B>>>, depth: usize, options: Arc<RTreeOptions>
-                  ) -> DirectoryNodeData<T, B> {
+    fn new_parent(mut children: Box<Vec<RTreeNode<T>>>, depth: usize, options: Arc<RTreeOptions>
+                  ) -> DirectoryNodeData<T> {
         let missing = options.max_size + 1 - children.len();
         children.reserve_exact(missing);
         let mut result = DirectoryNodeData {
@@ -276,7 +258,7 @@ impl <T, B> DirectoryNodeData<T, B>
         }
     }
 
-    fn insert(&mut self, t: RTreeNode<T, B>, state: &mut InsertionState) -> InsertionResult<T, B> {
+    fn insert(&mut self, t: RTreeNode<T>, state: &mut InsertionState) -> InsertionResult<T> {
         // Adjust own mbr - the element will most likely become a child of this node
         self.update_mbr_with_element(&t.mbr());
         if t.depth() + 1 == self.depth {
@@ -303,7 +285,7 @@ impl <T, B> DirectoryNodeData<T, B>
         }
     }
 
-    fn resolve_overflow(&mut self, state: &mut InsertionState) -> InsertionResult<T, B> {
+    fn resolve_overflow(&mut self, state: &mut InsertionState) -> InsertionResult<T> {
         if self.children.len() > self.options.max_size {
             if state.did_reinsert(self.depth) {
                 // We did already reinsert on that level - split this node
@@ -321,7 +303,7 @@ impl <T, B> DirectoryNodeData<T, B>
     }
 
     #[inline(never)]
-    fn split(&mut self) -> RTreeNode<T, B> {
+    fn split(&mut self) -> RTreeNode<T> {
         let axis = self.get_split_axis();
         assert!(self.children.len() >= 2);
         // Sort along axis
@@ -356,7 +338,7 @@ impl <T, B> DirectoryNodeData<T, B>
     }
 
     #[inline(never)]
-    fn reinsert(&mut self) -> Vec<RTreeNode<T, B>> {
+    fn reinsert(&mut self) -> Vec<RTreeNode<T>> {
         let center = self.mbr().center();
         // Sort with increasing order so we can use Vec::split_off
         self.children.sort_by(|l, r| {
@@ -398,7 +380,7 @@ impl <T, B> DirectoryNodeData<T, B>
         best_axis
     }
 
-    fn choose_subtree(&mut self, node: &RTreeNode<T, B>) -> &mut DirectoryNodeData<T, B> {
+    fn choose_subtree(&mut self, node: &RTreeNode<T>) -> &mut DirectoryNodeData<T> {
         assert!(self.depth >= 2, "Cannot choose subtree on this level");
         let insertion_mbr = node.mbr();
         let mut inclusion_count = 0;
@@ -460,7 +442,7 @@ impl <T, B> DirectoryNodeData<T, B>
         }
     }
 
-    fn add_children(&mut self, mut new_children: Vec<RTreeNode<T, B>>) {
+    fn add_children(&mut self, mut new_children: Vec<RTreeNode<T>>) {
         if let &mut Some(ref mut bb) = &mut self.bounding_box {
             for child in &new_children {
                 bb.add_rect(&child.mbr());
@@ -500,7 +482,7 @@ impl <T, B> DirectoryNodeData<T, B>
                     follow = data;
                 },
                 &RTreeNode::Leaf(ref t) => {
-                    return Some(t.borrow())
+                    return Some(t)
                 }
             }
         }
@@ -637,7 +619,7 @@ impl <T, B> DirectoryNodeData<T, B>
                     data.nearest_n_neighbors(point, n, result);
                 },
                 &RTreeNode::Leaf(ref b) => {
-                    let distance = b.borrow().distance2(point);
+                    let distance = b.distance2(point);
                     if result.len() != n || distance < result.last().unwrap().distance2(point) {
                         if result.len() == n {
                             result.pop();
@@ -647,14 +629,14 @@ impl <T, B> DirectoryNodeData<T, B>
                             Ok(index) => index,
                             Err(index) => index,
                         };
-                        result.insert(index, b.borrow());
+                        result.insert(index, b);
                     }
                 }
             }
         }
     }
 
-    fn lookup_and_remove(&mut self, point: &T::Vector) -> Option<B> {
+    fn lookup_and_remove(&mut self, point: &T::Vector) -> Option<T> {
         let contains = self.bounding_box.as_ref().map(|bb | bb.contains_point(point)).unwrap_or(false);
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
@@ -670,7 +652,7 @@ impl <T, B> DirectoryNodeData<T, B>
                         }
                     },
                     RTreeNode::Leaf(b) => {
-                        if b.borrow().contains(point) {
+                        if b.contains(point) {
                             result = Some(b);
                         } else {
                             self.children.push(RTreeNode::Leaf(b))
@@ -699,8 +681,8 @@ impl <T, B> DirectoryNodeData<T, B>
                             todo_list.push(data);
                         },
                         &RTreeNode::Leaf(ref obj) => {
-                            if obj.borrow().contains(point) {
-                                return Some(obj.borrow());
+                            if obj.contains(point) {
+                                return Some(obj);
                             }
                         },
                     }
@@ -722,8 +704,8 @@ impl <T, B> DirectoryNodeData<T, B>
                 &RTreeNode::DirectoryNode(ref data) =>
                     data.lookup_in_circle(result, origin, radius2),
                 &RTreeNode::Leaf(ref t) => {
-                    if t.borrow().distance2(origin) < *radius2 {
-                        result.push(t.borrow());
+                    if t.distance2(origin) < *radius2 {
+                        result.push(t);
                     }
                 },
             }
@@ -736,8 +718,8 @@ impl <T, B> DirectoryNodeData<T, B>
             match child {
                 &RTreeNode::DirectoryNode(ref data) => data.lookup_in_rectangle(result, query_rect),
                 &RTreeNode::Leaf(ref t) => {
-                    if t.borrow().mbr().intersects(query_rect) {
-                        result.push(t.borrow());
+                    if t.mbr().intersects(query_rect) {
+                        result.push(t);
                     }
                 }
             }
@@ -745,10 +727,8 @@ impl <T, B> DirectoryNodeData<T, B>
     }
 }
 
-impl <T, B> DirectoryNodeData<T, B>
-    where T: SpatialObject,
-          B: BorrowMut<T>
-{
+impl <T> DirectoryNodeData<T>
+    where T: SpatialObject {
     fn lookup_mut(&mut self, point: &T::Vector) -> Option<&mut T> {
         let mut todo_list = Vec::with_capacity(40);
         todo_list.push(self);
@@ -760,8 +740,8 @@ impl <T, B> DirectoryNodeData<T, B>
                             todo_list.push(data);
                         },
                         &mut RTreeNode::Leaf(ref mut obj) => {
-                            if (*obj).borrow().contains(point) {
-                                return Some(obj.borrow_mut());
+                            if (*obj).contains(point) {
+                                return Some(obj);
                             }
                         },
                     }
@@ -773,10 +753,8 @@ impl <T, B> DirectoryNodeData<T, B>
 }
 
 #[doc(hidden)]
-impl <T, B> DirectoryNodeData<T, B>
-    where T: SpatialObject + PartialEq,
-          B: Borrow<T>
-{
+impl <T> DirectoryNodeData<T>
+    where T: SpatialObject + PartialEq {
 
     pub fn remove(&mut self, to_remove: &T) -> bool {
         let contains = self.bounding_box.as_ref().map(
@@ -797,7 +775,7 @@ impl <T, B> DirectoryNodeData<T, B>
                         }
                     },
                     &mut RTreeNode::Leaf(ref t) => {
-                        if t.borrow() == to_remove {
+                        if t == to_remove {
                             remove_index = Some(index);
                             result = true;
                             break;
@@ -827,7 +805,7 @@ impl <T, B> DirectoryNodeData<T, B>
                         }
                     },
                     &RTreeNode::Leaf(ref t) => {
-                        if t.borrow() == obj {
+                        if t == obj {
                             return true
                         }
                     }
@@ -838,13 +816,11 @@ impl <T, B> DirectoryNodeData<T, B>
     }
 }
 
-enum InsertionResult<T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
+enum InsertionResult<T>
+    where T: SpatialObject {
     Complete,
-    Split(RTreeNode<T, B>),
-    Reinsert(Vec<RTreeNode<T, B>>),
+    Split(RTreeNode<T>),
+    Reinsert(Vec<RTreeNode<T>>),
 }
 
 struct InsertionState {
@@ -870,10 +846,8 @@ impl InsertionState {
 }
 
 #[doc(hidden)]
-impl <T, B> RTreeNode<T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
+impl <T> RTreeNode<T>
+    where T: SpatialObject {
     pub fn depth(&self) -> usize {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.depth,
@@ -884,7 +858,7 @@ impl <T, B> RTreeNode<T, B>
     pub fn mbr(&self) -> BoundingRect<T::Vector> {
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.bounding_box.clone().unwrap(),
-            &RTreeNode::Leaf(ref t) => t.borrow().mbr(),
+            &RTreeNode::Leaf(ref t) => t.mbr(),
         }
     }
 
@@ -893,9 +867,9 @@ impl <T, B> RTreeNode<T, B>
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbor(point, nearest_distance),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.borrow().distance2(point);
+                let distance = t.distance2(point);
                 if nearest_distance.map(|d| distance < d).unwrap_or(true) {
-                    Some(t.borrow())
+                    Some(t)
                 } else {
                     None
                 }
@@ -909,7 +883,7 @@ impl <T, B> RTreeNode<T, B>
         match self {
             &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbors(point, nearest_distance, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.borrow().distance2(point);
+                let distance = t.distance2(point);
                 match nearest_distance {
                     Some(nearest) => {                
                         if distance <= nearest {
@@ -917,7 +891,7 @@ impl <T, B> RTreeNode<T, B>
                                 // We've found a new minimum element, remove all other neighbors found so far
                                 result.clear();
                             }
-                            result.push(t.borrow());
+                            result.push(t);
                             Some(distance)
                         } else {
                             // This object is not among the nearest neigbors
@@ -925,7 +899,7 @@ impl <T, B> RTreeNode<T, B>
                         }
                     },
                     None => {
-                        result.push(t.borrow());
+                        result.push(t);
                         Some(distance)
                     }
                 }
@@ -942,7 +916,7 @@ impl <T, B> RTreeNode<T, B>
             &RTreeNode::DirectoryNode(ref data) => 
                 data.nearest_neighbors_with_min_dist(point, nearest_distance, min_dist, result),
             &RTreeNode::Leaf(ref t) => {
-                let distance = t.borrow().distance2(point);
+                let distance = t.distance2(point);
                 if distance <= min_dist {
                     return None;
                 }
@@ -953,7 +927,7 @@ impl <T, B> RTreeNode<T, B>
                                 // We've found a new minimum element, remove all other neighbors found so far
                                 result.clear();
                             }
-                            result.push(t.borrow());
+                            result.push(t);
                             Some(distance)
                         } else {
                             // This object is not among the nearest neigbors
@@ -961,7 +935,7 @@ impl <T, B> RTreeNode<T, B>
                         }
                     },
                     None => {
-                        result.push(t.borrow());
+                        result.push(t);
                         Some(distance)
                     }
                 }
@@ -972,24 +946,20 @@ impl <T, B> RTreeNode<T, B>
 
 #[doc(hidden)]
 #[derive(Clone)]
-pub struct DirectoryNodeData<T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
+pub struct DirectoryNodeData<T>
+    where T: SpatialObject {
     bounding_box: Option<BoundingRect<T::Vector>>,
-    children: Box<Vec<RTreeNode<T, B>>>,
+    children: Box<Vec<RTreeNode<T>>>,
     depth: usize,
     options: Arc<RTreeOptions>,
 }
 
 #[doc(hidden)]
 #[derive(Clone)]
-pub enum RTreeNode<T, B>
-    where T: SpatialObject,
-          B: Borrow<T>
-{
-    Leaf(B),
-    DirectoryNode(DirectoryNodeData<T, B>),
+pub enum RTreeNode<T>
+    where T: SpatialObject {
+    Leaf(T),
+    DirectoryNode(DirectoryNodeData<T>),
 }
 
 
@@ -1013,8 +983,8 @@ pub enum RTreeNode<T, B>
 /// # extern crate nalgebra;
 /// # extern crate spade;
 ///
-/// # use nalgebra::{Vector4};
-/// # use spade::RTree;
+/// use nalgebra::{Vector4};
+/// use spade::{RTree, LookupStructure};
 ///
 /// # fn main() {
 ///   let mut tree = RTree::new();
@@ -1027,7 +997,7 @@ pub enum RTreeNode<T, B>
 /// extern crate cgmath; // Alternatively: use nalgebra or [f32; 2]
 /// extern crate spade;
 ///
-/// use spade::RTree;
+/// use spade::{RTree, LookupStructure};
 /// use cgmath::Vector2;
 ///
 /// fn main() {
@@ -1049,48 +1019,23 @@ pub enum RTreeNode<T, B>
 /// }
 /// }
 /// ```
-/// # Type parameters
-/// `RTree` has two type parameters `T` and `B`. `T` can be any
-/// type that implements `SpatialObject`. If you do not want to
-/// insert types with borrow semantics, `B` and `T` are equal.
-///
-/// ## Inserting pointer like types
-/// It is possible to insert pointer like types (like references, boxes, arcs...)
-/// that implement `Borrow<T>`. You may need to specify the r-tree's type parameters
-/// more precisely as seen in this example:
-///
-/// ```
-/// # extern crate nalgebra;
-/// # extern crate spade;
-///
-/// # use nalgebra::{Vector2};
-/// # use spade::RTree;
-///
-/// # fn main() {
-///   let mut tree: RTree<Vector2<_>, Box<_>> = RTree::new();
-///   tree.insert(Box::new(Vector2::new(20i32, 10)));
-/// # }
-/// ```
 
 #[derive(Clone)]
-pub struct RTree<T, B = T> where T: SpatialObject, B: Borrow<T> {
-
-    root: DirectoryNodeData<T, B>,
+pub struct RTree<T> where T: SpatialObject {
+    root: DirectoryNodeData<T>,
     size: usize,
 }
 
-impl<T, B> Default for RTree<T, B> where T: SpatialObject, B: Borrow<T> {
-    fn default() -> RTree<T, B> {
+impl<T> Default for RTree<T> where T: SpatialObject {
+    fn default() -> RTree<T> {
         RTree::new()
     }
 }
 
-impl<T, B> RTree<T, B> 
-    where T: SpatialObject,
-          B: Borrow<T>
-{
+impl<T> RTree<T> 
+    where T: SpatialObject {
     /// Creates an empty r*-tree.
-    pub fn new() -> RTree<T, B> {
+    pub fn new() -> RTree<T> {
         RTree::new_with_options(Default::default())
     }
 
@@ -1100,7 +1045,7 @@ impl<T, B> RTree<T, B>
     }
 
     #[doc(hidden)]
-    pub fn new_with_options(options: RTreeOptions) -> RTree<T, B> {
+    pub fn new_with_options(options: RTreeOptions) -> RTree<T> {
         let options = Arc::new(options);
         RTree {
             root: DirectoryNodeData::new(1, options),
@@ -1114,58 +1059,14 @@ impl<T, B> RTree<T, B>
     }
 
     /// Returns an iterator over all contained elements.
-    pub fn iter(&self) -> RTreeIterator<T, B> {
+    pub fn iter(&self) -> RTreeIterator<T> {
         RTreeIterator::new(&self.root)
     }
     
-    /// Inserts a new element into the tree.
-    ///
-    /// This will require `O(log(n))` operations on average, where n is the number of elements contained
-    /// in the tree.
-    pub fn insert(&mut self, t: B) {
-        let mut state = InsertionState::new(self.root.depth + 1);
-        let mut insertion_stack = vec![RTreeNode::Leaf(t)];
-        loop {
-            if let Some(next) = insertion_stack.pop() {
-                match self.root.insert(next, &mut state) {
-                    InsertionResult::Split(node) => {
-                        // The root node was split, create a new root and increase depth
-                        let new_depth = self.root.depth + 1;
-                        let options = self.root.options.clone();
-                        let old_root = ::std::mem::replace(
-                            &mut self.root, DirectoryNodeData::new(
-                                new_depth, options));
-                        self.root.add_children(vec![RTreeNode::DirectoryNode(old_root), node]);
-                    },
-                    InsertionResult::Reinsert(nodes) => {
-                        // Schedule elements for reinsertion
-                        insertion_stack.extend(nodes);
-                    },
-                    _ => {},
-                }
-            } else {
-                break;
-            }
-        }
-        self.size += 1;
-    }
-
     #[doc(hidden)]
-    pub fn root(&self) -> &DirectoryNodeData<T, B> {
+    pub fn root(&self) -> &DirectoryNodeData<T> {
         // This access is only needed for one of the examples
         &self.root
-    }
-
-    /// Searches for an element at a given position.
-    ///
-    /// If `query_point` is contained by one object in the tree, this object will be returned.
-    /// If multiple objects contain the point, only one of them will be returned.
-    pub fn lookup(&self, query_point: &T::Vector) -> Option<&T> {
-        if self.size > 0 {
-            self.root.lookup(query_point)
-        } else {
-            None
-        }
     }
 
     /// Returns the nearest neighbor.
@@ -1181,13 +1082,8 @@ impl<T, B> RTree<T, B>
 
     /// Returns an object close to a given point. This operation is faster than
     /// `nearest_neighbor` but will not neccessarily yield the real nearest neighbor.
-    #[inline(never)]
-    pub fn close_neighbor(&self, query_point: &T::Vector) -> Option<&T> {
-        if self.size > 0 {
-            self.root.close_neighbor(query_point)
-        } else {
-            None
-        }
+    pub fn close_neighbor(&self, point: &T::Vector) -> Option<&T> {
+        self.root.close_neighbor(point)
     }
 
     /// Returns the nearest neighbors of a given point.
@@ -1228,7 +1124,7 @@ impl<T, B> RTree<T, B>
     /// Returns an iterator that iterates over the nearest elements next to a
     /// query point.
     pub fn nearest_neighbor_iterator(
-        &self, query_point: T::Vector) -> NearestNeighborIterator<T, B> {
+        &self, query_point: T::Vector) -> NearestNeighborIterator<T> {
         NearestNeighborIterator::new(self, query_point)
     }
 
@@ -1244,50 +1140,15 @@ impl<T, B> RTree<T, B>
         }
         result
     }
-
-    /// Searches for an element and removes it.
-    ///
-    /// If the given point is contained by one object in the tree, this object is being removed
-    /// and returned. If the point is contained by multiple objects, only one of them is removed and
-    /// returned.
-    pub fn lookup_and_remove(&mut self, query_point: &T::Vector) -> Option<B> {
-        if self.size > 0 {
-            let result = self.root.lookup_and_remove(query_point);
-            if result.is_some() {
-                if self.root.children.is_empty() {
-                    self.root.depth = 1;
-                }
-                self.size -= 1;
-            }
-            result
-        } else {
-            None
-        }
-    }
 }
 
-impl<T, B> RTree<T, B> 
-    where T: SpatialObject,
-          B: BorrowMut<T>
-{
-    /// Searches for an element at a given position and returns a mutable
-    /// reference.
-    /// If `query_point` is contained by multiple objects in the tree,
-    /// one of them will be returned.
-    /// *Do not change the object's minimal bounding box*.
-    pub fn lookup_mut(&mut self, query_point: &T::Vector) -> Option<&mut T> {
-        if self.size > 0 {
-            self.root.lookup_mut(query_point)
-        } else {
-            None
-        }
-    }
+impl<T> RTree<T> 
+    where T: SpatialObject {
+
 }
 
-impl <T, B> RTree<T, B>
-    where T: SpatialObject + PartialEq,
-          B: Borrow<T>
-{
+impl <T> RTree<T>
+    where T: SpatialObject + PartialEq {
 
     /// Removes an object from the tree.
     ///
@@ -1315,6 +1176,87 @@ impl <T, B> RTree<T, B>
     }
 }
 
+impl <T> LookupStructure<T> for RTree<T>
+    where T: SpatialObject {
+
+    /// Searches for an element at a given position.
+    ///
+    /// If `query_point` is contained by one object in the tree, this object will be returned.
+    /// If multiple objects contain the point, only one of them will be returned.
+    fn lookup(&self, query_point: &T::Vector) -> Option<&T> {
+        if self.size > 0 {
+            self.root.lookup(query_point)
+        } else {
+            None
+        }
+    }
+
+    /// Searches for an element at a given position and returns a mutable
+    /// reference.
+    /// If `query_point` is contained by multiple objects in the tree,
+    /// one of them will be returned.
+    /// *Do not change the object's minimal bounding box*.
+    fn lookup_mut(&mut self, query_point: &T::Vector) -> Option<&mut T> {
+        if self.size > 0 {
+            self.root.lookup_mut(query_point)
+        } else {
+            None
+        }
+    }
+
+    /// Inserts a new element into the tree.
+    ///
+    /// This will require `O(log(n))` operations on average, where n is the number of
+    /// elements contained in the tree.
+    fn insert(&mut self, t: T) {
+        let mut state = InsertionState::new(self.root.depth + 1);
+        let mut insertion_stack = vec![RTreeNode::Leaf(t)];
+        loop {
+            if let Some(next) = insertion_stack.pop() {
+                match self.root.insert(next, &mut state) {
+                    InsertionResult::Split(node) => {
+                        // The root node was split, create a new root and increase depth
+                        let new_depth = self.root.depth + 1;
+                        let options = self.root.options.clone();
+                        let old_root = ::std::mem::replace(
+                            &mut self.root, DirectoryNodeData::new(
+                                new_depth, options));
+                        self.root.add_children(vec![RTreeNode::DirectoryNode(old_root), node]);
+                    },
+                    InsertionResult::Reinsert(nodes) => {
+                        // Schedule elements for reinsertion
+                        insertion_stack.extend(nodes);
+                    },
+                    _ => {},
+                }
+            } else {
+                break;
+            }
+        }
+        self.size += 1;
+    }
+
+    /// Searches for an element and removes it.
+    ///
+    /// If the given point is contained by one object in the tree, this object is being removed
+    /// and returned. If the point is contained by multiple objects, only one of them is removed and
+    /// returned.
+    fn lookup_and_remove(&mut self, query_point: &T::Vector) -> Option<T> {
+        if self.size > 0 {
+            let result = self.root.lookup_and_remove(query_point);
+            if result.is_some() {
+                if self.root.children.is_empty() {
+                    self.root.depth = 1;
+                }
+                self.size -= 1;
+            }
+            result
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{RTree};
@@ -1323,6 +1265,7 @@ mod test {
     use cgmath::{Vector2, InnerSpace};
     use num::Float;
     use testutils::*;
+    use lookup::LookupStructure;
 
     #[test]
     fn test_tree_with_integral_vectors() {
@@ -1335,7 +1278,7 @@ mod test {
     #[test]
     fn test_tree_with_array_vectors() {
         // This test should compile
-        let mut tree = RTree::<[i32; 3], _>::new();
+        let mut tree = RTree::<[i32; 3]>::new();
         tree.insert([13i32, 37, 12]);
         assert!(tree.lookup(&[13, 37, 12]).is_some())
     }
@@ -1524,7 +1467,7 @@ mod test {
     fn test_higher_dimensions() {
         use cgmath::Vector4;
         use rand::{XorShiftRng, SeedableRng, Rng};
-        let mut tree: RTree<Vector4<f32>, Vector4<f32>> = RTree::new();
+        let mut tree: RTree<Vector4<f32>> = RTree::new();
         let mut rng = XorShiftRng::from_seed([1, 2, 3, 1992]);
         let mut entries = Vec::new();
         for _ in 0 .. 1000 {
@@ -1539,12 +1482,4 @@ mod test {
             assert_eq!(tree.nearest_neighbor(entry), Some(entry))
         }
     }
-
-    #[test]
-    fn test_insert_borrow_type() {
-        // Just check if this compiles
-        let mut tree: RTree<Vector2<_>, Box<_>> = RTree::new();
-        tree.insert(Box::new(Vector2::new(20i32, 10)));
-    }
 }
-
