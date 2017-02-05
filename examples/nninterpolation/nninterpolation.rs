@@ -26,9 +26,13 @@ use kiss3d::resource::Mesh;
 
 use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
-use spade::{DelaunayTriangulation, HasPosition, FloatKernel};
+use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, TriangulationWalkLookup};
+use spade::{HasPosition,};
 use std::rc::Rc;
 use std::cell::RefCell;
+
+type Delaunay = FloatDelaunayTriangulation<
+        VectorWithHeight, TriangulationWalkLookup<Vector2<f64>>>;
 
 const SAMPLE_REGION: f64 = 3.5;
 const FREQUENCY: f64 = 1.;
@@ -36,7 +40,107 @@ const NUM_POINTS: usize = 120;
 const MAX_HEIGHT: f64 = 1.5;
 const GRID_SUBDIVISIONS: usize = 300;
 
-type Delaunay = DelaunayTriangulation<VectorWithHeight, VectorWithHeight, FloatKernel>;
+struct Grid {
+    grid: [[f64; GRID_SUBDIVISIONS + 1]; GRID_SUBDIVISIONS + 1],
+}
+
+struct InterpolationRenderData {
+    edges: Vec<(Vector3<f32>, Vector3<f32>)>,
+    mesh: Rc<RefCell<Mesh>>,
+}
+
+impl InterpolationRenderData {
+    fn from_grid(grid: &Grid) -> InterpolationRenderData {
+        let (vertices, indices) = grid.get_triangles();
+        let mesh = Mesh::new(vertices, indices, None, None, false);
+        InterpolationRenderData {
+            edges: grid.get_edges(),
+            mesh: Rc::new(RefCell::new(mesh)),
+        }
+    }
+}
+
+impl Grid {
+    fn get_edges(&self) -> Vec<(Vector3<f32>, Vector3<f32>)> {
+        let mut result = Vec::new();
+        for x in 0 .. GRID_SUBDIVISIONS {
+            for y in 0 .. GRID_SUBDIVISIONS {
+                let from_val = self.grid[x][y] + Self::offset();
+                let from_pos = Self::transform(Vector2::new(x as f64, y as f64));
+                let from = VectorWithHeight::new(from_pos, from_val);
+                for &(to_x, to_y) in &[(x + 1, y), (x, y + 1)] {
+                    let to_val = self.grid[to_x][to_y] + Self::offset();
+                    let to_pos = Self::transform(Vector2::new(to_x as f64, to_y as f64));
+                    let to = VectorWithHeight::new(to_pos, to_val);
+                    result.push((Cast::from(from.position_3d()),
+                                 Cast::from(to.position_3d())));
+                }
+            }
+        }
+        result
+    }
+
+    fn get_triangles(&self) -> (Vec<Point3<f32>>, Vec<Point3<u32>>) {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        for x in 0 .. GRID_SUBDIVISIONS + 1 {
+            for y in 0 .. GRID_SUBDIVISIONS + 1 {
+                let val = self.grid[x][y] + Self::offset();
+                let pos = Self::transform(Vector2::new(x as f64, y as f64));
+                vertices.push(Point3::new(pos.x as f32, pos.y as f32, val as f32));
+            }
+        }
+        for x in 0 .. GRID_SUBDIVISIONS {
+            for y in 0 .. GRID_SUBDIVISIONS {
+                let index = |x, y| x * (GRID_SUBDIVISIONS + 1) + y;
+                let v00 = index(x, y) as u32;
+                let v10 = index(x + 1, y) as u32;
+                let v01 = index(x, y + 1) as u32;
+                let v11 = index(x + 1, y + 1) as u32;
+                indices.push(Point3::new(v00, v10, v11));
+                indices.push(Point3::new(v00, v11, v01));
+            }
+        }
+        (vertices, indices)
+    }
+
+    fn from_delaunay_interpolation<F>(delaunay: &Delaunay, f: F) -> Grid
+        where F: Fn(&Delaunay, &Vector2<f64>) -> f64
+    {
+        let mut values = [[0.0; GRID_SUBDIVISIONS + 1]; GRID_SUBDIVISIONS + 1];
+        for x in 0 .. GRID_SUBDIVISIONS + 1 {
+            for y in 0 .. GRID_SUBDIVISIONS + 1 {
+                let pos = Self::transform(Vector2::new(x as f64, y as f64));
+                let value = f(delaunay, &pos);
+                values[x][y] = value;
+            }
+        }
+        Grid {
+            grid: values,
+        }
+    }
+
+    fn offset() -> f64 {
+        -0.01
+    }
+
+    fn grid_size() -> f64 {
+        SAMPLE_REGION * 1.05
+    }
+
+    fn scale() -> f64 {
+        2.0 * Self::grid_size() / (GRID_SUBDIVISIONS as f64)
+    }
+
+    fn grid_offset() -> Vector2<f64> {
+        Vector2::repeat(Self::grid_size())
+    }
+
+    fn transform(v: Vector2<f64>) -> Vector2<f64> {
+        v * Self::scale() - Self::grid_offset()
+    }
+}
 
 fn print_help() {
     println!("Interpolation Demo");
@@ -58,7 +162,14 @@ enum GridVisibility {
     ShowC0,
     ShowC1,
     ShowFarin,
+    ShowBarycentric,
     None,
+}
+
+#[derive(PartialEq, Eq)]
+enum GridRenderType {
+    Lines,
+    Polygons,
 }
 
 impl GridVisibility {
@@ -67,7 +178,8 @@ impl GridVisibility {
         match self {
             &ShowC0 => ShowC1,
             &ShowC1 => ShowFarin,
-            &ShowFarin => None,
+            &ShowFarin => ShowBarycentric,
+            &ShowBarycentric => None,
             &None => ShowC0,
         }
     }
@@ -78,7 +190,8 @@ impl GridVisibility {
             &ShowC0 => println!("Displaying c0 interpolant"),
             &ShowC1 => println!("Displaying sibson's c1 interpolant"),
             &ShowFarin => println!("Displaying farin's c1 interpolant"),
-            _ => { },
+            &ShowBarycentric => println!("Displaying barycentric interpolant"),
+            &None => { },
         }
     }
 }
@@ -91,6 +204,16 @@ impl DelaunayVisibility {
             &All => OnlyLines,
             &OnlyLines => None,
             &None => All,
+        }
+    }
+}
+
+impl GridRenderType {
+    fn next(&self) -> GridRenderType {
+        use GridRenderType::*;
+        match self {
+            &Lines => Polygons,
+            &Polygons => Lines
         }
     }
 }
@@ -135,28 +258,42 @@ fn main() {
 
     let mut grid_visibility = GridVisibility::ShowC0;
     let mut delaunay_visibility = DelaunayVisibility::All;
+    let mut grid_render_type = GridRenderType::Lines;
     let mut show_normals = false;
 
     let (mesh, delaunay) = generate_random_mesh();
     let mesh = Rc::new(RefCell::new(mesh));
-    let mut node = window.add_mesh(mesh.clone(), Repeat::repeat(1.0));
-    node.enable_backface_culling(false);
+    let mut delaunay_node = window.add_mesh(mesh.clone(), Repeat::repeat(1.0));
+    delaunay_node.enable_backface_culling(false);
+    let empty_mesh = Rc::new(RefCell::new(Mesh::new(vec![], vec![], None, None, false)));
+    let mut grid_node = window.add_mesh(empty_mesh.clone(), Repeat::repeat(1.0));
+    grid_node.unlink();
 
     let lines = extract_edges(&delaunay);
-    let grid_c1 = get_interpolated_grid(&delaunay, |d, p| d.nn_interpolation_c1_sibson(
-        p, 
-        // Check out different smoothness factors
-        // 0.5,
-        // 2.0,
-        1.0,
-        |v| v.height, |_, v| v.gradient).unwrap());
 
-    let grid_c0 = get_interpolated_grid(&delaunay, |d, p| d.nn_interpolation(
-        p, |v| v.height).unwrap());
+    let data_barycentric = InterpolationRenderData::from_grid(
+        &Grid::from_delaunay_interpolation(&delaunay, |d, p| d.barycentric_interpolation(
+            p, |v| v.height).unwrap()));
 
-    let grid_farin = get_interpolated_grid(
-        &delaunay, |d, p| d.nn_interpolation_c1_farin(p, |v| v.height, |_, v| v.gradient).unwrap());
+    let data_c1 = InterpolationRenderData::from_grid(
+        &Grid::from_delaunay_interpolation(&delaunay, |d, p| d.nn_interpolation_c1_sibson(
+            p, 
+            // Check out different smoothness factors
+            // 0.5,
+            // 2.0,
+            // 1.0,
+            3.9,
+            |v| v.height, |_, v| v.gradient).unwrap()));
+    
+    let data_c0 = InterpolationRenderData::from_grid(
+        &Grid::from_delaunay_interpolation(&delaunay, |d, p| d.nn_interpolation(
+            p, |v| v.height).unwrap()));
 
+    let data_farin = InterpolationRenderData::from_grid(
+        &Grid::from_delaunay_interpolation(
+            &delaunay, |d, p| d.nn_interpolation_c1_farin(p, |v| v.height, |_, v| v.gradient).unwrap()));
+
+    let mut cur_data = None;
 
     let normals = get_normals(&delaunay);
 
@@ -167,17 +304,42 @@ fn main() {
                 WindowEvent::Key(Key::N, _, Press, _) => show_normals = !show_normals,
                 WindowEvent::Key(Key::G, _, Press, _) => {
                     grid_visibility = grid_visibility.next();
+                    cur_data = match grid_visibility {
+                        GridVisibility::None => None,
+                        GridVisibility::ShowC0 => Some(&data_c0),
+                        GridVisibility::ShowC1 => Some(&data_c1),
+                        GridVisibility::ShowFarin => Some(&data_farin),
+                        GridVisibility::ShowBarycentric => Some(&data_barycentric),
+                    };
+                    if let Some(data) = cur_data {
+                        grid_node.unlink();
+                        grid_node = window.scene_mut().add_mesh(data.mesh.clone(), Repeat::repeat(1.0));
+                        grid_node.enable_backface_culling(false);
+                    } else {
+                        grid_node.unlink();
+                    }
                     grid_visibility.print_description();
-                }
+                },
+                WindowEvent::Key(Key::T, _, Press, _) => {
+                    grid_render_type = grid_render_type.next();
+                    if grid_render_type == GridRenderType::Polygons {
+                        if let Some(data) = cur_data {
+                            grid_node.unlink();
+                            grid_node = window.scene_mut().add_mesh(data.mesh.clone(), Repeat::repeat(1.0));
+                            grid_node.enable_backface_culling(false);
+                        }
+                    } else {
+                        grid_node.unlink();
+                    }
+                },
                 WindowEvent::Key(Key::D, _, Press, _) => {
                     delaunay_visibility = delaunay_visibility.next();
                     if delaunay_visibility == DelaunayVisibility::All {
-                        node = window.scene_mut().add_mesh(mesh.clone(), Repeat::repeat(1.0));
-                        node.enable_backface_culling(false);
+                        delaunay_node = window.scene_mut().add_mesh(mesh.clone(), Repeat::repeat(1.0));
+                        delaunay_node.enable_backface_culling(false);
                     } else {
-                        node.unlink();
+                        delaunay_node.unlink();
                     }
-
                 }
                 _ => { },
             }
@@ -192,24 +354,13 @@ fn main() {
             }
         }
 
-        let color = Point3::new(0.5, 0.8, 0.2);
-        match grid_visibility {
-            GridVisibility::ShowC0 => {
-                for &(from, to) in &grid_c0 {
-                    window.draw_line(&from.to_point(), &to.to_point(), &color);
-                }
-            },
-            GridVisibility::ShowC1 => {
-                for &(from, to) in &grid_c1 {
-                    window.draw_line(&from.to_point(), &to.to_point(), &color);
-                }
-            },
-            GridVisibility::ShowFarin => {
-                for &(from, to) in &grid_farin {
+        if grid_render_type == GridRenderType::Lines {
+            if let Some(data) = cur_data {
+                let color = Point3::new(0.5, 0.8, 0.2);
+                for &(from, to) in &data.edges {
                     window.draw_line(&from.to_point(), &to.to_point(), &color);
                 }
             }
-            _ => { },
         }
 
         if show_normals {
@@ -230,43 +381,6 @@ fn get_normals(delaunay: &Delaunay) -> Vec<(Vector3<f32>, Vector3<f32>)> {
     }
     result
 }
-
-fn get_interpolated_grid<F>(
-    delaunay: &Delaunay, f: F) 
-    -> Vec<(Vector3<f32>, Vector3<f32>)> 
-    where F: Fn(&Delaunay, &Vector2<f64>) -> f64
-{
-    let mut result = Vec::new();
-    const GRID_SIZE: f64 = SAMPLE_REGION * 1.05;
-    const SCALE: f64 = 2.0 * GRID_SIZE / (GRID_SUBDIVISIONS as f64);
-    let grid_offset = Vector2::repeat(GRID_SIZE);
-    let transform = |v: Vector2<f64>| v * SCALE - grid_offset;
-
-    const OFFSET: f64 = -0.01;
-    let mut values = [[0.0; GRID_SUBDIVISIONS + 1]; GRID_SUBDIVISIONS + 1];
-    for x in 0 .. GRID_SUBDIVISIONS + 1 {
-        for y in 0 .. GRID_SUBDIVISIONS + 1 {
-            let pos = transform(Vector2::new(x as f64, y as f64));
-            let value = f(delaunay, &pos);
-            values[x][y] = value;
-        }
-    }
-    for x in 0 .. GRID_SUBDIVISIONS {
-        for y in 0 .. GRID_SUBDIVISIONS {
-            let from_val = values[x][y] + OFFSET;
-            let from_pos = transform(Vector2::new(x as f64, y as f64));
-            let from = VectorWithHeight::new(from_pos, from_val);
-            for &(to_x, to_y) in &[(x + 1, y), (x, y + 1)] {
-                let to_val = values[to_x][to_y] + OFFSET;
-                let to_pos = transform(Vector2::new(to_x as f64, to_y as f64));
-                let to = VectorWithHeight::new(to_pos, to_val);
-                result.push((Cast::from(from.position_3d()),
-                             Cast::from(to.position_3d())));
-            }
-        }
-    }
-    result
-} 
 
 fn generate_random_mesh() -> (Mesh, Delaunay) {
     let mut delaunay = generate_random_triangulation();
@@ -291,7 +405,7 @@ fn generate_random_triangulation() -> Delaunay {
 
     let mut rng = ::rand::thread_rng();
     let seed = ::noise::Seed::new(rng.gen());
-    let mut delaunay = Delaunay::new();
+    let mut delaunay = DelaunayTriangulation::with_walk_lookup();
 
     let range = Range::new(-SAMPLE_REGION, SAMPLE_REGION);
     for _ in 0 .. NUM_POINTS {

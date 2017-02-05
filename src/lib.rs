@@ -43,26 +43,17 @@ extern crate rand;
 mod testutils;
 
 mod traits;
-mod rtree;
 mod vector_traits;
 mod misc;
 mod boundingvolume;
 mod bigvec;
 mod exactpred;
-mod kernels;
-mod dcel;
-mod lookup;
 
+pub mod delaunay;
+pub mod kernels;
 pub mod primitives;
+pub mod rtree;
 
-mod delaunay;
-
-pub use dcel::{VertexHandle, EdgesIterator, VerticesIterator, FixedVertexHandle};
-pub use rtree::*;
-pub use delaunay::*;
 pub use traits::*;
 pub use boundingvolume::*;
-pub use kernels::*;
 pub use vector_traits::{VectorN, TwoDimensional, ThreeDimensional};
-pub use lookup::{LookupStructure, DelaunayLookupStructure, RTreeDelaunayLookup,
-                 TriangulationWalkLookup};

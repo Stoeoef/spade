@@ -14,7 +14,9 @@
 // limitations under the License.
 
 use utils::{Vertex};
-use spade::{RTree, DelaunayTriangulation, TrivialKernel};
+use spade::rtree::RTree;
+use spade::delaunay::DelaunayTriangulation;
+use spade::kernels::TrivialKernel;
 use cgmath::{Vector2};
 use glium::{DisplayBuild, Surface, VertexBuffer, Program, Display, DrawParameters};
 use glium::glutin::{Event, ElementState};
@@ -43,8 +45,8 @@ const FRAGMENT_SHADER_SRC: &'static str = r#"
 
 
 pub struct ExampleApplication {
-    pub tree: RTree<Vector2<f32>, Vector2<f32>>,
-    pub delaunay: DelaunayTriangulation<Vector2<f32>, Vector2<f32>, TrivialKernel>,
+    pub tree: RTree<Vector2<f32>>,
+    pub delaunay: DelaunayTriangulation<Vector2<f32>, TrivialKernel>,
     program: Program,
     pub edges_buffer: VertexBuffer<Vertex>,
     pub vertices_buffer: VertexBuffer<Vertex>,
@@ -66,7 +68,7 @@ impl ExampleApplication {
         let selection_buffer = VertexBuffer::new(&display, &[]).unwrap();
         ExampleApplication {
             tree: RTree::new(),
-            delaunay: Default::default(),
+            delaunay: DelaunayTriangulation::new(),
             display: display,
             program: program,
             edges_buffer: tree_edges_buffer,

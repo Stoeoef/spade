@@ -15,6 +15,7 @@
 
 //! This module offers a delaunay triangulation and various iterators for inspecting
 //! its structure. The main data structure is `DelaunayTriangulation`.
+
 use num::{One, Float, Zero, one, zero};
 use traits::{SpatialObject, HasPosition2D, SpadeFloat, HasPosition};
 use vector_traits::{VectorN, VectorNExtensions, TwoDimensional, ThreeDimensional};
@@ -22,10 +23,8 @@ use kernels::{DelaunayKernel, TrivialKernel, FloatKernel};
 use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
 use std::collections::{HashSet};
-use dcel::{DCEL, VertexHandle, EdgeHandle, FaceHandle, EdgesIterator, VerticesIterator,
-           FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle, VertexRemovalResult, FacesIterator};
-use lookup::{LookupStructure, DelaunayLookupStructure, VertexEntry, 
-             RTreeDelaunayLookup, TriangulationWalkLookup};
+
+use delaunay::*;
 
 pub type FloatDelaunayTriangulation<T, L> = DelaunayTriangulation<T, FloatKernel, L>;
 pub type IntDelaunayTriangulation<T, L> = DelaunayTriangulation<T, TrivialKernel, L>;
@@ -79,8 +78,8 @@ fn calculate_convex_polygon_double_area<V>(
 /// extern crate nalgebra;
 /// extern crate spade;
 ///
-/// use nalgebra::{Vector2};
-/// use spade::{FloatDelaunayTriangulation};
+/// use nalgebra::Vector2;
+/// use spade::delaunay::FloatDelaunayTriangulation;
 ///
 /// # fn main() {
 ///   let mut delaunay = FloatDelaunayTriangulation::with_walk_lookup();
@@ -181,7 +180,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// ```
     /// # extern crate nalgebra;
     /// # extern crate spade;
-    /// use spade::{DelaunayTriangulation, TrivialKernel, TriangulationWalkLookup};
+    /// use spade::delaunay::{DelaunayTriangulation, TriangulationWalkLookup};
+    /// use spade::kernels::TrivialKernel;
     /// # fn main() {
     /// let mut triangulation = DelaunayTriangulation::<_, TrivialKernel, TriangulationWalkLookup<_>>::new();
     /// # triangulation.insert(nalgebra::Vector2::new(332f64, 123f64));
@@ -445,11 +445,11 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Returns information about the location of a point in a triangulation.
-    pub fn get_position_in_triangulation(
+    pub fn locate(
         &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
-        use PositionInTriangulation::*;
+        use self::PositionInTriangulation::*;
 
-        match self.get_position_in_triangulation_fixed(point) {
+        match self.locate_with_hint_option_fixed(point, None) {
             NoTriangulationPresent => NoTriangulationPresent,
             InTriangle(face) => InTriangle(self.s.face(face)),
             OutsideConvexHull(edge) => OutsideConvexHull(self.s.edge(edge)),
@@ -458,18 +458,18 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
     }
 
-    fn get_position_in_triangulation_fixed(&self, point: &V::Vector) -> 
+    fn locate_with_hint_option_fixed(&self, point: &V::Vector, hint: Option<FixedVertexHandle>) -> 
         PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
         if self.all_points_on_line {
             // TODO: We might want to check if the point is on the line or already contained
             PositionInTriangulation::NoTriangulationPresent
         } else {
-            let start = self.lookup.find_close_handle(point).unwrap_or(0);
-            self.get_position_in_triangulation_from_start_point_fixed(start, point) 
+            let start = hint.unwrap_or_else(|| self.lookup.find_close_handle(point).unwrap_or(0));
+            self.locate_with_hint_fixed(point, start) 
         }
     }
 
-    fn get_position_in_triangulation_from_start_point_fixed(&self, start: FixedVertexHandle, point: &V::Vector) -> 
+    fn locate_with_hint_fixed(&self, point: &V::Vector, start: FixedVertexHandle) -> 
         PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> 
     {
         let mut cur_edge = self.s.vertex(start).out_edge().expect("Cannot start search with an isolated vertex");
@@ -530,8 +530,17 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// Returns a handle to the new vertex. Use this handle with
     /// `DelaunayTriangulation::handle(..)` to refer to the vertex.
     pub fn insert(&mut self, t: V) -> FixedVertexHandle {
+        self.insert_with_hint_option(t, None)
+    }
+
+    pub fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
+        self.insert_with_hint_option(t, Some(hint))
+    }
+
+
+    fn insert_with_hint_option(&mut self, t: V, hint: Option<FixedVertexHandle>) -> FixedVertexHandle {
         let pos = t.position();
-        let position_in_triangulation = self.get_position_in_triangulation_fixed(&pos);
+        let position_in_triangulation = self.locate_with_hint_option_fixed(&pos, hint);
         let insertion_result = match position_in_triangulation {
             PositionInTriangulation::OutsideConvexHull(edge) => {
                 Result::Ok(self.insert_outside_convex_hull(edge, t))
@@ -588,6 +597,16 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             }
         }
     }
+
+    /// Attempts to remove a vertex from the triangulation.
+    pub fn locate_and_remove(&mut self, point: &V::Vector) -> Option<V> {
+        use self::PositionInTriangulation::*;
+        match self.locate_with_hint_option_fixed(point, None) {
+            OnPoint(handle) => Some(self.remove(handle)),
+            _ => None,
+        }
+    }
+
 
     /// Removes a vertex from the triangulation.
     ///
@@ -772,12 +791,10 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 }
 
-impl <V, K, L> DelaunayTriangulation<V, K, L>
+impl <V, K> DelaunayTriangulation<V, K, RTreeDelaunayLookup<V::Vector>>
     where V: HasPosition2D,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          V::Vector: TwoDimensional,
-          L: DelaunayLookupStructure<V::Vector> + 
-    LookupStructure<VertexEntry<V::Vector>> {
+          V::Vector: TwoDimensional {
 
     /// Checks if the triangulation contains an object with a given coordinate.
     pub fn lookup(&self, point: &V::Vector) -> Option<VertexHandle<V>> {
@@ -817,10 +834,13 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
           L: DelaunayLookupStructure<V::Vector>,
           V::Vector: TwoDimensional {
 
+    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
+        self.s.vertex(handle)
+    }    
+
     /// Returns a mutable reference to the vertex data referenced by a 
-    /// `FixedVertexHandle`. May panic if the handle was not obtained from this
-    /// triangulation.
-    pub fn handle_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
+    /// `FixedVertexHandle`.
+    pub fn vertex_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
         self.s.vertex_mut(handle)
     }
 
@@ -843,6 +863,42 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
           L: DelaunayLookupStructure<V::Vector>,
           V::Vector: TwoDimensional
 {
+    pub fn barycentric_interpolation<F> (&self, point: &V::Vector, f: F) 
+                                         -> Option<<V::Vector as VectorN>::Scalar> 
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar {
+        let vertices = match self.locate(point) {
+            PositionInTriangulation::NoTriangulationPresent => return None,
+            PositionInTriangulation::OnPoint(v) => vec![v],
+            PositionInTriangulation::OnEdge(e) => vec![e.from(), e.to()],
+            PositionInTriangulation::InTriangle(f) => {
+                let vs = f.as_triangle();
+                vec![vs[0], vs[1], vs[2]]
+            }
+            PositionInTriangulation::OutsideConvexHull(e) => vec![e.from(), e.to()],
+        };
+        if vertices.len() == 1 {
+            Some(f(&*vertices[0]))
+        } else if vertices.len() == 2 {
+            let p0 = vertices[0].position();
+            let p1 = vertices[1].position();
+            let one = <<V::Vector as VectorN>::Scalar>::one();
+            let edge = SimpleEdge::new(p0, p1);
+            let w1 = ::clamp::clamp(zero(), edge.project_point(point), one);
+            let w0 = one - w1;
+            Some(w1 * f(&*vertices[1]) + w0 * f(&*vertices[0]))
+        } else {
+            let triangle = ::primitives::SimpleTriangle::new(
+                vertices[0].position(),
+                vertices[1].position(),
+                vertices[2].position());
+            let b_coords = triangle.barycentric_interpolation(point);
+            let w0 = f(&*vertices[0]);
+            let w1 = f(&*vertices[1]);
+            let w2 = f(&*vertices[2]);
+            Some(w0 * b_coords[0] + w1 * b_coords[1] + w2 * b_coords[2])
+        }
+    }
+    
 
     /// Performs a natural neighbor interpolation for a given position.
     ///
@@ -856,7 +912,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// # extern crate spade;
     ///
     /// # use nalgebra::{Vector2};
-    /// use spade::{FloatDelaunayTriangulation, HasPosition};
+    /// use spade::HasPosition;
+    /// use spade::delaunay::{FloatDelaunayTriangulation};
     ///
     /// struct PointWithHeight {
     ///   point: Vector2<f64>,
@@ -966,7 +1023,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     fn get_natural_neighbors(&self, position: &V::Vector) -> Vec<FixedVertexHandle> {
-        match self.get_position_in_triangulation_fixed(position) {
+        match self.locate_with_hint_option_fixed(position, None) {
             PositionInTriangulation::InTriangle(face) => {
                 let vs = self.s.face(face).as_triangle();
                 self.inspect_flips(vec![(vs[0].fix(), vs[2].fix()), (vs[2].fix(), vs[1].fix()), 
@@ -1028,6 +1085,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     fn inspect_flips(&self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, position: &V::Vector) -> Vec<FixedVertexHandle> {
+        // TODO: edges should store edge references instead of tuples to accomodate
+        // the underlying dcel structure better.
         let mut result = Vec::new();
         while let Some((h0, h1)) = edges.pop() {
             if let Some(h2) = self.get_left_triangle((h0, h1)) {
@@ -1142,7 +1201,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// # extern crate spade;
     /// 
     /// # use nalgebra::{Vector2, Vector3};
-    /// use spade::{FloatDelaunayTriangulation, HasPosition};
+    /// use spade::delaunay::FloatDelaunayTriangulation;
+    /// use spade::HasPosition;
     ///
     /// struct PointWithHeight {
     ///   point: Vector2<f64>,
@@ -1332,7 +1392,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// # extern crate spade;
     /// 
     /// # use nalgebra::{Vector2, Vector3};
-    /// use spade::{FloatDelaunayTriangulation, HasPosition};
+    /// use spade::delaunay::FloatDelaunayTriangulation;
+    /// use spade::HasPosition;
     ///
     /// struct PointWithHeight {
     ///   point: Vector2<f64>,
@@ -1598,7 +1659,7 @@ mod test {
             d.insert(Vector2::new(i as f64, 0.));
         }
         
-        assert_eq!(d.get_position_in_triangulation(&Vector2::new(10., 12.)),
+        assert_eq!(d.locate(&Vector2::new(10., 12.)),
                    PositionInTriangulation::NoTriangulationPresent);
 
         for i in -10 .. 10 {

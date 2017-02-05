@@ -22,7 +22,10 @@ extern crate glium;
 mod utils;
 use utils::exampleapplication::ExampleApplication;
 use utils::{Vertex, get_color_for_depth, push_rectangle, push_cross};
-use spade::{RTree, RTreeNode, SpadeNum, DelaunayKernel, DelaunayTriangulation, HasPosition};
+use spade::rtree::{RTree, RTreeNode};
+use spade::{SpadeNum, HasPosition};
+use spade::delaunay::{DelaunayTriangulation};
+use spade::kernels::DelaunayKernel;
 use cgmath::{Vector2, Vector3, BaseFloat, BaseNum};
 use cgmath::conv::*;
 use rand::{Rand, XorShiftRng, SeedableRng};
@@ -51,7 +54,7 @@ impl std::fmt::Display for LookupMode {
     }
 }
 
-fn get_tree_edges(tree: &RTree<Vector2<f32>, Vector2<f32>>, buffer: &mut Vec<Vertex>) -> Vec<Vertex> {
+fn get_tree_edges(tree: &RTree<Vector2<f32>>, buffer: &mut Vec<Vertex>) -> Vec<Vertex> {
     let mut vertices = Vec::new();
     let vertex_color = Vector3::new(0.0, 0.0, 1.0);
     let mut to_visit = vec![tree.root()];
@@ -70,8 +73,8 @@ fn get_tree_edges(tree: &RTree<Vector2<f32>, Vector2<f32>>, buffer: &mut Vec<Ver
     vertices
 }
 
-fn get_delaunay_edges<K: DelaunayKernel<f32>>(del: &mut DelaunayTriangulation<Vector2<f32>, Vector2<f32>, K>,
-                                         edges_buffer: &mut Vec<Vertex>) {
+fn get_delaunay_edges<K: DelaunayKernel<f32>>(del: &mut DelaunayTriangulation<Vector2<f32>, K>,
+                                              edges_buffer: &mut Vec<Vertex>) {
     let color = [0.1, 0.1, 0.2];
     for edge in del.edges() {
         let from = edge.from().position();

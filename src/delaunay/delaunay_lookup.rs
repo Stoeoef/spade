@@ -1,21 +1,9 @@
-use traits::{HasPosition, SpatialObject};
+use traits::HasPosition;
 use vector_traits::VectorN;
 use rtree::RTree;
-use dcel::FixedVertexHandle;
+use delaunay::FixedVertexHandle;
 
 pub type RTreeDelaunayLookup<V> = RTree<VertexEntry<V>>;
-
-pub trait SpatialLookupStructure<T: SpatialObject> : LookupStructure<T> {
-    fn nearest_neighbor(&self, point: &T::Vector) -> Option<&T>;
-}
-
-pub trait LookupStructure<T: SpatialObject> {
-    
-    fn insert(&mut self, object: T);
-    fn lookup_and_remove(&mut self, query_point: &T::Vector) -> Option<T>;
-    fn lookup(&self, point: &T::Vector) -> Option<&T>;
-    fn lookup_mut(&mut self, point: &T::Vector) -> Option<&mut T>;
-}
 
 pub trait DelaunayLookupStructure<T: VectorN> : Default + Clone {
 

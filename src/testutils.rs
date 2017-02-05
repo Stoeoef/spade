@@ -21,7 +21,6 @@ use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
 use traits::SpadeNum;
-use lookup::LookupStructure;
 
 pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);

@@ -20,7 +20,6 @@ use vector_traits::{VectorN, VectorNExtensions};
 use num::{zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
-use lookup::{LookupStructure};
 
 #[doc(hidden)]
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -176,7 +175,7 @@ impl <'a, T> RTreeNodeIterator<'a, T>
     where T: SpatialObject {
 
     fn new(node: &'a RTreeNode<T>) -> RTreeNodeIterator<'a, T> {
-        use RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
+        use self::RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
         match node {
             &RTreeNode::Leaf(ref b) => LeafIterator(::std::iter::once(b)),
             &RTreeNode::DirectoryNode(ref data) => 
@@ -190,7 +189,7 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T>
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        use RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
+        use self::RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
         match self {
             &mut LeafIterator(ref mut once) => once.next(),
             &mut DirectoryNodeIterator(ref mut iter) => iter.next(),
@@ -984,7 +983,7 @@ pub enum RTreeNode<T>
 /// # extern crate spade;
 ///
 /// use nalgebra::{Vector4};
-/// use spade::{RTree, LookupStructure};
+/// use spade::rtree::RTree;
 ///
 /// # fn main() {
 ///   let mut tree = RTree::new();
@@ -997,7 +996,7 @@ pub enum RTreeNode<T>
 /// extern crate cgmath; // Alternatively: use nalgebra or [f32; 2]
 /// extern crate spade;
 ///
-/// use spade::{RTree, LookupStructure};
+/// use spade::rtree::RTree;
 /// use cgmath::Vector2;
 ///
 /// fn main() {
@@ -1144,46 +1143,11 @@ impl<T> RTree<T>
 
 impl<T> RTree<T> 
     where T: SpatialObject {
-
-}
-
-impl <T> RTree<T>
-    where T: SpatialObject + PartialEq {
-
-    /// Removes an object from the tree.
-    ///
-    /// Locates and removes an object from the tree, returning
-    /// `true` if the element could be removed.
-    /// If multiple object's are equal to `to_remove`, only one
-    /// will be deleted.
-    pub fn remove(&mut self, obj: &T) -> bool {
-        if self.size == 0 {
-            return false;
-        }
-        let result = self.root.remove(obj);
-        if self.root.children.is_empty() {
-            self.root.depth = 1;
-        }
-        if result {
-            self.size -= 1;
-        }
-        result
-    }
-
-    /// Returns `true` if a given object is contained in this tree.
-    pub fn contains(&self, obj: &T) -> bool {
-        self.root.contains(obj)
-    }
-}
-
-impl <T> LookupStructure<T> for RTree<T>
-    where T: SpatialObject {
-
     /// Searches for an element at a given position.
     ///
     /// If `query_point` is contained by one object in the tree, this object will be returned.
     /// If multiple objects contain the point, only one of them will be returned.
-    fn lookup(&self, query_point: &T::Vector) -> Option<&T> {
+    pub fn lookup(&self, query_point: &T::Vector) -> Option<&T> {
         if self.size > 0 {
             self.root.lookup(query_point)
         } else {
@@ -1196,7 +1160,7 @@ impl <T> LookupStructure<T> for RTree<T>
     /// If `query_point` is contained by multiple objects in the tree,
     /// one of them will be returned.
     /// *Do not change the object's minimal bounding box*.
-    fn lookup_mut(&mut self, query_point: &T::Vector) -> Option<&mut T> {
+    pub fn lookup_mut(&mut self, query_point: &T::Vector) -> Option<&mut T> {
         if self.size > 0 {
             self.root.lookup_mut(query_point)
         } else {
@@ -1208,7 +1172,7 @@ impl <T> LookupStructure<T> for RTree<T>
     ///
     /// This will require `O(log(n))` operations on average, where n is the number of
     /// elements contained in the tree.
-    fn insert(&mut self, t: T) {
+    pub fn insert(&mut self, t: T) {
         let mut state = InsertionState::new(self.root.depth + 1);
         let mut insertion_stack = vec![RTreeNode::Leaf(t)];
         loop {
@@ -1241,7 +1205,7 @@ impl <T> LookupStructure<T> for RTree<T>
     /// If the given point is contained by one object in the tree, this object is being removed
     /// and returned. If the point is contained by multiple objects, only one of them is removed and
     /// returned.
-    fn lookup_and_remove(&mut self, query_point: &T::Vector) -> Option<T> {
+    pub fn lookup_and_remove(&mut self, query_point: &T::Vector) -> Option<T> {
         if self.size > 0 {
             let result = self.root.lookup_and_remove(query_point);
             if result.is_some() {
@@ -1257,6 +1221,35 @@ impl <T> LookupStructure<T> for RTree<T>
     }
 }
 
+impl <T> RTree<T>
+    where T: SpatialObject + PartialEq {
+
+    /// Removes an object from the tree.
+    ///
+    /// Locates and removes an object from the tree, returning
+    /// `true` if the element could be removed.
+    /// If multiple object's are equal to `to_remove`, only one
+    /// will be deleted.
+    pub fn remove(&mut self, obj: &T) -> bool {
+        if self.size == 0 {
+            return false;
+        }
+        let result = self.root.remove(obj);
+        if self.root.children.is_empty() {
+            self.root.depth = 1;
+        }
+        if result {
+            self.size -= 1;
+        }
+        result
+    }
+
+    /// Returns `true` if a given object is contained in this tree.
+    pub fn contains(&self, obj: &T) -> bool {
+        self.root.contains(obj)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{RTree};
@@ -1265,7 +1258,6 @@ mod test {
     use cgmath::{Vector2, InnerSpace};
     use num::Float;
     use testutils::*;
-    use lookup::LookupStructure;
 
     #[test]
     fn test_tree_with_integral_vectors() {
