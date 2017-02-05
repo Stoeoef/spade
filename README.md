@@ -18,6 +18,12 @@ The triangulation also implements natural neighbor interpolation ([wikipedia](ht
 
 All structures are purely written in (safe) rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
 
+# Project state
+The next goal is to release a 1.0 version, there's already an appropriate milestone for it. Check its progress to see if we're there yet.
+Also, there is a small user guide being produced right now which should be a helpful ressource when starting to use the library.
+
+The algorithms and features for the 1.0 version are already there, the public interface will change though (mostly due to renaming / repackaging).
+
 # Documentation
 The documentation can be found under [docs.rs](https://docs.rs/spade/)
 
@@ -27,7 +33,7 @@ Add this to your `Cargo.toml`:
 spade = "0.3.*"
 ```
 # Feedback
-Do you miss a feature? Many features may be easy to implement, the crate's main author might just have missed that use case. Please do post an issue on GitHub. Please do report bugs as well. If you're in for an adventure, pull requests of any kind are very welcome.
+Do you miss a feature? Many features may be easy to implement, I might just have missed that use case. Please do post an issue on GitHub. If you think there's a feature missing and you are interested to implement it yourself, don't be shy to mention it - I'd be happy to help you getting started. Just post an appropriate issue on GitHub.
 
 # Examples
 _Note: If you have opened this on docs.rs, you won't see any images. Use the README.md on the GitHub page._
