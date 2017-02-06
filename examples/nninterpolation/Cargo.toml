@@ -4,7 +4,6 @@ version = "0.1.0"
 
 [[bin]]
 name = "nninterpolation"
-path = "nninterpolation.rs"
 
 [dependencies]
 nalgebra = "0.9.0"
