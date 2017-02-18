@@ -16,8 +16,7 @@
 /*
  * This example showcases spade's interpolation features.
  * Press h for help.
- * See ./interpolation.rs for interpo
-lation related code and
+ * See ./interpolation.rs for interpolation related code and
  * ./delaunay_creation.rs for code related to the generation
  * of the randomized triangulation.
  */

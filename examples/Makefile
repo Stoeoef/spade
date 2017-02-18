@@ -2,12 +2,12 @@ all: build
 
 build:
 	(cd nninterpolation && cargo build)
-	(cd rtreevis && cargo build)
+	(cd interactivedemo && cargo build)
 
 update:
 	(cd nninterpolation && cargo update)
-	(cd rtreevis && cargo update)
+	(cd interactivedemo && cargo update)
 
 clean:
 	(cd nninterpolation && cargo clean)
-	(cd rtreevis && cargo clean)
+	(cd interactivedemo && cargo clean)

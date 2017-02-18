@@ -13,30 +13,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * This example is an interactive demo showing the features of spade's delaunay
+ * triangulation and R-Tree. Press h for help.
+ */
+
 extern crate spade;
 extern crate rand;
 extern crate cgmath;
 #[macro_use]
 extern crate glium;
 
-mod utils;
-use utils::exampleapplication::ExampleApplication;
-use utils::{Vertex, get_color_for_depth, push_rectangle, push_cross};
-use spade::rtree::{RTree, RTreeNode};
-use spade::{SpadeNum, HasPosition};
+mod graphics;
+use graphics::{RenderData};
+use spade::rtree::{RTree};
+use spade::{SpadeNum};
 use spade::delaunay::{DelaunayTriangulation};
-use spade::kernels::DelaunayKernel;
-use cgmath::{Vector2, Vector3, BaseFloat, BaseNum};
-use cgmath::conv::*;
+use spade::kernels::{FloatKernel};
+use cgmath::{Vector2, BaseFloat, BaseNum};
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-use glium::{VertexBuffer};
+use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 
+type ExampleTriangulation = DelaunayTriangulation<Vector2<f64>, FloatKernel>;
+
 #[derive(Clone, Copy)]
-enum LookupMode {
+pub enum LookupMode {
     Nearest,
     NearestN,
     InCircle,
@@ -54,62 +59,42 @@ impl std::fmt::Display for LookupMode {
     }
 }
 
-fn get_tree_edges(tree: &RTree<Vector2<f32>>, buffer: &mut Vec<Vertex>) -> Vec<Vertex> {
-    let mut vertices = Vec::new();
-    let vertex_color = Vector3::new(0.0, 0.0, 1.0);
-    let mut to_visit = vec![tree.root()];
-    while let Some(cur) = to_visit.pop() {
-        for child in cur.children().iter() {
-            match child {
-                &RTreeNode::Leaf(ref point) => vertices.push(Vertex::new(
-                    array2(*point), array3(vertex_color.clone()))),
-                &RTreeNode::DirectoryNode(ref data) => {
-                    to_visit.push(data);
-                    push_rectangle(buffer, &data.mbr(), &get_color_for_depth(data.depth()));
-                }                
-            }
-        }
-    }
-    vertices
-}
-
-fn get_delaunay_edges<K: DelaunayKernel<f32>>(del: &mut DelaunayTriangulation<Vector2<f32>, K>,
-                                              edges_buffer: &mut Vec<Vertex>) {
-    let color = [0.1, 0.1, 0.2];
-    for edge in del.edges() {
-        let from = edge.from().position();
-        let to = edge.to().position();
-        edges_buffer.push(Vertex::new(array2(from), color));
-        edges_buffer.push(Vertex::new(array2(to), color));
-    }
-}
-
 fn main() {
-    let mut app = ExampleApplication::new();
+
+    let display = glium::glutin::WindowBuilder::new()
+        .with_dimensions(800, 800)
+        .with_title("Interactive Demo".to_string())
+        .build_glium()
+        .unwrap();
+
+    let mut delaunay = DelaunayTriangulation::with_tree_lookup();
+    let mut rtree = RTree::new();
+
+    let mut render_data = RenderData::new(&display);
 
     let mut last_point = Vector2::new(0., 0.);
     let mut lookup_mode = LookupMode::Nearest;
-    let mut draw_tree_nodes = true;
+    let mut draw_tree_nodes = false;
 
-    println!("RTree Demo");
+    println!("Interactive Demo");
     print_help();
     loop {
-        let events: Vec<_> = app.display.poll_events().collect();
+        let events: Vec<_> = display.poll_events().collect();
 
         let mut dirty = false;
         for event in events.into_iter() {
-            if app.default_handle_event(&event) {
-                return;
-            }
             match event {
+                Event::Refresh => render_data.draw(&display),
+                Event::Closed => return,
                 Event::KeyboardInput(ElementState::Pressed, _, Some(key)) => {
                     match key {
+                        VirtualKeyCode::Escape => return,
                         VirtualKeyCode::H => {
                             print_help();
                         },
                         VirtualKeyCode::F => {
                             draw_tree_nodes = !draw_tree_nodes;
-                            update_buffers(&mut app, draw_tree_nodes);
+                            render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
                             dirty = true;
                         },
                         VirtualKeyCode::M => {
@@ -124,102 +109,92 @@ fn main() {
                         VirtualKeyCode::A | VirtualKeyCode::B => {
                             // Insert some random points
                             let num = if key == VirtualKeyCode::A { 10usize } else { 100 };
-                            let s = app.tree.size() as u32;
+                            let s = rtree.size() as u32;
                             let seed = [s, s * 35, s + 124, s * 91];
                             let new_points = random_points_with_seed(num, seed);
                             for point in new_points.into_iter() {
-                                app.tree.insert(point);
+                                delaunay.insert(point);
+                                rtree.insert(point);
                             }
-                            update_buffers(&mut app, draw_tree_nodes);
+                            render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
                             dirty = true;
                         },
                         _ => (),
                     }
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
-                    app.tree.insert(last_point);
-                    app.delaunay.insert(last_point);
-                    update_buffers(&mut app, draw_tree_nodes);
+                    rtree.insert(last_point);
+                    delaunay.insert(last_point);
+                    render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
                     dirty = true;
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
-                    let nn = app.tree.nearest_neighbor(&last_point).cloned();
+                    let nn = rtree.nearest_neighbor(&last_point).cloned();
                     if let Some(p) = nn {
-                        app.tree.remove(&p);
-                        let handle = app.delaunay.lookup(&p).unwrap().fix();
-                        app.delaunay.remove(handle);
-                        update_buffers(&mut app, draw_tree_nodes);
-                        update_selection(&mut app, last_point, lookup_mode);
+                        rtree.remove(&p);
+                        let handle = delaunay.lookup(&p).unwrap().fix();
+                        delaunay.remove(handle);
+                        render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
+                        let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
+                        render_data.update_selection(&display, &selection);
                         dirty = true;
                     }
                 },                    
                 Event::MouseMoved(x, y) => {
-                    let (w, h) = app.display.get_framebuffer_dimensions();
+                    let (w, h) = display.get_framebuffer_dimensions();
                     // Transform x, y into the range [-1 , 1]
                     let y = h as i32 - y;
-                    let x = (x as f32 / w as f32) * 2. - 1.;
-                    let y = (y as f32 / h as f32) * 2. - 1.;
+                    let x = (x as f64 / w as f64) * 2. - 1.;
+                    let y = (y as f64 / h as f64) * 2. - 1.;
                     last_point = Vector2::new(x, y);
-                    update_selection(&mut app, last_point, lookup_mode);
+                    let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
+                    render_data.update_selection(&display, &selection);
                     dirty = true;
                 },
                 _ => (),
             }
         }
         if dirty {
-            app.draw();
+            render_data.draw(&display);
         }
     }
 }
 
-fn update_buffers(app: &mut ExampleApplication, draw_tree_nodes: bool) {
-    let mut edges = Vec::new();
-    let vertices = get_tree_edges(&app.tree, &mut edges);
-    if !draw_tree_nodes {
-        edges.clear();
-    }
-    get_delaunay_edges(&mut app.delaunay, &mut edges);
-    app.edges_buffer = VertexBuffer::new(&app.display, &edges).unwrap();
-    app.vertices_buffer = VertexBuffer::new(&app.display, &vertices).unwrap();
-}
-
-fn update_selection(app: &mut ExampleApplication, point: Vector2<f32>, lookup_mode: LookupMode) {
-    let color = Vector3::new(1.0, 0.0, 0.0);
-    const LOOKUP_RADIUS2: f32 = 0.2 * 0.2;
+fn get_selected_vertices(tree: &RTree<Vector2<f64>>, point: Vector2<f64>,
+                         lookup_mode: LookupMode) -> Vec<Vector2<f64>> {
+    
+    const LOOKUP_RADIUS2: f64 = 0.2 * 0.2;
     const N: usize = 10;
-    let mut vertices = Vec::new();
     let mut points = Vec::new();
     match lookup_mode {
         LookupMode::Nearest => {
             points.extend(
-                app.tree.nearest_neighbor(&point).iter().cloned());
+                tree.nearest_neighbor(&point).iter().cloned());
         },
         LookupMode::InCircle => {
-            points.extend(app.tree.lookup_in_circle(
+            points.extend(tree.lookup_in_circle(
                 &point, &LOOKUP_RADIUS2).iter().cloned());
         },
         LookupMode::NearestN => {
-            points.extend(app.tree.nearest_n_neighbors(
+            points.extend(tree.nearest_n_neighbors(
                 &point, N));
         },
         LookupMode::CloseN => {
-            points.extend(app.tree.close_neighbor(&point).iter().cloned());
+            points.extend(tree.close_neighbor(&point).iter().cloned());
         },
     }
-    for point in points.iter().cloned() {
-        push_cross(&mut vertices, point, &color);
-    }
-
-    app.selection_buffer = VertexBuffer::new(&app.display, &vertices).unwrap();
+    points
 }
-
 
 fn print_help() {
     println!("H - print this help dialog");
-    println!("F - toggle draw tree nodes");
+    println!("F - toggle drawing of r-tree nodes");
     println!("M - change lookup mode");
     println!("A - add 10 random points.");
     println!("B - add 100 random points.");
+    println!("--------------------------");
+    println!("Left click: Add single point.");
+    println!("Right click: Delete closest point.");
 }
 
 pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
