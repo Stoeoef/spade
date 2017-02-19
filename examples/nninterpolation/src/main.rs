@@ -12,9 +12,16 @@
  * See ./interpolation.rs for interpolation related code and
  * ./delaunay_creation.rs for code related to the generation
  * of the randomized triangulation.
+ *
+ * *Note*: This demo uses kiss3d which uses an old version of
+ * nalgebra. This nalgebra version is incompatible with spade, that's
+ * the reason why we're using cgmath points in the delaunay triangulation
+ * and nalgebra points for the rendering in kiss3d. Once kiss3d updates,
+ * only nalgebra will be used.
  */
 extern crate kiss3d;
 extern crate nalgebra;
+extern crate cgmath;
 extern crate rand;
 extern crate noise;
 extern crate spade;
@@ -24,7 +31,12 @@ mod interpolation;
 mod constants;
 mod delaunay_creation;
 
-use nalgebra::{Vector3, Point3, Cast, Repeat};
+use nalgebra::{Repeat, Cast};
+use nalgebra as na;
+
+use cgmath::EuclideanSpace;
+use cgmath as cg;
+
 use kiss3d::window::Window;
 use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
@@ -41,9 +53,13 @@ use interpolation::interpolation_methods::{BarycentricInterpolation,
 use delaunay_creation::Delaunay;
 
 struct InterpolationRenderData {
-    edges: Vec<(Point3<f32>, Point3<f32>)>,
+    edges: Vec<(na::Point3<f32>, na::Point3<f32>)>,
     mesh: Rc<RefCell<Mesh>>,
     title: &'static str,
+}
+
+pub fn cg_vec_to_na<S: cg::BaseNum + na::BaseNum>(vec: cg::Vector3<S>) -> na::Point3<S> {
+    na::Point3::new(vec.x, vec.y, vec.z)
 }
 
 impl InterpolationRenderData {
@@ -188,7 +204,7 @@ fn main() {
         if delaunay_visibility == DelaunayVisibility::All 
             || delaunay_visibility == DelaunayVisibility::OnlyLines
         {
-            let color = Point3::new(0.8, 0.5, 0.2);
+            let color = na::Point3::new(0.8, 0.5, 0.2);
             for &(from, to) in &delaunay_lines {
                 window.draw_line(&from, &to, &color);
             }
@@ -196,7 +212,7 @@ fn main() {
 
         if grid_render_type == GridRenderType::Lines {
             if let Some(mesh) = interpolation_meshes.get(cur_interpolation_mesh_index) {
-                let color = Point3::new(0.5, 0.8, 0.2);
+                let color = na::Point3::new(0.5, 0.8, 0.2);
                 for &(from, to) in &mesh.edges {
                     window.draw_line(&from, &to, &color);
                 }
@@ -204,7 +220,7 @@ fn main() {
         }
 
         if show_normals {
-            let color = Point3::new(0.5, 0.5, 1.0);
+            let color = na::Point3::new(0.5, 0.5, 1.0);
             for &(from, to) in &normals {
                 window.draw_line(&from, &to, &color);
             }
@@ -212,22 +228,23 @@ fn main() {
     }
 }
 
-fn get_normals(delaunay: &Delaunay) -> Vec<(Point3<f32>, Point3<f32>)> {
+fn get_normals(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)> {
     let mut result = Vec::new();
     for v in delaunay.vertices() {
         let n = v.normal;
         let p = v.position_3d();
-        result.push((Cast::from(p), Cast::from((p - n * 0.3))));
+        result.push((Cast::from(cg_vec_to_na(p.to_vec())),
+                     Cast::from(cg_vec_to_na((p.to_vec() - n * 0.3)))));
     }
     result
 }
 
-fn extract_edges(delaunay: &Delaunay) -> Vec<(Point3<f32>, Point3<f32>)> {
-    let offset = Vector3::new(0., 0., -0.01);
+fn extract_edges(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)> {
+    let offset = cg::Vector3::new(0., 0., -0.01);
     let mut lines = Vec::new();
     for edge in delaunay.edges() {
-        let from_pos = Cast::from(edge.from().position_3d() + offset);
-        let to_pos = Cast::from(edge.to().position_3d() + offset);
+        let from_pos = Cast::from(cg_vec_to_na(edge.from().position_3d().to_vec() + offset));
+        let to_pos = Cast::from(cg_vec_to_na(edge.to().position_3d().to_vec() + offset));
         lines.push((from_pos, to_pos));
     }
     lines
@@ -238,14 +255,14 @@ fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
     let mut coords = Vec::new();
     let mut faces = Vec::new();
     for vertex in delaunay.vertices() {
-        coords.push(Cast::from(vertex.position_3d()));
+        coords.push(Cast::from(cg_vec_to_na(vertex.position_3d().to_vec())));
     }
     for triangle in delaunay.triangles() {
         let triangle = triangle.as_triangle();
         let h0 = triangle[0].fix();
         let h1 = triangle[1].fix();
         let h2 = triangle[2].fix();
-        faces.push(Cast::from(Point3::new(h0, h1, h2)));
+        faces.push(Cast::from(na::Point3::new(h0, h1, h2)));
     }
     return Mesh::new(coords, faces, None, None, false);
 }

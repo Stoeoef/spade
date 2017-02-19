@@ -6,26 +6,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use nalgebra::{Point2, Point3, Cast};
-
+use cgmath::{EuclideanSpace};
+use cgmath as cg;
+use nalgebra as na;
 use delaunay_creation::{Delaunay, PointWithHeight};
 use constants::*;
+use ::cg_vec_to_na;
 
 // Interpolation Methods ------------------------------
 pub trait InterpolationMethod {
-    fn interpolate(d: &Delaunay, point: Point2<f64>) -> f64;
+    fn interpolate(d: &Delaunay, point: cg::Point2<f64>) -> f64;
     fn title() -> &'static str;
 }
 
 pub mod interpolation_methods {
     use super::InterpolationMethod;
     use ::delaunay_creation::Delaunay;
-    use nalgebra::Point2;
+    use cgmath as cg;
 
     pub struct BarycentricInterpolation;
 
     impl InterpolationMethod for BarycentricInterpolation {
-        fn interpolate(delaunay: &Delaunay, point: Point2<f64>) -> f64 {
+        fn interpolate(delaunay: &Delaunay, point: cg::Point2<f64>) -> f64 {
             delaunay.barycentric_interpolation(&point, |v| v.height).unwrap()
         }
 
@@ -37,7 +39,7 @@ pub mod interpolation_methods {
     pub struct NaturalNeighborInterpolation;
 
     impl InterpolationMethod for NaturalNeighborInterpolation {
-        fn interpolate(delaunay: &Delaunay, point: Point2<f64>) -> f64 {
+        fn interpolate(delaunay: &Delaunay, point: cg::Point2<f64>) -> f64 {
             delaunay.nn_interpolation(&point, |v| v.height).unwrap()
         }
 
@@ -48,7 +50,7 @@ pub mod interpolation_methods {
 
     pub struct SibsonC1Interpolation;
     impl InterpolationMethod for SibsonC1Interpolation {
-        fn interpolate(delaunay: &Delaunay, point: Point2<f64>) -> f64 {
+        fn interpolate(delaunay: &Delaunay, point: cg::Point2<f64>) -> f64 {
             delaunay.nn_interpolation_c1_sibson(
                 &point,
                 // Check out different smoothness factors
@@ -66,7 +68,7 @@ pub mod interpolation_methods {
 
     pub struct FarinC1Interpolation;
     impl InterpolationMethod for FarinC1Interpolation {
-        fn interpolate(delaunay: &Delaunay, point: Point2<f64>) -> f64 {
+        fn interpolate(delaunay: &Delaunay, point: cg::Point2<f64>) -> f64 {
             delaunay.nn_interpolation_c1_farin(
                 &point,
                 // The second function defines the gradient of a point
@@ -90,19 +92,19 @@ pub struct Grid<I: InterpolationMethod> {
 
 impl <I: InterpolationMethod> Grid<I> {
     // Returns a list of edges for rendering
-    pub fn get_edges(&self) -> Vec<(Point3<f32>, Point3<f32>)> {
+    pub fn get_edges(&self) -> Vec<(na::Point3<f32>, na::Point3<f32>)> {
         let mut result = Vec::new();
         for x in 0 .. GRID_SUBDIVISIONS {
             for y in 0 .. GRID_SUBDIVISIONS {
                 let from_val = self.grid[x][y] + OFFSET;
-                let from_pos = Self::transform(Point2::new(x as f64, y as f64));
+                let from_pos = Self::transform(cg::Point2::new(x as f64, y as f64));
                 let from = PointWithHeight::new(from_pos, from_val);
                 for &(to_x, to_y) in &[(x + 1, y), (x, y + 1)] {
                     let to_val = self.grid[to_x][to_y] + OFFSET;
-                    let to_pos = Self::transform(Point2::new(to_x as f64, to_y as f64));
+                    let to_pos = Self::transform(cg::Point2::new(to_x as f64, to_y as f64));
                     let to = PointWithHeight::new(to_pos, to_val);
-                    result.push((Cast::from(from.position_3d()),
-                                 Cast::from(to.position_3d())));
+                    result.push((cg_vec_to_na(from.position_3d().to_vec().cast()),
+                                 cg_vec_to_na(to.position_3d().to_vec().cast())));
                 }
             }
         }
@@ -111,15 +113,15 @@ impl <I: InterpolationMethod> Grid<I> {
 
     // Returns a list of vertices and a list of triangle indices that form the
     // grid's mesh.
-    pub fn get_triangles(&self) -> (Vec<Point3<f32>>, Vec<Point3<u32>>) {
+    pub fn get_triangles(&self) -> (Vec<na::Point3<f32>>, Vec<na::Point3<u32>>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
         for x in 0 .. GRID_SUBDIVISIONS + 1 {
             for y in 0 .. GRID_SUBDIVISIONS + 1 {
                 let val = self.grid[x][y] + OFFSET;
-                let pos = Self::transform(Point2::new(x as f64, y as f64));
-                vertices.push(Point3::new(pos.x as f32, pos.y as f32, val as f32));
+                let pos = Self::transform(cg::Point2::new(x as f64, y as f64));
+                vertices.push(na::Point3::new(pos.x as f32, pos.y as f32, val as f32));
             }
         }
         for x in 0 .. GRID_SUBDIVISIONS {
@@ -129,8 +131,8 @@ impl <I: InterpolationMethod> Grid<I> {
                 let v10 = index(x + 1, y) as u32;
                 let v01 = index(x, y + 1) as u32;
                 let v11 = index(x + 1, y + 1) as u32;
-                indices.push(Point3::new(v00, v10, v11));
-                indices.push(Point3::new(v00, v11, v01));
+                indices.push(na::Point3::new(v00, v10, v11));
+                indices.push(na::Point3::new(v00, v11, v01));
             }
         }
         (vertices, indices)
@@ -143,7 +145,7 @@ impl <I: InterpolationMethod> Grid<I> {
         let mut values = [[0.0; GRID_SUBDIVISIONS + 1]; GRID_SUBDIVISIONS + 1];
         for x in 0 .. GRID_SUBDIVISIONS + 1 {
             for y in 0 .. GRID_SUBDIVISIONS + 1 {
-                let pos = Self::transform(Point2::new(x as f64, y as f64));
+                let pos = Self::transform(cg::Point2::new(x as f64, y as f64));
                 let value = I::interpolate(delaunay, pos);
                 values[x][y] = value;
             }
@@ -154,7 +156,7 @@ impl <I: InterpolationMethod> Grid<I> {
         }
     }
 
-    fn transform(v: Point2<f64>) -> Point2<f64> {
-        (v * SCALE - GRID_OFFSET).to_point()
+    fn transform(v: cg::Point2<f64>) -> cg::Point2<f64> {
+        cg::Point2::from_vec(((v * SCALE).to_vec() - GRID_OFFSET))
     }
 }

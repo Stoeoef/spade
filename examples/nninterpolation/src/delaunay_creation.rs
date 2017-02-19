@@ -10,7 +10,7 @@ use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 
 use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, TriangulationWalkLookup};
-use nalgebra::{Point2, Vector3, Point3};
+use cgmath::{EuclideanSpace, Point2, Vector3, Point3};
 use spade::{HasPosition,};
 
 use constants::*;
@@ -70,7 +70,8 @@ pub fn generate_random_triangulation() -> Delaunay {
     // Note that, for interpolation, we only need the gradients. For visualization
     // purposes, the normals are also generated and stored within the vertices
     delaunay.estimate_gradients(&(|v| v.height), &(|v, g| v.gradient = g));
-    delaunay.estimate_normals(&(|v| v.height), &(|v: &mut PointWithHeight, n: Point3<_>| v.normal = n.to_vector()));
+    delaunay.estimate_normals(&(|v| v.height), 
+                              &(|v: &mut PointWithHeight, n: Point3<_>| v.normal = n.to_vec()));
     
     delaunay
 }

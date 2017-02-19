@@ -6,6 +6,7 @@ version = "0.1.0"
 name = "nninterpolation"
 
 [dependencies]
+cgmath = "0.12.0"
 nalgebra = "0.9.0"
 noise = "0.2.*"
 kiss3d = "0.7.*"
