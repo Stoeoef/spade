@@ -12,9 +12,9 @@ use misc::max_inline;
 
 /// An axis aligned minimal bounding rectangle.
 ///
-/// A axis aligned minimal bounding rectangle is the smallest rectangle that completly surrounds an object and is aligned along all axis.
-/// The vector type `V`'s dimension determines if this is a rectangle, a box or
-/// a higher dimensional volume.
+/// An axis aligned minimal bounding rectangle is the smallest rectangle that completly
+///  surrounds an object and is aligned along all axis. The vector type `V`'s dimension
+/// determines if this is a rectangle, a box or a higher dimensional volume.
 #[derive(Clone, PartialEq, Debug)]
 pub struct BoundingRect<V: VectorN> {
     lower: V,
@@ -88,7 +88,7 @@ impl <V> BoundingRect<V> where V: VectorN {
     ///
     /// If the rectangle is already contained, nothing will be changed.
     /// Otherwise, this will enlarge `self` to be just large enough
-    // to contain the new rectangle.
+    /// to contain the new rectangle.
     #[inline]
     pub fn add_rect(&mut self, rect: &BoundingRect<V>) {
         self.lower = self.lower.min_vec(&rect.lower);

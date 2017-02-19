@@ -16,7 +16,7 @@ use exactpred::{orient2d, incircle};
 /// 
 /// Every delaunay triangulation is based on two basic geometry operations: orientation tests
 /// (on which side of a line lies a point?) and in-circle tests (is a point contained in the
-/// circumference of a triangle?). These questions can be answered *approximately* or *precisely*,
+/// circumference of a triangle?). These questions can be answered _approximately_ or _precisely_,
 /// their calculation can or cannot take overflow issues for integer coordinates into account.
 ///
 /// Since each application has different needs, a `DelaunayKernel` will define how these geometric
@@ -53,7 +53,13 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
 
     /// Returns an `EdgeSideInfo` yielding on which side of a line a point lies.
     fn side_query<Ve: TwoDimensional<Scalar=D>>(edge: &SimpleEdge<Ve>, position: &Ve) -> EdgeSideInfo<D> {
-        edge.side_query(position)
+        let (a, b) = (&edge.from, &edge.to);
+        let q = position;
+        let signed_side = (b.nth(0).clone() - a.nth(0).clone()) 
+            * (q.nth(1).clone() - a.nth(1).clone()) 
+            - (b.nth(1).clone() - a.nth(1).clone())
+            * (q.nth(0).clone() - a.nth(0).clone());
+        EdgeSideInfo::from_determinant(signed_side)
     }
 
     /// Another formulation of `side_query`, will return `true` if `v0`, `v1` and `v2` are ordered
@@ -75,13 +81,13 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
 /// Offers fast and possibly inaccurate geometric calculations.
 ///
 /// Use this kernel if you are working with small integral coordinates (e.g. `Vector2<i64>`
-/// in the range &#177;100000) or if you are willing to risk crashes when using `Vector2<f64>`
-/// as coordinate vector. Offers best performance. Run in debug mode to be notified early if
-/// something goes amiss since `DelaunayTriangulation` uses a few `debug_assert`s to keep its
-/// internal structure healthy.
+/// in the range &#177;100000) as coordinate vector. Offers best performance. 
+/// Run in debug mode to be notified if an overflow occurs.
+/// Using this kernel with `f32` or `f64` coordinates can lead to runtime panics, incorrect
+/// triangulations or infinite loops and is not recommended.
 ///
-/// If some debug assertions are not met or you run into over / underflow issues, consider 
-/// using `FloatKernel` or `AdaptiveIntKernel`.
+/// If your application runs into over / underflow issues, consider 
+/// using `AdaptiveIntKernel`.
 pub struct TrivialKernel { }
 
 impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
@@ -111,13 +117,13 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
 /// Offers a fast, precise kernel working with `f64` coordinates.
 ///
 /// Performing a delaunay triangulation is often a tradeoff between accuracy and speed:
-/// a triangulation working on native `f64`-operations will fail in rare cases due to rounding
+/// a triangulation working on native `f64`-operations will fail in some cases due to rounding
 /// errors, while switching to precise floats (like `BigRationals` from the `num` crate) reduces
 /// performance by several orders of magnitude.
 /// This kernel works with adaptive precision: if a calculation is inaccurate,
 /// it will increase its precision until the result is accurate enough. Since most calculations
 /// are accurate enough in their simplest form, only the overhead of checking the precision is
-///  usually encountered. For more information, refer to 
+/// usually encountered. For more information, refer to 
 /// [this link](https://www.cs.cmu.edu/~quake/robust.html) describing the techniques behind
 /// the adaptive approach.
 pub struct FloatKernel { }

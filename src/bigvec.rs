@@ -14,14 +14,15 @@ use num::bigint::ToBigInt;
 use traits::{SpadeNum};
 use vector_traits::{VectorN, TwoDimensional};
 
+
+/// BigVec2 is a two dimensional vector that does not _require_ it's
+/// internal scalar type to be `Copy`.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy)]
 pub struct BigVec2<N: Num> {
     pub x: N,
     pub y: N,
 }
-
-impl <N: Num + Copy> Copy for BigVec2<N> { }
 
 impl <N: Num + Clone> BigVec2<N> {
     pub fn new(x: N, y: N) -> BigVec2<N> {

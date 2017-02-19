@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A two dimensional delaunay triangulation.
+
 mod dcel;
 mod delaunay2d;
 mod delaunay_lookup;

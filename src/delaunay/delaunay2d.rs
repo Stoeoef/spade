@@ -6,9 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module offers a delaunay triangulation and various iterators for inspecting
-//! its structure. The main data structure is `DelaunayTriangulation`.
-
 use num::{One, Float, Zero, one, zero};
 use traits::{SpatialObject, HasPosition2D, SpadeFloat, HasPosition};
 use vector_traits::{VectorN, VectorNExtensions, TwoDimensional, ThreeDimensional};
@@ -23,6 +20,7 @@ pub type FloatDelaunayTriangulation<T, L> = DelaunayTriangulation<T, FloatKernel
 pub type IntDelaunayTriangulation<T, L> = DelaunayTriangulation<T, TrivialKernel, L>;
 
 /// Yields information about a point's position in triangulation.
+/// Used as a return type of `DelaunayTriangulation::locate(..)`.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
     /// The point is contained in a triangle. The three given edge handles traverse the triangle in
@@ -50,7 +48,7 @@ fn calculate_convex_polygon_double_area<V>(
     sum
 }
 
-/// A 2D Delaunay triangulation.
+/// A two dimensional delaunay triangulation.
 /// 
 /// A delaunay triangulation is a special triangulation of a set of points that fulfills some
 /// suitable properties for geometric operations like interpolation.
@@ -63,7 +61,7 @@ fn calculate_convex_polygon_double_area<V>(
 /// various geometric queries can fail if imprecise calculations (like native `f32` / `f64` operations)
 /// are used. Those failures can yield to incorrect results or panics at runtime.
 /// To prevent those crashes, Spade offers a few "calculation kernels" that may fit the 
-/// individual needs of an application.
+/// individual needs of an application. See `spade::kernels` for more information.
 ///
 /// # Example
 ///
@@ -83,35 +81,42 @@ fn calculate_convex_polygon_double_area<V>(
 ///   delaunay.insert(Vector2::new(0.0, 0.0));
 ///   for face in delaunay.triangles() {
 ///     let triangle = face.as_triangle();
-///     println!("found triangle: {:?} -> {:?} -> {:?}", *triangle[0], *triangle[1], *triangle[2]);
+///     println!("Found triangle: {:?} -> {:?} -> {:?}", *triangle[0], *triangle[1], *triangle[2]);
 ///   }
 ///   for edge in delaunay.edges() {
-///     println!("found an edge: {:?} -> {:?}", *edge.from(), *edge.to());
+///     println!("Found an edge: {:?} -> {:?}", *edge.from(), *edge.to());
 ///   }
 /// # }
 /// ```
 ///
 /// # Iterating
-/// A triangulation has three elements - vertices, edges and triangles - that can be iterated over.
+/// A triangulation consists of three elements - vertices, edges and triangles - that can be iterated over.
 /// Use `vertices()` `edges()` and `triangles()` to call appropriate, non-mutating iterators.
 ///
+/// # Infinite face and convex hull
+/// Every triangulation is surrounded by the _infinite face_. This face can be retrieved by calling
+/// `infinite_face()`. Iterating the adjacent edges of the infinite face will yield the triangulation's
+/// convex hull. See `FaceHandle::adjacent_edges()`.
+///
 /// # Mutating
-/// Adding vertices is always a legal operation. Removing vertices is not possible.
-/// Mutation of a vertex is possible with `lookup_mut(..)`.
+/// Vertices can be added and removed. Mutation of vertex data is possible with `lookup_mut(..)`,
+/// although this mutation must not alter the vertex position.
 ///
-/// While `VertexHandle`s are intended to be used for short lived 
-/// iteration purposes, `FixedVertexHandle`s can be made persistent and have 
-/// a `'static` lifetime. A `VertexHandle` can be transformed to its fixed
-/// variant by calling `VertexHandle::fix()`.
-/// Use `handle` or `handle_mut` to resolve a `FixedVertexHandle`.
-/// 
-/// A vertex position must not be changed after the vertex has been inserted.
+/// # Interpolation
+/// Vertices can store various user data, the points could for example represent meteorological samples
+/// measuring temperature or air moisture. These values can be interpolated smoothly within the
+/// triangulation's convex hull using a variety of interpolation methods. There are currently four supported
+/// interpolation methods:
+///  - `barycentric_interpolation(..)`
+///  - `nn_interpolation(..)`
+///  - `nn_interpolation_c1_sibson(..)`
+///  - `nn_interpolation_c1_farin(..)`
 ///
-/// # Type Parameters
+/// # Type parameters
 /// `DelaunayTriangulation` has three type parameters: `V`, `K` and `L`.
 /// `V: HasPosition2D` defines the delaunay's vertex type. 
 /// `K: DelaunayKernel` defines the triangulations calculation kernel.
-/// For more information, see `kernels::DelaunayKernel`.
+/// For more information, see `spade::kernels`.
 /// `L` Defines the delaunay lookup structure.
 /// For more information, see `DelaunayLookupStructure`.
 pub struct DelaunayTriangulation<V, K, L = RTreeDelaunayLookup<<V as HasPosition>::Vector>>
@@ -192,10 +197,31 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
     }
 
-    /// Creates a dynamic vertex handle from a fixed handle.
-    /// May panic if the handle was not obtained from this triangulation.
-    pub fn handle(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
+    /// Creates a dynamic vertex handle from a fixed vertex handle.
+    /// May panic if the handle was invalidated by a previous vertex
+    /// removal.
+    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
         self.s.vertex(handle)
+    }
+
+    /// Returns a mutable reference to the vertex data referenced by a 
+    /// `FixedVertexHandle`.
+    pub fn vertex_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
+        self.s.vertex_mut(handle)
+    }
+
+    /// Creates a dynamic face handle from a fixed face handle.
+    /// May panic if the faces was invalidated by a previous vertex
+    /// removal.
+    pub fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V> {
+        self.s.face(handle)
+    }
+
+    /// Creates a dynamic edge handle from a fixed edge handle.
+    /// May panic if the handle was invalidated by a previous vertex
+    /// removal.
+    pub fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V> {
+        self.s.edge(handle)
     }
 
     /// Returns the number of vertices in this triangulation.
@@ -204,6 +230,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Returns the number of faces in this triangulation.
+    /// This count does include the infinite face.
     pub fn num_faces(&self) -> usize {
         self.s.num_faces()
     }
@@ -237,10 +264,15 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         self.s.vertices()
     }
 
+    /// Returns a handle to the infinite face.
     pub fn infinite_face(&self) -> FaceHandle<V> {
         self.s.face(0)
     }
 
+    /// Returns if the triangulation is degenerate, that is, if
+    /// all vertices of the triangulation lie on one line.
+    /// A degenerate triangulation will not contain any edges and
+    /// only the infinite face.
     pub fn is_degenerate(&self) -> bool {
         self.all_points_on_line
     }
@@ -440,9 +472,19 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// Returns information about the location of a point in a triangulation.
     pub fn locate(
         &self, point: &V::Vector) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
-        use self::PositionInTriangulation::*;
+        self.locate_with_hint_option(point, None)
+    }
 
-        match self.locate_with_hint_option_fixed(point, None) {
+    /// Returns information about the location of a point in a triangulation.
+    /// Additionally, a hint can be given to speed up computation. The hint should be a vertex close
+    /// to the position that is being looked up.
+    pub fn locate_with_hint(&self, point: &V::Vector, hint: FixedVertexHandle) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
+        self.locate_with_hint_option(point, Some(hint))
+    }
+
+    fn locate_with_hint_option(&self, point: &V::Vector, hint: Option<FixedVertexHandle>) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
+        use self::PositionInTriangulation::*;
+        match self.locate_with_hint_option_fixed(point, hint) {
             NoTriangulationPresent => NoTriangulationPresent,
             InTriangle(face) => InTriangle(self.s.face(face)),
             OutsideConvexHull(edge) => OutsideConvexHull(self.s.edge(edge)),
@@ -470,7 +512,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         // Invariant: point must not be on the right side of cur_edge
         if cur_query.is_on_right_side() {
             cur_edge = cur_edge.sym();
-            cur_query = cur_query.sym();
+            cur_query = cur_query.reversed();
         }
         loop {
             assert!(cur_query.is_on_left_side_or_on_line());
@@ -496,7 +538,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             if next_query.is_on_right_side_or_on_line() {
                 // We continue walking into the face right of next
                 cur_edge = next.sym();
-                cur_query = next_query.sym();
+                cur_query = next_query.reversed();
             } else {
                 // Check if cur_edge.o_prev is also on the left side
                 let prev = cur_edge.o_prev();
@@ -504,7 +546,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 if prev_query.is_on_right_side_or_on_line() {
                     // We continue walking into the face right of prev
                     cur_edge = prev.sym();
-                    cur_query = prev_query.sym();
+                    cur_query = prev_query.reversed();
                 } else {
                     if cur_query.is_on_line() {
                         return PositionInTriangulation::OnEdge(cur_edge.fix());
@@ -515,21 +557,26 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
     }
 
-    /// Inserts a new vertex into the triangulation
-    /// This operations runs in O(log n) on average, n denotes the number of vertices contained
-    /// in the triangulation. If the point has already been contained in the
-    /// triangulation, the old vertex is overwritten.
+    /// Inserts a new vertex into the triangulation.
+    /// This operation runs in O(log(n)) on average when using a tree lookup to back up the 
+    /// triangulation, or in O(sqrt(n)) when using a walk lookup. n denotes the number of vertices,
+    /// the given running times assume that input data is given uniformly randomly distributed.
+    /// If the point has already been contained in the triangulation, the old vertex is overwritten.
     ///
     /// Returns a handle to the new vertex. Use this handle with
-    /// `DelaunayTriangulation::handle(..)` to refer to the vertex.
+    /// `DelaunayTriangulation::vertex(..)` to refer to it.
     pub fn insert(&mut self, t: V) -> FixedVertexHandle {
         self.insert_with_hint_option(t, None)
     }
 
+    /// Inserts a new vertex into the triangulation. A hint can be given to speed up the process.
+    /// The hint should be a handle of a vertex close to the new vertex. This method is recommended
+    /// in combination with `TriangulationWalkLookup`, in this case the insertion time can be reduced
+    /// to O(1) on average if the hint is close. If the hint is randomized, running time will be O(sqrt(n))
+    /// on average with an O(n) worst case.
     pub fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
         self.insert_with_hint_option(t, Some(hint))
     }
-
 
     fn insert_with_hint_option(&mut self, t: V, hint: Option<FixedVertexHandle>) -> FixedVertexHandle {
         let pos = t.position();
@@ -592,6 +639,11 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Attempts to remove a vertex from the triangulation.
+    /// Returns the removed vertex data if it could be found.
+    ///
+    /// # Handle invalidation
+    /// This method will invalidate all vertex, edge and face handles 
+    /// upon successful removal.
     pub fn locate_and_remove(&mut self, point: &V::Vector) -> Option<V> {
         use self::PositionInTriangulation::*;
         match self.locate_with_hint_option_fixed(point, None) {
@@ -605,13 +657,13 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     ///
     /// This operation runs in O(n²), where n is the degree of the
     /// removed vertex.
-    /// *Note*: This operation will invalidate a single vertex handle.
-    /// Do not rely on any fixed vertex handle created before the removal
-    /// to be valid.
+    ///
+    /// # Handle invalidation
+    /// This method will invalidate all vertex, edge and face handles.
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
         let mut neighbors = Vec::new();
         let mut ch_removal = false;
-        for edge in self.handle(vertex).ccw_out_edges() {
+        for edge in self.vertex(vertex).ccw_out_edges() {
             if edge.face() == self.infinite_face() {
                 ch_removal = true;
                 neighbors.clear();
@@ -629,7 +681,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             self.s.remove_vertex(vertex, Some(infinite));
         if let Some(updated_vertex) = updated_vertex {
             // Update rtree if necessary
-            let pos = (*self.handle(vertex)).position();
+            let pos = (*self.vertex(vertex)).position();
             self.lookup.update_vertex_entry(VertexEntry {
                 point: pos,
                 handle: vertex,
@@ -661,7 +713,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 };
                 self.fill_hole(loop_edges);
             }
-    }
+        }
         data
     }
 
@@ -709,7 +761,15 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     fn repair_convex_hull(&mut self, vertices: &Vec<FixedVertexHandle>) {
+        // We just removed a vertex from the convex hull. This removal can create
+        // multiple 'pockets' in the hull that need to be re-triangulated. 
+        // 'vertices' contains all vertices that were adjacent to the removed point
+        // in ccw order.
         let mut ch: Vec<FixedVertexHandle> = Vec::new();
+
+        // First, we determine the new convex hull. Since the points are ordered
+        // counterclockwise, we can do this in O(vertices.len()) .
+        // This is similar to calculating an upper convex hull.
         for v in vertices {
             let vertex = self.s.vertex(*v);
             let v_pos = (*vertex).position();
@@ -729,10 +789,14 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             }
             ch.push(*v);
         }
+        // In the next step, we analyze if any pockets were created. We follow the
+        // edges of the newly created convex hull and check if the edge also exists
+        // in the triangulation. If not, we have found a pocket that must be filled.
         for vs in ch.windows(2) {
             let v0 = vs[0];
             let v1 = vs[1];
             if EdgeHandle::from_neighbors(&self.s, v0, v1).is_none() {
+                // The edge does not exists, get all edges of the pocket
                 let mut edges = Vec::new();
                 let pos = vertices.iter().position(|v| *v == v0).unwrap();
                 {
@@ -742,6 +806,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                         edges.push(cur_edge.fix());
                         cur_edge = cur_edge.o_next();
                         if cur_edge.from().fix() == v1 {
+                            // We have reached the convex hull again, this
+                            // closes the pocket.
                             break;
                         }
                     }
@@ -749,6 +815,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 let first = self.s.edge(*edges.first().unwrap()).fix();
                 let last = self.s.edge(*edges.last().unwrap()).fix();
                 edges.push(self.s.create_face(last, first));
+                // Fill the pocket
                 self.fill_hole(edges);
             }
         }
@@ -799,9 +866,10 @@ impl <V, K> DelaunayTriangulation<V, K, RTreeDelaunayLookup<V::Vector>>
     ///
     /// This operation runs in O(n²), where n is the degree of the
     /// removed vertex.
-    /// *Note*: This operation will invalidate a single vertex handle.
-    /// Do not rely on any fixed vertex handle created before the removal
-    /// to be valid.
+    ///
+    /// # Handle invalidation
+    /// This method will invalidate all vertex, edge and face handles upon
+    /// successful removal.
     pub fn lookup_and_remove(&mut self, point: &V::Vector) -> Option<V> {
         let handle = self.lookup(point).map(|h| h.fix());
         handle.map(|h| self.remove(h))
@@ -821,41 +889,17 @@ impl <V, K> DelaunayTriangulation<V, K, RTreeDelaunayLookup<V::Vector>>
     // }
 }
 
-impl <V, K, L> DelaunayTriangulation<V, K, L>
-    where V: HasPosition2D,
-          K: DelaunayKernel<<V::Vector as VectorN>::Scalar>,
-          L: DelaunayLookupStructure<V::Vector>,
-          V::Vector: TwoDimensional {
-
-    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
-        self.s.vertex(handle)
-    }    
-
-    /// Returns a mutable reference to the vertex data referenced by a 
-    /// `FixedVertexHandle`.
-    pub fn vertex_mut(&mut self, handle: FixedVertexHandle) -> &mut V {
-        self.s.vertex_mut(handle)
-    }
-
-    // /// Checks if the triangulation contains an object and returns a mutable
-    // /// reference to it. Note that this method will return a mutable reference, while
-    // /// `lookup(..)` returns a vertex handle.
-    // pub fn lookup_mut(&mut self, point: &V::Vector) -> Option<&mut V> {
-    //     let handle = self.points.lookup(point).map(|e| e.handle);
-    //     if let Some(handle) = handle {
-    //         Some(self.handle_mut(handle))
-    //     } else {
-    //         None
-    //     }
-    // }
-}
-
 impl <V, K, L> DelaunayTriangulation<V, K, L> 
     where V: HasPosition2D, <V::Vector as VectorN>::Scalar: SpadeFloat,
           K: DelaunayKernel<<V::Vector as VectorN>::Scalar> ,
           L: DelaunayLookupStructure<V::Vector>,
           V::Vector: TwoDimensional
 {
+    /// Performs a barycentric interpolation.
+    /// Returns `None` if the triangulation has no triangles yet.
+    /// Points outside of the convex hull will be interpolated as well.
+    /// The other interpolation methods are used very similarly, check their
+    /// documentation for an example.
     pub fn barycentric_interpolation<F> (&self, point: &V::Vector, f: F) 
                                          -> Option<<V::Vector as VectorN>::Scalar> 
         where F: Fn(&V) -> <V::Vector as VectorN>::Scalar {
@@ -897,7 +941,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     ///
     /// Returns `None` if the triangulation has no triangles yet.
     /// Points outside of the convex hull will be interpolated as well.
-    /// This operation runs in O(log n) for n inserted vertices.
     ///
     /// # Example
     /// ```
@@ -935,10 +978,9 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     ///              Some(5.0));
     /// }
     /// ```
-    pub fn nn_interpolation<R, F: Fn(&V) -> R>(
-        &self, point: &V::Vector, f: F) -> Option<R>
-        where R: ::std::ops::Mul<<V::Vector as VectorN>::Scalar, Output=R> + ::std::ops::Add<Output=R> 
-    + ::std::ops::Sub<R> {
+    pub fn nn_interpolation<F>(&self, point: &V::Vector, f: F)
+                               -> Option<<V::Vector as VectorN>::Scalar>
+        where F: Fn(&V) -> <V::Vector as VectorN>::Scalar {
         
         let nns = self.get_natural_neighbors(point);
         let ws = self.get_weights(&nns, point);
@@ -1116,7 +1158,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
               RV: ThreeDimensional<Scalar=<V::Vector as VectorN>::Scalar> {
         let mut v_pos = RV::new();
         let neighbor_positions: Vec<_> = {
-            let handle = self.handle(v);
+            let handle = self.vertex(v);
             let v_2d = (*handle).position();
             *v_pos.nth_mut(0) = *v_2d.nth(0);
             *v_pos.nth_mut(1) = *v_2d.nth(1);
@@ -1187,6 +1229,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// A flatness of 0.0 or lower is nearly identical to sibson's original interpolant
     /// (`nn_interpolation(..)`). A factor of (exactly) 1.0 should yield best performance since
     /// an exponentiation can be omitted.
+    ///
     /// # Example
     ///
     /// ```
@@ -1246,7 +1289,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             return None;
         }
         if ws.len() == 1 {
-            return Some(f(&*self.handle(*nns.first().unwrap())));
+            return Some(f(&*self.vertex(*nns.first().unwrap())));
         }
         let mut sum_c0 = zero();
         let mut sum_c1 = zero();
@@ -1289,7 +1332,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         if ws.is_empty() {
             return None;
         }
-        let handles: Vec<_> = nns.iter().map(|v| self.handle(*v)).collect();
+        let handles: Vec<_> = nns.iter().map(|v| self.vertex(*v)).collect();
 
         let one = <V::Vector as VectorN>::Scalar::one();
         let two = one + one;
@@ -1377,7 +1420,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 
     /// Estimates a normal for each vertex in the triangulation.
     ///
-    /// `f` must yield a "height" value for each vertex,
+    /// `f` must yield a 'height' value for each vertex,
     /// `g` is a callback function that can be used to store the calculated normals.
     ///
     /// ```

@@ -68,7 +68,12 @@ impl <S> EdgeSideInfo<S> where S: SpadeNum  {
         self.signed_side.abs() == zero()
     }
 
-    pub fn sym(&self) -> EdgeSideInfo<S> {
+    /// Inverts this edge side information.
+    /// If this information indicates the position of a point P
+    /// relative to an edge A -> B, the inverted information will
+    /// indicate the relative position of P relative to the edge
+    /// B -> A.
+    pub fn reversed(&self) -> EdgeSideInfo<S> {
         EdgeSideInfo { signed_side: -self.signed_side.clone() }
     }
 }
@@ -95,11 +100,25 @@ impl <V> SimpleEdge<V> where V: VectorN {
 
 impl <V> SimpleEdge<V> where V: TwoDimensional {
     /// Determines on which side of this edge a given point lies.
-    pub fn side_query(&self, q: &V) -> EdgeSideInfo<V::Scalar> {
-        let (a, b) = (&self.from, &self.to);
-        let signed_side = (b.nth(0).clone() - a.nth(0).clone()) * (q.nth(1).clone() - a.nth(1).clone()) 
-            - (b.nth(1).clone() - a.nth(1).clone()) * (q.nth(0).clone() - a.nth(0).clone());
-        EdgeSideInfo { signed_side: signed_side }
+    /// # Example:
+    ///
+    /// ```
+    /// # extern crate nalgebra;
+    /// # extern crate spade;
+    ///
+    /// use nalgebra::Vector2;
+    /// use spade::kernels::TrivialKernel;
+    /// use spade::primitives::SimpleEdge;
+    ///
+    /// # fn main() {
+    /// let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
+    /// assert!(e.side_query::<TrivialKernel>(&Vector2::new(1.0, 0.0)).is_on_right_side());
+    /// assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.0, 1.0)).is_on_left_side());
+    /// assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.5, 0.5)).is_on_line());
+    /// # }
+    /// ```
+    pub fn side_query<K: DelaunayKernel<V::Scalar>>(&self, q: &V) -> EdgeSideInfo<V::Scalar> {
+        K::side_query(&self, q)
     }
 }
 
@@ -121,8 +140,8 @@ impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
         }
     }
 
-    /// Returns the minimal squared distance of a given point to its
-    /// projection onto the infinite edge going through this edge's start 
+    /// Returns the squared distance of a given point to its
+    /// projection onto the infinite line going through this edge's start 
     /// and end point.
     pub fn projection_distance2(&self, query_point: &V) -> V::Scalar {
         let s = self.project_point(query_point);
@@ -276,7 +295,7 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
         for i in 0 .. 3 {
             let edge = SimpleEdge::new(self.vertices()[i].clone(), 
                                        self.vertices()[(i + 1) % 3].clone());
-            if edge.side_query(point).is_on_right_side() == ordered_ccw {
+            if edge.side_query::<TrivialKernel>(point).is_on_right_side() == ordered_ccw {
                 return edge.distance2(point);
             }
         }
@@ -333,6 +352,7 @@ impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFlo
 mod test {
     use super::{SimpleEdge, SimpleTriangle};
     use traits::SpatialObject;
+    use kernels::TrivialKernel;
     use cgmath::{Vector2};
     use approx::ApproxEq;
 
@@ -348,9 +368,9 @@ mod test {
     #[test]
     fn test_edge_side() {
         let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-        assert!(e.side_query(&Vector2::new(1.0, 0.0)).is_on_right_side());
-        assert!(e.side_query(&Vector2::new(0.0, 1.0)).is_on_left_side());
-        assert!(e.side_query(&Vector2::new(0.5, 0.5)).is_on_line());
+        assert!(e.side_query::<TrivialKernel>(&Vector2::new(1.0, 0.0)).is_on_right_side());
+        assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.0, 1.0)).is_on_left_side());
+        assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.5, 0.5)).is_on_line());
     }
 
     #[test]
