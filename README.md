@@ -8,6 +8,7 @@
  * [Examples](#examples)
  * [Feedback](#feedback)
  * [Performance](#performance)
+ * [License](#license)
 
 Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures optimized for spatial access operations.
 
@@ -32,7 +33,7 @@ Add this to your `Cargo.toml`:
 ```
 spade = "0.3.*"
 ```
-# Feedback
+# Feedback and contributing
 Do you miss a feature? Many features may be easy to implement, I might just have missed that use case. Please do post an issue on GitHub. If you think there's a feature missing and you are interested to implement it yourself, don't be shy to mention it - I'd be happy to help you getting started. Just post an appropriate issue on GitHub.
 
 # Examples
@@ -61,3 +62,19 @@ The following measurements were taken on an Intel Core i7-3517u.
 
 Insertion performance for various delaunay kernels:
 ![Performance of opererations on the r-tree implementation](/images/delaunay_analysis.png?raw_true)
+
+# License
+
+Licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the work by you, as defined in the Apache-2.0
+license, shall be dual licensed as above, without any additional terms or
+conditions.
