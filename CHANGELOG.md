@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0] - XXXX-XX-XX
+A lot has changed for the 1.0. release, not all changes can be listed.
+
+### Changed
+  - `VectorN` renamed to `PointN`
+  - Bumped supported nalgebra version to `0.11.*`
+  - `Point2`, `Point3` ... from cgmath and nalgebra crates implement `VectorN`
+  - `Vector2`, `Vector3` ... from cgmath and nalgebra crates do not implement `VectorN`
+
+### Added
+ - Added `DelaunayTriangulation::barycentric_interpolation(..)`
+ 
 ## [0.3.0] - 2016-12-10
 ### Changed
   - `VectorN` trait trimmed down, now contains only a small set of functions.
