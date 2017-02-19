@@ -5,16 +5,37 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.0.0] - XXXX-XX-XX
-A lot has changed for the 1.0. release, not all changes can be listed.
+A lot has changed for the 1.0. release, only larger changes are shown.
 
 ### Changed
+  - Changed project license from Apache 2.0 to dual MIT / Apache 2.0
   - `VectorN` renamed to `PointN`
   - Bumped supported nalgebra version to `0.11.*`
-  - `Point2`, `Point3` ... from cgmath and nalgebra crates implement `VectorN`
-  - `Vector2`, `Vector3` ... from cgmath and nalgebra crates do not implement `VectorN`
-
+  - `Point2`, `Point3` ... from cgmath and nalgebra crates *do* implement `VectorN`
+  - `Vector2`, `Vector3` ... from cgmath and nalgebra crates *do not* implement `VectorN`
+  - Moved all kernels from the root to `spade::kernels`
+  - Moved delaunay triangulation and handle types to `spade::delaunay`
+  - Moved the rtree to `spade::rtree::RTree`
+  - Renamed `DelaunayTriangulation::lookup_in_triangulation` to `locate`
+  - Renamed `DelaunayTriangulation::handle(..)` to `vertex(..)`
+  
 ### Added
+ - Added support for vertex removal in delaunay triangulations!
  - Added `DelaunayTriangulation::barycentric_interpolation(..)`
+ - Added support for different lookup methods for delaunay triangulation (see `DelaunayLookupStructure`)
+ - Added a user guide! Check it out [here](https://stoeoef.gitbooks.io/spade-user-manual/content/)
+ - `locate` and `lookup` can now be used with a hint (see `{insert|locate}_with_hint`)
+ - Added type shorthands `spade::delaunay::{Float|Int}Triangulation` and quick creation methods `with_tree_lookup` and `with_walk_lookup`
+ - Added struct `EdgeHandle` and type `FixedEdgeHandle`.
+ - Added struct `FaceHandle` and type `FixedFaceHandle`.
+ - Added methods `DelaunayTriangulation::edge(..)` and `::face(..)`
+ - Added `DelaunayTriangulation::infinite_face()`
+ - Added `DelaunayTriangulation::is_degenerate()`
+ - Added `DelaunayTriangulation::num_{edges|triangles|faces}()`
+ 
+### Removed
+ - Removed support for pointer like types (e.g. inserting `Box<Point2<_>>`) to simplify type signatures.
+ - Removed `DelaunayTriangulation::lookup_in_circle(..)` and `lookup_in_rect(..)`. These methods will likely be added again in a later release.
  
 ## [0.3.0] - 2016-12-10
 ### Changed
@@ -72,6 +93,8 @@ A lot has changed for the 1.0. release, not all changes can be listed.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.0.0] https://github.com/Stoeoef/spade/compare/v0.3.0...v1.0.0
 
 [0.3.0] https://github.com/Stoeoef/spade/compare/v0.2.1...v0.3.0
 
