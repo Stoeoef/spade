@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use num::{Signed, zero, one};
-use vector_traits::{VectorN, VectorNExtensions};
+use point_traits::{PointN, PointNExtensions};
 use misc::max_inline;
 
 /// An axis aligned minimal bounding rectangle.
@@ -16,12 +16,12 @@ use misc::max_inline;
 ///  surrounds an object and is aligned along all axis. The vector type `V`'s dimension
 /// determines if this is a rectangle, a box or a higher dimensional volume.
 #[derive(Clone, PartialEq, Debug)]
-pub struct BoundingRect<V: VectorN> {
+pub struct BoundingRect<V: PointN> {
     lower: V,
     upper: V,
 }
 
-impl <V> BoundingRect<V> where V: VectorN {
+impl <V> BoundingRect<V> where V: PointN {
 
     /// Creates a bounding rectangle that contains exactly one point.
     ///

@@ -8,13 +8,13 @@
 
 //! This module offers a delaunay triangulation and various iterators for inspecting
 use traits::HasPosition;
-use vector_traits::VectorN;
+use point_traits::PointN;
 use rtree::RTree;
 use delaunay::FixedVertexHandle;
 
 pub type RTreeDelaunayLookup<V> = RTree<VertexEntry<V>>;
 
-pub trait DelaunayLookupStructure<T: VectorN> : Default + Clone {
+pub trait DelaunayLookupStructure<T: PointN> : Default + Clone {
 
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>);
     fn update_vertex_entry(&mut self, new_entry: VertexEntry<T>);
@@ -25,25 +25,25 @@ pub trait DelaunayLookupStructure<T: VectorN> : Default + Clone {
 
 /// An entry of the delaunay triangulation's internal r-tree.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct VertexEntry<V> where V: VectorN {
+pub struct VertexEntry<V> where V: PointN {
     pub point: V,
     pub handle: FixedVertexHandle,
 }
 
 impl<V> HasPosition for VertexEntry<V> 
-    where V: VectorN {
-    type Vector = V;
+    where V: PointN {
+    type Point = V;
     fn position(&self) -> V {
         self.point.clone()
     }
 }
 
 #[derive(Clone)]
-pub struct TriangulationWalkLookup<T: VectorN> {
+pub struct TriangulationWalkLookup<T: PointN> {
     last: Option<VertexEntry<T>>,
 }
 
-impl <T: VectorN> Default for TriangulationWalkLookup<T> {
+impl <T: PointN> Default for TriangulationWalkLookup<T> {
     fn default() -> Self {
         TriangulationWalkLookup {
             last: None,
@@ -51,7 +51,7 @@ impl <T: VectorN> Default for TriangulationWalkLookup<T> {
     }
 }
 
-impl <T: VectorN> DelaunayLookupStructure<T> for TriangulationWalkLookup<T> {
+impl <T: PointN> DelaunayLookupStructure<T> for TriangulationWalkLookup<T> {
 
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
         self.last = Some(entry);
@@ -74,7 +74,7 @@ impl <T: VectorN> DelaunayLookupStructure<T> for TriangulationWalkLookup<T> {
      }
 }
 
-impl <T: VectorN> DelaunayLookupStructure<T> for RTree<VertexEntry<T>> {
+impl <T: PointN> DelaunayLookupStructure<T> for RTree<VertexEntry<T>> {
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
         self.insert(entry);
     }

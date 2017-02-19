@@ -37,7 +37,7 @@ extern crate rand;
 mod testutils;
 
 mod traits;
-mod vector_traits;
+mod point_traits;
 mod misc;
 mod boundingvolume;
 mod bigvec;
@@ -50,4 +50,4 @@ pub mod rtree;
 
 pub use traits::*;
 pub use boundingvolume::*;
-pub use vector_traits::{VectorN, TwoDimensional, ThreeDimensional};
+pub use point_traits::{PointN, TwoDimensional, ThreeDimensional};

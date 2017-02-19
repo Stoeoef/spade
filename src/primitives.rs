@@ -13,16 +13,16 @@
 //! implementing `SpatialObject`.
 
 
-use cgmath::{Vector3, Zero, One};
+use cgmath::{Point3, Zero, One};
 use traits::{SpadeFloat, SpadeNum, SpatialObject};
-use vector_traits::{VectorN, VectorNExtensions, TwoDimensional};
+use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use num::{Float, one, zero, Signed};
 use boundingvolume::BoundingRect;
 use kernels::{TrivialKernel, DelaunayKernel};
 
 /// An edge defined by it's two end points.
 #[derive(Clone, Debug)]
-pub struct SimpleEdge<V: VectorN> {
+pub struct SimpleEdge<V: PointN> {
     /// The edge's origin.
     pub from: V,
     /// The edge's destination.
@@ -78,7 +78,7 @@ impl <S> EdgeSideInfo<S> where S: SpadeNum  {
     }
 }
 
-impl <V> SimpleEdge<V> where V: VectorN {
+impl <V> SimpleEdge<V> where V: PointN {
     /// Creates a new edge from `from` to `to`.
     pub fn new(from: V, to: V) -> SimpleEdge<V> {
         SimpleEdge {
@@ -106,15 +106,15 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
     /// # extern crate nalgebra;
     /// # extern crate spade;
     ///
-    /// use nalgebra::Vector2;
+    /// use nalgebra::Point2;
     /// use spade::kernels::TrivialKernel;
     /// use spade::primitives::SimpleEdge;
     ///
     /// # fn main() {
-    /// let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-    /// assert!(e.side_query::<TrivialKernel>(&Vector2::new(1.0, 0.0)).is_on_right_side());
-    /// assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.0, 1.0)).is_on_left_side());
-    /// assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.5, 0.5)).is_on_line());
+    /// let e = SimpleEdge::new(Point2::new(0f32, 0.), Point2::new(1., 1.));
+    /// assert!(e.side_query::<TrivialKernel>(&Point2::new(1.0, 0.0)).is_on_right_side());
+    /// assert!(e.side_query::<TrivialKernel>(&Point2::new(0.0, 1.0)).is_on_left_side());
+    /// assert!(e.side_query::<TrivialKernel>(&Point2::new(0.5, 0.5)).is_on_line());
     /// # }
     /// ```
     pub fn side_query<K: DelaunayKernel<V::Scalar>>(&self, q: &V) -> EdgeSideInfo<V::Scalar> {
@@ -122,7 +122,7 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
     }
 }
 
-impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
+impl <V> SimpleEdge<V> where V: PointN, V::Scalar: SpadeFloat {
     /// Yields the nearest point on this edge.
     pub fn nearest_point(&self, query_point: &V) -> V {
         let (p1, p2) = (&self.from, &self.to);
@@ -163,8 +163,8 @@ impl <V> SimpleEdge<V> where V: VectorN, V::Scalar: SpadeFloat {
     }
 }
 
-impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
-    type Vector = V;
+impl <V: PointN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
+    type Point = V;
 
     fn mbr(&self) -> BoundingRect<V> {
         BoundingRect::from_corners(&self.from, &self.to)
@@ -178,13 +178,13 @@ impl <V: VectorN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
 
 /// A triangle, defined by it's three points.
 #[derive(Clone)]
-pub struct SimpleTriangle<V: VectorN> {
+pub struct SimpleTriangle<V: PointN> {
     v0: V,
     v1: V,
     v2: V,
 }
 
-impl <V> SimpleTriangle<V> where V: VectorN {
+impl <V> SimpleTriangle<V> where V: PointN {
     /// Checks if the given points are ordered counter clock wise.
     pub fn new(v0: V, v1: V, v2: V) -> SimpleTriangle<V> {
         SimpleTriangle { v0: v0, v1: v1, v2: v2 }
@@ -207,7 +207,7 @@ impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
 
 }
 
-impl <V> PartialEq for SimpleTriangle<V> where V: VectorN {
+impl <V> PartialEq for SimpleTriangle<V> where V: PointN {
     fn eq(&self, rhs: &SimpleTriangle<V>) -> bool {
         let vl = self.vertices();
         let vr = rhs.vertices();
@@ -221,7 +221,7 @@ impl <V> PartialEq for SimpleTriangle<V> where V: VectorN {
     }
 }
 
-impl <V> SimpleTriangle<V> where V: VectorN, V::Scalar: SpadeFloat {
+impl <V> SimpleTriangle<V> where V: PointN, V::Scalar: SpadeFloat {
 
     /// Returns the nearest point lying on any of the triangle's edges.
     pub fn nearest_point_on_edge(&self, pos: &V) -> V {
@@ -265,7 +265,7 @@ impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
     }
 
     /// Returns the barycentric coordinates of a point.
-    pub fn barycentric_interpolation(&self, coord: &V) -> Vector3<V::Scalar> {
+    pub fn barycentric_interpolation(&self, coord: &V) -> Point3<V::Scalar> {
         let (v1, v2, v3) = (self.v0.clone(), self.v1.clone(), self.v2.clone());
         let (x, y) = (*coord.nth(0), *coord.nth(1));
         let (x1, x2, x3) = (*v1.nth(0), *v2.nth(0), *v3.nth(0));
@@ -274,13 +274,13 @@ impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
         let lambda1 = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / det;
         let lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det;
         let lambda3 = one::<V::Scalar>() - lambda1 - lambda2;
-        Vector3::new(lambda1, lambda2, lambda3)
+        Point3::new(lambda1, lambda2, lambda3)
     }
 }
 
 
 impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
-    type Vector = V;
+    type Point = V;
     
     fn mbr(&self) -> BoundingRect<V> {
         let mut result = BoundingRect::from_corners(&self.v0, &self.v1);
@@ -305,14 +305,14 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
 }
 
 /// An n-dimensional circle, defined by its origin and radius.
-pub struct SimpleCircle<V: VectorN> {
+pub struct SimpleCircle<V: PointN> {
     /// The circle's center.
     pub center: V,
     /// The circle's radius.
     pub radius: V::Scalar,
 }
 
-impl <V> SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFloat {
+impl <V> SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloat {
 
     /// Create a new circle.
     pub fn new(center: V, radius: V::Scalar) -> SimpleCircle<V> {
@@ -323,8 +323,8 @@ impl <V> SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFloat {
     }
 }
 
-impl <V> SpatialObject for SimpleCircle<V> where V: VectorN, V::Scalar: SpadeFloat {
-    type Vector = V;
+impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloat {
+    type Point = V;
 
     fn mbr(&self) -> BoundingRect<V> {
         let r = V::from_value(self.radius);
@@ -353,38 +353,38 @@ mod test {
     use super::{SimpleEdge, SimpleTriangle};
     use traits::SpatialObject;
     use kernels::TrivialKernel;
-    use cgmath::{Vector2};
+    use cgmath::{Point2};
     use approx::ApproxEq;
 
     #[test]
     fn test_edge_distance() {
-        let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-        assert!(e.distance2(&Vector2::new(1.0, 0.0)).relative_eq(&0.5, 1e-10, 1e-10));
-        assert!(e.distance2(&Vector2::new(0.0, 1.)).relative_eq(&0.5, 1e-10, 1e-10));
-        assert!(e.distance2(&Vector2::new(-1.0, -1.)).relative_eq(&2., 1e-10, 1e-10));
-        assert!(e.distance2(&Vector2::new(2.0, 2.0)).relative_eq(&2., 1e-10, 1e-10));
+        let e = SimpleEdge::new(Point2::new(0f32, 0.), Point2::new(1., 1.));
+        assert!(e.distance2(&Point2::new(1.0, 0.0)).relative_eq(&0.5, 1e-10, 1e-10));
+        assert!(e.distance2(&Point2::new(0.0, 1.)).relative_eq(&0.5, 1e-10, 1e-10));
+        assert!(e.distance2(&Point2::new(-1.0, -1.)).relative_eq(&2., 1e-10, 1e-10));
+        assert!(e.distance2(&Point2::new(2.0, 2.0)).relative_eq(&2., 1e-10, 1e-10));
     }
 
     #[test]
     fn test_edge_side() {
-        let e = SimpleEdge::new(Vector2::new(0f32, 0.), Vector2::new(1., 1.));
-        assert!(e.side_query::<TrivialKernel>(&Vector2::new(1.0, 0.0)).is_on_right_side());
-        assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.0, 1.0)).is_on_left_side());
-        assert!(e.side_query::<TrivialKernel>(&Vector2::new(0.5, 0.5)).is_on_line());
+        let e = SimpleEdge::new(Point2::new(0f32, 0.), Point2::new(1., 1.));
+        assert!(e.side_query::<TrivialKernel>(&Point2::new(1.0, 0.0)).is_on_right_side());
+        assert!(e.side_query::<TrivialKernel>(&Point2::new(0.0, 1.0)).is_on_left_side());
+        assert!(e.side_query::<TrivialKernel>(&Point2::new(0.5, 0.5)).is_on_line());
     }
 
     #[test]
     fn test_triangle_distance() {
-        let v1 = Vector2::new(0f32, 0.);
-        let v2 = Vector2::new(1., 0.);
-        let v3 = Vector2::new(0., 1.);
+        let v1 = Point2::new(0f32, 0.);
+        let v2 = Point2::new(1., 0.);
+        let v3 = Point2::new(0., 1.);
         let t = SimpleTriangle::new(v1, v2, v3);
-        assert_eq!(t.distance2(&Vector2::new(0.25, 0.25)), 0.);
-        assert!(t.distance2(&Vector2::new(-1., -1.)).relative_eq(&2., 1e-10, 1e-10));
-        assert!(t.distance2(&Vector2::new(0., -1.)).relative_eq(&1., 1e-10, 1e-10));
-        assert!(t.distance2(&Vector2::new(-1., 0.)).relative_eq(&1., 1e-10, 1e-10));
-        assert!(t.distance2(&Vector2::new(1., 1.)).relative_eq(&0.5, 1e-10, 1e-10));
-        assert!(t.distance2(&Vector2::new(0.5, 0.5)).relative_eq(&0.0, 1e-10, 1e-10));
-        assert!(t.distance2(&Vector2::new(0.6, 0.6)) > 0.001);
+        assert_eq!(t.distance2(&Point2::new(0.25, 0.25)), 0.);
+        assert!(t.distance2(&Point2::new(-1., -1.)).relative_eq(&2., 1e-10, 1e-10));
+        assert!(t.distance2(&Point2::new(0., -1.)).relative_eq(&1., 1e-10, 1e-10));
+        assert!(t.distance2(&Point2::new(-1., 0.)).relative_eq(&1., 1e-10, 1e-10));
+        assert!(t.distance2(&Point2::new(1., 1.)).relative_eq(&0.5, 1e-10, 1e-10));
+        assert!(t.distance2(&Point2::new(0.5, 0.5)).relative_eq(&0.0, 1e-10, 1e-10));
+        assert!(t.distance2(&Point2::new(0.6, 0.6)) > 0.001);
     }
 }

@@ -18,7 +18,7 @@
 //! The "adaptive" nature will increase performance only if a simpler calculation 
 //! cannot be guaranteed to be accurate enough, yielding a higher performance on
 //! average.
-use vector_traits::VectorN;
+use point_traits::PointN;
 
 // These values are precomputed from the "exactinit" method of the c-source code. They should? be 
 // the same in all IEEE-754 environments, including rust f64
@@ -32,7 +32,7 @@ const ICCERRBOUND_A: f64 = (10.0 + 96.0 * EPSILON) * EPSILON;
 const ICCERRBOUND_B: f64 = (4.0 + 48.0 * EPSILON) * EPSILON;
 const ICCERRBOUND_C: f64 = (44.0 + 576.0 * EPSILON) * EPSILON * EPSILON;
 
-pub fn orient2d<V: VectorN<Scalar=f64>>(pa: &V, pb: &V, pc: &V) -> f64
+pub fn orient2d<V: PointN<Scalar=f64>>(pa: &V, pb: &V, pc: &V) -> f64
 {
     let pa = [*pa.nth(0), *pa.nth(1)];
     let pb = [*pb.nth(0), *pb.nth(1)];
@@ -126,7 +126,7 @@ fn orient2dadapt(pa: [f64; 2], pb: [f64; 2], pc: [f64; 2],
     D[dlength - 1]
 }
 
-pub fn incircle<V: VectorN<Scalar=f64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> f64 {
+pub fn incircle<V: PointN<Scalar=f64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> f64 {
     let pa = [*pa.nth(0), *pa.nth(1)];
     let pb = [*pb.nth(0), *pb.nth(1)];
     let pc = [*pc.nth(0), *pc.nth(1)];
@@ -993,16 +993,16 @@ fn two_two_sum(a1: f64, a0: f64, b1: f64, b0: f64) -> (f64, f64, f64, f64) {
 #[cfg(test)]
 mod test {
     use super::{orient2d, incircle};
-    use cgmath::Vector2;
+    use cgmath::Point2;
 
     #[test]
     fn test_orient2d() {
-        let from = Vector2::new(-1f64, -1.0);
-        let to = Vector2::new(1f64, 1.0);
-        let p1 = Vector2::new(::std::f64::MIN_POSITIVE, ::std::f64::MIN_POSITIVE,);
-        let p2 = Vector2::new(-::std::f64::MIN_POSITIVE, -::std::f64::MIN_POSITIVE);
-        let p3 = Vector2::new(-::std::f64::MIN_POSITIVE, ::std::f64::MIN_POSITIVE);
-        let p4 = Vector2::new(::std::f64::MIN_POSITIVE, -::std::f64::MIN_POSITIVE);
+        let from = Point2::new(-1f64, -1.0);
+        let to = Point2::new(1f64, 1.0);
+        let p1 = Point2::new(::std::f64::MIN_POSITIVE, ::std::f64::MIN_POSITIVE,);
+        let p2 = Point2::new(-::std::f64::MIN_POSITIVE, -::std::f64::MIN_POSITIVE);
+        let p3 = Point2::new(-::std::f64::MIN_POSITIVE, ::std::f64::MIN_POSITIVE);
+        let p4 = Point2::new(::std::f64::MIN_POSITIVE, -::std::f64::MIN_POSITIVE);
 
         for &(p, sign) in &[(p1, 0.0), (p2, 0.0), (p3, 1.0), (p4, -1.0)] {
             let det = orient2d(&from, &to, &p);
@@ -1012,11 +1012,11 @@ mod test {
 
     #[test]
     fn test_incircle() {
-        let from = Vector2::new(-1f64, -1.0);
-        let to = Vector2::new(1f64, 1.0);
-        let p_left = Vector2::new(-::std::f64::MIN_POSITIVE, ::std::f64::MIN_POSITIVE);
-        let p_right = Vector2::new(::std::f64::MIN_POSITIVE, -::std::f64::MIN_POSITIVE);
-        let p_query = Vector2::new(2.0, 2.0);
+        let from = Point2::new(-1f64, -1.0);
+        let to = Point2::new(1f64, 1.0);
+        let p_left = Point2::new(-::std::f64::MIN_POSITIVE, ::std::f64::MIN_POSITIVE);
+        let p_right = Point2::new(::std::f64::MIN_POSITIVE, -::std::f64::MIN_POSITIVE);
+        let p_query = Point2::new(2.0, 2.0);
 
         assert!(incircle(&from, &p_left, &to, &p_query) > 0.0);
         assert!(incircle(&from, &to, &p_right, &p_query) > 0.0);

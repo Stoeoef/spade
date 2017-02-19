@@ -8,7 +8,6 @@
 
 use nalgebra as na;
 use cgmath as cg;
-use nalgebra::{Repeat};
 
 use std::fmt::Debug;
 use traits::SpadeNum;
@@ -21,12 +20,12 @@ use misc::{min_inline, max_inline};
 /// Also, the trait is implemented for fixed arrays of length 2, 3 and 4, allowing
 /// to use spade's datastructures with fixed size arrays as point coordinates.
 /// That means that the trait's methods are also implemented for
-/// these array types, thus be careful when importing `VectorN`.
+/// these array types, thus be careful when importing `PointN`.
 ///
 /// Implement this if you want spade to support your own vector types.
 /// Also consider adding an (empty) implementation of `TwoDimensional`
 /// or `ThreeDimensional` if appropriate.
-pub trait VectorN
+pub trait PointN
     where Self: Clone,
           Self: Debug,
           Self: PartialEq {
@@ -45,8 +44,8 @@ pub trait VectorN
     fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar;
 }
 
-/// Adds some private methods to the ```VectorN``` trait.
-pub trait VectorNExtensions : VectorN {
+/// Adds some private methods to the ```PointN``` trait.
+pub trait PointNExtensions : PointN {
     /// Creates a new vector with all components initialized to zero.
     fn new() -> Self {
         Self::from_value(zero())
@@ -83,7 +82,7 @@ pub trait VectorNExtensions : VectorN {
     }
 
     /// Maps an unary operation to all compoenents.
-    fn map<F: Fn(Self::Scalar) -> O::Scalar, O: VectorN>(&self, f: F) -> O {
+    fn map<F: Fn(Self::Scalar) -> O::Scalar, O: PointN>(&self, f: F) -> O {
         let mut result = O::new();
         for i in 0 .. Self::dimensions() {
             *result.nth_mut(i)  = f(self.nth(i).clone());
@@ -130,21 +129,21 @@ pub trait VectorNExtensions : VectorN {
     }
 }
 
-impl <T> VectorNExtensions for T where T: VectorN { }
+impl <T> PointNExtensions for T where T: PointN { }
 
-/// A two dimensional Vector.
+/// A two dimensional Point.
 /// Some datastructures will only work if two dimensional vectors are given,
 /// this trait makes sure that only such vectors can be passed.
-pub trait TwoDimensional : VectorN { }
+pub trait TwoDimensional : PointN { }
 
-impl <S: SpadeNum + cg::BaseNum> TwoDimensional for cg::Vector2<S> { }
-impl <S: SpadeNum + na::BaseNum> TwoDimensional for na::Vector2<S> { }
+impl <S: SpadeNum + cg::BaseNum> TwoDimensional for cg::Point2<S> { }
+impl <S: SpadeNum + na::Scalar> TwoDimensional for na::Point2<S> { }
 impl <S: SpadeNum + Copy> TwoDimensional for [S; 2] { }
 
-/// A three dimensional Vector.
+/// A three dimensional Point.
 /// Some algorithms will only work with three dimensional vectors, this trait makes
 /// sure that only such vectors can be used.
-pub trait ThreeDimensional : VectorN {
+pub trait ThreeDimensional : PointN {
     /// The cross product of this vector and another.
     fn cross(&self, other: &Self) -> Self {
         let mut result = Self::new();
@@ -158,13 +157,13 @@ pub trait ThreeDimensional : VectorN {
     }
 }
 
-impl <S: SpadeNum + cg::BaseNum> ThreeDimensional for cg::Vector3<S> { }
+impl <S: SpadeNum + cg::BaseNum> ThreeDimensional for cg::Point3<S> { }
 
-impl <S: SpadeNum + na::BaseNum> ThreeDimensional for na::Vector3<S> { }
+impl <S: SpadeNum + na::Scalar> ThreeDimensional for na::Point3<S> { }
 
 impl <S: SpadeNum + Copy> ThreeDimensional for [S; 3] { }
 
-impl <S: SpadeNum + Copy> VectorN for [S; 2] {
+impl <S: SpadeNum + Copy> PointN for [S; 2] {
     type Scalar = S;
     fn dimensions() -> usize { 2 }
 
@@ -176,7 +175,7 @@ impl <S: SpadeNum + Copy> VectorN for [S; 2] {
     }
 }
 
-impl <S: SpadeNum + Copy> VectorN for [S; 3] {
+impl <S: SpadeNum + Copy> PointN for [S; 3] {
     type Scalar = S;
     fn dimensions() -> usize { 3 }
 
@@ -188,7 +187,7 @@ impl <S: SpadeNum + Copy> VectorN for [S; 3] {
     }
 }
 
-impl <S: SpadeNum + Copy> VectorN for [S; 4] {
+impl <S: SpadeNum + Copy> PointN for [S; 4] {
     type Scalar = S;
     
     fn dimensions() -> usize { 4 }
@@ -201,7 +200,7 @@ impl <S: SpadeNum + Copy> VectorN for [S; 4] {
     }
 }
 
-impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
+impl<S: SpadeNum + cg::BaseNum> PointN for cg::Point2<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 2 }
@@ -214,7 +213,7 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector2<S> {
     }
 }
 
-impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
+impl<S: SpadeNum + cg::BaseNum> PointN for cg::Point3<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 3 }
@@ -227,20 +226,7 @@ impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector3<S> {
     }
 }
 
-impl<S: SpadeNum + cg::BaseNum> VectorN for cg::Vector4<S> {
-    type Scalar = S;
-    
-    fn dimensions() -> usize { 4 }
-
-    fn nth(&self, index: usize) -> &S { &self[index] }
-    fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
-
-    fn from_value(value: Self::Scalar) -> Self {
-        cg::Array::from_value(value)
-    }
-}
-
-impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
+impl<S: SpadeNum + na::Scalar> PointN for na::Point2<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 2 }
@@ -249,11 +235,11 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector2<S> {
     fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
 
     fn from_value(value: Self::Scalar) -> Self {
-        na::Vector2::repeat(value)
+        na::Point2::new(value, value)
     }
 }
 
-impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
+impl<S: SpadeNum + na::Scalar> PointN for na::Point3<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 3 }
@@ -262,11 +248,11 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector3<S> {
     fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
 
     fn from_value(value: Self::Scalar) -> Self {
-        na::Vector3::repeat(value)
+        na::Point3::new(value, value, value)
     }
 }
 
-impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
+impl<S: SpadeNum + na::Scalar + na::Scalar> PointN for na::Point4<S> {
     type Scalar = S;
     
     fn dimensions() -> usize { 4 }
@@ -275,6 +261,6 @@ impl<S: SpadeNum + na::BaseNum> VectorN for na::Vector4<S> {
     fn nth_mut(&mut self, index: usize) -> &mut S { &mut self[index] }
 
     fn from_value(value: Self::Scalar) -> Self {
-        na::Vector4::repeat(value)
+        na::Point4::new(value, value, value, value)
     }
 }

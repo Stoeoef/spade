@@ -20,14 +20,13 @@ use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
 use time::Duration;
-use num::Zero;
-use cgmath::{Vector2, BaseNum};
+use cgmath::{Point2, BaseNum, EuclideanSpace};
 use std::path::Path;
 use std::fs::File;
 use std::io::{Write};
 
 type TWL<T> = TriangulationWalkLookup<T>;
-type Delaunay<Scalar, K, L> = DelaunayTriangulation<Vector2<Scalar>, K, L>;
+type Delaunay<Scalar, K, L> = DelaunayTriangulation<Point2<Scalar>, K, L>;
 
 struct BenchSetup<'a, V, K, L> where
     V: TwoDimensional + 'a,
@@ -87,7 +86,7 @@ fn main() {
     let vertices_f64_walk = random_walk_with_seed_and_origin::<f64>(0.001, SIZE, seed);
     let vertices_i64_walk = random_walk_with_seed_and_origin::<i64>(3, SIZE, seed);
     let vertices_f64_uniform = random_points_with_seed_range_and_origin::<f64>(
-            20.0, Vector2::new(1e10, -1e10), SIZE, seed);
+            20.0, Point2::new(1e10, -1e10), SIZE, seed);
     let vertices_i64_uniform = random_points_in_range::<i64>(10000, SIZE, seed);
 
     // let vertices_large_range = random_points_in_range::<i64>(
@@ -228,41 +227,41 @@ fn main() {
 
 }
 
-pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-range.clone(), range.clone());
     let mut points = Vec::with_capacity(size);
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng);
         let y = range.ind_sample(&mut rng);
-        points.push(Vector2::new(x, y));
+        points.push(Point2::new(x, y));
     }
     points
 }
 
-pub fn random_points_with_seed_range_and_origin<S: SpadeNum + Copy + Rand + SampleRange>(
-    range: S, origin: Vector2<S>, size: usize, seed: [u32; 4])
-    -> Vec<Vector2<S>> {
+pub fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + Rand + SampleRange>(
+    range: S, origin: Point2<S>, size: usize, seed: [u32; 4])
+    -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-range, range);
     let mut points = Vec::new();
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng) + origin.x;
         let y = range.ind_sample(&mut rng) + origin.y;
-        points.push(Vector2::new(x, y));
+        points.push(Point2::new(x, y));
     }
     points    
 }
 
-pub fn random_walk_with_seed_and_origin<S: SpadeNum + Rand + SampleRange + BaseNum>(step: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+pub fn random_walk_with_seed_and_origin<S: SpadeNum + Rand + SampleRange + BaseNum>(step: S, size: usize, seed: [u32; 4]) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let rand_range = Range::new(-step, step);
     let mut points = Vec::new();
-    let mut last = Vector2::zero();
+    let mut last = Point2::origin();
     for _ in 0 .. size {
         let x = rand_range.ind_sample(&mut rng);
         let y = rand_range.ind_sample(&mut rng);
-        last = last + Vector2::new(x, y);
+        last = Point2::new(last.x + x, last.y + y);
         points.push(last);
     }
     points

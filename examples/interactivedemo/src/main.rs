@@ -23,7 +23,7 @@ use spade::rtree::{RTree};
 use spade::{SpadeNum};
 use spade::delaunay::{DelaunayTriangulation};
 use spade::kernels::{FloatKernel};
-use cgmath::{Vector2, BaseFloat, BaseNum};
+use cgmath::{Point2, BaseFloat, BaseNum};
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
@@ -31,7 +31,7 @@ use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 
-type ExampleTriangulation = DelaunayTriangulation<Vector2<f64>, FloatKernel>;
+type ExampleTriangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
 
 #[derive(Clone, Copy)]
 pub enum LookupMode {
@@ -65,7 +65,7 @@ fn main() {
 
     let mut render_data = RenderData::new(&display);
 
-    let mut last_point = Vector2::new(0., 0.);
+    let mut last_point = Point2::new(0., 0.);
     let mut lookup_mode = LookupMode::Nearest;
     let mut draw_tree_nodes = false;
 
@@ -139,7 +139,7 @@ fn main() {
                     let y = h as i32 - y;
                     let x = (x as f64 / w as f64) * 2. - 1.;
                     let y = (y as f64 / h as f64) * 2. - 1.;
-                    last_point = Vector2::new(x, y);
+                    last_point = Point2::new(x, y);
                     let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
                     render_data.update_selection(&display, &selection);
                     dirty = true;
@@ -153,8 +153,8 @@ fn main() {
     }
 }
 
-fn get_selected_vertices(tree: &RTree<Vector2<f64>>, point: Vector2<f64>,
-                         lookup_mode: LookupMode) -> Vec<Vector2<f64>> {
+fn get_selected_vertices(tree: &RTree<Point2<f64>>, point: Point2<f64>,
+                         lookup_mode: LookupMode) -> Vec<Point2<f64>> {
     
     const LOOKUP_RADIUS2: f64 = 0.2 * 0.2;
     const N: usize = 10;
@@ -190,18 +190,18 @@ fn print_help() {
     println!("Right click: Delete closest point.");
 }
 
-pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+pub fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-range.clone(), range.clone());
     let mut points = Vec::with_capacity(size);
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng);
         let y = range.ind_sample(&mut rng);
-        points.push(Vector2::new(x, y));
+        points.push(Point2::new(x, y));
     }
     points
 }
 
-pub fn random_points_with_seed<S: SpadeNum + BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Vector2<S>> {
+pub fn random_points_with_seed<S: SpadeNum + BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Point2<S>> {
     random_points_in_range(S::one(), size, seed)
 }

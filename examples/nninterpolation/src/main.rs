@@ -41,7 +41,7 @@ use interpolation::interpolation_methods::{BarycentricInterpolation,
 use delaunay_creation::Delaunay;
 
 struct InterpolationRenderData {
-    edges: Vec<(Vector3<f32>, Vector3<f32>)>,
+    edges: Vec<(Point3<f32>, Point3<f32>)>,
     mesh: Rc<RefCell<Mesh>>,
     title: &'static str,
 }
@@ -190,7 +190,7 @@ fn main() {
         {
             let color = Point3::new(0.8, 0.5, 0.2);
             for &(from, to) in &delaunay_lines {
-                window.draw_line(&from.to_point(), &to.to_point(), &color);
+                window.draw_line(&from, &to, &color);
             }
         }
 
@@ -198,7 +198,7 @@ fn main() {
             if let Some(mesh) = interpolation_meshes.get(cur_interpolation_mesh_index) {
                 let color = Point3::new(0.5, 0.8, 0.2);
                 for &(from, to) in &mesh.edges {
-                    window.draw_line(&from.to_point(), &to.to_point(), &color);
+                    window.draw_line(&from, &to, &color);
                 }
             }
         }
@@ -206,23 +206,23 @@ fn main() {
         if show_normals {
             let color = Point3::new(0.5, 0.5, 1.0);
             for &(from, to) in &normals {
-                window.draw_line(&from.to_point(), &to.to_point(), &color);
+                window.draw_line(&from, &to, &color);
             }
         }
     }
 }
 
-fn get_normals(delaunay: &Delaunay) -> Vec<(Vector3<f32>, Vector3<f32>)> {
+fn get_normals(delaunay: &Delaunay) -> Vec<(Point3<f32>, Point3<f32>)> {
     let mut result = Vec::new();
     for v in delaunay.vertices() {
         let n = v.normal;
         let p = v.position_3d();
-        result.push((Cast::from(p), Cast::from(p - n * 0.3)));
+        result.push((Cast::from(p), Cast::from((p - n * 0.3))));
     }
     result
 }
 
-fn extract_edges(delaunay: &Delaunay) -> Vec<(Vector3<f32>, Vector3<f32>)> {
+fn extract_edges(delaunay: &Delaunay) -> Vec<(Point3<f32>, Point3<f32>)> {
     let offset = Vector3::new(0., 0., -0.01);
     let mut lines = Vec::new();
     for edge in delaunay.edges() {
@@ -238,7 +238,7 @@ fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
     let mut coords = Vec::new();
     let mut faces = Vec::new();
     for vertex in delaunay.vertices() {
-        coords.push(Cast::from(vertex.position_3d().to_point()));
+        coords.push(Cast::from(vertex.position_3d()));
     }
     for triangle in delaunay.triangles() {
         let triangle = triangle.as_triangle();

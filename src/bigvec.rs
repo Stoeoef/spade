@@ -12,7 +12,7 @@ use std::ops::{Add, Sub, Index, IndexMut, Div, Mul, Rem, Neg};
 use num::{Num, BigInt, Zero, One, Signed, ToPrimitive, Integer};
 use num::bigint::ToBigInt;
 use traits::{SpadeNum};
-use vector_traits::{VectorN, TwoDimensional};
+use point_traits::{PointN, TwoDimensional};
 
 
 /// BigVec2 is a two dimensional vector that does not _require_ it's
@@ -30,7 +30,7 @@ impl <N: Num + Clone> BigVec2<N> {
     }
 }
 
-impl <N: SpadeNum> VectorN for BigVec2<N> {
+impl <N: SpadeNum> PointN for BigVec2<N> {
     type Scalar = N;
 
     fn dimensions() -> usize {
@@ -96,14 +96,14 @@ impl <N: SpadeNum> IndexMut<usize> for BigVec2<N> {
     }
 }
 
-impl <I> From<cg::Vector2<I>> for BigVec2<BigInt> where I: cg::BaseNum + ToBigInt {
-    fn from(v: cg::Vector2<I>) -> Self {
+impl <I> From<cg::Point2<I>> for BigVec2<BigInt> where I: cg::BaseNum + ToBigInt {
+    fn from(v: cg::Point2<I>) -> Self {
         BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
     }
 }
 
-impl <I> From<na::Vector2<I>> for BigVec2<BigInt> where I: na::BaseNum + ToBigInt {
-    fn from(v: na::Vector2<I>) -> Self {
+impl <I> From<na::Point2<I>> for BigVec2<BigInt> where I: ToBigInt + na::Scalar {
+    fn from(v: na::Point2<I>) -> Self {
         BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
     }
 }
@@ -431,14 +431,14 @@ impl Ord for AdaptiveInt {
 }
 
 
-impl <I> From<cg::Vector2<I>> for BigVec2<AdaptiveInt> where I: ::std::convert::Into<i64> + Copy {
-    fn from(v: cg::Vector2<I>) -> Self {
+impl <I> From<cg::Point2<I>> for BigVec2<AdaptiveInt> where I: ::std::convert::Into<i64> + Copy {
+    fn from(v: cg::Point2<I>) -> Self {
         BigVec2::new(AdaptiveInt::LowRes(v[0].into()), AdaptiveInt::LowRes(v[1].into()))
     }
 }
 
-impl <I> From<na::Vector2<I>> for BigVec2<AdaptiveInt> where I: ::std::convert::Into<i64> + Copy {
-    fn from(v: na::Vector2<I>) -> Self {
+impl <I> From<na::Point2<I>> for BigVec2<AdaptiveInt> where I: ::std::convert::Into<i64> + na::Scalar {
+    fn from(v: na::Point2<I>) -> Self {
         BigVec2::new(AdaptiveInt::LowRes(v[0].into()), AdaptiveInt::LowRes(v[1].into()))
     }
 }

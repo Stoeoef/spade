@@ -17,7 +17,7 @@ use rand::distributions::range::SampleRange;
 use spade::SpadeNum;
 use spade::rtree::RTree;
 use time::Duration;
-use cgmath::{Vector2};
+use cgmath::{Point2, BaseNum};
 use std::path::Path;
 use std::fs::File;
 use std::io::{Write, stdout};
@@ -31,8 +31,8 @@ fn main() {
 fn blackbox<T: ?Sized>(_: &T) {
 }
 
-fn measure<F, T>(result: &mut Vec<i64>, points: &[Vector2<f32>], mut operation: F) 
-    where F: FnMut(Vector2<f32>) -> T {
+fn measure<F, T>(result: &mut Vec<i64>, points: &[Point2<f32>], mut operation: F) 
+    where F: FnMut(Point2<f32>) -> T {
     let time = Duration::span(|| {
         for point in points {
             blackbox(&operation(*point));
@@ -87,16 +87,16 @@ fn run_compare_operations_bench() {
     println!("Done!");
 }
 
-pub fn random_points_with_seed<S: SpadeNum + Copy + Rand + SampleRange>(
+pub fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + Rand + SampleRange>(
     size: usize, seed: [u32; 4])
-    -> Vec<Vector2<S>> {
+    -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();
     for _ in 0 .. size {
         let x = range.ind_sample(&mut rng);
         let y = range.ind_sample(&mut rng);
-        points.push(Vector2::new(x, y));
+        points.push(Point2::new(x, y));
     }
     points    
 }

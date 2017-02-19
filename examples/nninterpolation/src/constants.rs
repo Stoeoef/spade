@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use nalgebra::Vector2;
+use nalgebra::Point2;
 
 pub const SAMPLE_REGION: f64 = 3.5;
 pub const FREQUENCY: f64 = 1.;
@@ -17,4 +17,4 @@ pub const GRID_SUBDIVISIONS: usize = 300;
 pub const OFFSET: f64 = -0.01;
 pub const GRID_SIZE: f64 = SAMPLE_REGION * 1.05;
 pub const SCALE: f64 = 2.0 * GRID_SIZE / (GRID_SUBDIVISIONS as f64);
-pub const GRID_OFFSET: Vector2<f64> = Vector2 { x: GRID_SIZE, y: GRID_SIZE };
+pub const GRID_OFFSET: Point2<f64> = Point2 { x: GRID_SIZE, y: GRID_SIZE };

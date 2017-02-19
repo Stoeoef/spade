@@ -10,40 +10,40 @@ use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 
 use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, TriangulationWalkLookup};
-use nalgebra::{Vector2, Vector3};
+use nalgebra::{Point2, Vector3, Point3};
 use spade::{HasPosition,};
 
 use constants::*;
 
 pub type Delaunay = FloatDelaunayTriangulation<
-        VectorWithHeight, TriangulationWalkLookup<Vector2<f64>>>;
+        PointWithHeight, TriangulationWalkLookup<Point2<f64>>>;
 
-pub struct VectorWithHeight {
-    point: Vector2<f64>,
+pub struct PointWithHeight {
+    point: Point2<f64>,
     pub height: f64,
-    pub gradient: Vector2<f64>,
+    pub gradient: Point2<f64>,
     // We don't need the normal for interpolation purposes. We store it only for
     // visualization.
     pub normal: Vector3<f64>,
 }
 
-impl HasPosition for VectorWithHeight {
-    type Vector = Vector2<f64>;
-    fn position(&self) -> Vector2<f64> {
+impl HasPosition for PointWithHeight {
+    type Point = Point2<f64>;
+    fn position(&self) -> Point2<f64> {
         self.point
     }
 }
 
-impl VectorWithHeight {
-    pub fn position_3d(&self) -> Vector3<f64> {
-        Vector3::new(self.point.x, self.point.y, self.height)
+impl PointWithHeight {
+    pub fn position_3d(&self) -> Point3<f64> {
+        Point3::new(self.point.x, self.point.y, self.height)
     }
 
-    pub fn new(point: Vector2<f64>, height: f64) -> VectorWithHeight {
-        VectorWithHeight {
+    pub fn new(point: Point2<f64>, height: f64) -> PointWithHeight {
+        PointWithHeight {
             point: point,
             height: height,
-            gradient: Vector2::new(0.0, 0.0),
+            gradient: Point2::new(0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
         }
     }
@@ -64,13 +64,13 @@ pub fn generate_random_triangulation() -> Delaunay {
         // Try out some other height functions, like those:
         // let height = (x * x + y * y) * 0.3;
         // let height = (x * 3.).sin() + (y - 2.).exp();
-        delaunay.insert(VectorWithHeight::new(Vector2::new(x, y), height));
+        delaunay.insert(PointWithHeight::new(Point2::new(x, y), height));
     }
 
     // Note that, for interpolation, we only need the gradients. For visualization
     // purposes, the normals are also generated and stored within the vertices
     delaunay.estimate_gradients(&(|v| v.height), &(|v, g| v.gradient = g));
-    delaunay.estimate_normals(&(|v| v.height), &(|v: &mut VectorWithHeight, n| v.normal = n));
+    delaunay.estimate_normals(&(|v| v.height), &(|v: &mut PointWithHeight, n: Point3<_>| v.normal = n.to_vector()));
     
     delaunay
 }
