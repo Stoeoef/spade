@@ -837,14 +837,18 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
 
     /// Returns the oriented next edge.
     ///
-    /// Please refer to the user manual for a detailed description.
+    /// The oriented next edge shares the same face as this edge.
+    /// When traversing the face's edges in oriented order,
+    /// this edge is the predecessor of the oriented next edge.
     pub fn o_next(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].next)
     }
 
     /// Returns the oriented previous edge.
     ///
-    /// Please refer to the user manual for a detailed description.
+    /// The oriented previous edge shares the same face as this edge.
+    /// When traversing the face's edges in oriented order,
+    /// this edge is the successor of the oriented previous edge.
     pub fn o_prev(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].prev)
     }

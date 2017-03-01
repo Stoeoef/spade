@@ -9,14 +9,14 @@
 use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 
-use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, TriangulationWalkLookup};
+use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, TriangulationWalkLocate};
 use cgmath::{EuclideanSpace, Point2, Vector3, Point3};
 use spade::{HasPosition,};
 
 use constants::*;
 
 pub type Delaunay = FloatDelaunayTriangulation<
-        PointWithHeight, TriangulationWalkLookup<Point2<f64>>>;
+        PointWithHeight, TriangulationWalkLocate<Point2<f64>>>;
 
 pub struct PointWithHeight {
     point: Point2<f64>,
@@ -54,7 +54,7 @@ pub fn generate_random_triangulation() -> Delaunay {
 
     let mut rng = ::rand::thread_rng();
     let seed = ::noise::Seed::new(rng.gen());
-    let mut delaunay = DelaunayTriangulation::with_walk_lookup();
+    let mut delaunay = DelaunayTriangulation::with_walk_locate();
 
     let range = Range::new(-SAMPLE_REGION, SAMPLE_REGION);
     for _ in 0 .. NUM_POINTS {
