@@ -26,7 +26,8 @@ Also, there is a small user guide being produced right now which should be a hel
 The algorithms and features for the 1.0 version are already there, the public interface will change though (mostly due to renaming / repackaging).
 
 # Documentation
-The documentation can be found under [docs.rs](https://docs.rs/spade/)
+The documentation can be found under [docs.rs](https://docs.rs/spade/).
+There is also a (yet unfinished) [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available.
 
 # Using spade
 Add this to your `Cargo.toml`:
@@ -41,27 +42,16 @@ _Note: If you have opened this on docs.rs, you won't see any images. Use the REA
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
-Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance. You can find this example in `/examples/rtreevis`, run it with `cargo run`.
+Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance. You can find this example in `/examples/interactivedemo`, run it with `cargo run`.
 
 ![An example R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
 
-## Natural neighbor interpolation
-The delaunay triangulation of a height field is shown with orange lines, the green grid shows the natural neighbor interpolated heights. In contrast to barycentric interpolation (the gray polygons), natural neighbor interpolation is smooth (C¹ differentiable, except for the data points themselves). You can find this example in `/examples/nninterpolation`, run it with `cargo run`.
-
-![Delaunay triangulation with a grid showing interpolated values](/images/nninterpolation.png?raw=true)
-
-## C¹ interpolants
-Naive natural neighbor interpolation is not smooth at the data points. Other interpolants have been proposed which, given a gradient for each data point, will approximate those gradients and yield a completely smooth surface. Spade can approximate those gradients for you.
-The following picture presents a side by side comparison of all implemented interpolants.
-High resolutions: [left](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationC0.png), [middle](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationSibson.png), [right](https://raw.githubusercontent.com/Stoeoef/spade/master/images/InterpolationFarin.png)
-![Side by side comparison of interpolation methods](/images/InterpolationMethods.png?raw=true)
+## Interpolation
+The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/) has a an [own chapter](https://stoeoef.gitbooks.io/spade-user-manual/content/interpolation.html) about interpolation, along with some nice images.
+An example showcasing spade's interpolation features can be found in `/examples/nninterpolation`, run it with `cargo run`.
 
 # Performance
-The following measurements were taken on an Intel Core i7-3517u.
-![Performance of opererations on the r-tree implementation](/images/rtree_analysis.png?raw_true)
-
-Insertion performance for various delaunay kernels:
-![Performance of opererations on the r-tree implementation](/images/delaunay_analysis.png?raw_true)
+The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html) contains detailed graphs and information about the delaunay triangulation's performance.
 
 # License
 
