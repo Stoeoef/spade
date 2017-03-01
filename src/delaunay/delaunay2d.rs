@@ -685,7 +685,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 for edge in next.ccw_iter() {
                     neighbors.push(edge.to().fix());
                 }
-                println!("ch neighs: {:?}", neighbors);
                 break;
             }
             neighbors.push(edge.to().fix());
@@ -716,8 +715,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         if !self.all_points_on_line {
             if ch_removal {
                 // We removed a vertex from the convex hull
-                println!("repair");
-                println!("neighs: {:?}", neighbors);
                 self.repair_convex_hull(&neighbors);
                 if self.s.num_faces() == 1 {
                     self.make_degenerate(); 
