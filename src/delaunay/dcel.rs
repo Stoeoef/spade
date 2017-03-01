@@ -482,33 +482,27 @@ impl <V> DCEL<V> {
     }
 }
 
-pub struct AdjacentEdgesIterator<'a, V> where V: 'a {
-    iter: Option<ONextIterator<'a, V>>,
-}
-
-impl <'a, V> Iterator for AdjacentEdgesIterator<'a, V> where V: 'a {
-    type Item = EdgeHandle<'a, V>;
-    fn next(&mut self) -> Option<EdgeHandle<'a, V>> {
-        if let Some(ref mut iter) = self.iter {
-            iter.next()
-        } else {
-            None
-        }
-    }
-}
-
+/// An iterator that iterates over the edges adjacent to a face.
+///
+/// The iterator will traverse the edges in oriented order.
 pub struct ONextIterator<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
-    current: Option<FixedEdgeHandle>,
-    until: FixedEdgeHandle,
+    cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>
 }
 
 impl <'a, V> ONextIterator<'a, V> where V: 'a {
-    fn new(dcel: &'a DCEL<V>, edge: FixedEdgeHandle) -> ONextIterator<'a, V> {
+    fn new_empty(dcel: &'a DCEL<V>) -> ONextIterator<'a, V> {
         ONextIterator {
             dcel: dcel,
-            current: None,
-            until: edge,
+            cur_until: None,
+        }
+    }
+
+    fn new(dcel: &'a DCEL<V>, edge: FixedEdgeHandle) -> ONextIterator<'a, V> {
+        let edge = dcel.edge(edge);
+        ONextIterator {
+            dcel: dcel,
+            cur_until: Some((edge.fix(), edge.o_prev().fix())),
         }
     }
 }
@@ -517,40 +511,64 @@ impl <'a, V> Iterator for ONextIterator<'a, V> where V: 'a {
     type Item = EdgeHandle<'a, V>;
 
     fn next(&mut self) -> Option<EdgeHandle<'a, V>> {
-        let current = if let Some(current) = self.current {
-            if current == self.until {
-                return None;
+        if let Some((cur, until)) = self.cur_until {
+            let cur_handle = self.dcel.edge(cur);
+            if cur == until {
+                self.cur_until = None;
+            } else {
+                let new_cur = cur_handle.o_next().fix();
+                self.cur_until = Some((new_cur, until));
             }
-            current
+            Some(cur_handle)
         } else {
-            self.until
-        };
-        let result = self.dcel.edge(current);
-        self.current = Some(result.o_next().fix());
-        Some(result)
+            None
+        }
     }
 }
 
+impl <'a, V> DoubleEndedIterator for ONextIterator<'a, V> where V: 'a {
+    fn next_back(&mut self) -> Option<EdgeHandle<'a, V>> {
+        if let Some((cur, until)) = self.cur_until {
+            let until_handle = self.dcel.edge(until);
+            if cur == until {
+                self.cur_until = None;
+            } else {
+                let new_until = until_handle.o_prev().fix();
+                self.cur_until = Some((cur, new_until));
+            }
+            Some(until_handle)
+        } else {
+            None
+        }
+    }
+}
+
+/// An iterator that iterates over the outgoing edges from a vertex.
+///
+/// The edges will be iterated in counterclockwise order.
 pub struct CCWIterator<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
-    current: Option<FixedEdgeHandle>,
-    until: Option<FixedEdgeHandle>,
+    cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>,
 }
 
 impl <'a, V> CCWIterator<'a, V> where V: 'a {
     fn new(dcel: &'a DCEL<V>, vertex: FixedVertexHandle) -> CCWIterator<'a, V> {
+        let cur_until = if let Some(edge) = dcel.vertex(vertex).out_edge() {
+            Some((edge.ccw().fix(), edge.fix()))
+        } else {
+            None
+        };
         CCWIterator {
             dcel: dcel,
-            current: None,
-            until: dcel.vertices[vertex].out_edge,
+            cur_until: cur_until,
         }
     }
 
     fn from_edge(dcel: &'a DCEL<V>, edge: FixedEdgeHandle) -> CCWIterator<'a, V> {
+        let edge = dcel.edge(edge);
         CCWIterator {
             dcel: dcel,
-            current: None,
-            until: Some(edge),
+            cur_until: Some((edge.fix(), edge.cw().fix())),
         }
     }
 }
@@ -559,23 +577,38 @@ impl <'a, V> Iterator for CCWIterator<'a, V> where V: 'a {
     type Item = EdgeHandle<'a, V>;
 
     fn next(&mut self) -> Option<EdgeHandle<'a, V>> {
-        if let Some(until) = self.until {
-            let current = if let Some(current) = self.current {
-                if current == until {
-                    return None;
-                }
-                current
+        if let Some((cur, until)) = self.cur_until {
+            let cur_handle = self.dcel.edge(cur);
+            if cur == until {
+                self.cur_until = None;
             } else {
-                until
-            };
-            let result = self.dcel.edge(current);
-            self.current = Some(result.ccw().fix());
-            Some(result)
+                let new_cur = cur_handle.ccw().fix();
+                self.cur_until = Some((new_cur, until));
+            }
+            Some(cur_handle)
         } else {
             None
         }
     }
 }
+
+impl <'a, V> DoubleEndedIterator for CCWIterator<'a, V> where V: 'a {
+    fn next_back(&mut self) -> Option<EdgeHandle<'a, V>> {
+        if let Some((cur, until)) = self.cur_until {
+            let until_handle = self.dcel.edge(until);
+            if cur == until {
+                self.cur_until = None;
+            } else {
+                let new_until = until_handle.cw().fix();
+                self.cur_until = Some((cur, new_until));
+            }
+            Some(until_handle)
+        } else {
+            None
+        }
+    }
+}
+
 
 pub struct FacesIterator<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
@@ -686,6 +719,10 @@ pub struct VertexHandle<'a, V> where V: 'a {
     handle: FixedVertexHandle,
 }
 
+/// A handle to a face.
+///
+/// This handle has methods that can be used to get all
+/// edges adjacent to this face.
 pub struct FaceHandle<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
     handle: FixedFaceHandle,
@@ -798,14 +835,24 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
         VertexHandle::new(self.dcel, edge.origin)
     }
 
+    /// Returns the oriented next edge.
+    ///
+    /// Please refer to the user manual for a detailed description.
     pub fn o_next(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].next)
     }
 
+    /// Returns the oriented previous edge.
+    ///
+    /// Please refer to the user manual for a detailed description.
     pub fn o_prev(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].prev)
     }
 
+    /// Returns an iterator over all edges sharing the same face
+    /// as this edge.
+    ///
+    /// The face's edges will be traversed in oriented order.
     pub fn o_next_iterator(&self) -> ONextIterator<'a, V> {
         ONextIterator::new(self.dcel, self.handle)
     }
@@ -880,6 +927,10 @@ impl <'a, V> FaceHandle<'a, V> where V: 'a {
         }
     }
 
+    /// Tries to interpret this face as a triangle, returning its 3 vertices.
+    ///
+    /// # Panic
+    /// This method will panic if the face does not form a triangle.
     pub fn as_triangle(&self) -> [VertexHandle<'a, V>; 3] {
         let adjacent = self.dcel.faces[self.handle].adjacent_edge
             .expect("Face has no adjacent edge");
@@ -890,18 +941,26 @@ impl <'a, V> FaceHandle<'a, V> where V: 'a {
         [prev.from(), edge.from(), edge.to()]
     }
 
+    /// Returns an edge that is adjacent to this face.
+    ///
+    /// If this face has multiple adjacent edges, any of them is returned.
     pub fn adjacent_edge(&self) -> Option<EdgeHandle<'a, V>> {
         self.dcel.faces[self.handle].adjacent_edge.map(
             |e| EdgeHandle::new(self.dcel, e))
     }
 
-    pub fn adjacent_edges(&self) -> AdjacentEdgesIterator<'a, V> {
-        AdjacentEdgesIterator {
-            iter: self.dcel.faces[self.handle].adjacent_edge.map(
-                |e| self.dcel.edge(e).o_next_iterator())
+    /// Returns an iterator that iterates over all adjacent edges.
+    ///
+    /// The edges are traversed in oriented order.
+    pub fn adjacent_edges(&self) -> ONextIterator<'a, V> {
+        if let Some(adj) = self.dcel.faces[self.handle].adjacent_edge {
+            ONextIterator::new(self.dcel, adj)
+        } else {
+            ONextIterator::new_empty(self.dcel)
         }
     }
 
+    /// Creates a fixed vertex handle from this dynamic vertex handle.
     pub fn fix(&self) -> FixedFaceHandle {
         self.handle
     }
@@ -1111,13 +1170,16 @@ mod test {
         }
         
         let out_edge = dcel.vertex(central).out_edge().unwrap();
-        let neighs: Vec<_> = out_edge.ccw_iter().map(|e| e.to().fix()).collect();
+        let mut neighs: Vec<_> = out_edge.ccw_iter().map(|e| e.to().fix()).collect();
         assert_eq!(neighs.len(), 5);
         for i in 0 .. 5 {
             let first = neighs[i];
             let second = neighs[(i + 1) % 5];
             assert_eq!(first - 1, second % 5);
         }
+        let revs: Vec<_> = out_edge.ccw_iter().rev().map(|e| e.to().fix()).collect();
+        neighs.reverse();
+        assert_eq!(neighs, revs);
     }
 
     #[test]
@@ -1136,7 +1198,11 @@ mod test {
         }
         edges.push(dcel.connect_edge_to_edge(last_edge, vs[0]));
         
-        let iterated: Vec<_> = dcel.edge(edges[0]).o_next_iterator().map(|e| e.fix()).collect();
+        let mut iterated: Vec<_> = dcel.edge(edges[0]).o_next_iterator().map(|e| e.fix()).collect();
         assert_eq!(iterated, edges);
+
+        let rev: Vec<_> = dcel.edge(edges[0]).o_next_iterator().rev().map(|e| e.fix()).collect();
+        iterated.reverse();
+        assert_eq!(iterated, rev);
     }
 }
