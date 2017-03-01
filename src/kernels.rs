@@ -6,6 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Calculation kernels.
+//!
+//! These kernels determine how precise geometric calculations are performed and how they
+//! deal with overflow issues.
+
 use traits::{SpadeNum};
 use point_traits::TwoDimensional;
 use primitives::{SimpleEdge, EdgeSideInfo};
@@ -16,7 +21,7 @@ use exactpred::{orient2d, incircle};
 /// 
 /// Every delaunay triangulation is based on two basic geometry operations: orientation tests
 /// (on which side of a line lies a point?) and in-circle tests (is a point contained in the
-/// circumference of a triangle?). These questions can be answered _approximately_ or _precisely_,
+/// circumference of a triangle?). These questions can be answered approximately or precisely,
 /// their calculation can or cannot take overflow issues for integer coordinates into account.
 ///
 /// Since each application has different needs, a `DelaunayKernel` will define how these geometric
@@ -24,6 +29,7 @@ use exactpred::{orient2d, incircle};
 /// kernels that fits your needs.
 pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
+    ///
     /// pa, pb, pc have to be ordered clockwise, otherwise the result is inverted.
     fn contained_in_circumference<V: TwoDimensional<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
         let pa = [pa.nth(0), pa.nth(1)];
@@ -69,7 +75,7 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
         Self::side_query(&edge, v2).is_on_left_side_or_on_line()
     }
 
-    /// Returns if a point lies on the infinite edge going through
+    /// Returns `true` if a point lies on the infinite edge going through
     /// `edge.from` and `edge.to`.
     fn point_on_edge<V: TwoDimensional<Scalar=D>>(
         edge: &SimpleEdge<V>, position: &V) -> bool {
@@ -96,19 +102,19 @@ impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
 ///
 /// Integer calculations do not suffer from precision loss (since no divisions have to be used),
 /// yet they are prone to over- and underflow errors.
-/// This kernel will use `AdaptiveInt`s for its internal computation. These integers will
-/// transparently require more bits if they encounter an under- or overflow.
+/// This kernel will heap allocate more bits if an under- or overflow is encountered. Since
+/// most calculations do not trigger an overflow, this still yields reasonable performance.
 pub struct AdaptiveIntKernel { }
 
 impl DelaunayKernel<i64> for AdaptiveIntKernel {
-    fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
+    fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
         let to_bigvec = |v: &V| BigVec2::new(
             AdaptiveInt::from_i64(&v.nth(0)), AdaptiveInt::from_i64(&v.nth(1)));
         // Cast input to adaptive ints to prevent overflows
-        let v1: BigVec2<_> = to_bigvec(v1);
-        let v2: BigVec2<_> = to_bigvec(v2);
-        let v3: BigVec2<_> = to_bigvec(v3);
-        let p: BigVec2<_> = to_bigvec(p);
+        let v1: BigVec2<_> = to_bigvec(pa);
+        let v2: BigVec2<_> = to_bigvec(pb);
+        let v3: BigVec2<_> = to_bigvec(pc);
+        let p: BigVec2<_> = to_bigvec(pd);
 
         TrivialKernel::contained_in_circumference(&v1, &v2, &v3, &p)
     }

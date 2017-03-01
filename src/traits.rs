@@ -15,11 +15,16 @@ use bigvec::{AdaptiveInt};
 use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use std::fmt::Debug;
 
-/// Scalar that can be used for spade's datastructures will need to implement
-/// this trait. Can be an integer or floating point type.
-/// Note that `copy` is not necessary.
+/// Number types that can be used with spade.
+/// 
+/// Number types that can be used for spade's datastructures will need to
+/// implement this trait. Can be an integer or floating point type.
+/// Note that `copy` is not necessary to support big integers from the `num`
+/// crate.
 pub trait SpadeNum: Signed + Clone + Debug + PartialOrd { }
-/// Trait for `SpadeNum`s that are also a floating point number.
+
+/// Floating point types that can be used with spade.
+///
 /// Used by all operations that require precise division.
 pub trait SpadeFloat: SpadeNum + cg::BaseFloat { }
 
@@ -41,7 +46,7 @@ impl SpadeNum for Ratio<AdaptiveInt> { }
 /// See the `primitives` module for some basic implementations which can also serve 
 /// as useful examples for own implementations.
 pub trait SpatialObject {
-    /// The object's vector type.
+    /// The object's point type.
     type Point: PointN;
 
     /// Returns the object's minimal bounding rectangle.
@@ -62,9 +67,12 @@ pub trait SpatialObject {
     }
 }
 
-/// An object with a well defined location.
+/// An object that has a position.
+/// 
+/// Describes a point like object that has a well defined position.
 /// Since this trait also implements `SpatialObject`, `HasPosition` can serve as a quick and
-/// easy implementation of your own pointlike objects that can be inserted into r-trees:
+/// easy implementation of your own pointlike objects that can be inserted into r-trees
+/// or delaunay triangulations:
 ///
 /// ```
 /// extern crate cgmath;
@@ -91,13 +99,15 @@ pub trait SpatialObject {
 /// }
 /// ```
 pub trait HasPosition {
-    /// The object's vector type
+    /// The object's point type
     type Point: PointN;
     /// Return's the object's position.
     fn position(&self) -> Self::Point;
 }
 
-/// Like `HasPosition`, but is only implemented for two dimensional positions.
+/// An object with a two dimensional position.
+///
+/// This trait is similar to `HasPosition`, but is only implemented for two dimensional points.
 pub trait HasPosition2D: HasPosition where Self::Point: TwoDimensional { }
 
 impl <V: HasPosition> HasPosition2D for V where V::Point: TwoDimensional { }

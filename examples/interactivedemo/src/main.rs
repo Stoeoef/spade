@@ -60,7 +60,7 @@ fn main() {
         .build_glium()
         .unwrap();
 
-    let mut delaunay = DelaunayTriangulation::with_tree_lookup();
+    let mut delaunay = DelaunayTriangulation::with_tree_locate();
     let mut rtree = RTree::new();
 
     let mut render_data = RenderData::new(&display);

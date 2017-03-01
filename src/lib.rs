@@ -7,22 +7,25 @@
 // except according to those terms.
 
 //! # Spade
-//! Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures optimized for spatial access operations.
-//! The first major datastructure is an n-dimensional r*-tree ([wikipedia](https://en.wikipedia.org/wiki/R-tree)) for efficient nearest-neighbor and point lookup queries.
-//! The second datastructures implements a two dimensional delaunay triangulation ([wikipedia](https://en.wikipedia.org/wiki/Delaunay_triangulation)). 
-//! The triangulation also implements natural neighbor interpolation ([wikipedia](https://en.wikipedia.org/wiki/Natural_neighbor)) 
-//! which offers smooth interpolation in a delaunay triangulation.
+//! Spade (SPAtial Data structurEs, obviously!) implements a few nifty data structures optimized for spatial access operations.
+//! The first major data structure is an n-dimensional r*-tree ([wikipedia](https://en.wikipedia.org/wiki/R-tree)) for efficient nearest-neighbor and point lookup queries.
+//! The second data structures implements a two dimensional delaunay triangulation ([wikipedia](https://en.wikipedia.org/wiki/Delaunay_triangulation)). 
+//! The triangulation also implements various interpolation methods like nearest neighbor
+//! interpolation ([wikipedia](https://en.wikipedia.org/wiki/Natural_neighbor)).
 //! All classes are purely written in rust.
-//! The datastructures take either fixed size arrays or vectors of the nalgebra or cgmath crate as input.
+//! The data structures take either fixed size arrays or points of the nalgebra or cgmath crate as input.
+//! There is also a [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available
+//! to complement this reference.
 //!
 //! # Features
-//! * An n-dimensional R-Tree: `RTree`
-//! * A 2D delaunay triangulation: `DelaunayTriangulation`
-//!   * Supports integral and floating point vectors as input
-//!   * Uses exact predicates to avoid floating point rounding issues, see: `FloatKernel`
+//! * An n-dimensional r*-tree: `spade::rtree::RTree`
+//! * A 2D delaunay triangulation: `spade::delaunay::DelaunayTriangulation`
+//!   * Supports integral and floating point coordinates as input
+//!   * Uses exact predicates to avoid floating point rounding issues, see: `spade::kernels::FloatKernel`
 //!   * Natural neighbor interpolation
-//!   * Can be backed up by an R-Tree to improve performance when inserting randomly distributed points
+//!   * Can be backed up by an r*-tree to improve performance when inserting randomly distributed points
 
+#![warn(missing_docs)]
 extern crate num;
 extern crate cgmath;
 extern crate nalgebra;

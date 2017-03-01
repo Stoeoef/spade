@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Implementation of an n-dimensional r*-tree.
+
 use misc::min_inline;
 use std::sync::Arc;
 use traits::{SpatialObject};
@@ -963,12 +965,12 @@ pub enum RTreeNode<T>
 /// struct implements r*-trees, despite its name.
 /// Instead of linear time complexity, r-trees yield logarithmic complexity
 /// for look-up operations and nearest neighbor queries. Inserting into an r-tree runs in O(log(n)) time on average.
-/// Some simple simple geometric primitives that can be inserted into an r-tree can be found in 
+/// Some simple geometric primitives that can be inserted into an r-tree can be found in 
 /// the `primitives` module. If your object is not among those, consider
 /// implementing the `SpatialObject` trait.
 /// 
 /// Note that the `rtree`-structures work with fixed arrays of size 2, 3 or 4 or
-/// with the vector types provided by the `nalgebra` and `cgmath` packages.
+/// with the point types provided by the `nalgebra` and `cgmath` packages.
 /// Both integral and floating point scalar types are supported.
 ///
 /// ```
@@ -1081,7 +1083,7 @@ impl<T> RTree<T>
     /// Returns the nearest neighbors of a given point.
     ///
     /// All returned values will have the exact same distance from the given query point.
-    /// Returns an empty vector if the tree is empty.
+    /// Returns an empty `Vec` if the tree is empty.
     pub fn nearest_neighbors(&self, query_point: &T::Point) -> Vec<&T> {
         let mut result = Vec::new();
         if self.size > 0 {
@@ -1253,7 +1255,7 @@ mod test {
     use testutils::*;
 
     #[test]
-    fn test_tree_with_integral_vectors() {
+    fn test_tree_with_integral_points() {
         // This test should compile
         let mut tree = RTree::new();
         tree.insert(Point2::new(13, 37));
@@ -1261,7 +1263,7 @@ mod test {
     }
 
     #[test]
-    fn test_tree_with_array_vectors() {
+    fn test_tree_with_array_points() {
         // This test should compile
         let mut tree = RTree::<[i32; 3]>::new();
         tree.insert([13i32, 37, 12]);

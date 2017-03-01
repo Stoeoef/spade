@@ -14,60 +14,61 @@ use traits::SpadeNum;
 use num::{zero};
 use misc::{min_inline, max_inline};
 
-/// Abstraction over vectors with a fixed number of dimensions.
-/// Spade will work with any vector type implementing this trait, at the
-/// moment vectors of the `cgmath` and `nalgebra` crates are supported.
+/// Abstraction over a point with a fixed number of dimensions.
+///
+/// Spade will work with any point type implementing this trait, at the
+/// moment points of the `cgmath` and `nalgebra` crates are supported.
 /// Also, the trait is implemented for fixed arrays of length 2, 3 and 4, allowing
 /// to use spade's datastructures with fixed size arrays as point coordinates.
 /// That means that the trait's methods are also implemented for
 /// these array types, thus be careful when importing `PointN`.
 ///
-/// Implement this if you want spade to support your own vector types.
-/// Also consider adding an (empty) implementation of `TwoDimensional`
-/// or `ThreeDimensional` if appropriate.
+/// Implement this if you want spade to support your own point types.
+/// Also, an empty implementation `TwoDimensional` or `ThreeDimensional`
+/// should be given if appropriate.
 pub trait PointN
     where Self: Clone,
           Self: Debug,
           Self: PartialEq {
-    /// The vector's internal scalar type.
+    /// The points's internal scalar type.
     type Scalar: SpadeNum;
 
-    /// The (fixed) number of dimensions of this vector type.
+    /// The (fixed) number of dimensions of this point type.
     fn dimensions() -> usize;
 
-    /// Creates a new vector with all compoenents set to a certain value.
+    /// Creates a new point with all compoenents set to a certain value.
     fn from_value(value: Self::Scalar) -> Self;
 
-    /// Returns the nth element of this vector.
+    /// Returns the nth element of this point.
     fn nth(&self, index: usize) -> &Self::Scalar;
-    /// Returns a mutable reference to the nth element of this vector.
+    /// Returns a mutable reference to the nth element of this point.
     fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar;
 }
 
-/// Adds some private methods to the ```PointN``` trait.
+/// Adds some private methods to the `PointN` trait.
 pub trait PointNExtensions : PointN {
-    /// Creates a new vector with all components initialized to zero.
+    /// Creates a new point with all components initialized to zero.
     fn new() -> Self {
         Self::from_value(zero())
     }
 
-    /// Adds two vectors.
+    /// Adds two points.
     fn add(&self, rhs: &Self) -> Self {
         self.component_wise(rhs, |l, r| l + r)
     }
 
-    /// Substracts two vectors.
+    /// Substracts two points.
     fn sub(&self, rhs: &Self) -> Self {
         self.component_wise(rhs, |l, r| l - r)
     }
 
-    /// Divides this vector with a scalar value.
+    /// Divides this point with a scalar value.
     fn div(&self, scalar: Self::Scalar) -> Self {
         self.map(|x| x / scalar.clone())
     }
 
 
-    /// Multiplies this vector with a scalar value.
+    /// Multiplies this point with a scalar value.
     fn mul(&self, scalar: Self::Scalar) -> Self {
         self.map(|x| x * scalar.clone())
     }
@@ -90,17 +91,17 @@ pub trait PointNExtensions : PointN {
         result
     }
 
-    /// Returns a new vector containing the minimum values of this and another vector (componentwise)
-    fn min_vec(&self, rhs: &Self) -> Self {
+    /// Returns a new point containing the minimum values of this and another point (componentwise)
+    fn min_point(&self, rhs: &Self) -> Self {
         self.component_wise(rhs, |l, r| min_inline(l, r))
     }
 
-    /// Returns a new vector containing the maximum values of this and another vector (componentwise)
-    fn max_vec(&self, rhs: &Self) -> Self {
+    /// Returns a new point containing the maximum values of this and another point (componentwise)
+    fn max_point(&self, rhs: &Self) -> Self {
         self.component_wise(rhs, |l, r| max_inline(l, r))
     }
 
-    /// Fold operation over all vector components.
+    /// Fold operation over all point components.
     fn fold<T, F: Fn(T, Self::Scalar) -> T>(&self, mut acc: T, f: F) -> T {
         for i in 0 .. Self::dimensions() {
             acc = f(acc, self.nth(i).clone());
@@ -108,7 +109,7 @@ pub trait PointNExtensions : PointN {
         acc
     }
 
-    /// Checks if a property holds for all components of this and another vector.
+    /// Checks if a property holds for all components of this and another point.
     fn all_comp_wise<F: Fn(Self::Scalar, Self::Scalar) -> bool>(&self, rhs: &Self, f: F) -> bool {
         for i in 0 .. Self::dimensions() {
             if !f(self.nth(i).clone(), rhs.nth(i).clone()) {
@@ -118,12 +119,12 @@ pub trait PointNExtensions : PointN {
         true
     }
 
-    /// Returns the vector's dot product.
+    /// Returns the point's dot product.
     fn dot(&self, rhs: &Self) -> Self::Scalar {
         self.component_wise(rhs, |l, r| l * r).fold(zero(), |acc, val| acc + val)
     }
 
-    /// Returns the vector's squared length.
+    /// Returns the point's squared length.
     fn length2(&self) -> Self::Scalar {
         self.dot(&self)
     }
@@ -132,8 +133,9 @@ pub trait PointNExtensions : PointN {
 impl <T> PointNExtensions for T where T: PointN { }
 
 /// A two dimensional Point.
-/// Some datastructures will only work if two dimensional vectors are given,
-/// this trait makes sure that only such vectors can be passed.
+///
+/// Some datastructures will only work if two dimensional points are given,
+/// this trait makes sure that only such points can be passed.
 pub trait TwoDimensional : PointN { }
 
 impl <S: SpadeNum + cg::BaseNum> TwoDimensional for cg::Point2<S> { }
@@ -141,10 +143,11 @@ impl <S: SpadeNum + na::Scalar> TwoDimensional for na::Point2<S> { }
 impl <S: SpadeNum + Copy> TwoDimensional for [S; 2] { }
 
 /// A three dimensional Point.
-/// Some algorithms will only work with three dimensional vectors, this trait makes
-/// sure that only such vectors can be used.
+///
+/// Some algorithms will only work with three dimensional points, this trait makes
+/// sure that only such points can be used.
 pub trait ThreeDimensional : PointN {
-    /// The cross product of this vector and another.
+    /// The cross product of this point and another.
     fn cross(&self, other: &Self) -> Self {
         let mut result = Self::new();
         *result.nth_mut(0) = self.nth(1).clone() * other.nth(2).clone() 

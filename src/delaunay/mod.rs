@@ -10,8 +10,12 @@
 
 mod dcel;
 mod delaunay2d;
-mod delaunay_lookup;
+mod delaunay_locate;
 
 pub use self::delaunay2d::*;
-pub use self::dcel::*;
-pub use self::delaunay_lookup::*;
+pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,
+                     VertexHandle, EdgeHandle, FaceHandle,
+                     CCWIterator, ONextIterator,
+                     AdjacentEdgesIterator};
+pub use self::delaunay_locate::{TriangulationWalkLocate, RTreeDelaunayLocate,
+                                DelaunayLocateStructure};

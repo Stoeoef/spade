@@ -6,8 +6,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/// Handle to a vertex.
+///
+/// This handle is "fixed", meaning it is intended to be used for
+/// mutation (e.g., removing a vertex) or storage (e.g., storing
+/// references to vertices for later usage).
 pub type FixedVertexHandle = usize;
+/// Handle to an edge.
+///
+/// This handle is "fixed", meaning it is intended to be used
+/// for storage. Note that removal operations will invalidate
+/// edge handles.
 pub type FixedEdgeHandle = usize;
+/// Handle to a face.
+///
+/// This handle is "fixed", meaning it is intended to be used
+/// for storage. Note that removal operations will invalidate
+/// face handles.
 pub type FixedFaceHandle = usize;
 
 pub struct VertexRemovalResult<V> {
@@ -447,7 +462,7 @@ impl <V> DCEL<V> {
         }
     }
 
-    #[doc(hidden)]
+    #[cfg(test)]
     pub fn sanity_check(&self) {
         for (index, face) in self.faces.iter().enumerate() {
             if let Some(adj) = face.adjacent_edge {
@@ -652,11 +667,20 @@ impl <'a, V> Iterator for EdgesIterator<'a, V> {
     }
 }
 
+/// A handle to a directed edge.
+///
+/// This handle has methods that can be used to
+/// retrieve the edges neighboring edges, faces
+/// and vertices.
 pub struct EdgeHandle<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
     handle: FixedEdgeHandle,
 }
 
+/// A handle to a vertex.
+///
+/// This handle has methods that can be used to retrieve
+/// the vertice's outgoing edges.
 pub struct VertexHandle<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
     handle: FixedVertexHandle,
@@ -689,14 +713,19 @@ impl <'a, V> VertexHandle<'a, V> where V: 'a {
         }
     }
 
+    /// Returns an outgoing edge.
+    ///
+    /// If the vertex has multiple outgoing edges, any of them is returned.
     pub fn out_edge(&self) -> Option<EdgeHandle<'a, V>> {
         self.dcel.vertices[self.handle].out_edge.map(|e| self.dcel.edge(e))
     }
 
+    /// Returns all outgoing edges in counter clockwise order.
     pub fn ccw_out_edges(&self) -> CCWIterator<'a, V> {
         CCWIterator::new(self.dcel, self.handle)
     }
 
+    /// Creates a fixed vertex handle from this dynamic handle.
     pub fn fix(&self) -> FixedVertexHandle {
         self.handle
     }
@@ -736,6 +765,19 @@ impl <'a, V> ::std::fmt::Debug for EdgeHandle<'a, V> where V: 'a {
     }
 }
 
+pub fn from_neighbors<'a, V> (
+    dcel: &'a DCEL<V>,
+    from: FixedVertexHandle,
+    to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
+    let vertex = dcel.vertex(from);
+    for edge in vertex.ccw_out_edges() {
+        if edge.to().fix() == to {
+            return Some(edge);
+        }
+    }
+    None
+}
+
 impl <'a, V> EdgeHandle<'a, V> where V: 'a {
 
     fn new(dcel: &'a DCEL<V>, handle: FixedEdgeHandle) -> Self {
@@ -745,10 +787,12 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
         }
     }
 
+    /// Creates a fixed vertex handle from this dynamic handle.
     pub fn fix(&self) -> FixedEdgeHandle {
         self.handle
     }
 
+    /// Returns the edge's source vertex.
     pub fn from(&self) -> VertexHandle<'a, V> {
         let edge = self.dcel.edges[self.handle];
         VertexHandle::new(self.dcel, edge.origin)
@@ -766,14 +810,17 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
         ONextIterator::new(self.dcel, self.handle)
     }
 
+    /// Returns the edges destination vertex.
     pub fn to(&self) -> VertexHandle<'a, V> {
         self.sym().from()
     }
-
+    
+    /// Returns the face located to the left of this edge.
     pub fn face(&self) -> FaceHandle<'a, V> {
         self.dcel.face(self.dcel.edges[self.handle].face)
     }
 
+    /// Returns this edge's mirror edge.
     pub fn sym(&self) -> EdgeHandle<'a, V> {
         EdgeHandle {
             dcel: self.dcel,
@@ -781,6 +828,7 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
         }
     }
 
+    /// Returns the next edge in clockwise direction.
     pub fn cw(&self) -> EdgeHandle<'a, V> {
         let twin = self.sym().handle;
         EdgeHandle {
@@ -789,6 +837,7 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
         }
     }
 
+    /// Returns the next edge in counter clockwise direction.
     pub fn ccw(&self) -> EdgeHandle<'a, V> {
         EdgeHandle {
             dcel: self.dcel,
@@ -796,21 +845,10 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
         }.sym()
     }
 
+    /// Returns an iterator over all edges in counter clockwise
+    /// order.
     pub fn ccw_iter(&self) -> CCWIterator<'a, V> {
         CCWIterator::from_edge(self.dcel, self.handle)
-    }
-
-    pub fn from_neighbors(
-        dcel: &'a DCEL<V>,
-        from: FixedVertexHandle,
-        to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
-        let vertex = dcel.vertex(from);
-        for edge in vertex.ccw_out_edges() {
-            if edge.to().fix() == to {
-                return Some(edge);
-            }
-        }
-        None
     }
 }
 
@@ -1060,6 +1098,8 @@ mod test {
         let mut dcel = DCEL::new();
         let mut vs = Vec::new();
         let central = dcel.insert_vertex(());
+        assert_eq!(dcel.vertex(central).ccw_out_edges().next(), None);
+
         for _ in 0 .. 5 {
             vs.push(dcel.insert_vertex(()));
         }
@@ -1070,7 +1110,8 @@ mod test {
             last_edge = dcel.edge(last_edge).sym().fix();
         }
         
-        let neighs: Vec<_> = dcel.vertex(central).ccw_out_edges().map(|e| e.to().fix()).collect();
+        let out_edge = dcel.vertex(central).out_edge().unwrap();
+        let neighs: Vec<_> = out_edge.ccw_iter().map(|e| e.to().fix()).collect();
         assert_eq!(neighs.len(), 5);
         for i in 0 .. 5 {
             let first = neighs[i];

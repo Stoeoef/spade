@@ -12,8 +12,8 @@ use misc::max_inline;
 
 /// An axis aligned minimal bounding rectangle.
 ///
-/// An axis aligned minimal bounding rectangle is the smallest rectangle that completly
-///  surrounds an object and is aligned along all axis. The vector type `V`'s dimension
+/// An axis aligned minimal bounding rectangle is the smallest rectangle that completely
+/// surrounds an object and is aligned along all axes. The vector type `V`'s dimension
 /// determines if this is a rectangle, a box or a higher dimensional volume.
 #[derive(Clone, PartialEq, Debug)]
 pub struct BoundingRect<V: PointN> {
@@ -36,8 +36,8 @@ impl <V> BoundingRect<V> where V: PointN {
     /// Creates a bounding rectangle that contains two points.
     pub fn from_corners(corner1: &V, corner2: &V) -> BoundingRect<V> {
         BoundingRect {
-            lower: corner1.min_vec(&corner2),
-            upper: corner1.max_vec(&corner2),
+            lower: corner1.min_point(&corner2),
+            upper: corner1.max_point(&corner2),
         }
     }
 
@@ -80,8 +80,8 @@ impl <V> BoundingRect<V> where V: PointN {
     /// to contain the new point.
     #[inline]
     pub fn add_point(&mut self, point: V) {
-        self.lower = self.lower.min_vec(&point);
-        self.upper = self.upper.max_vec(&point);
+        self.lower = self.lower.min_point(&point);
+        self.upper = self.upper.max_point(&point);
     }
 
     /// Enlarges this bounding rectangle to contain a rectangle.
@@ -91,8 +91,8 @@ impl <V> BoundingRect<V> where V: PointN {
     /// to contain the new rectangle.
     #[inline]
     pub fn add_rect(&mut self, rect: &BoundingRect<V>) {
-        self.lower = self.lower.min_vec(&rect.lower);
-        self.upper = self.upper.max_vec(&rect.upper);
+        self.lower = self.lower.min_point(&rect.lower);
+        self.upper = self.upper.max_point(&rect.upper);
     }
 
     /// Returns the rectangle's area.
@@ -119,8 +119,8 @@ impl <V> BoundingRect<V> where V: PointN {
     /// margin of zero is returned.
     pub fn intersect(&self, other: &BoundingRect<V>) -> BoundingRect<V> {
         BoundingRect {
-            lower: self.lower.max_vec(&other.lower),
-            upper: self.upper.min_vec(&other.upper),
+            lower: self.lower.max_point(&other.lower),
+            upper: self.upper.min_point(&other.upper),
         }
     }
 
@@ -133,7 +133,7 @@ impl <V> BoundingRect<V> where V: PointN {
 
     #[doc(hidden)]
     pub fn min_point(&self, point: &V) -> V {
-        self.upper.min_vec(&self.lower.max_vec(&point))
+        self.upper.min_point(&self.lower.max_point(&point))
     }
 
     #[doc(hidden)]
@@ -147,7 +147,7 @@ impl <V> BoundingRect<V> where V: PointN {
         let u = self.upper();
         let d1: V = l.sub(point).map(|v| v.abs());
         let d2: V = u.sub(point).map(|v| v.abs());
-        let max_delta = d1.max_vec(&d2);
+        let max_delta = d1.max_point(&d2);
         max_delta.length2()
     }
 
