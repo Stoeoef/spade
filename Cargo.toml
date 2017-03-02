@@ -1,6 +1,6 @@
 [package]
 name = "spade"
-version = "0.3.0"
+version = "1.0.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 description="Spatial datastructures like r-trees and delaunay triangulations for rust."
 documentation = "https://docs.rs/spade/"
@@ -22,10 +22,8 @@ approx = "0.1.*"
 
 [profile.bench]
 opt-level = 3
-debug = true
 debug-assertions = false
 
 [profile.release]
 opt-level = 3
-debug = true
 debug-assertions = false
