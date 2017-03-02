@@ -485,6 +485,8 @@ impl <V> DCEL<V> {
 /// An iterator that iterates over the edges adjacent to a face.
 ///
 /// The iterator will traverse the edges in oriented order.
+/// This order is counterclockwise for right handed coordinate systems
+/// or clockwise for left handed systems.
 pub struct ONextIterator<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
     cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>
@@ -545,7 +547,9 @@ impl <'a, V> DoubleEndedIterator for ONextIterator<'a, V> where V: 'a {
 
 /// An iterator that iterates over the outgoing edges from a vertex.
 ///
-/// The edges will be iterated in counterclockwise order.
+/// The edges will be iterated in counterclockwise order. Note that
+/// this assumes that you use a right handed coordinate system,
+/// otherwise the sense of orientation is inverted.
 pub struct CCWIterator<'a, V> where V: 'a {
     dcel: &'a DCEL<V>,
     cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>,
@@ -758,6 +762,9 @@ impl <'a, V> VertexHandle<'a, V> where V: 'a {
     }
 
     /// Returns all outgoing edges in counter clockwise order.
+    ///
+    /// Note that this assumes that you use a right handed coordinate system,
+    /// otherwise the sense of orientation is inverted.
     pub fn ccw_out_edges(&self) -> CCWIterator<'a, V> {
         CCWIterator::new(self.dcel, self.handle)
     }
@@ -840,6 +847,8 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
     /// The oriented next edge shares the same face as this edge.
     /// When traversing the face's edges in oriented order,
     /// this edge is the predecessor of the oriented next edge.
+    /// "Oriented" means counterclockwise for right handed 
+    /// coordinate systems.
     pub fn o_next(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].next)
     }
@@ -849,6 +858,8 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
     /// The oriented previous edge shares the same face as this edge.
     /// When traversing the face's edges in oriented order,
     /// this edge is the successor of the oriented previous edge.
+    /// "Oriented" means counterclockwise for right handed
+    /// coordinate systems.
     pub fn o_prev(&self) -> EdgeHandle<'a, V> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].prev)
     }
@@ -857,6 +868,8 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
     /// as this edge.
     ///
     /// The face's edges will be traversed in oriented order.
+    /// This order is counterclockwise for right handed coordinate
+    /// systems or clockwise for left handed systems.
     pub fn o_next_iterator(&self) -> ONextIterator<'a, V> {
         ONextIterator::new(self.dcel, self.handle)
     }
@@ -880,6 +893,9 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
     }
 
     /// Returns the next edge in clockwise direction.
+    ///
+    /// Note that this assumes that you use a right handed coordinate system,
+    /// otherwise the sense of orientation is inverted.
     pub fn cw(&self) -> EdgeHandle<'a, V> {
         let twin = self.sym().handle;
         EdgeHandle {
@@ -889,6 +905,9 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
     }
 
     /// Returns the next edge in counter clockwise direction.
+    ///
+    /// Note that this assumes that you use a right handed coordinate system,
+    /// otherwise the sense of orientation is inverted.
     pub fn ccw(&self) -> EdgeHandle<'a, V> {
         EdgeHandle {
             dcel: self.dcel,
@@ -898,6 +917,9 @@ impl <'a, V> EdgeHandle<'a, V> where V: 'a {
 
     /// Returns an iterator over all edges in counter clockwise
     /// order.
+    ///
+    /// Note that this assumes that you use a right handed coordinate system,
+    /// otherwise the sense of orientation is inverted.
     pub fn ccw_iter(&self) -> CCWIterator<'a, V> {
         CCWIterator::from_edge(self.dcel, self.handle)
     }
@@ -956,6 +978,8 @@ impl <'a, V> FaceHandle<'a, V> where V: 'a {
     /// Returns an iterator that iterates over all adjacent edges.
     ///
     /// The edges are traversed in oriented order.
+    /// This order will be counterclockwise for right handed coordinate
+    /// system or clockwise for left handed systems.
     pub fn adjacent_edges(&self) -> ONextIterator<'a, V> {
         if let Some(adj) = self.dcel.faces[self.handle].adjacent_edge {
             ONextIterator::new(self.dcel, adj)
