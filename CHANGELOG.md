@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.0.0] - XXXX-XX-XX
+## [1.0.0] - 2017-03-02
 A lot has changed for the 1.0. release, only larger changes are shown.
 
 ### Changed
@@ -32,6 +32,7 @@ A lot has changed for the 1.0. release, only larger changes are shown.
  - Added `DelaunayTriangulation::infinite_face()`
  - Added `DelaunayTriangulation::is_degenerate()`
  - Added `DelaunayTriangulation::num_{edges|triangles|faces}()`
+ - `CCWIterator` and `ONextIterator` now both implement `DoubleEndedIterator`
  
 ### Removed
  - Removed support for pointer like types (e.g. inserting `Box<Point2<_>>`) to simplify type signatures.
