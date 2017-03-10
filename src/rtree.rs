@@ -64,48 +64,6 @@ impl RTreeOptions {
     }
 }
 
-#[doc(hidden)]
-pub struct NearestNeighborIterator<'a, T>
-    where T: SpatialObject + 'a {
-    next_items: Vec<&'a T>,
-    min_dist: <T::Point as PointN>::Scalar,
-    tree: &'a RTree<T>,
-    query_point: T::Point,
-}
-
-impl<'a, T> NearestNeighborIterator<'a, T>
-    where T: SpatialObject + 'a,
-{
-    fn new(tree: &'a RTree<T>, query_point: T::Point) -> NearestNeighborIterator<'a, T> {
-        NearestNeighborIterator {
-            next_items: Vec::new(),
-            min_dist: zero(),
-            tree: tree,
-            query_point: query_point,
-        }
-    }
-}
-
-impl <'a, T> Iterator for NearestNeighborIterator<'a, T> 
-    where T: SpatialObject + 'a {
-    type Item = &'a T;
-    
-    fn next(&mut self) -> Option<&'a T> {
-        match self.next_items.pop() {
-            Some(t) => Some(t),
-            None => {
-                // Get new nearest elements
-                let min_dist_opt = self.tree.root.nearest_neighbors_with_min_dist(
-                    &self.query_point, None, self.min_dist.clone(), &mut self.next_items);
-                if let Some(min_dist) = min_dist_opt {
-                    self.min_dist = min_dist;
-                }
-                self.next_items.pop()
-            },
-        }
-    }
-}
-
 /// Iterates over all entries in an r-tree.
 /// Returned by `RTree::iter()`
 pub struct RTreeIterator<'a, T> 
@@ -557,50 +515,6 @@ impl <T> DirectoryNodeData<T>
         nearest_distance
     }
 
-    fn nearest_neighbors_with_min_dist<'a>(
-        &'a self, point: &T::Point,
-        mut nearest_distance: Option<<T::Point as PointN>::Scalar>, 
-        min_dist: <T::Point as PointN>::Scalar, 
-        result: &mut Vec<&'a T>) 
-        -> Option<<T::Point as PointN>::Scalar> 
-    {
-        // Calculate smallest minmax-distance
-        let mut smallest_min_max: <T::Point as PointN>::Scalar = zero();
-        for child in self.children.iter() {
-            let mbr = child.mbr();
-            let min_point = mbr.min_point(point);
-            for dim in 0 .. T::Point::dimensions() {
-                for mut p in [mbr.lower(), mbr.upper()].iter_mut() {
-                    *p.nth_mut(dim) = min_point.nth(dim).clone();
-                    let distance = p.sub(point).length2();
-                    if distance < smallest_min_max || dim == 0 {
-                        smallest_min_max = distance;
-                    }
-                }
-            }
-        }
-        let mut sorted: Vec<_> = self.children.iter().collect();
-        sorted.sort_by(|l, r| l.mbr().min_dist2(point).partial_cmp(
-            &r.mbr().min_dist2(point)).unwrap());
-        for child in sorted.iter() {
-            let cur_min_dist = child.mbr().min_dist2(point);
-            let max_dist = child.mbr().max_dist2(point);
-            if max_dist < min_dist.clone() ||
-                cur_min_dist > smallest_min_max || 
-                nearest_distance.clone().map(|d| cur_min_dist > d).unwrap_or(false) {
-                // Prune this element
-                continue;
-            }
-            match child.nearest_neighbors_with_min_dist(point, nearest_distance.clone(), min_dist.clone(), result) {
-                Some(nearest) => {
-                    nearest_distance = Some(nearest);
-                },
-                None => {}
-            }
-        }
-        nearest_distance
-    }
-
     fn nearest_n_neighbors<'a>(&'a self, point: &T::Point, n: usize, result: &mut Vec<&'a T>) {
 
         for child in self.children.iter() {
@@ -901,42 +815,6 @@ impl <T> RTreeNode<T>
             }
         }
     }
-
-    fn nearest_neighbors_with_min_dist<'a>(
-        &'a self, point: &T::Point, nearest_distance: Option<<T::Point as PointN>::Scalar>,
-        min_dist: <T::Point as PointN>::Scalar, result: &mut Vec<&'a T>)
-        -> Option<<T::Point as PointN>::Scalar> 
-    {
-        match self {
-            &RTreeNode::DirectoryNode(ref data) => 
-                data.nearest_neighbors_with_min_dist(point, nearest_distance, min_dist, result),
-            &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance2(point);
-                if distance <= min_dist {
-                    return None;
-                }
-                match nearest_distance {
-                    Some(nearest) => {                
-                        if distance <= nearest {
-                            if distance < nearest {
-                                // We've found a new minimum element, remove all other neighbors found so far
-                                result.clear();
-                            }
-                            result.push(t);
-                            Some(distance)
-                        } else {
-                            // This object is not among the nearest neigbors
-                            None
-                        }
-                    },
-                    None => {
-                        result.push(t);
-                        Some(distance)
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[doc(hidden)]
@@ -1112,15 +990,6 @@ impl<T> RTree<T>
             self.root.lookup_in_rectangle(&mut result, query_rect);
         }
         result
-    }
-
-    // TODO: This doesn't work yet.
-    #[doc(hidden)]
-    /// Returns an iterator that iterates over the nearest elements next to a
-    /// query point.
-    pub fn nearest_neighbor_iterator(
-        &self, query_point: T::Point) -> NearestNeighborIterator<T> {
-        NearestNeighborIterator::new(self, query_point)
     }
 
     /// Returns all objects (partially) contained in a circle.
@@ -1440,19 +1309,6 @@ mod test {
         }
     }
     
-    // TODO: NN iteration doesn't work yet
-    #[ignore]
-    #[test]
-    fn test_nearest_neighbor_iteration() {
-        use traits::SpatialObject;
-        let (tree, mut points) = create_random_tree::<f32>(100, [9, 8, 7, 6]);
-        let query_point = Point2::new(0., 0.);
-        let sorted: Vec<_> = tree.nearest_neighbor_iterator(query_point).cloned().collect();
-        points.sort_by(|l, r| l.distance2(&query_point).partial_cmp(&r.distance2(&query_point)).unwrap());
-        assert_eq!(sorted, points);
-    }
-
-
     #[test]
     fn test_higher_dimensions() {
         use nalgebra::Point4;
