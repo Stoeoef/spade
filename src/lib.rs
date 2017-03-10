@@ -26,10 +26,12 @@
 //!   * Can be backed up by an r*-tree to improve performance when inserting randomly distributed points
 
 #![warn(missing_docs)]
+
 extern crate num;
 extern crate cgmath;
 extern crate nalgebra;
 extern crate clamp;
+extern crate smallvec;
 
 #[cfg(test)]
 extern crate approx;

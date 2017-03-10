@@ -15,6 +15,7 @@ use point_traits::{PointN, PointNExtensions};
 use num::{zero};
 use boundingvolume::BoundingRect;
 use std::iter::Once;
+use smallvec::SmallVec;
 
 #[doc(hidden)]
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -497,7 +498,7 @@ impl <T> DirectoryNodeData<T>
                 min_inline(smallest_min_max, new_min)
             };
         }
-        let mut sorted = Vec::with_capacity(self.children.len());
+        let mut sorted: SmallVec<[_; 8]> = SmallVec::new();
         for child in self.children.iter() {
             let min_dist = child.mbr().min_dist2(point);
             if min_dist <= smallest_min_max {

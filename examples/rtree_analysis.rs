@@ -54,8 +54,8 @@ fn run_compare_operations_bench() {
 
     let mut insert_times = Vec::new();
     let mut nearest_neighbor_times = Vec::new();
-    let mut unsuccsessful_lookup_times = Vec::new();
-    let mut succsessful_lookup_times = Vec::new();
+    // let mut unsuccsessful_lookup_times = Vec::new();
+    // let mut succsessful_lookup_times = Vec::new();
 
     let mut tree = RTree::new();
 
@@ -65,8 +65,8 @@ fn run_compare_operations_bench() {
 
         measure(&mut insert_times, chunk, |point| tree.insert(point));
         measure(&mut nearest_neighbor_times, &query_points, |point| tree.nearest_neighbor(&point));
-        measure(&mut unsuccsessful_lookup_times, &query_points, |point| tree.lookup(&point));
-        measure(&mut succsessful_lookup_times, chunk, |point| tree.lookup(&point));
+        // measure(&mut unsuccsessful_lookup_times, &query_points, |point| tree.lookup(&point));
+        // measure(&mut succsessful_lookup_times, chunk, |point| tree.lookup(&point));
     }
 
     // Print all measurements to a file
@@ -79,10 +79,10 @@ fn run_compare_operations_bench() {
         write!(result_file, "\n\n").unwrap();
     };
 
-    print_measurements("insert", &insert_times);
+    // print_measurements("insert", &insert_times);
     print_measurements("nearest_neighbor", &nearest_neighbor_times);
-    print_measurements("successful lookup", &succsessful_lookup_times);
-    print_measurements("unsuccessful lookup", &unsuccsessful_lookup_times);
+    // print_measurements("successful lookup", &succsessful_lookup_times);
+    // print_measurements("unsuccessful lookup", &unsuccsessful_lookup_times);
 
     println!("Done!");
 }

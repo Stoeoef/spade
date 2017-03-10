@@ -14,6 +14,7 @@ cgmath = ">=0.10.0, <=0.12.0"
 nalgebra = ">=0.11.0, <=0.11.*"
 num = "0.1.*"
 clamp = "0.1.*"
+smallvec = "0.3.*"
 
 [dev-dependencies]
 rand = "0.3.*"
@@ -26,4 +27,5 @@ debug-assertions = false
 
 [profile.release]
 opt-level = 3
+debug = true
 debug-assertions = false
