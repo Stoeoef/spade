@@ -13,6 +13,7 @@ use kernels::{DelaunayKernel, TrivialKernel, FloatKernel};
 use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
 use std::collections::{HashSet};
+use smallvec::SmallVec;
 
 use self::dcel::*;
 use self::delaunay_locate::*;
@@ -43,8 +44,7 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
     NoTriangulationPresent,
 }
 
-fn calculate_convex_polygon_double_area<V>(
-    poly: &Vec<V>) -> V::Scalar 
+fn calculate_convex_polygon_double_area<V>(poly: &[V]) -> V::Scalar 
     where V: TwoDimensional {
     let mut sum = zero();
     for vertices in poly[1 .. ].windows(2) {
@@ -932,6 +932,8 @@ impl <V, K> DelaunayTriangulation<V, K, RTreeDelaunayLocate<V::Point>>
     // }
 }
 
+const INTPL_SMALLVEC_CAPACITY: usize = 16;
+
 impl <V, K, L> DelaunayTriangulation<V, K, L> 
     where V: HasPosition2D, <V::Point as PointN>::Scalar: SpadeFloat,
           K: DelaunayKernel<<V::Point as PointN>::Scalar> ,
@@ -1039,11 +1041,15 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         sum
     }
 
-    fn get_weights(&self, nns: &Vec<FixedVertexHandle>, 
-                   point: &V::Point) -> Vec<<V::Point as PointN>::Scalar> {
+    #[inline(never)]
+    fn get_weights(&self, nns: &SmallVec<[FixedVertexHandle; INTPL_SMALLVEC_CAPACITY]>, 
+                   point: &V::Point) 
+                   -> SmallVec<[<V::Point as PointN>::Scalar; INTPL_SMALLVEC_CAPACITY]> {
 
         if nns.len() == 1 {
-            return vec![one()];
+            let mut result = SmallVec::new();
+            result.push(one());
+            return result
         }
 
         if nns.len() == 2 {
@@ -1053,12 +1059,15 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             let edge = SimpleEdge::new(p0, p1);
             let w1 = ::clamp::clamp(zero(), edge.project_point(point), one);
             let w0 = one - w1;
-            return vec![w0, w1];
+            let mut result = SmallVec::new();
+            result.push(w0);
+            result.push(w1);
+            return result;
         }
-        let mut result = Vec::new();
+        let mut result = SmallVec::new();
         let len = nns.len();
 
-        let mut point_cell = Vec::new();
+        let mut point_cell: SmallVec<[_; 16]> = SmallVec::new();
         for (index, cur) in nns.iter().enumerate() {
             let cur_pos = (*self.s.vertex(*cur)).position();
             let next = (*self.s.vertex(nns[(index + 1) % len])).position();
@@ -1073,7 +1082,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             let prev = nns[((index + len) - 1) % len];
             let next = nns[(index + 1) % len];
             let mut ccw_edge = from_neighbors(&self.s, *cur, prev).unwrap();
-            let mut polygon = Vec::new();
+            let mut polygon: SmallVec<[_; 16]> = SmallVec::new();
             polygon.push(point_cell[((index + len) - 1) % len].clone());
             loop {
                 if ccw_edge.to().fix() == next {
@@ -1089,7 +1098,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             polygon.push(point_cell[index].clone());
             areas.push(calculate_convex_polygon_double_area(&polygon));
         }
-        let mut sum = zero();
+        let mut sum: <V::Point as PointN>::Scalar = zero();
         for area in &areas {
             sum += *area;
         }
@@ -1099,23 +1108,29 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
         result
     }
-
-    fn get_natural_neighbors(&self, position: &V::Point) -> Vec<FixedVertexHandle> {
+    
+    #[inline(never)]
+    fn get_natural_neighbors(&self, position: &V::Point) 
+                             -> SmallVec<[FixedVertexHandle; INTPL_SMALLVEC_CAPACITY]> {
         match self.locate_with_hint_option_fixed(position, None) {
             PositionInTriangulation::InTriangle(face) => {
-                let edges: Vec<_> = self.face(face).adjacent_edges().rev().map(|e| e.sym().fix()).collect();
-                self.inspect_flips(edges, position)
+                let mut edges: SmallVec<_> = self.face(face).adjacent_edges().rev().map(|e| e.sym().fix()).collect();
+                self.inspect_flips(&mut edges, position)
             },
             PositionInTriangulation::OnEdge(edge) => {
                 let edge = self.edge(edge);
                 if self.is_ch_edge(edge.fix()) || self.is_ch_edge(edge.sym().fix()) {
-                    vec![edge.from().fix(), edge.to().fix()]
+                    let mut vec = SmallVec::new();
+                    vec.push(edge.from().fix());
+                    vec.push(edge.to().fix());
+                    vec
                 } else {
-                    let edges = vec![edge.o_prev().sym().fix(),
-                                     edge.o_next().sym().fix(),
-                                     edge.sym().o_prev().sym().fix(),
-                                     edge.sym().o_next().sym().fix()];
-                    self.inspect_flips(edges, position)
+                    let mut edges = SmallVec::new();
+                    edges.push(edge.o_prev().sym().fix());
+                    edges.push(edge.o_next().sym().fix());
+                    edges.push(edge.sym().o_prev().sym().fix());
+                    edges.push(edge.sym().o_next().sym().fix());
+                    self.inspect_flips(&mut edges, position)
                 }
             },
             PositionInTriangulation::OutsideConvexHull(edge) => {
@@ -1137,26 +1152,33 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 let from_pos = (*min_edge.from()).position();
                 let to_pos = (*min_edge.to()).position();
                 let simple = to_simple_edge(&min_edge);
+                let mut result = SmallVec::new();
                 if simple.is_projection_on_edge(position) {
-                    vec![min_edge.from().fix(), min_edge.to().fix()]
+                    result.push(min_edge.from().fix());
+                    result.push(min_edge.to().fix());
                 } else {
                     // Return the closer point
                     if from_pos.distance2(position) < to_pos.distance2(position) {
-                        vec![min_edge.from().fix()]
+                        result.push(min_edge.from().fix());
                     } else {
-                        vec![min_edge.to().fix()]
+                        result.push(min_edge.to().fix());
                     }
                 }
+                result
             },
             PositionInTriangulation::OnPoint(fixed_handle) => {
-                vec![fixed_handle]
+                let mut result = SmallVec::new();
+                result.push(fixed_handle);
+                result
             },
-            _ => Vec::new()
+            _ => SmallVec::new()
         }
     }
 
-    fn inspect_flips(&self, mut edges: Vec<FixedEdgeHandle>, position: &V::Point) -> Vec<FixedVertexHandle> {
-        let mut result = Vec::new();
+    #[inline(never)]
+    fn inspect_flips(&self, edges: &mut SmallVec<[FixedEdgeHandle; INTPL_SMALLVEC_CAPACITY]>,
+                     position: &V::Point) -> SmallVec<[FixedVertexHandle; INTPL_SMALLVEC_CAPACITY]> {
+        let mut result = SmallVec::new();
 
         while let Some(e) = edges.pop() {
             if self.is_ch_edge(e) {
