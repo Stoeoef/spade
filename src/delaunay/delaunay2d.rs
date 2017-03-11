@@ -168,7 +168,7 @@ impl <V, K> DelaunayTriangulation<V, K>
     /// `TriangulationWalkLocate` strategy for insertion and point location
     /// queries. This yields O(sqrt(n)) insertion time on average.
     pub fn with_walk_locate() -> 
-        DelaunayTriangulation<V, K, TriangulationWalkLocate<V::Point>> {
+        DelaunayTriangulation<V, K, TriangulationWalkLocate> {
         DelaunayTriangulation::new()
     }
 }
@@ -194,7 +194,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// use spade::delaunay::{DelaunayTriangulation, TriangulationWalkLocate};
     /// use spade::kernels::TrivialKernel;
     /// # fn main() {
-    /// let mut triangulation = DelaunayTriangulation::<_, TrivialKernel, TriangulationWalkLocate<_>>::new();
+    /// let mut triangulation = DelaunayTriangulation::<_, TrivialKernel, TriangulationWalkLocate>::new();
     /// # triangulation.insert(nalgebra::Point2::new(332f64, 123f64));
     /// # }
     /// ```
@@ -483,6 +483,29 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         new_handle
     }
 
+    pub fn nearest_neighbor(&self, point: &V::Point) -> Option<VertexHandle<V>> {
+        if self.all_points_on_line {
+            return None;
+        } 
+        let start = self.lookup.find_close_handle(point).unwrap_or(0);
+        let mut cur = self.vertex(start);
+        let mut min_dist = cur.position().distance2(point);
+        'outer: loop {
+            for edge in cur.ccw_out_edges() {
+                let neighbor = edge.to();
+                let n_distance = neighbor.position().distance2(point);
+                if n_distance < min_dist {
+                    cur = neighbor;
+                    min_dist = n_distance;
+                    continue 'outer;
+                }
+            }
+            break;
+        }
+        self.lookup.new_query_result(cur.fix());
+        Some(cur)
+    }
+
     /// Returns information about the location of a point in a triangulation.
     pub fn locate(
         &self, point: &V::Point) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
@@ -534,17 +557,20 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 if cur_query.is_on_line() {
                     cur_edge = cur_edge.sym();
                 } else {
+                    self.lookup.new_query_result(cur_edge.from().fix());
                     return PositionInTriangulation::OutsideConvexHull(cur_edge.fix());
                 }
             }
             let from_pos = (*cur_edge.from()).position();
             if &from_pos == point {
+                self.lookup.new_query_result(cur_edge.from().fix());
                 return PositionInTriangulation::OnPoint(cur_edge.from().fix());
             }
             // Check if cur_edge.o_next is also on the left side
             let next = cur_edge.o_next();
             let to_pos = (*next.from()).position();
             if &to_pos == point {
+                self.lookup.new_query_result(cur_edge.to().fix());
                 return PositionInTriangulation::OnPoint(cur_edge.to().fix());
             }
        
@@ -563,8 +589,10 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                     cur_query = prev_query.reversed();
                 } else {
                     if cur_query.is_on_line() {
+                        self.lookup.new_query_result(cur_edge.from().fix());
                         return PositionInTriangulation::OnEdge(cur_edge.fix());
                     }
+                    self.lookup.new_query_result(cur_edge.from().fix());
                     return PositionInTriangulation::InTriangle(cur_edge.face().fix());
                 }
             }
@@ -691,10 +719,16 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
         
         let infinite = self.infinite_face().fix();
+
         let VertexRemovalResult { updated_vertex, data } = 
             self.s.remove_vertex(vertex, Some(infinite));
+
+        // Remove point from locate structure
+        let vertex_pos = data.position();
+        self.lookup.remove_vertex_entry(&VertexEntry::new(vertex_pos, vertex));
+
         if let Some(updated_vertex) = updated_vertex {
-            // Update rtree if necessary
+            // Update locate structure if necessary
             let pos = (*self.vertex(vertex)).position();
             self.lookup.update_vertex_entry(VertexEntry {
                 point: pos,
@@ -708,10 +742,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             }
         }
         
-        // Remove deleted point from internal rtree
-        let vertex_pos = data.position();
-        self.lookup.remove_vertex_entry(&vertex_pos);
-
         if !self.all_points_on_line {
             if ch_removal {
                 // We removed a vertex from the convex hull

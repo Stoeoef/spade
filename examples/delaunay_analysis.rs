@@ -25,7 +25,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Write};
 
-type TWL<T> = TriangulationWalkLocate<T>;
+type TWL = TriangulationWalkLocate;
 type Delaunay<Scalar, K, L> = DelaunayTriangulation<Point2<Scalar>, K, L>;
 
 struct BenchSetup<'a, V, K, L> where
@@ -91,115 +91,115 @@ fn main() {
 
     let mut benches: Vec<Box<Benchmark>> = vec![
         // F64 Benchmarks
-        Box::new(BenchSetup {
-            title: "f64T - uniform - tree lookup",
-            delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
-            vertices: &vertices_f64_uniform,
-            chunk_size: CHUNK_SIZE,
-        }),
-
         // Box::new(BenchSetup {
-        //     title: "f64T - uniform - walk lookup",
-        //     delaunay: Delaunay::<f64, TrivialKernel, TWL<_>>::new(),
+        //     title: "f64T - uniform - tree lookup",
+        //     delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
         //     vertices: &vertices_f64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
 
-        Box::new(BenchSetup {
-            title: "f64T - random walk - tree lookup",
-            delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
-            vertices: &vertices_f64_walk,
-            chunk_size: CHUNK_SIZE,
-        }),
+        // Box::new(BenchSetup {
+        //     title: "f64T - uniform - walk lookup",
+        //     delaunay: Delaunay::<f64, TrivialKernel, TWL>::new(),
+        //     vertices: &vertices_f64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        // Box::new(BenchSetup {
+        //     title: "f64T - random walk - tree lookup",
+        //     delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
+        //     vertices: &vertices_f64_walk,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
         Box::new(BenchSetup {
             title: "f64T - random walk - walk lookup",
-            delaunay: Delaunay::<f64, TrivialKernel, TWL<_>>::new(),
+            delaunay: Delaunay::<f64, TrivialKernel, TWL>::new(),
             vertices: &vertices_f64_walk,
             chunk_size: CHUNK_SIZE,
         }),
         // Float Kernel Benchmarks
-        Box::new(BenchSetup {
-            title: "f64F - uniform - tree lookup",
-            delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
-            vertices: &vertices_f64_uniform,
-            chunk_size: CHUNK_SIZE,
-        }),
-
         // Box::new(BenchSetup {
-        //     title: "f64F - uniform - walk lookup",
-        //     delaunay: Delaunay::<f64, FloatKernel, TWL<_>>::new(),
+        //     title: "f64F - uniform - tree lookup",
+        //     delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
         //     vertices: &vertices_f64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
 
-        Box::new(BenchSetup {
-            title: "f64F - random walk - tree lookup",
-            delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
-            vertices: &vertices_f64_walk,
-            chunk_size: CHUNK_SIZE,
-        }),
+        // Box::new(BenchSetup {
+        //     title: "f64F - uniform - walk lookup",
+        //     delaunay: Delaunay::<f64, FloatKernel, TWL>::new(),
+        //     vertices: &vertices_f64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        // Box::new(BenchSetup {
+        //     title: "f64F - random walk - tree lookup",
+        //     delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
+        //     vertices: &vertices_f64_walk,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
         Box::new(BenchSetup {
             title: "f64F - random walk - walk lookup",
-            delaunay: Delaunay::<f64, FloatKernel, TWL<_>>::new(),
+            delaunay: Delaunay::<f64, FloatKernel, TWL>::new(),
             vertices: &vertices_f64_walk,
             chunk_size: CHUNK_SIZE,
         }),
         // i64 Benchmarks
-        Box::new(BenchSetup {
-            title: "i64T - uniform - tree lookup",
-            delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
-            vertices: &vertices_i64_uniform,
-            chunk_size: CHUNK_SIZE,
-        }),
-
         // Box::new(BenchSetup {
-        //     title: "i64T - uniform - walk lookup",
-        //     delaunay: Delaunay::<i64, TrivialKernel, TWL<_>>::new(),
+        //     title: "i64T - uniform - tree lookup",
+        //     delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
         //     vertices: &vertices_i64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
 
-        Box::new(BenchSetup {
-            title: "i64T - random walk - tree lookup",
-            delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
-            vertices: &vertices_i64_walk,
-            chunk_size: CHUNK_SIZE,
-        }),
+        // Box::new(BenchSetup {
+        //     title: "i64T - uniform - walk lookup",
+        //     delaunay: Delaunay::<i64, TrivialKernel, TWL>::new(),
+        //     vertices: &vertices_i64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        // Box::new(BenchSetup {
+        //     title: "i64T - random walk - tree lookup",
+        //     delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
+        //     vertices: &vertices_i64_walk,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
         Box::new(BenchSetup {
             title: "i64T - random walk - walk lookup",
-            delaunay: Delaunay::<i64, TrivialKernel, TWL<_>>::new(),
+            delaunay: Delaunay::<i64, TrivialKernel, TWL>::new(),
             vertices: &vertices_i64_walk,
             chunk_size: CHUNK_SIZE,
         }),
 
         // Adaptive Int Benchmarks
-        Box::new(BenchSetup {
-            title: "i64A - uniform - tree lookup",
-            delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
-            vertices: &vertices_i64_uniform,
-            chunk_size: CHUNK_SIZE,
-        }),
-
         // Box::new(BenchSetup {
-        //     title: "i64A - uniform - walk lookup",
-        //     delaunay: Delaunay::<i64, AdaptiveIntKernel, TWL<_>>::new(),
+        //     title: "i64A - uniform - tree lookup",
+        //     delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
         //     vertices: &vertices_i64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
 
-        Box::new(BenchSetup {
-            title: "i64A - random walk - tree lookup",
-            delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
-            vertices: &vertices_i64_walk,
-            chunk_size: CHUNK_SIZE,
-        }),
+        // Box::new(BenchSetup {
+        //     title: "i64A - uniform - walk lookup",
+        //     delaunay: Delaunay::<i64, AdaptiveIntKernel, TWL>::new(),
+        //     vertices: &vertices_i64_uniform,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
 
-        Box::new(BenchSetup {
-            title: "i64A - random walk - walk lookup",
-            delaunay: Delaunay::<i64, AdaptiveIntKernel, TWL<_>>::new(),
-            vertices: &vertices_i64_walk,
-            chunk_size: CHUNK_SIZE,
-        }),
+        // Box::new(BenchSetup {
+        //     title: "i64A - random walk - tree lookup",
+        //     delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
+        //     vertices: &vertices_i64_walk,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
+
+        // Box::new(BenchSetup {
+        //     title: "i64A - random walk - walk lookup",
+        //     delaunay: Delaunay::<i64, AdaptiveIntKernel, TWL>::new(),
+        //     vertices: &vertices_i64_walk,
+        //     chunk_size: CHUNK_SIZE,
+        // }),
 
     ];
     let mut results = Vec::new();

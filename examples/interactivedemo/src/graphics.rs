@@ -8,7 +8,7 @@
 
 use ::{ExampleTriangulation};
 use spade::{BoundingRect, HasPosition};
-use spade::rtree::{RTree, RTreeNode};
+use spade::rtree_new::{RTree, RTreeNode};
 use cgmath::{EuclideanSpace, Point2, Point3, Vector2, Vector3, Array};
 use cgmath::conv::{array2, array3};
 use glium::{Surface, VertexBuffer, Program, Display, DrawParameters};
@@ -156,21 +156,37 @@ pub fn get_color_for_depth(depth: usize) -> [f32; 3] {
 fn get_tree_edges(tree: &RTree<Point2<f64>>, buffer: &mut Vec<Vertex>) -> Vec<Vertex> {
     let mut vertices = Vec::new();
     let vertex_color = Point3::new(0.0, 0.0, 1.0);
-    let mut to_visit = vec![tree.root()];
-    while let Some(cur) = to_visit.pop() {
-        for child in cur.children().iter() {
-            match child {
-                &RTreeNode::Leaf(point) => vertices.push(Vertex::new(
-                    array2(point.to_vec().cast()), array3(vertex_color.clone()))),
-                &RTreeNode::DirectoryNode(ref data) => {
-                    to_visit.push(data);
-                    push_rectangle(buffer, &data.mbr(), get_color_for_depth(data.depth()));
-                }                
+    for node in &tree.nodes {
+        match node {
+            &RTreeNode::Leaf(point) => vertices.push(Vertex::new(
+                array2(point.to_vec().cast()), array3(vertex_color.clone()))),
+            &RTreeNode::Parent(ref data) => {
+                push_rectangle(buffer, &data.mbr.clone().unwrap(), 
+                               get_color_for_depth(data.depth));
             }
         }
     }
     vertices
 }
+
+// fn get_tree_edges(tree: &RTree<Point2<f64>>, buffer: &mut Vec<Vertex>) -> Vec<Vertex> {
+//     let mut vertices = Vec::new();
+//     let vertex_color = Point3::new(0.0, 0.0, 1.0);
+//     let mut to_visit = vec![tree.root()];
+//     while let Some(cur) = to_visit.pop() {
+//         for child in cur.children().iter() {
+//             match child {
+//                 &RTreeNode::Leaf(point) => vertices.push(Vertex::new(
+//                     array2(point.to_vec().cast()), array3(vertex_color.clone()))),
+//                 &RTreeNode::DirectoryNode(ref data) => {
+//                     to_visit.push(data);
+//                     push_rectangle(buffer, &data.mbr(), get_color_for_depth(data.depth()));
+//                 }                
+//             }
+//         }
+//     }
+//     vertices
+// }
 
 fn get_delaunay_edges(delaunay: &ExampleTriangulation,
                       edges_buffer: &mut Vec<Vertex>) {

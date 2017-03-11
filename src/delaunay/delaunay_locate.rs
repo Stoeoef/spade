@@ -10,6 +10,8 @@ use traits::HasPosition;
 use point_traits::PointN;
 use rtree::RTree;
 use delaunay::FixedVertexHandle;
+use std::cell::Cell;
+use std::sync::Arc;
 
 /// Locate strategy that uses an r-tree to locate points in O(log(n)) time.
 pub type RTreeDelaunayLocate<V> = RTree<VertexEntry<V>>;
@@ -29,9 +31,11 @@ pub trait DelaunayLocateStructure<T: PointN> : Default + Clone {
     /// This method is called when a vertex has been updated.
     fn update_vertex_entry(&mut self, new_entry: VertexEntry<T>);
     /// This method is callend when a vertex has been removed.
-    fn remove_vertex_entry(&mut self, to_remove: &T);
+    fn remove_vertex_entry(&mut self, to_remove: &VertexEntry<T>);
     /// Returns, if possible, a vertex handle that is close to the given point.
     fn find_close_handle(&self, point: &T) -> Option<FixedVertexHandle>;
+
+    fn new_query_result(&self, entry: FixedVertexHandle);
 }
 
 /// An entry of the delaunay triangulation's internal r-tree.
@@ -49,43 +53,57 @@ impl<V> HasPosition for VertexEntry<V>
     }
 }
 
+impl <V: PointN> VertexEntry<V> {
+    pub fn new(point: V, handle: FixedVertexHandle) -> VertexEntry<V> {
+        VertexEntry {
+            point: point,
+            handle: handle,
+        }
+    }
+}
+
 /// Locate strategy that walks along the edges of a triangulation until the target point
 /// is found. This approach takes O(sqrt(n)) time on average, with a worst case of O(n) and
 /// a best case of O(1).
 #[derive(Clone)]
-pub struct TriangulationWalkLocate<T: PointN> {
-    last: Option<VertexEntry<T>>,
+pub struct TriangulationWalkLocate {
+    last: Arc<Cell<Option<FixedVertexHandle>>>,
 }
 
-impl <T: PointN> Default for TriangulationWalkLocate<T> {
+impl Default for TriangulationWalkLocate {
     fn default() -> Self {
         TriangulationWalkLocate {
-            last: None,
+            last: Arc::new(Cell::new(None)),
         }
     }
 }
 
-impl <T: PointN> DelaunayLocateStructure<T> for TriangulationWalkLocate<T> {
+impl <T: PointN>  DelaunayLocateStructure<T> for TriangulationWalkLocate {
 
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
-        self.last = Some(entry);
+        self.last.set(Some(entry.handle));
     }
 
     fn update_vertex_entry(&mut self, new_entry: VertexEntry<T>) {
-        if self.last.as_ref().map(|e| &e.point) == Some(&new_entry.point) {
-            self.last = Some(new_entry);
+        if self.last.get() == Some(new_entry.handle) {
+            self.last.set(Some(new_entry.handle));
+
         }
     }
 
-    fn remove_vertex_entry(&mut self, to_remove: &T) {
-        if self.last.as_ref().map(|e| &e.point) == Some(to_remove) {
-            self.last = None;
+    fn remove_vertex_entry(&mut self, to_remove: &VertexEntry<T>) {
+        if self.last.get() == Some(to_remove.handle) {
+            self.last.set(None);
         }
     }
 
      fn find_close_handle(&self, _: &T) -> Option<FixedVertexHandle> {
-         self.last.as_ref().map(|e| e.handle)
+         self.last.get()
      }
+
+    fn new_query_result(&self, entry: FixedVertexHandle) {
+        self.last.set(Some(entry))
+    }
 }
 
 impl <T: PointN> DelaunayLocateStructure<T> for RTree<VertexEntry<T>> {
@@ -98,11 +116,14 @@ impl <T: PointN> DelaunayLocateStructure<T> for RTree<VertexEntry<T>> {
         *self.lookup_mut(&old_pos).unwrap() = new_entry;
     }
 
-    fn remove_vertex_entry(&mut self, to_remove: &T) {
-        assert!(self.lookup_and_remove(to_remove).is_some());
+    fn remove_vertex_entry(&mut self, to_remove: &VertexEntry<T>) {
+        assert!(self.lookup_and_remove(&to_remove.point).is_some());
     }
 
     fn find_close_handle(&self, point: &T) -> Option<FixedVertexHandle> {
         self.close_neighbor(point).map(|e| e.handle)
+    }
+
+    fn new_query_result(&self, _: FixedVertexHandle) {
     }
 }

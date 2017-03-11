@@ -25,7 +25,7 @@
 //!   * Natural neighbor interpolation
 //!   * Can be backed up by an r*-tree to improve performance when inserting randomly distributed points
 
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 extern crate num;
 extern crate cgmath;
