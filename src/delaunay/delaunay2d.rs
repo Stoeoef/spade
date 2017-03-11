@@ -477,7 +477,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             self.s.create_face(edge_mid, edge1);
             illegal_edges.push(edge0);
             illegal_edges.push(edge1);
-
         }
         self.legalize_edges(illegal_edges, new_handle);
         new_handle
@@ -844,7 +843,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 let mut edges = Vec::new();
                 let pos = vertices.iter().position(|v| *v == v0).unwrap();
                 {
-                    println!("from: {:?}, to: {:?}", v0, vertices[pos + 1]);
                     let mut cur_edge = from_neighbors(
                         &self.s, v0, vertices[pos + 1]).unwrap();
                     loop {
@@ -1105,26 +1103,19 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     fn get_natural_neighbors(&self, position: &V::Point) -> Vec<FixedVertexHandle> {
         match self.locate_with_hint_option_fixed(position, None) {
             PositionInTriangulation::InTriangle(face) => {
-                let vs = self.s.face(face).as_triangle();
-                self.inspect_flips(vec![(vs[0].fix(), vs[2].fix()), (vs[2].fix(), vs[1].fix()), 
-                                        (vs[1].fix(), vs[0].fix())], position)
+                let edges: Vec<_> = self.face(face).adjacent_edges().rev().map(|e| e.sym().fix()).collect();
+                self.inspect_flips(edges, position)
             },
             PositionInTriangulation::OnEdge(edge) => {
-                let (h0, h1) = {
-                    let edge = self.s.edge(edge);
-                    (edge.from().fix(), edge.to().fix())
-                };
-                let left_opt = self.get_left_triangle((h0, h1));
-                let right_opt = self.get_right_triangle((h0, h1));
-                if let (Some(left_handle), Some(right_handle)) = (left_opt, right_opt) {
-                    let mut direct_neighbors = Vec::new();
-                    direct_neighbors.push((h0, left_handle));
-                    direct_neighbors.push((left_handle, h1));
-                    direct_neighbors.push((h1, right_handle));
-                    direct_neighbors.push((right_handle, h0));
-                    self.inspect_flips(direct_neighbors, position)
+                let edge = self.edge(edge);
+                if self.is_ch_edge(edge.fix()) || self.is_ch_edge(edge.sym().fix()) {
+                    vec![edge.from().fix(), edge.to().fix()]
                 } else {
-                    vec![h0, h1]
+                    let edges = vec![edge.o_prev().sym().fix(),
+                                     edge.o_next().sym().fix(),
+                                     edge.sym().o_prev().sym().fix(),
+                                     edge.sym().o_next().sym().fix()];
+                    self.inspect_flips(edges, position)
                 }
             },
             PositionInTriangulation::OutsideConvexHull(edge) => {
@@ -1164,29 +1155,31 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
     }
 
-    fn inspect_flips(&self, mut edges: Vec<(FixedVertexHandle, FixedVertexHandle)>, position: &V::Point) -> Vec<FixedVertexHandle> {
-        // TODO: edges should store edge references instead of tuples to accomodate
-        // the underlying dcel structure better.
+    fn inspect_flips(&self, mut edges: Vec<FixedEdgeHandle>, position: &V::Point) -> Vec<FixedVertexHandle> {
         let mut result = Vec::new();
-        while let Some((h0, h1)) = edges.pop() {
-            if let Some(h2) = self.get_left_triangle((h0, h1)) {
-                let v0 = (*self.s.vertex(h0)).position();
-                let v1 = (*self.s.vertex(h1)).position();
-                let v2 = (*self.s.vertex(h2)).position();
-                debug_assert!(!K::is_ordered_ccw(&v2, &v1, &v0));
-                debug_assert!(K::is_ordered_ccw(position, &v1, &v0));
-                if K::contained_in_circumference(&v2, &v1, &v0, position) {
-                    // The would be illegal
-                    // Add edges in ccw order
-                    edges.push((h0, h2));
-                    edges.push((h2, h1));
-                } else {
-                    // Edge is legal
-                    result.push(h0);
-                }
+
+        while let Some(e) = edges.pop() {
+            if self.is_ch_edge(e) {
+                result.push(self.edge(e).from().fix());
             } else {
-                // Edge is part of the convex hull
-                result.push(h0);
+                let (v0, v1, v2, e1, e2);
+                {
+                    let edge = self.s.edge(e);
+                    v0 = (*edge.from()).position();
+                    v1 = (*edge.to()).position();
+                    v2 = (*edge.ccw().to()).position();
+                    e1 = edge.o_prev().sym().fix();
+                    e2 = edge.o_next().sym().fix();
+                }
+                debug_assert!(K::is_ordered_ccw(&v1, &v2, &v0));
+                debug_assert!(K::is_ordered_ccw(position, &v1, &v0));
+                if K::contained_in_circumference(&v2, &v1, &v0, &position) {
+                    // The edge is illegal
+                    edges.push(e1);
+                    edges.push(e2);
+                } else {
+                    result.push(self.edge(e).from().fix());
+                }
             }
         }
         result
@@ -1842,6 +1835,7 @@ mod test {
         assert!((height - 1.0).abs() < 0.00001);
         let height = d.nn_interpolation(&Point2::new(3.5, 0.5), |p| p.height).unwrap();
         assert!((height - 1.0).abs() < 0.00001);
+        assert_eq!(d.nn_interpolation(&Point2::new(3.0, 0.0), |p| p.height), Some(1.0));
     }
 
     #[test]
