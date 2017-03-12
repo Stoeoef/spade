@@ -96,10 +96,16 @@ impl <V> SimpleEdge<V> where V: PointN {
         let s = query_point.sub(p1).dot(&dir);
         zero::<V::Scalar>() <= s && s <= dir.length2()
     }
+
+    pub fn length2(&self) -> V::Scalar {
+        let diff = self.from.sub(&self.to);
+        diff.dot(&diff)
+    }
 }
 
 impl <V> SimpleEdge<V> where V: TwoDimensional {
     /// Determines on which side of this edge a given point lies.
+    ///
     /// # Example:
     ///
     /// ```

@@ -486,7 +486,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         if self.all_points_on_line {
             return None;
         } 
-        let start = self.lookup.find_close_handle(point).unwrap_or(0);
+        let start = self.get_default_hint(point);
         let mut cur = self.vertex(start);
         let mut min_dist = cur.position().distance2(point);
         'outer: loop {
@@ -535,7 +535,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             // TODO: We might want to check if the point is on the line or already contained
             PositionInTriangulation::NoTriangulationPresent
         } else {
-            let start = hint.unwrap_or_else(|| self.lookup.find_close_handle(point).unwrap_or(0));
+            let start = hint.unwrap_or_else(|| self.get_default_hint(point));
             self.locate_with_hint_fixed(point, start) 
         }
     }
@@ -868,6 +868,15 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         // Assume all points lie on a line.
         self.s.clear_edges_and_faces();
         self.all_points_on_line = true;
+    }
+
+    fn get_default_hint(&self, coord: &V::Point) -> FixedVertexHandle {
+        let hint = self.lookup.find_close_handle(coord);
+        if hint < self.num_vertices() {
+            hint
+        } else {
+            0
+        }
     }
 
     #[cfg(test)]

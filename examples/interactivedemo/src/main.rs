@@ -19,7 +19,7 @@ extern crate glium;
 
 mod graphics;
 use graphics::{RenderData};
-use spade::rtree_new::{RTree};
+use spade::rtree::{RTree};
 use spade::{SpadeNum};
 use spade::delaunay::{DelaunayTriangulation};
 use spade::kernels::{FloatKernel};
@@ -122,16 +122,16 @@ fn main() {
                     dirty = true;
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
-                    // let nn = rtree.nearest_neighbor(&last_point).cloned();
-                    // if let Some(p) = nn {
-                    //     rtree.remove(&p);
-                    //     let handle = delaunay.lookup(&p).unwrap().fix();
-                    //     delaunay.remove(handle);
-                    //     render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
-                    //     let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
-                    //     render_data.update_selection(&display, &selection);
-                    //     dirty = true;
-                    // }
+                    let nn = rtree.nearest_neighbor(&last_point).cloned();
+                    if let Some(p) = nn {
+                        rtree.remove(&p);
+                        let handle = delaunay.lookup(&p).unwrap().fix();
+                        delaunay.remove(handle);
+                        render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
+                        let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
+                        render_data.update_selection(&display, &selection);
+                        dirty = true;
+                    }
                 },                    
                 Event::MouseMoved(x, y) => {
                     let (w, h) = display.get_framebuffer_dimensions();
@@ -164,18 +164,17 @@ fn get_selected_vertices(tree: &RTree<Point2<f64>>, point: Point2<f64>,
             points.extend(
                 tree.nearest_neighbor(&point).iter().cloned());
         },
-        _ => { }
-        // LookupMode::InCircle => {
-        //     points.extend(tree.lookup_in_circle(
-        //         &point, &LOOKUP_RADIUS2).iter().cloned());
-        // },
-        // LookupMode::NearestN => {
-        //     points.extend(tree.nearest_n_neighbors(
-        //         &point, N));
-        // },
-        // LookupMode::CloseN => {
-        //     points.extend(tree.close_neighbor(&point).iter().cloned());
-        // },
+        LookupMode::InCircle => {
+            points.extend(tree.lookup_in_circle(
+                &point, &LOOKUP_RADIUS2).iter().cloned());
+        },
+        LookupMode::NearestN => {
+            points.extend(tree.nearest_n_neighbors(
+                &point, N));
+        },
+        LookupMode::CloseN => {
+            points.extend(tree.close_neighbor(&point).iter().cloned());
+        },
     }
     points
 }
