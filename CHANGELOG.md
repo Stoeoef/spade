@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.1.0] - 2017-04-12
+### Deprecated
+- `spade::delaunay::RTreeDelaunayLocate<T>` is deprecated, use `spade::delaunay::DelaunayTreeLocate<T>` instead
+- `spade::delaunay::TriangulationWalkLocate<T>` is deprecated, use `spade::delaunay::DelaunayWalkLocate` instead (without any type argument)
+### Changed
+  - Insertion into a delaunay triangulation now uses `SmallVec` from the `smallvec` crate for better performance.
+  - Improved interpolation performance - natural neighbor interpolation methods will be significantly faster now.
+### Added
+  - Added struct `spade::delaunay::DelaunayWalkLocate`. The struct will now keep track of the last query made and use it for the next query. A query can be an interpolation, lookup, locate or nearest neighbor query, insertion will also update the hint to the inserted vertex. This means: Subsequent queries that are close to each other will run in O(1) without the need of giving an explicit hint. This behaviour was only implemented for insertion until now.
+  - Added method `spade::delaunay::DelaunayTriangulation::nearest_neighbor`
+  - Added method `spade::delaunay::DelaunayTriangulation::locate_vertex`
+  - Added method `spade::primitives::SimpleEdge::length2`
+  - Added an interpolation benchmark
+  
 ## [1.0.0] - 2017-03-02
 A lot has changed for the 1.0. release, only larger changes are shown.
 
@@ -95,12 +109,14 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 ## 0.1.0 - 2016-09-23
 Initial commit
 
-[1.0.0] https://github.com/Stoeoef/spade/compare/v0.3.0...v1.0.0
+[1.1.0]: https://github.com/Stoeoef/spade/compare/v1.0.0...v1.1.0
 
-[0.3.0] https://github.com/Stoeoef/spade/compare/v0.2.1...v0.3.0
+[1.0.0]: https://github.com/Stoeoef/spade/compare/v0.3.0...v1.0.0
 
-[0.2.1] https://github.com/Stoeoef/spade/compare/v0.2.0...v0.2.1
+[0.3.0]: https://github.com/Stoeoef/spade/compare/v0.2.1...v0.3.0
 
-[0.2.0] https://github.com/Stoeoef/spade/compare/v0.1.1...v0.2.0
+[0.2.1]: https://github.com/Stoeoef/spade/compare/v0.2.0...v0.2.1
+
+[0.2.0]: https://github.com/Stoeoef/spade/compare/v0.1.1...v0.2.0
 
 [0.1.1] https://github.com/Stoeoef/spade/compare/v0.1.0...v0.1.1
