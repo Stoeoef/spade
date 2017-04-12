@@ -44,16 +44,6 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
     NoTriangulationPresent,
 }
 
-fn calculate_convex_polygon_double_area<V>(poly: &[V]) -> V::Scalar 
-    where V: TwoDimensional {
-    let mut sum = zero();
-    for vertices in poly[1 .. ].windows(2) {
-        let triangle = SimpleTriangle::new(poly[0].clone(), vertices[0].clone(), vertices[1].clone());
-        sum = sum + triangle.double_area();
-    }
-    sum
-}
-
 /// A two dimensional delaunay triangulation.
 /// 
 /// A delaunay triangulation is a special triangulation of a set of points that fulfills some
@@ -124,9 +114,21 @@ fn calculate_convex_polygon_double_area<V>(poly: &[V]) -> V::Scalar
 /// `V: HasPosition2D` defines the delaunay's vertex type. 
 /// `K: DelaunayKernel` defines the triangulations calculation kernel.
 /// For more information, see `spade::kernels`.
-/// `L` Defines the delaunay lookup structure.
-/// For more information, see `DelaunayLookupStructure`.
-pub struct DelaunayTriangulation<V, K, L = RTreeDelaunayLocate<<V as HasPosition>::Point>>
+/// `L` Defines the delaunay locate structure.
+/// For more information, see `DelaunayLocateStructure`.
+///
+/// # Performance
+/// Performance of insertion, interpolation and other queries heavily relies on
+/// - the locate structure being used
+/// - the closeness of subsequent queries
+/// - the kernel being used
+/// Depending on the use case, it can vary between O(1) to O(sqrt(n)) on average.
+/// The guide has an [own chapter](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html) about performance.
+/// ## Auto Hinting
+/// Since version 1.1, spade uses the result of the last query as hint for the next query when
+/// using `DelaunayWalkLocate` as locate strategy. That means: Subsequent queries - like insertion, interpolation or nearest neighbor
+/// queries - will run in O(1) if the query locations are close to each other.
+pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
           L: DelaunayLocateStructure<V::Point>,
@@ -165,10 +167,10 @@ impl <V, K> DelaunayTriangulation<V, K>
     }
 
     /// Shorthand constructor for a delaunay triangulation that uses the
-    /// `TriangulationWalkLocate` strategy for insertion and point location
+    /// `DelaunayWalkLocate` strategy for insertion and point location
     /// queries. This yields O(sqrt(n)) insertion time on average.
     pub fn with_walk_locate() -> 
-        DelaunayTriangulation<V, K, TriangulationWalkLocate> {
+        DelaunayTriangulation<V, K, DelaunayWalkLocate> {
         DelaunayTriangulation::new()
     }
 }
@@ -191,10 +193,10 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// ```
     /// # extern crate nalgebra;
     /// # extern crate spade;
-    /// use spade::delaunay::{DelaunayTriangulation, TriangulationWalkLocate};
+    /// use spade::delaunay::{DelaunayTriangulation, DelaunayWalkLocate};
     /// use spade::kernels::TrivialKernel;
     /// # fn main() {
-    /// let mut triangulation = DelaunayTriangulation::<_, TrivialKernel, TriangulationWalkLocate>::new();
+    /// let mut triangulation = DelaunayTriangulation::<_, TrivialKernel, DelaunayWalkLocate>::new();
     /// # triangulation.insert(nalgebra::Point2::new(332f64, 123f64));
     /// # }
     /// ```
@@ -357,9 +359,9 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     fn get_convex_hull_edges_for_point(&self, first_edge: FixedEdgeHandle,
-                                       point: &V::Point) -> Vec<FixedEdgeHandle> 
+                                       point: &V::Point) -> SmallVec<[FixedEdgeHandle; 16]> 
     {
-        let mut result = Vec::new();
+        let mut result = SmallVec::new();
         let first_edge = self.s.edge(first_edge);
         debug_assert!(K::side_query(&to_simple_edge(&first_edge), point).is_on_left_side());
 
@@ -392,7 +394,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     fn insert_outside_convex_hull(
         &mut self, closest_edge: FixedEdgeHandle, t: V) -> FixedVertexHandle {
         let position = t.position();
-        let ch_edges = self.get_convex_hull_edges_for_point(closest_edge, &position);
+        let mut ch_edges = self.get_convex_hull_edges_for_point(closest_edge, &position);
         let new_handle = self.s.insert_vertex(t);
         // Make new connections
         let mut last_edge = self.s.connect_edge_to_isolated_vertex(
@@ -403,11 +405,12 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             // Reverse last_edge
             last_edge = self.s.edge(last_edge).sym().fix();
         }
-        self.legalize_edges(ch_edges, new_handle);
+        self.legalize_edges(&mut ch_edges, &position);
         new_handle
     }
     
     fn insert_into_triangle(&mut self, face: FixedFaceHandle, t: V) -> FixedVertexHandle {
+        let position = t.position();
         let new_handle = self.s.insert_vertex(t);
         let (e0, e1, e2) = {
             let face = self.s.face(face);
@@ -420,7 +423,11 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         last_edge = self.s.create_face(e0, last_edge);
         last_edge = self.s.edge(last_edge).sym().fix();
         self.s.create_face(e1, last_edge);
-        self.legalize_edges(vec![e0, e1, e2], new_handle);
+        let mut edges = SmallVec::new();
+        edges.push(e0);
+        edges.push(e1);
+        edges.push(e2);
+        self.legalize_edges(&mut edges, &position);
         new_handle
     }
 
@@ -450,8 +457,9 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     fn insert_on_edge(&mut self, edge: FixedEdgeHandle, t: V) -> FixedVertexHandle {
+        let position = t.position();
         let new_handle = self.s.insert_vertex(t);
-        let mut illegal_edges = Vec::new();
+        let mut illegal_edges = SmallVec::new();
         let (from, to) = {
             let edge = self.s.edge(edge);
             (edge.from().fix(), edge.to().fix())
@@ -478,10 +486,13 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             illegal_edges.push(edge0);
             illegal_edges.push(edge1);
         }
-        self.legalize_edges(illegal_edges, new_handle);
+        self.legalize_edges(&mut illegal_edges, &position);
         new_handle
     }
 
+    /// Locates the nearest neighbor for a given point.
+    ///
+    /// Returns `None` if this triangulation is degenerate.
     pub fn nearest_neighbor(&self, point: &V::Point) -> Option<VertexHandle<V>> {
         if self.all_points_on_line {
             return None;
@@ -511,7 +522,21 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         self.locate_with_hint_option(point, None)
     }
 
+    /// Locates a vertex at a given position.
+    ///
+    /// Returns `None` if the point could not be found _or if the triangulation is degenerate_. In future releases,
+    /// this method might work for degenerate triangulations as well.
+    pub fn locate_vertex(&self, point: &V::Point) -> Option<VertexHandle<V>> {
+        if let Some(nn) = self.nearest_neighbor(point) {
+            if &nn.position() == point {
+                return Some(nn);
+            }
+        }
+        None
+    }
+
     /// Returns information about the location of a point in a triangulation.
+    ///
     /// Additionally, a hint can be given to speed up computation. The hint should be a vertex close
     /// to the position that is being looked up.
     pub fn locate_with_hint(&self, point: &V::Point, hint: FixedVertexHandle) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
@@ -612,7 +637,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 
     /// Inserts a new vertex into the triangulation. A hint can be given to speed up the process.
     /// The hint should be a handle of a vertex close to the new vertex. This method is recommended
-    /// in combination with `TriangulationWalkLocate`, in this case the insertion time can be reduced
+    /// in combination with `DelaunayWalkLocate`, in this case the insertion time can be reduced
     /// to O(1) on average if the hint is close. If the hint is randomized, running time will be O(sqrt(n))
     /// on average with an O(n) worst case.
     pub fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
@@ -654,8 +679,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
     }
 
-    fn legalize_edges(&mut self, mut edges: Vec<FixedEdgeHandle>, new_vertex: FixedVertexHandle) {
-        let position = (*self.s.vertex(new_vertex)).position();
+    fn legalize_edges(&mut self, edges: &mut SmallVec<[FixedEdgeHandle; 16]>, position: &V::Point) {
         while let Some(e) = edges.pop() {
             if !self.is_ch_edge(e) {
                 let (v0, v1, v2, e1, e2);
@@ -668,8 +692,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                     e2 = edge.sym().o_prev().fix();
                 }
                 debug_assert!(K::is_ordered_ccw(&v2, &v1, &v0));
-                debug_assert!(K::is_ordered_ccw(&position, &v0, &v1));
-                if K::contained_in_circumference(&v1, &v2, &v0, &position) {
+                debug_assert!(K::is_ordered_ccw(position, &v0, &v1));
+                if K::contained_in_circumference(&v1, &v2, &v0, position) {
                     // The edge is illegal
                     self.s.flip_cw(e);
                     edges.push(e1);
@@ -759,6 +783,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
         data
     }
+
+
 
     fn fill_hole(&mut self, loop_edges: Vec<FixedEdgeHandle>) {
         let mut border_edges = HashSet::new();
@@ -903,7 +929,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 }
 
-impl <V, K> DelaunayTriangulation<V, K, RTreeDelaunayLocate<V::Point>>
+impl <V, K> DelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
     where V: HasPosition2D,
           K: DelaunayKernel<<V::Point as PointN>::Scalar>,
           V::Point: TwoDimensional {
@@ -941,7 +967,7 @@ impl <V, K> DelaunayTriangulation<V, K, RTreeDelaunayLocate<V::Point>>
     // }
 }
 
-const INTPL_SMALLVEC_CAPACITY: usize = 16;
+const INTPL_SMALLVEC_CAPACITY: usize = 8;
 
 impl <V, K, L> DelaunayTriangulation<V, K, L> 
     where V: HasPosition2D, <V::Point as PointN>::Scalar: SpadeFloat,
@@ -1050,13 +1076,12 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         sum
     }
 
-    #[inline(never)]
     fn get_weights(&self, nns: &SmallVec<[FixedVertexHandle; INTPL_SMALLVEC_CAPACITY]>, 
                    point: &V::Point) 
                    -> SmallVec<[<V::Point as PointN>::Scalar; INTPL_SMALLVEC_CAPACITY]> {
 
+        let mut result = SmallVec::new();
         if nns.len() == 1 {
-            let mut result = SmallVec::new();
             result.push(one());
             return result
         }
@@ -1068,14 +1093,13 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             let edge = SimpleEdge::new(p0, p1);
             let w1 = ::clamp::clamp(zero(), edge.project_point(point), one);
             let w0 = one - w1;
-            let mut result = SmallVec::new();
             result.push(w0);
             result.push(w1);
             return result;
         }
-        let mut result = SmallVec::new();
         let len = nns.len();
 
+        // Get voronoi vertices of adjacent faces
         let mut point_cell: SmallVec<[_; 16]> = SmallVec::new();
         for (index, cur) in nns.iter().enumerate() {
             let cur_pos = (*self.s.vertex(*cur)).position();
@@ -1084,15 +1108,17 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             point_cell.push(triangle.circumcenter());
         }
 
-        let mut areas = Vec::new();
-
+        let mut total_area = zero();
+        let mut ccw_edge = from_neighbors(&self.s, *nns.first().unwrap(),
+                                          *nns.last().unwrap()).unwrap();
         for (index, cur) in nns.iter().enumerate() {
+            // Calculate area of voronois cells
             let cur_pos = (*self.s.vertex(*cur)).position();
-            let prev = nns[((index + len) - 1) % len];
             let next = nns[(index + 1) % len];
-            let mut ccw_edge = from_neighbors(&self.s, *cur, prev).unwrap();
-            let mut polygon: SmallVec<[_; 16]> = SmallVec::new();
-            polygon.push(point_cell[((index + len) - 1) % len].clone());
+
+            let mut polygon_area = zero();
+            let mut last = point_cell[((index + len) - 1) % len].clone();
+            let first = point_cell[index].clone();
             loop {
                 if ccw_edge.to().fix() == next {
                     break;
@@ -1101,24 +1127,24 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 let triangle = SimpleTriangle::new((*ccw_edge.to()).position().clone(), 
                                                    (*cw_edge.to()).position().clone(),
                                                    cur_pos.clone());
-                polygon.push(triangle.circumcenter());
+                let cur = triangle.circumcenter();
+
+                let tri = SimpleTriangle::new(first.clone(), cur.clone(), last);
+                last = cur;
+                polygon_area = polygon_area + tri.double_area();
                 ccw_edge = cw_edge;
             }
-            polygon.push(point_cell[index].clone());
-            areas.push(calculate_convex_polygon_double_area(&polygon));
+            ccw_edge = ccw_edge.sym();
+
+            total_area = total_area + polygon_area;
+            result.push(polygon_area);
         }
-        let mut sum: <V::Point as PointN>::Scalar = zero();
-        for area in &areas {
-            sum += *area;
-        }
-        for i in 0 .. len {
-            // Normalize weights
-            result.push(areas[i] / sum);
+        for mut area in &mut result {
+            *area = *area / total_area;
         }
         result
     }
     
-    #[inline(never)]
     fn get_natural_neighbors(&self, position: &V::Point) 
                              -> SmallVec<[FixedVertexHandle; INTPL_SMALLVEC_CAPACITY]> {
         match self.locate_with_hint_option_fixed(position, None) {
@@ -1184,7 +1210,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
     }
 
-    #[inline(never)]
     fn inspect_flips(&self, edges: &mut SmallVec<[FixedEdgeHandle; INTPL_SMALLVEC_CAPACITY]>,
                      position: &V::Point) -> SmallVec<[FixedVertexHandle; INTPL_SMALLVEC_CAPACITY]> {
         let mut result = SmallVec::new();
@@ -1572,7 +1597,7 @@ mod test {
     use testutils::*;
     use rand::{SeedableRng, XorShiftRng, Rng};
     use rand::distributions::{Range, IndependentSample};
-    use traits::{HasPosition};
+    use traits::{HasPosition, SpatialObject};
 
     #[test]
     fn test_inserting_one_point() {
@@ -1883,8 +1908,7 @@ mod test {
 
     #[test]
     fn test_insert_points_on_grid_with_increasing_distance() {
-        // This test inserts points on a grid with increasing distance 
-        // from (0., 0.)
+        // This test inserts points on a grid with increasing distance from (0., 0.)
         use cgmath::{EuclideanSpace};
         let mut points = Vec::new();
         const SIZE: i64 = 7;
@@ -2035,5 +2059,26 @@ mod test {
         d.insert(Point2::new(0.2, 0.5));
         d.insert(Point2::new(1.5, 0.0));
         d.sanity_check();
+    }
+
+    #[test]
+    fn test_nearest_neighbor() {
+        const SIZE: usize = 100;
+        let points = random_points_with_seed::<f64>(SIZE, [20000, 12003, 10029943, 701111]);
+        let mut d = FloatDelaunayTriangulation::with_walk_locate();
+        assert!(d.nearest_neighbor(&points[0]).is_none());
+        for p in &points {
+            d.insert(*p);
+        }
+        let sample_points = random_points_with_seed::<f64>(SIZE * 3, [884423, 12345661, 7023123, 6198825]);
+        for p in &sample_points {
+            let nn_delaunay = d.nearest_neighbor(p);
+            let nn_linear_search = points.iter().min_by(|l, r| {
+                let d1 = l.distance2(p);
+                let d2 = r.distance2(p);
+                d1.partial_cmp(&d2).unwrap()
+            });
+            assert_eq!(nn_delaunay.map(|p| p.position()), nn_linear_search.cloned());
+        }
     }
 }

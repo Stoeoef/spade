@@ -9,14 +9,14 @@
 use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 
-use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, TriangulationWalkLocate};
+use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, DelaunayWalkLocate};
 use cgmath::{EuclideanSpace, Point2, Vector3, Point3};
 use spade::{HasPosition,};
 
 use constants::*;
 
 pub type Delaunay = FloatDelaunayTriangulation<
-        PointWithHeight, TriangulationWalkLocate<Point2<f64>>>;
+        PointWithHeight, DelaunayWalkLocate>;
 
 pub struct PointWithHeight {
     point: Point2<f64>,

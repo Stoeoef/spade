@@ -97,6 +97,7 @@ impl <V> SimpleEdge<V> where V: PointN {
         zero::<V::Scalar>() <= s && s <= dir.length2()
     }
 
+    /// Returns the edge's squared length.
     pub fn length2(&self) -> V::Scalar {
         let diff = self.from.sub(&self.to);
         diff.dot(&diff)

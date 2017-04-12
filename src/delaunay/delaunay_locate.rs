@@ -13,8 +13,54 @@ use delaunay::FixedVertexHandle;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[derive(Clone)]
+#[deprecated(since="1.0.1", note="Replaced by DelaunayWalkLocate")]
+#[allow(deprecated)]
+#[allow(missing_docs)]
+pub struct TriangulationWalkLocate<T: PointN> {
+    marker: ::std::marker::PhantomData<T>,
+    locate: DelaunayWalkLocate,
+}
+
+#[allow(deprecated)]
+impl <T: PointN> Default for TriangulationWalkLocate<T> {
+    fn default() -> Self {
+        TriangulationWalkLocate {
+            marker: Default::default(),
+            locate: Default::default(),
+        }
+    }
+}
+
+#[allow(deprecated)]
+impl <T: PointN> DelaunayLocateStructure<T> for TriangulationWalkLocate<T> {
+    fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
+        self.locate.insert_vertex_entry(entry);
+    }
+
+    fn update_vertex_entry(&mut self, new_entry: VertexEntry<T>) {
+        self.locate.update_vertex_entry(new_entry);
+    }
+
+    fn remove_vertex_entry(&mut self, to_remove: &VertexEntry<T>) {
+        self.locate.remove_vertex_entry(to_remove);
+    }
+
+    fn find_close_handle(&self, point: &T) -> FixedVertexHandle {
+        self.locate.find_close_handle(point)
+    }
+
+    fn new_query_result(&self, entry: FixedVertexHandle) {
+        DelaunayLocateStructure::<T>::new_query_result(&self.locate, entry);
+    }
+}
+
 /// Locate strategy that uses an r-tree to locate points in O(log(n)) time.
+#[deprecated(since="1.0.1", note="Renamed to DelaunayTreeLocate")]
 pub type RTreeDelaunayLocate<V> = RTree<VertexEntry<V>>;
+
+/// Locate strategy that uses an r-tree to locate points in O(log(n)) time.
+pub type DelaunayTreeLocate<V> = RTree<VertexEntry<V>>;
 
 /// Locate strategy for delaunay triangulations.
 /// 
@@ -34,7 +80,7 @@ pub trait DelaunayLocateStructure<T: PointN> : Default + Clone {
     fn remove_vertex_entry(&mut self, to_remove: &VertexEntry<T>);
     /// Returns, if possible, a vertex handle that is close to the given point.
     fn find_close_handle(&self, point: &T) -> FixedVertexHandle;
-
+    /// Notifies the locate structure about the result of a query.
     fn new_query_result(&self, entry: FixedVertexHandle);
 }
 
@@ -63,22 +109,27 @@ impl <V: PointN> VertexEntry<V> {
 }
 
 /// Locate strategy that walks along the edges of a triangulation until the target point
-/// is found. This approach takes O(sqrt(n)) time on average, with a worst case of O(n) and
+/// is found.
+///
+/// This approach takes O(sqrt(n)) time on average, with a worst case of O(n) and
 /// a best case of O(1).
+/// This strategy works especially well if subsequent queries like insertion, interpolation
+/// or locate queries, are performed close to each other, as the result of the last query
+/// operation will be used as hint for the next operation.
 #[derive(Clone)]
-pub struct TriangulationWalkLocate {
+pub struct DelaunayWalkLocate {
     last: Arc<AtomicUsize>,
 }
 
-impl Default for TriangulationWalkLocate {
+impl Default for DelaunayWalkLocate {
     fn default() -> Self {
-        TriangulationWalkLocate {
+        DelaunayWalkLocate {
             last: Arc::new(AtomicUsize::new(0)),
         }
     }
 }
 
-impl <T: PointN>  DelaunayLocateStructure<T> for TriangulationWalkLocate {
+impl <T: PointN>  DelaunayLocateStructure<T> for DelaunayWalkLocate {
 
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
         self.last.store(entry.handle, Ordering::Relaxed);

@@ -16,5 +16,7 @@ pub use self::delaunay2d::*;
 pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,
                      VertexHandle, EdgeHandle, FaceHandle,
                      CCWIterator, ONextIterator};
-pub use self::delaunay_locate::{TriangulationWalkLocate, RTreeDelaunayLocate,
+pub use self::delaunay_locate::{DelaunayTreeLocate, DelaunayWalkLocate,
                                 DelaunayLocateStructure};
+#[allow(deprecated)]
+pub use self::delaunay_locate::{TriangulationWalkLocate, RTreeDelaunayLocate};

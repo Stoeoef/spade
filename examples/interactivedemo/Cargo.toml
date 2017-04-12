@@ -1,5 +1,5 @@
 [package]
-name = "interactive demo"
+name = "interactivedemo"
 version = "0.1.0"
 
 [[bin]]
