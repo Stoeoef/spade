@@ -11,8 +11,11 @@
 mod dcel;
 mod delaunay2d;
 mod delaunay_locate;
+mod cdt;
+mod delaunay_basic;
 
 pub use self::delaunay2d::*;
+pub use self::cdt::ConstrainedDelaunayTriangulation;
 pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,
                      VertexHandle, EdgeHandle, FaceHandle,
                      CCWIterator, ONextIterator};
