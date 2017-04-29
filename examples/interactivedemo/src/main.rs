@@ -1,5 +1,4 @@
 // Copyright 2017 The Spade Developers.
-//
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
@@ -21,7 +20,7 @@ mod graphics;
 use graphics::{RenderData};
 use spade::rtree::{RTree};
 use spade::{SpadeNum};
-use spade::delaunay::{DelaunayTriangulation};
+use spade::delaunay::{ConstrainedDelaunayTriangulation, Locateable};
 use spade::kernels::{FloatKernel};
 use cgmath::{Point2, BaseFloat, BaseNum};
 use rand::{Rand, XorShiftRng, SeedableRng};
@@ -31,7 +30,8 @@ use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 
-type ExampleTriangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
+// type ExampleTriangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
+type ExampleTriangulation = ConstrainedDelaunayTriangulation<Point2<f64>, FloatKernel>;
 
 #[derive(Clone, Copy)]
 pub enum LookupMode {
@@ -60,7 +60,9 @@ fn main() {
         .build_glium()
         .unwrap();
 
-    let mut delaunay = DelaunayTriangulation::with_tree_locate();
+    let mut delaunay = ExampleTriangulation::new();
+    let mut segment_start_maybe = None;
+    
     let mut rtree = RTree::new();
 
     let mut render_data = RenderData::new(&display);
@@ -124,13 +126,21 @@ fn main() {
                 Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
                     let nn = rtree.nearest_neighbor(&last_point).cloned();
                     if let Some(p) = nn {
-                        rtree.remove(&p);
-                        let handle = delaunay.lookup(&p).unwrap().fix();
-                        delaunay.remove(handle);
-                        render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
-                        let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
-                        render_data.update_selection(&display, &selection);
-                        dirty = true;
+                        
+                    //     rtree.remove(&p);
+                        let handle = delaunay.locate_vertex_with_hint(&p, 0).unwrap().fix();
+                    //     delaunay.remove(handle);
+                    //     render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
+                    //     let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
+                    //     render_data.update_selection(&display, &selection);
+                        if let Some(segment_start) = segment_start_maybe {
+                            dirty = true;
+                            delaunay.add_constraint(segment_start, handle);
+                            render_data.update_buffers(&display, &rtree, &delaunay, draw_tree_nodes);
+                            segment_start_maybe = None;
+                        } else {
+                            segment_start_maybe = Some(handle);
+                        }
                     }
                 },                    
                 Event::MouseMoved(x, y) => {

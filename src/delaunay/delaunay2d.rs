@@ -12,12 +12,11 @@ use point_traits::{PointN, PointNExtensions, TwoDimensional, ThreeDimensional};
 use kernels::{DelaunayKernel, TrivialKernel, FloatKernel};
 use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
-use std::collections::{HashSet};
 use smallvec::SmallVec;
 
 use self::dcel::*;
 use self::delaunay_locate::*;
-use self::delaunay_basic::*;
+use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
 use delaunay::*;
 
 /// Type shorthand for a delaunay triangulation with `f64` coordinates that uses `FloatKernel`
@@ -131,6 +130,7 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
 /// queries - will run in O(1) if the query locations are close to each other.
 pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
           V::Point: TwoDimensional,
           L: DelaunayLocateStructure<V::Point>,
 {
@@ -140,8 +140,30 @@ pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>
     lookup: L,
 }
 
+impl <V, K, L> BasicDelaunaySubdivision<V, K> for DelaunayTriangulation<V, K, L>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+          V::Point: TwoDimensional,
+          L: DelaunayLocateStructure<V::Point> {}
+
+impl <V, K, L> HasSubdivision<V, K> for DelaunayTriangulation<V, K, L>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+          V::Point: TwoDimensional,
+          L: DelaunayLocateStructure<V::Point> {
+
+    fn s(&self) -> &DCEL<V> {
+        &self.s
+    }
+
+    fn s_mut(&mut self) -> &mut DCEL<V> {
+        &mut self.s
+    }
+}
+
 impl<V, K, L> Clone for DelaunayTriangulation<V, K, L> 
     where V: HasPosition2D + Clone,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
           V::Point: TwoDimensional,
           L: DelaunayLocateStructure<V::Point> {
 
@@ -430,7 +452,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             PositionInTriangulation::NoTriangulationPresent
         } else {
             let start = hint.unwrap_or_else(|| self.get_default_hint(point));
-            locate_with_hint_fixed::<V, K>(&self.s, point, start) 
+            self.locate_with_hint_fixed(point, start) 
         }
     }
 
@@ -460,13 +482,13 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         let position_in_triangulation = self.locate_with_hint_option_fixed(&pos, hint);
         let insertion_result = match position_in_triangulation {
             PositionInTriangulation::OutsideConvexHull(edge) => {
-                Result::Ok(insert_outside_convex_hull::<V, K>(&mut self.s, edge, t))
+                Result::Ok(self.insert_outside_convex_hull(edge, t))
             },
             PositionInTriangulation::InTriangle(face) => {
-                Result::Ok(insert_into_triangle::<V, K>(&mut self.s, face, t))
+                Result::Ok(self.insert_into_triangle(face, t))
             },
             PositionInTriangulation::OnEdge(edge) => {
-                Result::Ok(insert_on_edge::<V, K>(&mut self.s, edge, t))
+                Result::Ok(self.insert_on_edge(edge, t))
             },
             PositionInTriangulation::OnPoint(vertex) => {
                 self.s.update_vertex(vertex, t);
@@ -569,51 +591,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             }
         }
         data
-    }
-
-
-
-    fn fill_hole(&mut self, loop_edges: Vec<FixedEdgeHandle>) {
-        let mut border_edges = HashSet::new();
-        
-        for e in &loop_edges {
-            border_edges.insert(*e);
-            border_edges.insert(self.s.edge(*e).sym().fix());
-        }
-
-        let last_edge = *loop_edges.last().unwrap();
-
-        // Fill the hole
-        let mut todo = Vec::new();
-        for i in 2 .. loop_edges.len() - 1 {
-            let edge = self.s.create_face(last_edge, loop_edges[i]);
-            todo.push(edge);
-        }
-        // Legalize edges
-        while let Some(fixed_edge_handle) = todo.pop() {
-            let (v0, v1, vl, vr, e1, e2, e3, e4);
-            {
-                let edge = self.s.edge(fixed_edge_handle);
-                v0 = (*edge.from()).position();
-                v1 = (*edge.to()).position();
-                vl = (*edge.ccw().to()).position();
-                vr = (*edge.cw().to()).position();
-                e1 = edge.cw().fix();
-                e2 = edge.ccw().fix();
-                e3 = edge.sym().cw().fix();
-                e4 = edge.sym().ccw().fix();
-            }
-            if !K::contained_in_circumference(&v0, &v1, &vl, &vr) {
-                // Flip edge
-                self.s.flip_cw(fixed_edge_handle);
-                
-                for e in &[e1, e2, e3, e4] {
-                    if !border_edges.contains(e) {
-                        todo.push(*e);
-                    }
-                }
-            }
-        }
     }
 
     fn repair_convex_hull(&mut self, vertices: &Vec<FixedVertexHandle>) {
@@ -941,7 +918,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             },
             PositionInTriangulation::OnEdge(edge) => {
                 let edge = self.edge(edge);
-                if is_ch_edge(&self.s, edge.fix()) || is_ch_edge(&self.s, edge.sym().fix()) {
+                if self.is_ch_edge(edge.fix()) || self.is_ch_edge(edge.sym().fix()) {
                     let mut vec = SmallVec::new();
                     vec.push(edge.from().fix());
                     vec.push(edge.to().fix());
@@ -957,13 +934,12 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             },
             PositionInTriangulation::OutsideConvexHull(edge) => {
                 // Get the closest edge on the convex hull
-                let edges = get_convex_hull_edges_for_point::<V, K>(
-                    &self.s, edge, position);
+                let edges = self.get_convex_hull_edges_for_point(edge, position);
                 let mut min_dist = <V::Point as PointN>::Scalar::max_value();
                 let mut min_edge = 0;
                 for cur_edge in edges {
                     let edge = self.s.edge(cur_edge);
-                    let simple = to_simple_edge(&edge);
+                    let simple = Self::to_simple_edge(edge);
                     let new_dist = simple.distance2(position);
                     if new_dist < min_dist {
                         min_edge = cur_edge;
@@ -973,7 +949,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 let min_edge = self.s.edge(min_edge);
                 let from_pos = (*min_edge.from()).position();
                 let to_pos = (*min_edge.to()).position();
-                let simple = to_simple_edge(&min_edge);
+                let simple = Self::to_simple_edge(min_edge);
                 let mut result = SmallVec::new();
                 if simple.is_projection_on_edge(position) {
                     result.push(min_edge.from().fix());
@@ -1002,7 +978,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         let mut result = SmallVec::new();
 
         while let Some(e) = edges.pop() {
-            if is_ch_edge(&self.s, e) {
+            if self.is_ch_edge(e) {
                 result.push(self.edge(e).from().fix());
             } else {
                 let (v0, v1, v2, e1, e2);

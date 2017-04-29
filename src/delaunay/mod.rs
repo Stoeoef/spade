@@ -14,6 +14,7 @@ mod delaunay_locate;
 mod cdt;
 mod delaunay_basic;
 
+pub use self::delaunay_basic::{Subdivision, Locateable};
 pub use self::delaunay2d::*;
 pub use self::cdt::ConstrainedDelaunayTriangulation;
 pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,
