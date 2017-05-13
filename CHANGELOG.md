@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.2.0] - 2017-05-13
+### Changed
+  - Bumped compatible `cgmath` and `nalgebra` versions. Unfortunately, due to the way Cargo handles "external dependencies" (thus, dependencies whose types are part of spade's public API like `cgmath` and `nalgebra` Points), this must be considered a breaking change.
+  - `FloatKernel` now works happily with `f32` coordinates. They will be casted to double precision before the kernel evaluates any query, thus, no performance gain results from this. Only the space requirements will differ.
+  
 ## [1.1.0] - 2017-04-12
 ### Deprecated
-- `spade::delaunay::RTreeDelaunayLocate<T>` is deprecated, use `spade::delaunay::DelaunayTreeLocate<T>` instead
-- `spade::delaunay::TriangulationWalkLocate<T>` is deprecated, use `spade::delaunay::DelaunayWalkLocate` instead (without any type argument)
+  - `spade::delaunay::RTreeDelaunayLocate<T>` is deprecated, use `spade::delaunay::DelaunayTreeLocate<T>` instead
+  - `spade::delaunay::TriangulationWalkLocate<T>` is deprecated, use `spade::delaunay::DelaunayWalkLocate` instead (without any type argument)
 ### Changed
   - Insertion into a delaunay triangulation now uses `SmallVec` from the `smallvec` crate for better performance.
   - Improved interpolation performance - natural neighbor interpolation methods will be significantly faster now.
@@ -108,6 +113,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.2.0]: https://github.com/Stoeoef/spade/compare/v1.1.0...v1.2.0
 
 [1.1.0]: https://github.com/Stoeoef/spade/compare/v1.0.0...v1.1.0
 
