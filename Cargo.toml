@@ -1,6 +1,6 @@
 [package]
 name = "spade"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 description="Spatial datastructures like r-trees and delaunay triangulations for rust."
 documentation = "https://docs.rs/spade/"
@@ -10,8 +10,8 @@ keywords = ["delaunay", "triangulation", "rtree", "geometry", "interpolation"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
-cgmath = ">=0.10.0, <=0.12.0"
-nalgebra = ">=0.11.0, <=0.11.*"
+cgmath = ">=0.10.0, <=0.14.*"
+nalgebra = ">=0.11.0, <=0.12.*"
 num = "0.1.*"
 clamp = "0.1.*"
 smallvec = "0.3.*"
