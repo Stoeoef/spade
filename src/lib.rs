@@ -21,7 +21,7 @@
 //! * An n-dimensional r*-tree: `spade::rtree::RTree`
 //! * A 2D delaunay triangulation: `spade::delaunay::DelaunayTriangulation`
 //!   * Supports integral and floating point coordinates as input
-//!   * Uses exact predicates to avoid floating point rounding issues, see: `spade::kernels::FloatKernel`
+//!   * Uses exact predicates to avoid floating point rounding issues, see `spade::kernels::FloatKernel`
 //!   * Natural neighbor interpolation
 //!   * Can be backed up by an r*-tree to improve performance when inserting randomly distributed points
 

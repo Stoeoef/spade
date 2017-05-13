@@ -121,18 +121,23 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
     }
 }
 
-/// Offers a fast, precise kernel working with `f64` coordinates.
+/// Offers a fast, precise kernel working with `f64` or `f32` coordinates.
 ///
 /// Performing a delaunay triangulation is often a tradeoff between accuracy and speed:
-/// a triangulation working on native `f64`-operations will fail in some cases due to rounding
-/// errors, while switching to precise floats (like `BigRationals` from the `num` crate) reduces
-/// performance by several orders of magnitude.
+/// a triangulation working on native floating point-operations will fail in some cases
+/// due to rounding errors, while switching to precise floats (like `BigRationals` 
+/// from the `num` crate) reduces performance by several orders of magnitude.
 /// This kernel works with adaptive precision: if a calculation is inaccurate,
 /// it will increase its precision until the result is accurate enough. Since most calculations
 /// are accurate enough in their simplest form, only the overhead of checking the precision is
 /// usually encountered. For more information, refer to 
 /// [this link](https://www.cs.cmu.edu/~quake/robust.html) describing the techniques behind
 /// the adaptive approach.
+///
+/// # Note
+/// When used with `f32` coordinates, they will be casted into `f64` before the calculation
+/// starts. Thus, the performance is the same for both `f64` and `f32`. Only the space
+/// requirements for storing the coordinates differ.
 pub struct FloatKernel { }
 
 fn to_f64_arr<V, S>(v: &V) -> [f64; 2] 
