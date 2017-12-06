@@ -1119,7 +1119,7 @@ impl <T> RTree<T>
 mod test {
     use super::{RTree};
     use boundingvolume::BoundingRect;
-    use primitives::SimpleTriangle;
+    use primitives::{SimpleTriangle, SimpleEdge};
     use cgmath::{Point2, InnerSpace};
     use num::Float;
     use testutils::*;
@@ -1291,6 +1291,17 @@ mod test {
                 assert_eq!(tree.size(), size);
             }
         }
+    }
+
+    #[test]
+    fn test_remove_line() {
+        let mut tree = RTree::new();
+        let edge = SimpleEdge::new([0f32, 0.], [1., 1.]);
+        tree.insert(edge.clone());
+        tree.insert(SimpleEdge::new([3., 4.], [0., 2.]));
+        tree.insert(SimpleEdge::new([-3., -4.], [0., 2.]));
+        tree.remove(&edge);
+        assert_eq!(tree.size(), 2);
     }
 
 

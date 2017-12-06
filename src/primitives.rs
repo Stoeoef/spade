@@ -21,7 +21,7 @@ use boundingvolume::BoundingRect;
 use kernels::{TrivialKernel, DelaunayKernel};
 
 /// An edge defined by it's two end points.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SimpleEdge<V: PointN> {
     /// The edge's origin.
     pub from: V,
@@ -31,7 +31,7 @@ pub struct SimpleEdge<V: PointN> {
 
 
 /// Yields information about on which side of a line a point lies.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EdgeSideInfo<S> {
     signed_side: S,
 }
