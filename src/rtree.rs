@@ -97,7 +97,7 @@ impl <'a, T> Iterator for RTreeIterator<'a, T>
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        if let Some(mut cur_iterator) = self.cur_iterator.as_mut() {
+        if let Some(cur_iterator) = self.cur_iterator.as_mut() {
             if let Some(next) = cur_iterator.next() {
                 // Child iterator can still iterate
                 Some(next)
@@ -220,7 +220,7 @@ impl <T> DirectoryNodeData<T>
             return self.resolve_overflow(state);
         }
         let expand = {
-            let mut follow = self.choose_subtree(&t);
+            let follow = self.choose_subtree(&t);
             follow.insert(t, state)
         };
         match expand {
@@ -641,7 +641,7 @@ impl <T> DirectoryNodeData<T>
     fn lookup_mut(&mut self, point: &T::Point) -> Option<&mut T> {
         let mut todo_list = Vec::with_capacity(40);
         todo_list.push(self);
-        while let Some(mut next) = todo_list.pop() {
+        while let Some(next) = todo_list.pop() {
             if next.mbr().contains_point(point) {
                 for child in next.children.iter_mut() {
                     match child {
