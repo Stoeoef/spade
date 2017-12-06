@@ -339,28 +339,32 @@ impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloa
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        let dx = *self.center.nth(0) - *point.nth(0);
-        let dy = *self.center.nth(1) - *point.nth(1);
-        let dist = ((dx * dx + dy * dy).sqrt() - self.radius).max(zero());
+        let d2 = (0..V::dimensions()).fold(zero(), |acc: V::Scalar, i| {
+            let delta = *self.center.nth(i) - *point.nth(i);
+            acc + delta * delta
+        });
+        let dist = (d2.sqrt() - self.radius).max(zero());
         dist * dist
     }
 
     // Since containment checks do not require the calculation of the square root
     // we can redefine this method.
     fn contains(&self, point: &V) -> bool {
-        let dx = *self.center.nth(0) - *point.nth(0);
-        let dy = *self.center.nth(1) - *point.nth(1);
+        let d2 = (0..V::dimensions()).fold(zero(), |acc: V::Scalar, i| {
+            let delta = *self.center.nth(i) - *point.nth(i);
+            acc + delta * delta
+        });
         let r2 = self.radius * self.radius;
-        dx * dx + dy * dy <= r2
+        d2 <= r2
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::{SimpleEdge, SimpleTriangle};
+    use super::{SimpleEdge, SimpleTriangle, SimpleCircle};
     use traits::SpatialObject;
     use kernels::TrivialKernel;
-    use cgmath::{Point2};
+    use cgmath::{Point2, Point3};
     use approx::ApproxEq;
 
     #[test]
@@ -394,4 +398,31 @@ mod test {
         assert!(t.distance2(&Point2::new(0.5, 0.5)).relative_eq(&0.0, 1e-10, 1e-10));
         assert!(t.distance2(&Point2::new(0.6, 0.6)) > 0.001);
     }
+
+    #[test]
+    fn test_circle_distance() {
+        // 2D
+        let o = Point2::new(0f32, 0.);
+        let c = SimpleCircle::new(o, 1.0);
+        let p1 = Point2::new(2., 0.);
+        let p2 = Point2::new(0., 2.);
+        let p3 = Point2::new(3., 4.);
+        assert_eq!(c.distance2(&p1), 1.0);
+        assert_eq!(c.distance2(&p2), 1.0);
+        assert_eq!(c.distance2(&p3), 16.0);
+
+        // 3D
+        let o = Point3::new(0f32, 0., 0.);
+        let c = SimpleCircle::new(o, 1.0);
+        let p1 = Point3::new(2., 0., 0.);
+        let p2 = Point3::new(0., 2., 0.);
+        let p3 = Point3::new(0., 0., 2.);
+        assert_eq!(c.distance2(&p1), 1.0);
+        assert_eq!(c.distance2(&p2), 1.0);
+        assert_eq!(c.distance2(&p3), 1.0);
+
+        assert_eq!(c.contains(&p1), false);
+        assert_eq!(c.contains(&p2), false);
+        assert_eq!(c.contains(&p3), false);
+}
 }
