@@ -12,6 +12,7 @@ addons:
         packages:
             - cmake
             - libxxf86vm-dev
+	    - libxrandr-dev
 
 script:
 - make travis
