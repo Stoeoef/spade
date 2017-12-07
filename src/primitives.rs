@@ -339,7 +339,7 @@ impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloa
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        let d2 = point.sub(self.center).length2();
+        let d2 = point.sub(&self.center).length2();
         let dist = (d2.sqrt() - self.radius).max(zero());
         dist * dist
     }
@@ -347,7 +347,7 @@ impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloa
     // Since containment checks do not require the calculation of the square root
     // we can redefine this method.
     fn contains(&self, point: &V) -> bool {
-        let d2 = point.sub(self.center).length2();
+        let d2 = point.sub(&self.center).length2();
         let r2 = self.radius * self.radius;
         d2 <= r2
     }
