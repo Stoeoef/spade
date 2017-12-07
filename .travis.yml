@@ -14,6 +14,8 @@ addons:
             - libxxf86vm-dev
             - libxrandr-dev
             - libxinerama-dev
+            - libxcursor-dev
+            - libxi-dev
 script:
 - make travis
 env:
