@@ -13,7 +13,7 @@ addons:
             - cmake
             - libxxf86vm-dev
             - libxrandr-dev
-
+            - libxinerama-dev
 script:
 - make travis
 env:
