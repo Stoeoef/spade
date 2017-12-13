@@ -12,14 +12,14 @@
 
 Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures for spatial access operations.
 
-The first major datastructure is an n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree)) for efficient nearest-neighbor and point lookup queries.
+The first major datastructure is an n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree) for efficient nearest-neighbor and point lookup queries.
 
-The second datastructure implements a 2D [delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion times and nearest neighbor lookup.
-The triangulation also implements [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor) which allows for a smooth interpolation on the resulting triangulation.
+The second datastructure is a 2D [delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion and nearest neighbor lookup.
+The triangulation also implements [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor).
 
 All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
 
-# Compatibilty note
+# Compatibility note
 Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: everytime spade updates these libraries, the using code must be update too, even if spade would still work happily with the older versions. To avoid this, consider switching to fixed size arrays as points until [public / private dependencies make their way into cargo](https://github.com/rust-lang/rust/issues/44663).
 
 # Documentation
