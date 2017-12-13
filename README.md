@@ -10,21 +10,21 @@
  * [Performance](#performance)
  * [License](#license)
 
-Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures optimized for spatial access operations.
+Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures for spatial access operations.
 
-The first major datastructure is an n-dimensional r*-tree ([wikipedia](https://en.wikipedia.org/wiki/R*_tree)) for efficient nearest-neighbor and point lookup queries.
+The first major datastructure is an n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree)) for efficient nearest-neighbor and point lookup queries.
 
-The second datastructures implements a 2D delaunay triangulation ([wikipedia](https://en.wikipedia.org/wiki/Delaunay_triangulation)) backed by an r-tree for faster insertion times and nearest neighbor lookup.
-The triangulation also implements natural neighbor interpolation ([wikipedia](https://en.wikipedia.org/wiki/Natural_neighbor)) which allows for a smooth interpolation on the resulting grid.
+The second datastructure implements a 2D [delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion times and nearest neighbor lookup.
+The triangulation also implements [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor) which allows for a smooth interpolation on the resulting triangulation.
 
 All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
 
-# Project state
-Spade has just reached its 1.0 version! New feature requests are welcome.
+# Compatibilty note
+Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: everytime spade updates these libraries, the using code must be update too, even if spade would still work happily with the older versions. To avoid this, consider switching to fixed size arrays as points until [public / private dependencies make their way into cargo](https://github.com/rust-lang/rust/issues/44663).
 
 # Documentation
 The documentation can be found under [docs.rs](https://docs.rs/spade/).
-There is also a (yet unfinished) [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available.
+There is also a [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available.
 
 # Feedback and contributing
 Do you miss a feature? Many features may be easy to implement, I might just have missed that use case. Please do post an issue on GitHub. If you think there's a feature missing and you are interested to implement it yourself, don't be shy to mention it - I'd be happy to help you getting started. Just post an appropriate issue on GitHub.
@@ -34,7 +34,7 @@ _Note: If you have opened this on docs.rs, you won't see any images. Use the REA
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
-Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance. You can find this example in `/examples/interactivedemo`, run it with `cargo run`.
+Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance. You can find this example in `/examples/interactivedemo`, run it with `cargo run rtree`.
 
 ![An example R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
 

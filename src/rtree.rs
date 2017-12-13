@@ -875,18 +875,17 @@ pub enum RTreeNode<T>
     DirectoryNode(DirectoryNodeData<T>),
 }
 
-
 /// A rust implementation of n dimensional r*-trees
 ///
 /// [R-trees](https://en.wikipedia.org/wiki/R-tree) provide efficient nearest-neighbor searches for
 /// many objects. [R*-trees](https://en.wikipedia.org/wiki/R*_tree) (&quot;R-Star-Trees&quot;) 
-/// are a common variant of r-trees and use more advanced heuristics to improve query performance. This
-/// struct implements r*-trees, despite its name.
-/// Instead of linear time complexity, r-trees yield logarithmic complexity
-/// for look-up operations and nearest neighbor queries. Inserting into an r-tree runs in O(log(n)) time on average.
+/// are a common variant of r-trees and use more advanced heuristics to improve query performance.
+/// Instead of linear time complexity, r-trees yield logarithmic complexity for look-up operations
+/// and nearest neighbor queries. Inserting into an r-tree runs in O(log(n)) time on average.
+/// Also, a bulk loading algorithm is implemented for faster and higher quality tree creation.
 /// Some simple geometric primitives that can be inserted into an r-tree can be found in 
-/// the `primitives` module. If your object is not among those, consider
-/// implementing the `SpatialObject` trait.
+/// the `primitives` module. If your object is not among those, consider implementing the
+/// `SpatialObject` trait.
 /// 
 /// Note that the `rtree`-structures work with fixed arrays of size 2, 3 or 4 or
 /// with the point types provided by the `nalgebra` and `cgmath` packages.
