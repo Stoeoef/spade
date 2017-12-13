@@ -11,6 +11,7 @@
 use misc::min_inline;
 use std::sync::Arc;
 use traits::{SpatialObject};
+use ::TwoDimensional;
 use point_traits::{PointN, PointNExtensions};
 use num::{zero};
 use boundingvolume::BoundingRect;
@@ -33,7 +34,7 @@ impl Default for RTreeOptions {
 
 #[doc(hidden)]
 impl RTreeOptions {
-    pub fn new() -> RTreeOptions {
+    pub fn new() -> Self {
         RTreeOptions {
             max_size: 6,
             min_size: 3,
@@ -41,20 +42,21 @@ impl RTreeOptions {
         }
     }
 
-    pub fn set_max_size(mut self, max_size: usize) -> RTreeOptions {
-        assert!(max_size > self.min_size);
+    pub fn max_size(mut self, max_size: usize) -> Self {
+        assert!(max_size > self.min_size, "Max size must be larger than min size");
         self.max_size = max_size;
         self
     }
 
-    pub fn set_min_size(mut self, min_size: usize) -> RTreeOptions {
-        assert!(self.max_size > min_size);
+    pub fn min_size(mut self, min_size: usize) -> Self {
+        assert!(self.max_size > min_size, "Min size must be smaller than max size");
         self.min_size = min_size;
         self
     }
 
-    pub fn set_reinsertion_count(mut self, reinsertion_count: usize) -> RTreeOptions {
-        assert!(0 < reinsertion_count && self.max_size > reinsertion_count);
+    pub fn reinsertion_count(mut self, reinsertion_count: usize) -> Self {
+        assert!(0 < reinsertion_count, "Reinsertion cannot be zero");
+        assert!(self.max_size > reinsertion_count, "Reinsertion count must be smaller than max size");
         self.reinsertion_count = reinsertion_count;
         self
     }
@@ -151,6 +153,45 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T>
     }
 }
 
+impl <T> DirectoryNodeData<T>
+    where T: SpatialObject + Clone,
+          T::Point: TwoDimensional {
+
+    fn bulk_load(options: Arc<RTreeOptions>, mut elements: &mut[T]) -> DirectoryNodeData<T> {
+        let m = options.max_size;
+        if elements.len() <= m {
+            // Reached leaf level
+            let elements: Vec<_> = elements.into_iter().map(|e| RTreeNode::Leaf(e.clone())).collect();
+            return DirectoryNodeData::new_parent(elements, 1, options);
+        }
+
+
+        let depth = (elements.len() as f32).log(m as f32).ceil() as usize;
+        let n_subtree = (m as f32).powi(depth as i32 - 1);
+        let remaining_clusters = (elements.len() as f32 / n_subtree).ceil() as usize;
+
+        let num_vertical_slices = (remaining_clusters as f32).sqrt().ceil() as usize;
+        let vertical_slice_num_elements = (elements.len() + num_vertical_slices - 1) / num_vertical_slices;
+        let mut children = Vec::with_capacity(m + 1);
+        create_clusters(&mut elements, vertical_slice_num_elements, 0);
+        
+        
+        let num_clusters_per_slice = (remaining_clusters + num_vertical_slices - 1) / num_vertical_slices;
+        for mut slice in elements.chunks_mut(vertical_slice_num_elements) {
+            let cluster_num_elements = 
+                (slice.len() + num_clusters_per_slice - 1) / num_clusters_per_slice;
+
+            create_clusters(&mut slice, cluster_num_elements, 1);
+
+            for cluster in slice.chunks_mut(cluster_num_elements) {
+                let child = DirectoryNodeData::bulk_load(options.clone(), cluster);
+                children.push(RTreeNode::DirectoryNode(child));
+            }
+        }
+        DirectoryNodeData::new_parent(children, depth, options)
+    }
+}
+
 #[doc(hidden)]
 impl <T> DirectoryNodeData<T>
     where T: SpatialObject {
@@ -169,16 +210,15 @@ impl <T> DirectoryNodeData<T>
     fn new(depth: usize, options: Arc<RTreeOptions>) -> DirectoryNodeData<T> {
         DirectoryNodeData {
             bounding_box: None,
-            children: Box::new(Vec::with_capacity(options.max_size + 1)),
+            children: Vec::with_capacity(options.max_size + 1),
             options: options,
             depth: depth,
         }
     }
 
-    fn new_parent(mut children: Box<Vec<RTreeNode<T>>>, depth: usize, options: Arc<RTreeOptions>
+    #[inline]
+    fn new_parent(children: Vec<RTreeNode<T>>, depth: usize, options: Arc<RTreeOptions>
                   ) -> DirectoryNodeData<T> {
-        let missing = options.max_size + 1 - children.len();
-        children.reserve_exact(missing);
         let mut result = DirectoryNodeData {
             bounding_box: None,
             children: children,
@@ -283,7 +323,7 @@ impl <T> DirectoryNodeData<T>
                 best_index = k;
             }
         }
-        let offsplit = Box::new(self.children.split_off(best_index));
+        let offsplit = self.children.split_off(best_index);
         let result = RTreeNode::DirectoryNode(DirectoryNodeData::new_parent(offsplit, self.depth,
                                                                             self.options.clone()));
         self.update_mbr();
@@ -405,7 +445,7 @@ impl <T> DirectoryNodeData<T>
         } 
         if let Some(first) = new_children.first() {
             let mut bb = first.mbr();
-            for child in new_children.iter().skip(1) {
+            for child in &new_children[1 ..] {
                 bb.add_rect(&child.mbr());
             }
             self.bounding_box = Some(bb);
@@ -549,7 +589,7 @@ impl <T> DirectoryNodeData<T>
         let contains = self.bounding_box.as_ref().map(|bb | bb.contains_point(point)).unwrap_or(false);
         if contains {
             let mut children = ::std::mem::replace(&mut self.children, 
-                                                   Box::new(Vec::new()));
+                                                   Vec::new());
             let mut result = None;
             for child in children.drain(..) {
                 match child {
@@ -822,7 +862,7 @@ impl <T> RTreeNode<T>
 pub struct DirectoryNodeData<T>
     where T: SpatialObject {
     bounding_box: Option<BoundingRect<T::Point>>,
-    children: Box<Vec<RTreeNode<T>>>,
+    children: Vec<RTreeNode<T>>,
     depth: usize,
     options: Arc<RTreeOptions>,
 }
@@ -1006,6 +1046,29 @@ impl<T> RTree<T>
     }
 }
 
+impl <T> RTree<T>
+    where T: SpatialObject + Clone,
+          T::Point: TwoDimensional {
+
+    /// Creates a new rtree with some initial elements.
+    ///
+    /// This method should run faster than inserting all elements sequentially.
+    /// Also, the resulting rtree should have a much better quality in terms of
+    /// query performance. This is an implementation of the 
+    /// [OMT algorithm]
+    /// (http://ftp.informatik.rwth-aachen.de/Publications/CEUR-WS/Vol-74/files/FORUM_18.pdf).
+    ///
+    /// *Note*: The current implementation only works for two dimensional data. If
+    /// other dimensions are needed, please create an issue.
+    pub fn bulk_load(mut elements: Vec<T>) -> RTree<T> {
+        let options = Arc::new(RTreeOptions::new());
+        RTree {
+            root: DirectoryNodeData::bulk_load(options, &mut elements),
+            size: elements.len(),
+        }
+    }
+}
+
 impl<T> RTree<T> 
     where T: SpatialObject {
     /// Searches for an element at a given position.
@@ -1112,6 +1175,21 @@ impl <T> RTree<T>
     /// Returns `true` if a given object is contained in this tree.
     pub fn contains(&self, obj: &T) -> bool {
         self.root.contains(obj)
+    }
+}
+
+#[inline]
+fn create_clusters<T: SpatialObject>(array: &mut [T], cluster_size: usize, dimension: usize) {
+    let comp = |l: &T, r: &T| {
+        let l_mbr = l.mbr();
+        let r_mbr = r.mbr();
+        l_mbr.lower().nth(dimension).partial_cmp(&r_mbr.lower().nth(dimension)).unwrap()
+    };
+
+    let mut cur = 0;
+    while cur <= array.len() {
+        ::pdqselect::select_by(&mut array[cur..], cluster_size, &comp);
+        cur += cluster_size;
     }
 }
 
@@ -1337,6 +1415,24 @@ mod test {
         for entry in &entries {
             assert!(tree.lookup(entry).is_some());
             assert_eq!(tree.nearest_neighbor(entry), Some(entry))
+        }
+    }
+
+    #[test]
+    fn test_bulk_load() {
+        const MAX_POINTS: usize = 200;
+        let points = random_points_with_seed::<f32>(
+            MAX_POINTS, [9212230, 928292, 21555213, 870383]);
+
+        // Check if no number of points crashes
+        let mut tree = RTree::new();
+        for num in 0 .. MAX_POINTS {
+            tree = RTree::bulk_load(points[..num + 1].to_vec());
+        }
+        assert_eq!(tree.iter().count(), MAX_POINTS);
+        // Check if all points have been inserted
+        for p in &points {
+            assert!(tree.lookup(p).is_some());
         }
     }
 }

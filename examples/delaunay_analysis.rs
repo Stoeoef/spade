@@ -9,7 +9,6 @@
 extern crate rand;
 extern crate spade;
 extern crate cgmath;
-extern crate time;
 extern crate num;
 
 use spade::delaunay::*;
@@ -19,7 +18,7 @@ use spade::{TwoDimensional, SpadeNum};
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-use time::Duration;
+use std::time::{Instant, Duration};
 use cgmath::{Point2, BaseNum, EuclideanSpace};
 use std::path::Path;
 use std::fs::File;
@@ -44,8 +43,12 @@ trait Benchmark {
 }
 
 struct BenchResult {
-    measurements: Vec<i64>,
+    measurements: Vec<u32>,
     title: &'static str,
+}
+
+fn duration_ns(duration: Duration) -> u32 {
+    duration.as_secs() as u32 * 1_000_000_000 + duration.subsec_nanos()
 }
 
 impl <'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L> where
@@ -60,16 +63,17 @@ impl <'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L> where
         // let mut delaunay = self.delaunay.clone();
         let vertices = self.vertices;
         for chunk in vertices.chunks(self.chunk_size) {
-            let time = Duration::span(|| {
-                for vertex in chunk.iter() {
-                    self.delaunay.insert(vertex.clone());
-                }
-            });
-            sum += time.num_nanoseconds().unwrap();
-            result.push(time.num_nanoseconds().unwrap() / self.chunk_size as i64);
+            let now = Instant::now();
+            for vertex in chunk.iter() {
+                self.delaunay.insert(vertex.clone());
+            }
+            let elapsed = now.elapsed();
+            let ns = duration_ns(elapsed);
+            sum += ns;
+            result.push(ns / self.chunk_size as u32);
         };
         assert!(self.delaunay.num_vertices() > self.vertices.len() / 2);
-        println!("time / op: {:?}ns", sum / self.vertices.len() as i64);
+        println!("time / op: {:?}ns", sum / self.vertices.len() as u32);
         BenchResult {
             measurements: result,
             title: self.title,

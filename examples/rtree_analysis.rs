@@ -9,7 +9,6 @@
 extern crate rand;
 extern crate spade;
 extern crate cgmath;
-extern crate time;
 extern crate num;
 
 use rand::{Rand, XorShiftRng, SeedableRng};
@@ -17,7 +16,7 @@ use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
 use spade::SpadeNum;
 use spade::rtree::RTree;
-use time::Duration;
+use std::time::{Instant, Duration};
 use cgmath::{Point2, BaseNum};
 use std::path::Path;
 use std::fs::File;
@@ -32,15 +31,21 @@ fn main() {
 fn blackbox<T: ?Sized>(_: &T) {
 }
 
-fn measure<F, T>(result: &mut Vec<i64>, points: &[Point2<f32>], mut operation: F) 
+fn measure<F, T>(result: &mut Vec<u32>, points: &[Point2<f32>], mut operation: F) 
     where F: FnMut(Point2<f32>) -> T {
-    let time = Duration::span(|| {
-        for point in points {
-            blackbox(&operation(*point));
-        }
-    }).num_nanoseconds().unwrap();
-    result.push(time / points.len() as i64);
+    let now = Instant::now();
+    for point in points {
+        blackbox(&operation(*point));
+    }
+    let elapsed = now.elapsed();
+    let ns = duration_ns(elapsed) as u32;
+    result.push(ns / points.len() as u32);
  }
+
+fn duration_ns(duration: Duration) -> u32 {
+    duration.as_secs() as u32 * 1_000_000_000 + duration.subsec_nanos()
+}
+
 
 fn run_compare_operations_bench() {
     const MAX_VERTICES: usize = 4000000;
@@ -48,20 +53,20 @@ fn run_compare_operations_bench() {
     const NUM_STEPS: usize = 100;
     const CHUNK_SIZE: usize = MAX_VERTICES / NUM_STEPS;
 
-    // let vertices = random_points_with_seed::<f32>(MAX_VERTICES, [3, 1, 4, 1]);
-    // let query_points = random_points_with_seed(ITERATIONS, [2000, 1443, 2448, 99]);
-    let vertices = random_walk_with_seed::<f32>(1.0, MAX_VERTICES, [3, 1, 4, 1]);
-    let query_points = random_walk_with_seed::<f32>(1.0, ITERATIONS, [203, 3013, 9083, 33156]);
+    let vertices = random_points_with_seed::<f32>(MAX_VERTICES, [3, 1, 4, 1]);
+    let query_points = random_points_with_seed(ITERATIONS, [2000, 1443, 2448, 99]);
+    // let vertices = random_walk_with_seed::<f32>(1.0, MAX_VERTICES, [3, 1, 4, 1]);
+    // let query_points = random_walk_with_seed::<f32>(1.0, ITERATIONS, [203, 3013, 9083, 33156]);
 
     let mut result_file = File::create(&Path::new("rtree_compare_operations.dat")).unwrap();
     println!("Running benchmark...");
 
+    let mut tree = RTree::new();
+    
     let mut insert_times = Vec::new();
     let mut nearest_neighbor_times = Vec::new();
     let mut unsuccsessful_lookup_times = Vec::new();
     let mut succsessful_lookup_times = Vec::new();
-
-    let mut tree = RTree::new();
 
     for chunk in vertices.chunks(CHUNK_SIZE) {
         print!(".");
@@ -74,7 +79,7 @@ fn run_compare_operations_bench() {
     }
 
     // Print all measurements to a file
-    let mut print_measurements = |description: &str, measurements: &Vec<i64>| {
+    let mut print_measurements = |description: &str, measurements: &Vec<u32>| {
         write!(result_file, "\"{}\"\n", description).unwrap();
         for (index, time) in measurements.iter().enumerate() {
             let size = index * CHUNK_SIZE;

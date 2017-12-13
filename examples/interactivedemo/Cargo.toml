@@ -3,7 +3,7 @@ name = "interactivedemo"
 version = "0.1.0"
 
 [[bin]]
-name = "rtreevis"
+name = "interactivedemo"
 
 [dependencies]
 glfw = "0.8.*"

@@ -32,6 +32,7 @@ extern crate cgmath;
 extern crate nalgebra;
 extern crate clamp;
 extern crate smallvec;
+extern crate pdqselect;
 
 #[cfg(test)]
 extern crate approx;

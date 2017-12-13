@@ -86,14 +86,16 @@ impl RenderData {
         target.finish().unwrap();
     }
 
-    pub fn update_buffers(&mut self, display: &Display, tree: &RTree<Point2<f64>>, 
-                          delaunay: &ExampleTriangulation, draw_tree_nodes: bool) {
+    pub fn update_delaunay_buffers(&mut self, display: &Display, delaunay: &ExampleTriangulation) {
+        let mut edges = Vec::new();
+        get_delaunay_edges(&delaunay, &mut edges);
+        self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
+    }
+
+    pub fn update_rtree_buffers(&mut self, display: &Display, tree: &RTree<Point2<f64>>) {
+
         let mut edges = Vec::new();
         let vertices = get_tree_edges(&tree, &mut edges);
-        if !draw_tree_nodes {
-            edges.clear();
-        }
-        get_delaunay_edges(&delaunay, &mut edges);
         self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
         self.vertices_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }

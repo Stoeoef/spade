@@ -532,6 +532,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdqselect"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "phf"
 version = "0.7.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -669,6 +674,7 @@ dependencies = [
  "clamp 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pdqselect 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -860,6 +866,7 @@ dependencies = [
 "checksum num-traits 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)" = "cacfcab5eb48250ee7d0c7896b51a2c5eec99c1feea5f32025635f5ae4b00070"
 "checksum objc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "877f30f37acef6749b1841cceab289707f211aecfc756553cd63976190e6cc2e"
 "checksum osmesa-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "88cfece6e95d2e717e0872a7f53a8684712ad13822a7979bc760b9c77ec0013b"
+"checksum pdqselect 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4ec91767ecc0a0bbe558ce8c9da33c068066c57ecc8bb8477ef8c1ad3ef77c27"
 "checksum phf 0.7.21 (registry+https://github.com/rust-lang/crates.io-index)" = "cb325642290f28ee14d8c6201159949a872f220c62af6e110a56ea914fbe42fc"
 "checksum phf_codegen 0.7.21 (registry+https://github.com/rust-lang/crates.io-index)" = "d62594c0bb54c464f633175d502038177e90309daf2e0158be42ed5f023ce88f"
 "checksum phf_generator 0.7.21 (registry+https://github.com/rust-lang/crates.io-index)" = "6b07ffcc532ccc85e3afc45865469bf5d9e4ef5bfcf9622e3cfe80c2d275ec03"
