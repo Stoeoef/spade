@@ -1059,8 +1059,13 @@ impl <T> RTree<T>
     ///
     /// *Note*: The current implementation only works for two dimensional data. If
     /// other dimensions are needed, please create an issue.
-    pub fn bulk_load(mut elements: Vec<T>) -> RTree<T> {
-        let options = Arc::new(RTreeOptions::new());
+    pub fn bulk_load(elements: Vec<T>) -> RTree<T> {
+        Self::bulk_load_with_options(Default::default(), elements)
+    }
+
+    #[doc(hidden)]
+    pub fn bulk_load_with_options(options: RTreeOptions, mut elements: Vec<T>) -> RTree<T> {
+        let options = Arc::new(options);
         RTree {
             root: DirectoryNodeData::bulk_load(options, &mut elements),
             size: elements.len(),
