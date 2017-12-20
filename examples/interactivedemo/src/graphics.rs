@@ -184,15 +184,15 @@ fn get_delaunay_edges(delaunay: &ExampleTriangulation,
         edges_buffer.push(Vertex::new(array2(to.cast()), color));
     }
 
-    if !delaunay.is_degenerate() {
-        let color = [1.0, 0.0, 0.0];
-        let alpha_hull = ::spade::delaunay::alpha_hull::alpha_hull(delaunay, 0.1);
-        for edge in alpha_hull {
-            let edge = delaunay.edge(edge);
-            let from = edge.from().position().to_vec();
-            let to = edge.to().position().to_vec();
-            edges_buffer.push(Vertex::new(array2(from.cast()), color));
-            edges_buffer.push(Vertex::new(array2(to.cast()), color));
-        }
-    }
+    // if !delaunay.is_degenerate() {
+    //     let color = [1.0, 0.0, 0.0];
+    //     let alpha_hull = ::spade::delaunay::alpha_hull::alpha_hull(delaunay, 0.1);
+    //     for edge in alpha_hull {
+    //         let edge = delaunay.edge(edge);
+    //         let from = edge.from().position().to_vec();
+    //         let to = edge.to().position().to_vec();
+    //         edges_buffer.push(Vertex::new(array2(from.cast()), color));
+    //         edges_buffer.push(Vertex::new(array2(to.cast()), color));
+    //     }
+    // }
 }

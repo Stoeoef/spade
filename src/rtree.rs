@@ -1222,6 +1222,11 @@ mod test {
         assert!(tree.lookup(&[13, 37, 12]).is_some())
     }
 
+    #[test]
+    fn test_nearest_neighbor_empty() {
+        let tree: RTree<Point2<f32>> = RTree::new();
+        assert!(tree.nearest_neighbor(&Point2::new(10., 20f32)).is_none());
+    }
 
     #[test]
     fn test_nearest_neighbor() {
@@ -1407,9 +1412,9 @@ mod test {
         use nalgebra::Point4;
         use rand::{XorShiftRng, SeedableRng, Rng};
         let mut tree: RTree<Point4<f32>> = RTree::new();
-        let mut rng = XorShiftRng::from_seed([1, 2, 3, 1992]);
+        let mut rng = XorShiftRng::from_seed([1, 2001, 3, 1992]);
         let mut entries = Vec::new();
-        for _ in 0 .. 1000 {
+        for _ in 0 .. 500 {
             let (x, y, z, w) = (rng.next_f32(), rng.next_f32(), rng.next_f32(), rng.next_f32());
             let entry = Point4::new(x, y, z, w);
             entries.push(entry);

@@ -11,7 +11,6 @@
 mod dcel;
 mod delaunay2d;
 mod delaunay_locate;
-pub mod alpha_hull;
 
 pub use self::delaunay2d::*;
 pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,

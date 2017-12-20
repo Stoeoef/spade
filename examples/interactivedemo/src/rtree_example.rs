@@ -48,7 +48,7 @@ pub fn run() {
         .unwrap();
 
     let seed = ::rand::thread_rng().gen();
-    let initial_points = ::random_points_with_seed(10000, seed);
+    let initial_points = ::random_points_with_seed(30, seed);
     let mut rtree = RTree::bulk_load(initial_points);
 
     let mut render_data = RenderData::new(&display);
