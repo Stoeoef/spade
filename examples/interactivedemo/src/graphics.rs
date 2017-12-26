@@ -9,7 +9,6 @@
 use ::{ExampleTriangulation};
 use spade::{BoundingRect, HasPosition};
 use spade::rtree::{RTree, RTreeNode};
-use spade::delaunay::Subdivision;
 use cgmath::{EuclideanSpace, Point2, Point3, Vector2, Vector3, Array};
 use cgmath::conv::{array2, array3};
 use glium::{Surface, VertexBuffer, Program, Display, DrawParameters};
@@ -87,14 +86,16 @@ impl RenderData {
         target.finish().unwrap();
     }
 
-    pub fn update_buffers(&mut self, display: &Display, tree: &RTree<Point2<f64>>, 
-                          delaunay: &ExampleTriangulation, draw_tree_nodes: bool) {
+    pub fn update_delaunay_buffers(&mut self, display: &Display, delaunay: &ExampleTriangulation) {
+        let mut edges = Vec::new();
+        get_delaunay_edges(&delaunay, &mut edges);
+        self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
+    }
+
+    pub fn update_rtree_buffers(&mut self, display: &Display, tree: &RTree<Point2<f64>>) {
+
         let mut edges = Vec::new();
         let vertices = get_tree_edges(&tree, &mut edges);
-        if !draw_tree_nodes {
-            edges.clear();
-        }
-        get_delaunay_edges(&delaunay, &mut edges);
         self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
         self.vertices_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }
@@ -175,35 +176,23 @@ fn get_tree_edges(tree: &RTree<Point2<f64>>, buffer: &mut Vec<Vertex>) -> Vec<Ve
 
 fn get_delaunay_edges(delaunay: &ExampleTriangulation,
                       edges_buffer: &mut Vec<Vertex>) {
-    let base_color = [0.1, 0.1, 0.2];
-    let constraint_color = [0.96, 0.1, 0.1];
+    let color = [0.1, 0.1, 0.2];
     for edge in delaunay.edges() {
-        let color = if delaunay.is_constraint_edge(edge.fix()) {
-            constraint_color
-        } else {
-            base_color
-        };
         let from = edge.from().position().to_vec();
         let to = edge.to().position().to_vec();
         edges_buffer.push(Vertex::new(array2(from.cast()), color));
         edges_buffer.push(Vertex::new(array2(to.cast()), color));
     }
 
-    // let color = [0.8, 0.2, 0.2];
-    // // for &(from, to) in &delaunay.constraints {
-    // //     let from = delaunay.vertex(from).position().to_vec();
-    // //     let to = delaunay.vertex(to).position().to_vec();
-    // //     edges_buffer.push(Vertex::new(array2(from.cast()), color));
-    // //     edges_buffer.push(Vertex::new(array2(to.cast()), color));
-    // // }
-
-    // for &(from, to) in &delaunay.conflicts {
-    //     let from = delaunay.vertex(from).position().to_vec();
-    //     let to = delaunay.vertex(to).position().to_vec();
-    //     let color = [0.8, 0.5, 0.5];
-    //     edges_buffer.push(Vertex::new(array2(from.cast()), color));
-    //     let color = [0.8, 0.0, 0.0];
-    //     edges_buffer.push(Vertex::new(array2(to.cast()), color));
+    // if !delaunay.is_degenerate() {
+    //     let color = [1.0, 0.0, 0.0];
+    //     let alpha_hull = ::spade::delaunay::alpha_hull::alpha_hull(delaunay, 0.1);
+    //     for edge in alpha_hull {
+    //         let edge = delaunay.edge(edge);
+    //         let from = edge.from().position().to_vec();
+    //         let to = edge.to().position().to_vec();
+    //         edges_buffer.push(Vertex::new(array2(from.cast()), color));
+    //         edges_buffer.push(Vertex::new(array2(to.cast()), color));
+    //     }
     // }
-
 }

@@ -11,11 +11,12 @@
 //! These kernels determine how precise geometric calculations are performed and how they
 //! deal with overflow issues.
 
-use traits::{SpadeNum};
-use point_traits::TwoDimensional;
+use traits::{SpadeNum, SpadeFloat};
+use point_traits::{TwoDimensional};
 use primitives::{SimpleEdge, EdgeSideInfo};
 use bigvec::{BigVec2, AdaptiveInt};
 use exactpred::{orient2d, incircle};
+use num::{FromPrimitive, ToPrimitive};
 
 /// Determines how a delaunay triangulation performs its basic geometry computations.
 /// 
@@ -120,34 +121,56 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
     }
 }
 
-/// Offers a fast, precise kernel working with `f64` coordinates.
+/// Offers a fast, precise kernel working with `f64` or `f32` coordinates.
 ///
 /// Performing a delaunay triangulation is often a tradeoff between accuracy and speed:
-/// a triangulation working on native `f64`-operations will fail in some cases due to rounding
-/// errors, while switching to precise floats (like `BigRationals` from the `num` crate) reduces
-/// performance by several orders of magnitude.
+/// a triangulation working on native floating point-operations will fail in some cases
+/// due to rounding errors, while switching to precise floats (like `BigRationals` 
+/// from the `num` crate) reduces performance by several orders of magnitude.
 /// This kernel works with adaptive precision: if a calculation is inaccurate,
 /// it will increase its precision until the result is accurate enough. Since most calculations
 /// are accurate enough in their simplest form, only the overhead of checking the precision is
 /// usually encountered. For more information, refer to 
 /// [this link](https://www.cs.cmu.edu/~quake/robust.html) describing the techniques behind
 /// the adaptive approach.
+///
+/// # Note
+/// When used with `f32` coordinates, they will be casted into `f64` before the calculation
+/// starts. Thus, the performance is the same for both `f64` and `f32`. Only the space
+/// requirements for storing the coordinates differ.
 pub struct FloatKernel { }
 
-impl DelaunayKernel<f64> for FloatKernel {
-    fn contained_in_circumference<V: TwoDimensional<Scalar=f64>>(v1: &V, v2: &V, v3: &V, p: &V) -> bool {
-        incircle(v1, v2, v3, p) < 0.0
+fn to_f64_arr<V, S>(v: &V) -> [f64; 2] 
+    where V: TwoDimensional<Scalar=S>,
+          S: FromPrimitive + ToPrimitive + SpadeFloat,
+{
+    [v.nth(0).to_f64().unwrap(), v.nth(1).to_f64().unwrap()]
+}
+
+impl <S> DelaunayKernel<S> for FloatKernel
+    where S: FromPrimitive + SpadeFloat {
+    fn contained_in_circumference<V: TwoDimensional<Scalar=S>>(
+        v1: &V, v2: &V, v3: &V, p: &V) -> bool {
+        let v1 = to_f64_arr(v1);
+        let v2= to_f64_arr(v2);
+        let v3 = to_f64_arr(v3);
+        let p = to_f64_arr(p);
+        
+        incircle(&v1, &v2, &v3, &p) < 0.0
     }
 
-    fn side_query<V: TwoDimensional<Scalar=f64>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<f64> {
-        let det = orient2d(&edge.from, &edge.to, &position);
-        EdgeSideInfo::from_determinant(det)
+    fn side_query<V: TwoDimensional<Scalar=S>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<S> {
+        let edge_from = to_f64_arr(&edge.from);
+        let edge_to = to_f64_arr(&edge.to);
+        let position = to_f64_arr(position);
+        let det = orient2d(&edge_from, &edge_to, &position);
+        EdgeSideInfo::from_determinant(S::from_f64(det).unwrap())
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::{TrivialKernel, DelaunayKernel};
+    use super::{TrivialKernel, DelaunayKernel, FloatKernel};
     use nalgebra as na;
 
     #[test]
@@ -168,5 +191,13 @@ mod test {
         assert!(TrivialKernel::contained_in_circumference(
             &na::Point2::new(0f32, -1f32), &na::Point2::new(0f32, 0f32),
             &na::Point2::new(-1f32, 0f32), &na::Point2::new(0f32, 1f32)));
+    }
+
+    #[test]
+    fn test_float_kernel_with_f32() {
+        // This test passes if it compiles
+        FloatKernel::is_ordered_ccw(&na::Point2::new(0f32, 0f32),
+                                    &na::Point2::new(1f32, 1f32),
+                                    &na::Point2::new(0f32, 1f32));
     }
 }

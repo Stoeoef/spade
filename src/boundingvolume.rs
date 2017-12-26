@@ -151,13 +151,14 @@ impl <V> BoundingRect<V> where V: PointN {
         max_delta.length2()
     }
 
+
     #[doc(hidden)]
     pub fn min_max_dist2(&self, point: &V) -> V::Scalar {
-        let l = self.lower();
-        let u = self.upper();
+        let l = self.lower().sub(point);
+        let u = self.upper().sub(point);
         let (mut min, mut max) = (V::new(), V::new());
         for i in 0 .. V::dimensions() {
-            if (l.nth(i).clone() - point.nth(i).clone()).abs() < (u.nth(i).clone() - point.nth(i).clone()).abs() { 
+            if l.nth(i).abs() < u.nth(i).abs() { 
                 *min.nth_mut(i) = l.nth(i).clone();
                 *max.nth_mut(i) = u.nth(i).clone();
             } else {
@@ -170,7 +171,7 @@ impl <V> BoundingRect<V> where V: PointN {
             let mut p = min.clone();
             // Only set one component to the maximum distance
             *p.nth_mut(i) = max.nth(i).clone();
-            let new_dist = p.sub(point).length2();
+            let new_dist = p.length2();
             if new_dist < result || i == 0 {
                 result = new_dist
             }

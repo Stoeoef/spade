@@ -566,7 +566,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                 point: pos,
                 handle: vertex,
             });
-            for mut n in &mut neighbors {
+            for n in &mut neighbors {
                 if *n == updated_vertex {
                     *n = vertex;
                     break;
@@ -903,7 +903,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             total_area = total_area + polygon_area;
             result.push(polygon_area);
         }
-        for mut area in &mut result {
+        for area in &mut result {
             *area = *area / total_area;
         }
         result

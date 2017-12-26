@@ -9,7 +9,6 @@
 extern crate rand;
 extern crate spade;
 extern crate cgmath;
-extern crate time;
 extern crate num;
 
 use spade::delaunay::*;

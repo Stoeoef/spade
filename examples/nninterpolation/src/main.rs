@@ -31,7 +31,6 @@ mod interpolation;
 mod constants;
 mod delaunay_creation;
 
-use nalgebra::{Repeat, Cast};
 use nalgebra as na;
 
 use cgmath::EuclideanSpace;
@@ -58,8 +57,8 @@ struct InterpolationRenderData {
     title: &'static str,
 }
 
-pub fn cg_vec_to_na<S: cg::BaseNum + na::BaseNum>(vec: cg::Vector3<S>) -> na::Point3<S> {
-    na::Point3::new(vec.x, vec.y, vec.z)
+pub fn cg_vec_to_na(vec: cg::Vector3<f64>) -> na::Point3<f32> {
+    na::Point3::new(vec.x as f32, vec.y as f32, vec.z as f32)
 }
 
 impl InterpolationRenderData {
@@ -136,7 +135,8 @@ fn main() {
     let delaunay = ::delaunay_creation::generate_random_triangulation();
     let delaunay_mesh = create_mesh_from_triangulation(&delaunay);
     let delaunay_mesh = Rc::new(RefCell::new(delaunay_mesh));
-    let mut delaunay_node = window.add_mesh(delaunay_mesh.clone(), Repeat::repeat(1.0));
+    let mut delaunay_node = window.add_mesh(delaunay_mesh.clone(), 
+                                            na::Vector3::new(1.0, 1.0, 1.0));
     delaunay_node.enable_backface_culling(false);
     let delaunay_lines = extract_edges(&delaunay);
 
@@ -177,7 +177,7 @@ fn main() {
                     delaunay_visibility = delaunay_visibility.next();
                     if delaunay_visibility == DelaunayVisibility::All {
                         delaunay_node = window.scene_mut().add_mesh(delaunay_mesh.clone(), 
-                                                                    Repeat::repeat(1.0));
+                                                                    na::Vector3::new(1.0, 1.0, 1.));
                         delaunay_node.enable_backface_culling(false);
                     } else {
                         delaunay_node.unlink();
@@ -194,7 +194,7 @@ fn main() {
                     && grid_render_type == GridRenderType::Polygons {
                     let mut new_node = window.scene_mut().add_mesh(
                         interpolation_meshes[cur_interpolation_mesh_index].mesh.clone(),
-                        Repeat::repeat(1.0));
+                        na::Vector3::new(1.0, 1.0, 1.0));
                     new_node.enable_backface_culling(false);
                     cur_interpolation_mesh_node = Some(new_node);
                 }
@@ -233,8 +233,8 @@ fn get_normals(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)> {
     for v in delaunay.vertices() {
         let n = v.normal;
         let p = v.position_3d();
-        result.push((Cast::from(cg_vec_to_na(p.to_vec())),
-                     Cast::from(cg_vec_to_na((p.to_vec() - n * 0.3)))));
+        result.push((cg_vec_to_na(p.to_vec()),
+                    cg_vec_to_na((p.to_vec() - n * 0.3))));
     }
     result
 }
@@ -243,8 +243,8 @@ fn extract_edges(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)>
     let offset = cg::Vector3::new(0., 0., -0.01);
     let mut lines = Vec::new();
     for edge in delaunay.edges() {
-        let from_pos = Cast::from(cg_vec_to_na(edge.from().position_3d().to_vec() + offset));
-        let to_pos = Cast::from(cg_vec_to_na(edge.to().position_3d().to_vec() + offset));
+        let from_pos = cg_vec_to_na(edge.from().position_3d().to_vec() + offset);
+        let to_pos = cg_vec_to_na(edge.to().position_3d().to_vec() + offset);
         lines.push((from_pos, to_pos));
     }
     lines
@@ -255,14 +255,14 @@ fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
     let mut coords = Vec::new();
     let mut faces = Vec::new();
     for vertex in delaunay.vertices() {
-        coords.push(Cast::from(cg_vec_to_na(vertex.position_3d().to_vec())));
+        coords.push(cg_vec_to_na(vertex.position_3d().to_vec()));
     }
     for triangle in delaunay.triangles() {
         let triangle = triangle.as_triangle();
         let h0 = triangle[0].fix();
         let h1 = triangle[1].fix();
         let h2 = triangle[2].fix();
-        faces.push(Cast::from(na::Point3::new(h0, h1, h2)));
+        faces.push(na::Point3::new(h0 as u32, h1 as u32, h2 as u32));
     }
     return Mesh::new(coords, faces, None, None, false);
 }

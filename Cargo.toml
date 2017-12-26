@@ -10,15 +10,15 @@ keywords = ["delaunay", "triangulation", "rtree", "geometry", "interpolation"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
-cgmath = ">=0.10.0, <=0.12.0"
-nalgebra = ">=0.11.0, <=0.11.*"
+cgmath = ">=0.10.0, <=0.15.*"
+nalgebra = ">=0.11.0, <=0.13.*"
 num = "0.1.*"
 clamp = "0.1.*"
 smallvec = "0.3.*"
+pdqselect = "0.1.*"
 
 [dev-dependencies]
 rand = "0.3.*"
-time = "0.1.*"
 approx = "0.1.*"
 
 [profile.bench]
