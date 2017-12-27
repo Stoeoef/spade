@@ -140,17 +140,22 @@ pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>
     lookup: L,
 }
 
-impl <V, K, L> BasicDelaunaySubdivision<V, K> for DelaunayTriangulation<V, K, L>
-    where V: HasPosition2D,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
-          V::Point: TwoDimensional,
-          L: DelaunayLocateStructure<V::Point> {}
-
-impl <V, K, L> HasSubdivision<V, K> for DelaunayTriangulation<V, K, L>
+impl <V, K, L> BasicDelaunaySubdivision<V> for DelaunayTriangulation<V, K, L>
     where V: HasPosition2D,
           K: DelaunayKernel<<V::Point as PointN>::Scalar>,
           V::Point: TwoDimensional,
           L: DelaunayLocateStructure<V::Point> {
+    type LocateStructure = L;
+
+}
+
+impl <V, K, L> HasSubdivision<V> for DelaunayTriangulation<V, K, L>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+          V::Point: TwoDimensional,
+          L: DelaunayLocateStructure<V::Point> {
+
+    type Kernel = K;
 
     fn s(&self) -> &DCEL<V> {
         &self.s

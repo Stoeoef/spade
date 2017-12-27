@@ -17,10 +17,12 @@ pub trait NearestNeighbor<V>
                         -> Option<VertexHandle<V>>;
 }
 
-pub trait Subdivision<V, K>
+pub trait Subdivision<V>
     where V: HasPosition2D,
-          V::Point: TwoDimensional
+          V::Point: TwoDimensional,
 {
+    type Kernel: DelaunayKernel<<V::Point as PointN>::Scalar>;
+
     /// Creates a dynamic vertex handle from a fixed vertex handle.
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
@@ -67,10 +69,9 @@ pub trait Subdivision<V, K>
     fn get_edge_from_vertices(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V>>;
 }
 
-pub trait Locateable<V, K>: Subdivision<V, K>
+pub trait Locateable<V>: Subdivision<V>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
 {
     /// Returns information about the location of a point in a triangulation.
     ///
@@ -93,21 +94,22 @@ pub trait Locateable<V, K>: Subdivision<V, K>
     }
 }
 
-pub trait HasSubdivision<V, K>
+pub trait HasSubdivision<V>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
 {
+    type Kernel: DelaunayKernel<<V::Point as PointN>::Scalar>;
+
     fn s(&self) -> &DCEL<V>;
     fn s_mut(&mut self) -> &mut DCEL<V>;
 }
 
-impl<T, V, K> Subdivision<V, K> for T
-    where T: HasSubdivision<V, K>,
+impl<T, V> Subdivision<V> for T
+    where T: HasSubdivision<V>,
           V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
 {
+    type Kernel = T::Kernel;
     /// Creates a dynamic vertex handle from a fixed vertex handle.
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
@@ -180,11 +182,11 @@ impl<T, V, K> Subdivision<V, K> for T
         from_neighbors(self.s(), from, to)
     }
 }
-impl<T, V, K> Locateable<V, K> for T
-    where T: Subdivision<V, K> + BasicDelaunaySubdivision<V, K>,
+
+impl<T, V> Locateable<V> for T
+    where T: Subdivision<V> + BasicDelaunaySubdivision<V>,
           V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
 {
     fn locate_with_hint
         (&self,
@@ -202,11 +204,11 @@ impl<T, V, K> Locateable<V, K> for T
     }
 }
 
-pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
+pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
 {
+    type LocateStructure: DelaunayLocateStructure<V::Point>;
 
     fn is_defined_legal(&self, _: FixedEdgeHandle) -> bool {
         false
@@ -299,25 +301,21 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
     }
 
 
-
     fn get_convex_hull_edges_for_point(&self,
                                        first_edge: FixedEdgeHandle,
                                        point: &V::Point)
                                        -> SmallVec<[FixedEdgeHandle; 16]>
-        where V: HasPosition2D,
-              V::Point: TwoDimensional,
-              K: DelaunayKernel<<V::Point as PointN>::Scalar>
     {
         let mut result = SmallVec::new();
         let first_edge = self.s().edge(first_edge);
-        debug_assert!(K::side_query(&Self::to_simple_edge(first_edge), point).is_on_left_side());
+        debug_assert!(Self::Kernel::side_query(&Self::to_simple_edge(first_edge), point).is_on_left_side());
 
         let mut last_edge = first_edge;
         result.push(last_edge.fix());
         // Follow the first edge in cw and ccw direction
         loop {
             last_edge = last_edge.o_next();
-            let query = K::side_query(&Self::to_simple_edge(last_edge), point);
+            let query = Self::Kernel::side_query(&Self::to_simple_edge(last_edge), point);
             if query.is_on_left_side() {
                 result.push(last_edge.fix());
             } else {
@@ -328,7 +326,7 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
         last_edge = first_edge;
         loop {
             last_edge = last_edge.o_prev();
-            let query = K::side_query(&Self::to_simple_edge(last_edge), point);
+            let query = Self::Kernel::side_query(&Self::to_simple_edge(last_edge), point);
             if query.is_on_left_side() {
                 result.insert(0, last_edge.fix());
             } else {
@@ -347,7 +345,6 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
     fn legalize_edges(&mut self, edges: &mut SmallVec<[FixedEdgeHandle; 16]>, position: &V::Point)
         where V: HasPosition2D,
               V::Point: TwoDimensional,
-              K: DelaunayKernel<<V::Point as PointN>::Scalar>
     {
         while let Some(e) = edges.pop() {
             if !self.is_ch_edge(e) && !self.is_defined_legal(e) {
@@ -360,9 +357,9 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
                     e1 = edge.sym().o_next().fix();
                     e2 = edge.sym().o_prev().fix();
                 }
-                debug_assert!(K::is_ordered_ccw(&v2, &v1, &v0));
-                debug_assert!(K::is_ordered_ccw(position, &v0, &v1));
-                if K::contained_in_circumference(&v1, &v2, &v0, position) {
+                debug_assert!(Self::Kernel::is_ordered_ccw(&v2, &v1, &v0));
+                debug_assert!(Self::Kernel::is_ordered_ccw(position, &v0, &v1));
+                if Self::Kernel::contained_in_circumference(&v1, &v2, &v0, position) {
                     // The edge is illegal
                     self.s_mut().flip_cw(e);
                     edges.push(e1);
@@ -384,7 +381,7 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
                          -> Option<FixedVertexHandle> {
         let edge_handle = from_neighbors(&self.s(), from, to).unwrap();
         let ccw_handle = edge_handle.ccw().to();
-        let query = K::side_query(&Self::to_simple_edge(edge_handle),
+        let query = Self::Kernel::side_query(&Self::to_simple_edge(edge_handle),
                                   &(*ccw_handle).position());
         if query.is_on_left_side() {
             debug_assert!(from_neighbors(&self.s(), ccw_handle.fix(), to).is_some());
@@ -410,7 +407,7 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
             .vertex(start)
             .out_edge()
             .expect("Cannot start search with an isolated vertex");
-        let mut cur_query = K::side_query(&Self::to_simple_edge(cur_edge), point);
+        let mut cur_query = Self::Kernel::side_query(&Self::to_simple_edge(cur_edge), point);
         // Invariant: point must not be on the right side of cur_edge
         if cur_query.is_on_right_side() {
             cur_edge = cur_edge.sym();
@@ -436,7 +433,7 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
                 return PositionInTriangulation::OnPoint(cur_edge.to().fix());
             }
 
-            let next_query = K::side_query(&Self::to_simple_edge(next), point);
+            let next_query = Self::Kernel::side_query(&Self::to_simple_edge(next), point);
             if next_query.is_on_right_side_or_on_line() {
                 // We continue walking into the face right of next
                 cur_edge = next.sym();
@@ -444,7 +441,7 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
             } else {
                 // Check if cur_edge.o_prev is also on the left side
                 let prev = cur_edge.o_prev();
-                let prev_query = K::side_query(&Self::to_simple_edge(prev), point);
+                let prev_query = Self::Kernel::side_query(&Self::to_simple_edge(prev), point);
                 if prev_query.is_on_right_side_or_on_line() {
                     // We continue walking into the face right of prev
                     cur_edge = prev.sym();
@@ -489,7 +486,7 @@ pub trait BasicDelaunaySubdivision<V, K>: HasSubdivision<V, K>
                 e3 = edge.sym().cw().fix();
                 e4 = edge.sym().ccw().fix();
             }
-            if !K::contained_in_circumference(&v0, &v1, &vl, &vr) {
+            if !Self::Kernel::contained_in_circumference(&v0, &v1, &vl, &vr) {
                 // Flip edge
                 self.s_mut().flip_cw(fixed_edge_handle);
                 

@@ -2,6 +2,7 @@ use delaunay::*;
 use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
 use self::dcel::*;
 use traits::HasPosition2D;
+use std::marker::PhantomData;
 use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use kernels::DelaunayKernel;
 use primitives::SimpleEdge;
@@ -20,13 +21,14 @@ use primitives::SimpleEdge;
 pub struct ConstrainedDelaunayTriangulation<V, K>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+
 {
     s: DCEL<V>,
     all_points_on_line: bool,
     constraints: Vec<bool>,
     num_constraints: usize,
-    __marker: ::std::marker::PhantomData<K>,
+    __kernel: PhantomData<K>,
 }
 
 struct ConflictRegion {
@@ -36,21 +38,26 @@ struct ConflictRegion {
     constraint_end: FixedVertexHandle,
 }
 
-impl<V, K> BasicDelaunaySubdivision<V, K> for ConstrainedDelaunayTriangulation<V, K>
+impl<V, K> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V, K>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+
 {
+    type LocateStructure = DelaunayTreeLocate<V::Point>;
+
     fn is_defined_legal(&self, edge: FixedEdgeHandle) -> bool {
         self.constraints[edge]
     }
 }
 
-impl<V, K> HasSubdivision<V, K> for ConstrainedDelaunayTriangulation<V, K>
+impl<V, K> HasSubdivision<V> for ConstrainedDelaunayTriangulation<V, K>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
 {
+    type Kernel = K;
+
     fn s(&self) -> &DCEL<V> {
         &self.s
     }
@@ -63,13 +70,13 @@ impl<V, K> HasSubdivision<V, K> for ConstrainedDelaunayTriangulation<V, K>
 impl<V, K> ConstrainedDelaunayTriangulation<V, K>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
-          K: DelaunayKernel<<V::Point as PointN>::Scalar>
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
 {
     pub fn new() -> ConstrainedDelaunayTriangulation<V, K> {
         ConstrainedDelaunayTriangulation {
             s: DCEL::new(),
             all_points_on_line: true,
-            __marker: Default::default(),
+            __kernel: Default::default(),
             constraints: Vec::new(),
             num_constraints: 0,
         }
