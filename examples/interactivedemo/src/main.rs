@@ -21,15 +21,11 @@ mod graphics;
 mod rtree_example;
 mod delaunay_example;
 mod cdt_example;
-use spade::delaunay::DelaunayTriangulation;
-use spade::kernels::FloatKernel;
 use spade::SpadeNum;
 use cgmath::{Point2, BaseNum, BaseFloat};
 use rand::{Rand, XorShiftRng, SeedableRng};
 use rand::distributions::{Range, IndependentSample};
 use rand::distributions::range::SampleRange;
-
-type ExampleTriangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
 
 enum App {
     RTreeDemo,

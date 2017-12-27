@@ -222,7 +222,7 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
     /// have already been inserted and connected by a constraint edge.
     ///
     /// # Panics
-    /// Panics if the new constraint edge intersects an existing 
+    /// Panics if the new constraint edge intersects with an existing 
     /// constraint edge.
     pub fn add_new_constraint_edge(&mut self, from: V, to: V) -> bool {
         let from_handle = self.insert(from);
@@ -401,7 +401,6 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
                 // the common point of o_next and e_prev.
                 // This splits the constraint into multiple parts
                 constraint_end = e_prev.from().fix();
-                println!("Found different inner constraint end");
                 break;
             } else if e_prev_inter {
                 // o_prev is intersecting, add o_next to right hull

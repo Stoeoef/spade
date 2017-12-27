@@ -8,11 +8,14 @@
 
 use graphics::{RenderData};
 use spade::delaunay::{DelaunayTriangulation};
+use spade::kernels::FloatKernel;
 use cgmath::{Point2};
 use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 use rand::Rng;
+
+pub type ExampleTriangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
 
 pub fn run() {
 
@@ -95,7 +98,7 @@ pub fn run() {
     }
 }
 
-fn get_selected_vertices(delaunay: &::ExampleTriangulation, point: Point2<f64>) -> Vec<Point2<f64>> {
+fn get_selected_vertices(delaunay: &ExampleTriangulation, point: Point2<f64>) -> Vec<Point2<f64>> {
     
     let mut points = Vec::new();
     points.extend(delaunay.nearest_neighbor(&point).map(|p| (*p).clone()));

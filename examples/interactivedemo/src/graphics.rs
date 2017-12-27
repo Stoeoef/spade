@@ -6,8 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ::{ExampleTriangulation};
+use delaunay_example::{ExampleTriangulation};
+use cdt_example::Cdt;
 use spade::{BoundingRect, HasPosition};
+use spade::delaunay::Subdivision;
 use spade::rtree::{RTree, RTreeNode};
 use cgmath::{EuclideanSpace, Point2, Point3, Vector2, Vector3, Array};
 use cgmath::conv::{array2, array3};
@@ -89,6 +91,12 @@ impl RenderData {
     pub fn update_delaunay_buffers(&mut self, display: &Display, delaunay: &ExampleTriangulation) {
         let mut edges = Vec::new();
         get_delaunay_edges(&delaunay, &mut edges);
+        self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
+    }
+
+    pub fn update_cdt_buffers(&mut self, display: &Display, delaunay: &Cdt) {
+        let mut edges = Vec::new();
+        get_cdt_edges(&delaunay, &mut edges);
         self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
     }
 
@@ -195,4 +203,15 @@ fn get_delaunay_edges(delaunay: &ExampleTriangulation,
     //         edges_buffer.push(Vertex::new(array2(to.cast()), color));
     //     }
     // }
+}
+
+fn get_cdt_edges(delaunay: &Cdt,
+                 edges_buffer: &mut Vec<Vertex>) {
+    let color = [0.1, 0.1, 0.2];
+    for edge in delaunay.edges() {
+        let from = edge.from().position().to_vec();
+        let to = edge.to().position().to_vec();
+        edges_buffer.push(Vertex::new(array2(from.cast()), color));
+        edges_buffer.push(Vertex::new(array2(to.cast()), color));
+    }
 }

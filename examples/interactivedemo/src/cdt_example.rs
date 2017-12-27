@@ -8,11 +8,14 @@
 
 use graphics::{RenderData};
 use spade::delaunay::{ConstrainedDelaunayTriangulation};
+use spade::kernels::FloatKernel;
 use cgmath::{Point2};
 use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 use rand::Rng;
+
+pub type Cdt = ConstrainedDelaunayTriangulation<Point2<f64>, FloatKernel>;
 
 pub fn run() {
 
@@ -22,7 +25,7 @@ pub fn run() {
         .build_glium()
         .unwrap();
 
-    let mut delaunay = ConstrainedDelaunayTriangulation::with_tree_locate();
+    let mut delaunay = ConstrainedDelaunayTriangulation::new();
 
     let mut render_data = RenderData::new(&display);
 
@@ -54,7 +57,7 @@ pub fn run() {
                             for point in new_points.into_iter() {
                                 delaunay.insert(point);
                             }
-                            render_data.update_delaunay_buffers(&display, &delaunay);
+                            render_data.update_cdt_buffers(&display, &delaunay);
                             dirty = true;
                         },
                         _ => (),
@@ -62,19 +65,19 @@ pub fn run() {
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
                     delaunay.insert(last_point);
-                    render_data.update_delaunay_buffers(&display, &delaunay);
+                    render_data.update_cdt_buffers(&display, &delaunay);
                     dirty = true;
                 },
-                Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
-                    let nn = delaunay.nearest_neighbor(&last_point).map(|p| p.fix());
-                    if let Some(handle) = nn {
-                        delaunay.remove(handle);
-                        render_data.update_delaunay_buffers(&display, &delaunay);
-                        let selection = get_selected_vertices(&delaunay, last_point);
-                        render_data.update_selection(&display, &selection);
-                        dirty = true;
-                    }
-                },                    
+                // Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
+                //     let nn = delaunay.nearest_neighbor(&last_point).map(|p| p.fix());
+                //     if let Some(handle) = nn {
+                //         delaunay.remove(handle);
+                //         render_data.update_cdt_buffers(&display, &delaunay);
+                //         // let selection = get_selected_vertices(&delaunay, last_point);
+                //         // render_data.update_selection(&display, &selection);
+                //         dirty = true;
+                //     }
+                // },   
                 Event::MouseMoved(x, y) => {
                     let (w, h) = display.get_framebuffer_dimensions();
                     // Transform x, y into the range [-1 , 1]
@@ -95,11 +98,12 @@ pub fn run() {
     }
 }
 
-fn get_selected_vertices(delaunay: &::ExampleTriangulation, point: Point2<f64>) -> Vec<Point2<f64>> {
+fn get_selected_vertices(delaunay: &Cdt, point: Point2<f64>) -> Vec<Point2<f64>> {
     
-    let mut points = Vec::new();
-    points.extend(delaunay.nearest_neighbor(&point).map(|p| (*p).clone()));
-    points
+    unimplemented!();
+    // let mut points = Vec::new();
+    // points.extend(delaunay.nearest_neighbor(&point).map(|p| (*p).clone()));
+    // points
 }
 
 fn print_help() {

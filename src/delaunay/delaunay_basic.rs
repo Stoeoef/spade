@@ -7,6 +7,16 @@ use point_traits::{PointN, TwoDimensional};
 use primitives::SimpleEdge;
 use std::collections::HashSet;
 
+pub trait NearestNeighbor<V> 
+    where V: HasPosition2D,
+          V::Point: TwoDimensional,
+{
+    fn nearest_neighbor(&self, 
+                        position: V::Point,
+                        handle: FixedVertexHandle)
+                        -> Option<VertexHandle<V>>;
+}
+
 pub trait Subdivision<V, K>
     where V: HasPosition2D,
           V::Point: TwoDimensional
