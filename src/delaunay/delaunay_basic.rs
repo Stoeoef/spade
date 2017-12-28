@@ -237,6 +237,9 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         self.s().face(0)
     }
 
+    fn handle_edge_split(&mut self, _edges: &[FixedEdgeHandle]) {
+    }
+
 
     fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
         assert!(self.all_points_on_line());
@@ -326,7 +329,26 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                 Result::Ok(self.insert_into_triangle(face, t))
             },
             PositionInTriangulation::OnEdge(edge) => {
-                Result::Ok(self.insert_on_edge(edge, t))
+                if self.is_defined_legal(edge) {
+                    // If the edge is defined as legal the resulting edges must
+                    // be redefined as legal
+                    let (from, to);
+                    {
+                        let edge = self.s().edge(edge);
+                        from = edge.from().fix();
+                        to = edge.to().fix();
+                    }
+                    let new_handle = self.insert_on_edge(edge, t);
+                    let handles = {
+                        let e1 = from_neighbors(self.s(), from, new_handle).unwrap();
+                        let e2 = from_neighbors(self.s(), new_handle, to).unwrap();
+                        [e1.fix(), e1.sym().fix(), e2.fix(), e2.sym().fix()]
+                    };
+                    self.handle_edge_split(&handles);
+                    Result::Ok(new_handle)
+                } else {
+                    Result::Ok(self.insert_on_edge(edge, t))
+                }
             },
             PositionInTriangulation::OnPoint(vertex) => {
                 self.s_mut().update_vertex(vertex, t);

@@ -55,17 +55,26 @@ impl<V, K> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V, K
         &mut self.locate_structure
     }
 
-
-    fn is_defined_legal(&self, edge: FixedEdgeHandle) -> bool {
-        self.constraints[edge]
-    }
-
     fn all_points_on_line(&self) -> bool {
         self.all_points_on_line
     }
 
     fn set_all_points_on_line(&mut self, new_value: bool) {
         self.all_points_on_line = new_value;
+    }
+
+    fn is_defined_legal(&self, edge: FixedEdgeHandle) -> bool {
+        self.constraints[edge]
+    }
+
+    fn handle_edge_split(&mut self, handles: &[FixedEdgeHandle]) {
+        // Check if the edge is a constraint edge and split the
+        // constraint if necessary
+        self.constraints.resize(self.s.num_edges() * 2, false);
+        for h in handles {
+            self.constraints[*h] = true;
+        }
+        self.num_constraints += 1;
     }
 }
 
