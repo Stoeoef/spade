@@ -3,7 +3,7 @@ use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
 use self::dcel::*;
 use traits::HasPosition2D;
 use std::marker::PhantomData;
-use point_traits::{PointN, PointNExtensions, TwoDimensional};
+use point_traits::{PointN, TwoDimensional};
 use kernels::DelaunayKernel;
 use primitives::SimpleEdge;
 
@@ -25,6 +25,7 @@ pub struct ConstrainedDelaunayTriangulation<V, K>
 
 {
     s: DCEL<V>,
+    locate_structure: DelaunayTreeLocate<V::Point>,
     all_points_on_line: bool,
     constraints: Vec<bool>,
     num_constraints: usize,
@@ -46,8 +47,25 @@ impl<V, K> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V, K
 {
     type LocateStructure = DelaunayTreeLocate<V::Point>;
 
+    fn locate_structure(&self) -> &Self::LocateStructure {
+        &self.locate_structure
+    }
+
+    fn locate_structure_mut(&mut self) -> &mut Self::LocateStructure {
+        &mut self.locate_structure
+    }
+
+
     fn is_defined_legal(&self, edge: FixedEdgeHandle) -> bool {
         self.constraints[edge]
+    }
+
+    fn all_points_on_line(&self) -> bool {
+        self.all_points_on_line
+    }
+
+    fn set_all_points_on_line(&mut self, new_value: bool) {
+        self.all_points_on_line = new_value;
     }
 }
 
@@ -76,6 +94,7 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
         ConstrainedDelaunayTriangulation {
             s: DCEL::new(),
             all_points_on_line: true,
+            locate_structure: DelaunayTreeLocate::new(),
             __kernel: Default::default(),
             constraints: Vec::new(),
             num_constraints: 0,
@@ -83,7 +102,7 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
     }
 
     pub fn insert(&mut self, vertex: V) -> FixedVertexHandle {
-        let handle = self.insert_with_hint(vertex, 0);
+        let handle = self.insert_with_hint_option(vertex, None);
         self.constraints.resize(self.s.num_edges() * 2, false);
         handle
     }
@@ -104,123 +123,123 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
             .unwrap_or(false)
     }
     
-    fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
-        let pos = t.position();
-        let position_in_triangulation = if self.all_points_on_line {
-            PositionInTriangulation::NoTriangulationPresent
-        } else {
-            self.locate_with_hint_fixed(&pos, hint)
-        };
-        let insertion_result = match position_in_triangulation {
-            PositionInTriangulation::OutsideConvexHull(edge) => {
-                Result::Ok(self.insert_outside_convex_hull(edge, t))
-            }
-            PositionInTriangulation::InTriangle(face) => {
-                Result::Ok(self.insert_into_triangle(face, t))
-            }
-            PositionInTriangulation::OnEdge(edge) => {
-                // Check if the edge is a constraint edge and split the
-                // constraint if necessary
-                let is_constraint = self.is_constraint_edge(edge);
-                let (from, to);
-                {
-                    let edge = self.s.edge(edge);
-                    from = edge.from().fix();
-                    to = edge.to().fix();
-                }
-                let new_handle = self.insert_on_edge(edge, t);
-                self.constraints.resize(self.s.num_edges() * 2, false);
-                if is_constraint {
-                    let handles = {
-                        let e1 = self.get_edge_from_vertices(from, new_handle).unwrap();
-                        let e2 = self.get_edge_from_vertices(new_handle, to).unwrap();
-                        assert!(self.is_constraint_edge(e1.fix()) ^ self.is_constraint_edge(e2.fix()));
-                        [e1.fix(), e1.sym().fix(), e2.fix(), e2.sym().fix()]
-                    };
-                    for h in &handles {
-                        self.constraints[*h] = true;
-                    }
-                    self.num_constraints += 1;
-                }
-                Result::Ok(new_handle)
-            },
-            PositionInTriangulation::OnPoint(vertex) => {
-                self.s.update_vertex(vertex, t);
-                Result::Err(vertex)
-            }
-            PositionInTriangulation::NoTriangulationPresent => self.initial_insertion(t),
-        };
-        match insertion_result {
-            Result::Ok(new_handle) => new_handle,
-            Result::Err(update_handle) => update_handle,
-        }
-    }
+    // fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
+    //     let pos = t.position();
+    //     let position_in_triangulation = if self.all_points_on_line {
+    //         PositionInTriangulation::NoTriangulationPresent
+    //     } else {
+    //         self.locate_with_hint_fixed(&pos, hint)
+    //     };
+    //     let insertion_result = match position_in_triangulation {
+    //         PositionInTriangulation::OutsideConvexHull(edge) => {
+    //             Result::Ok(self.insert_outside_convex_hull(edge, t))
+    //         }
+    //         PositionInTriangulation::InTriangle(face) => {
+    //             Result::Ok(self.insert_into_triangle(face, t))
+    //         }
+    //         PositionInTriangulation::OnEdge(edge) => {
+    //             // Check if the edge is a constraint edge and split the
+    //             // constraint if necessary
+    //             let is_constraint = self.is_constraint_edge(edge);
+    //             let (from, to);
+    //             {
+    //                 let edge = self.s.edge(edge);
+    //                 from = edge.from().fix();
+    //                 to = edge.to().fix();
+    //             }
+    //             let new_handle = self.insert_on_edge(edge, t);
+    //             self.constraints.resize(self.s.num_edges() * 2, false);
+    //             if is_constraint {
+    //                 let handles = {
+    //                     let e1 = self.get_edge_from_vertices(from, new_handle).unwrap();
+    //                     let e2 = self.get_edge_from_vertices(new_handle, to).unwrap();
+    //                     assert!(self.is_constraint_edge(e1.fix()) ^ self.is_constraint_edge(e2.fix()));
+    //                     [e1.fix(), e1.sym().fix(), e2.fix(), e2.sym().fix()]
+    //                 };
+    //                 for h in &handles {
+    //                     self.constraints[*h] = true;
+    //                 }
+    //                 self.num_constraints += 1;
+    //             }
+    //             Result::Ok(new_handle)
+    //         },
+    //         PositionInTriangulation::OnPoint(vertex) => {
+    //             self.s.update_vertex(vertex, t);
+    //             Result::Err(vertex)
+    //         }
+    //         PositionInTriangulation::NoTriangulationPresent => self.initial_insertion(t),
+    //     };
+    //     match insertion_result {
+    //         Result::Ok(new_handle) => new_handle,
+    //         Result::Err(update_handle) => update_handle,
+    //     }
+    // }
 
-    fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
-        assert!(self.all_points_on_line);
-        // Inserts points if no points are present or if all points
-        // lie on the same line
-        let new_pos = t.position();
-        for vertex in self.s.fixed_vertices() {
-            let pos = (*self.s.vertex(vertex)).position();
-            if pos == new_pos {
-                self.s.update_vertex(vertex, t);
-                return Result::Err(vertex);
-            }
-        }
+    // fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
+    //     assert!(self.all_points_on_line);
+    //     // Inserts points if no points are present or if all points
+    //     // lie on the same line
+    //     let new_pos = t.position();
+    //     for vertex in self.s.fixed_vertices() {
+    //         let pos = (*self.s.vertex(vertex)).position();
+    //         if pos == new_pos {
+    //             self.s.update_vertex(vertex, t);
+    //             return Result::Err(vertex);
+    //         }
+    //     }
 
-        if self.s.num_vertices() <= 1 {
-            return Result::Ok(self.s.insert_vertex(t));
-        }
+    //     if self.s.num_vertices() <= 1 {
+    //         return Result::Ok(self.s.insert_vertex(t));
+    //     }
 
-        // Check if the new point is on the same line as all points in the
-        // triangulation
-        let from = (*self.s.vertex(0)).position();
-        let to = (*self.s.vertex(1)).position();
-        let edge = SimpleEdge::new(from.clone(), to.clone());
-        if K::side_query(&edge, &new_pos).is_on_line() {
-            return Result::Ok(self.s.insert_vertex(t));
-        }
-        // The point does not lie on the same line as all other points.
-        // Start creating a triangulation
-        let dir = to.sub(&from);
-        let mut vertices: Vec<_> = self.s.vertices()
-            .map(|v| (v.fix(), dir.dot(&(*v).position())))
-            .collect();
-        // Sort vertices according to their position on the line
-        vertices.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
+    //     // Check if the new point is on the same line as all points in the
+    //     // triangulation
+    //     let from = (*self.s.vertex(0)).position();
+    //     let to = (*self.s.vertex(1)).position();
+    //     let edge = SimpleEdge::new(from.clone(), to.clone());
+    //     if K::side_query(&edge, &new_pos).is_on_line() {
+    //         return Result::Ok(self.s.insert_vertex(t));
+    //     }
+    //     // The point does not lie on the same line as all other points.
+    //     // Start creating a triangulation
+    //     let dir = to.sub(&from);
+    //     let mut vertices: Vec<_> = self.s.vertices()
+    //         .map(|v| (v.fix(), dir.dot(&(*v).position())))
+    //         .collect();
+    //     // Sort vertices according to their position on the line
+    //     vertices.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
 
-        // Create line
-        let is_ccw = K::is_ordered_ccw(&new_pos, &from, &to);
-        let mut last_edge = self.s.connect_two_isolated_vertices(vertices[0].0, vertices[1].0, 0);
-        let mut edges = vec![last_edge];
-        for v in vertices.iter().skip(2) {
-            let edge = self.s.connect_edge_to_isolated_vertex(last_edge, v.0);
-            edges.push(self.s.edge(edge).fix());
-            last_edge = edge;
-        }
-        if is_ccw {
-            edges.reverse();
-        }
-        let new_vertex = self.s.insert_vertex(t);
-        // Connect all points on the line to the new vertex
-        let mut last_edge = *edges.first().unwrap();
-        if !is_ccw {
-            last_edge = self.s.edge(last_edge).sym().fix();
-        }
-        last_edge = self.s.connect_edge_to_isolated_vertex(last_edge, new_vertex);
-        for e in edges {
-            let e = if !is_ccw {
-                self.s.edge(e).sym().fix()
-            } else {
-                e
-            };
-            last_edge = self.s.create_face(last_edge, e);
-            last_edge = self.s.edge(last_edge).sym().fix();
-        }
-        self.all_points_on_line = false;
-        Result::Ok(new_vertex)
-    }
+    //     // Create line
+    //     let is_ccw = K::is_ordered_ccw(&new_pos, &from, &to);
+    //     let mut last_edge = self.s.connect_two_isolated_vertices(vertices[0].0, vertices[1].0, 0);
+    //     let mut edges = vec![last_edge];
+    //     for v in vertices.iter().skip(2) {
+    //         let edge = self.s.connect_edge_to_isolated_vertex(last_edge, v.0);
+    //         edges.push(self.s.edge(edge).fix());
+    //         last_edge = edge;
+    //     }
+    //     if is_ccw {
+    //         edges.reverse();
+    //     }
+    //     let new_vertex = self.s.insert_vertex(t);
+    //     // Connect all points on the line to the new vertex
+    //     let mut last_edge = *edges.first().unwrap();
+    //     if !is_ccw {
+    //         last_edge = self.s.edge(last_edge).sym().fix();
+    //     }
+    //     last_edge = self.s.connect_edge_to_isolated_vertex(last_edge, new_vertex);
+    //     for e in edges {
+    //         let e = if !is_ccw {
+    //             self.s.edge(e).sym().fix()
+    //         } else {
+    //             e
+    //         };
+    //         last_edge = self.s.create_face(last_edge, e);
+    //         last_edge = self.s.edge(last_edge).sym().fix();
+    //     }
+    //     self.all_points_on_line = false;
+    //     Result::Ok(new_vertex)
+    // }
 
     /// Insert two points and creates a constraint between them.
     ///

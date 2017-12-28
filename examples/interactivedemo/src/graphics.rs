@@ -191,26 +191,20 @@ fn get_delaunay_edges(delaunay: &ExampleTriangulation,
         edges_buffer.push(Vertex::new(array2(from.cast()), color));
         edges_buffer.push(Vertex::new(array2(to.cast()), color));
     }
-
-    // if !delaunay.is_degenerate() {
-    //     let color = [1.0, 0.0, 0.0];
-    //     let alpha_hull = ::spade::delaunay::alpha_hull::alpha_hull(delaunay, 0.1);
-    //     for edge in alpha_hull {
-    //         let edge = delaunay.edge(edge);
-    //         let from = edge.from().position().to_vec();
-    //         let to = edge.to().position().to_vec();
-    //         edges_buffer.push(Vertex::new(array2(from.cast()), color));
-    //         edges_buffer.push(Vertex::new(array2(to.cast()), color));
-    //     }
-    // }
 }
 
-fn get_cdt_edges(delaunay: &Cdt,
+fn get_cdt_edges(cdt: &Cdt,
                  edges_buffer: &mut Vec<Vertex>) {
-    let color = [0.1, 0.1, 0.2];
-    for edge in delaunay.edges() {
+    let normal_color = [0.1, 0.1, 0.2];
+    let constraint_color = [1.0, 0.0, 0.0];
+    for edge in cdt.edges() {
         let from = edge.from().position().to_vec();
         let to = edge.to().position().to_vec();
+        let color = if cdt.is_constraint_edge(edge.fix()) {
+            constraint_color
+        } else {
+            normal_color
+        };
         edges_buffer.push(Vertex::new(array2(from.cast()), color));
         edges_buffer.push(Vertex::new(array2(to.cast()), color));
     }

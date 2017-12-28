@@ -1,9 +1,10 @@
 use delaunay::*;
 use self::dcel::*;
+use self::delaunay_locate::VertexEntry;
 use traits::HasPosition2D;
 use smallvec::SmallVec;
 use kernels::DelaunayKernel;
-use point_traits::{PointN, TwoDimensional};
+use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use primitives::SimpleEdge;
 use std::collections::HashSet;
 
@@ -12,9 +13,21 @@ pub trait NearestNeighbor<V>
           V::Point: TwoDimensional,
 {
     fn nearest_neighbor(&self, 
-                        position: V::Point,
-                        handle: FixedVertexHandle)
+                        position: &V::Point)
                         -> Option<VertexHandle<V>>;
+}
+
+impl <T, V> NearestNeighbor<V> for T where
+    T: BasicDelaunaySubdivision<V, LocateStructure=DelaunayTreeLocate<V::Point>>,
+    V: HasPosition2D,
+    V::Point: TwoDimensional {
+
+    fn nearest_neighbor(&self, 
+                        position: &V::Point)
+                        -> Option<VertexHandle<V>> {
+        let entry = self.locate_structure().nearest_neighbor(position);
+        entry.map(|e| self.vertex(e.handle))
+    }
 }
 
 pub trait Subdivision<V>
@@ -210,8 +223,153 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
 {
     type LocateStructure: DelaunayLocateStructure<V::Point>;
 
+    fn locate_structure(&self) -> &Self::LocateStructure;
+    fn locate_structure_mut(&mut self) -> &mut Self::LocateStructure;
+
+    fn all_points_on_line(&self) -> bool;
+    fn set_all_points_on_line(&mut self, new_value: bool);
+
     fn is_defined_legal(&self, _: FixedEdgeHandle) -> bool {
         false
+    }
+
+    fn infinite_face(&self) -> FaceHandle<V> {
+        self.s().face(0)
+    }
+
+
+    fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
+        assert!(self.all_points_on_line());
+        // Inserts points if no points are present or if all points
+        // lie on the same line
+        let new_pos = t.position();
+        for vertex in self.s().fixed_vertices() {
+            let pos = (*self.s().vertex(vertex)).position();
+            if pos == new_pos {
+                self.s_mut().update_vertex(vertex, t);
+                return Result::Err(vertex);
+            }
+        }
+
+        if self.s().num_vertices() <= 1 {
+            return Result::Ok(self.s_mut().insert_vertex(t));
+        }
+
+        // Check if the new point is on the same line as all points in the
+        // triangulation
+        let from = (*self.s().vertex(0)).position();
+        let to = (*self.s().vertex(1)).position();
+        let edge = SimpleEdge::new(from.clone(), to.clone());
+        if Self::Kernel::side_query(&edge, &new_pos).is_on_line() {
+            return Result::Ok(self.s_mut().insert_vertex(t));
+        }
+        // The point does not lie on the same line as all other points().
+        // Start creating a triangulation
+        let dir = to.sub(&from);
+        let mut vertices: Vec<_> = self.s().vertices().map(
+            |v| (v.fix(), dir.dot(&(*v).position()))).collect();
+        // Sort vertices according to their position on the line
+        vertices.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
+
+        // Create line
+        let is_ccw = Self::Kernel::is_ordered_ccw(&new_pos, &from, &to);
+        let mut last_edge = self.s_mut().connect_two_isolated_vertices(vertices[0].0, vertices[1].0, 0);
+        let mut edges = vec![last_edge];
+        for v in vertices.iter().skip(2) {
+            let edge = self.s_mut().connect_edge_to_isolated_vertex(last_edge, v.0);
+            edges.push(self.s().edge(edge).fix());
+            last_edge = edge;
+        }
+        if is_ccw {
+            edges.reverse();
+        }
+        let new_vertex = self.s_mut().insert_vertex(t);
+        // Connect all points on the line to the new vertex
+        let mut last_edge = *edges.first().unwrap();
+        if !is_ccw {
+            last_edge = self.s().edge(last_edge).sym().fix();
+        }
+        last_edge = self.s_mut().connect_edge_to_isolated_vertex(last_edge, new_vertex);
+        for e in edges {
+            let e = if !is_ccw {
+                self.s().edge(e).sym().fix()
+            } else {
+                e
+            };
+            last_edge = self.s_mut().create_face(last_edge, e);
+            last_edge = self.s().edge(last_edge).sym().fix();
+        }
+        self.set_all_points_on_line(false);
+        Result::Ok(new_vertex)
+    }
+
+    fn get_default_hint(&self, coord: &V::Point) -> FixedVertexHandle {
+        let hint = self.locate_structure().find_close_handle(coord);
+        if hint < self.s().num_vertices() {
+            hint
+        } else {
+            0
+        }
+    }
+
+    fn insert_with_hint_option(&mut self, 
+                               t: V,
+                               hint: Option<FixedVertexHandle>)
+                               -> FixedVertexHandle {
+        let pos = t.position();
+        let position_in_triangulation = self.locate_with_hint_option_fixed(&pos, hint);
+        let insertion_result = match position_in_triangulation {
+            PositionInTriangulation::OutsideConvexHull(edge) => {
+                Result::Ok(self.insert_outside_convex_hull(edge, t))
+            },
+            PositionInTriangulation::InTriangle(face) => {
+                Result::Ok(self.insert_into_triangle(face, t))
+            },
+            PositionInTriangulation::OnEdge(edge) => {
+                Result::Ok(self.insert_on_edge(edge, t))
+            },
+            PositionInTriangulation::OnPoint(vertex) => {
+                self.s_mut().update_vertex(vertex, t);
+                Result::Err(vertex)
+            },
+            PositionInTriangulation::NoTriangulationPresent => {
+                self.initial_insertion(t)
+            }
+        };
+        match insertion_result {
+            Result::Ok(new_handle) => {
+                self.locate_structure_mut().insert_vertex_entry(VertexEntry {
+                    point: pos,
+                    handle: new_handle
+                });
+                new_handle
+            },
+            Result::Err(update_handle) => {
+                update_handle
+            }
+        }
+    }
+
+    fn locate_with_hint_option(&self, point: &V::Point, hint: Option<FixedVertexHandle>) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
+        use self::PositionInTriangulation::*;
+        match self.locate_with_hint_option_fixed(point, hint) {
+            NoTriangulationPresent => NoTriangulationPresent,
+            InTriangle(face) => InTriangle(self.s().face(face)),
+            OutsideConvexHull(edge) => OutsideConvexHull(self.s().edge(edge)),
+            OnPoint(vertex) => OnPoint(self.s().vertex(vertex)),
+            OnEdge(edge) => OnEdge(self.s().edge(edge)),
+        }
+    }
+
+    fn locate_with_hint_option_fixed(&self, point: &V::Point, hint: Option<FixedVertexHandle>) -> 
+        PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
+        if self.all_points_on_line() {
+            // TODO: We might want to check if the point is on the line or already contained
+            PositionInTriangulation::NoTriangulationPresent
+        } else {
+            let start = hint.unwrap_or_else(|| self.get_default_hint(point));
+            self.locate_with_hint_fixed(point, start) 
+        }
     }
 
     fn insert_outside_convex_hull(&mut self,
@@ -452,6 +610,135 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                     }
                     return PositionInTriangulation::InTriangle(cur_edge.face().fix());
                 }
+            }
+        }
+    }
+
+    fn remove(&mut self, vertex: FixedVertexHandle) -> V {
+        let mut neighbors = Vec::new();
+        let mut ch_removal = false;
+        // Check if we remove from the convex hull
+        // At the same time, all neigboring edges are collected
+        for edge in self.s().vertex(vertex).ccw_out_edges() {
+            if edge.face() == self.infinite_face() {
+                ch_removal = true;
+                neighbors.clear();
+                let next = edge.ccw();
+                for edge in next.ccw_iter() {
+                    neighbors.push(edge.to().fix());
+                }
+                break;
+            }
+            neighbors.push(edge.to().fix());
+        }
+        
+        let infinite = self.infinite_face().fix();
+
+        let VertexRemovalResult { updated_vertex, data } = 
+            self.s_mut().remove_vertex(vertex, Some(infinite));
+
+        // Remove point from locate structure
+        let vertex_pos = data.position();
+        self.locate_structure_mut().remove_vertex_entry(&VertexEntry::new(vertex_pos, vertex));
+
+        if let Some(updated_vertex) = updated_vertex {
+            // Update locate structure if necessary
+            let pos = (*self.s().vertex(vertex)).position();
+            self.locate_structure_mut().update_vertex_entry(VertexEntry {
+                point: pos,
+                handle: vertex,
+            });
+            for n in &mut neighbors {
+                if *n == updated_vertex {
+                    *n = vertex;
+                    break;
+                }
+            }
+        }
+        
+        if !self.all_points_on_line() {
+            if ch_removal {
+                // We removed a vertex from the convex hull
+                self.repair_convex_hull(&neighbors);
+                if self.s().num_faces() == 1 {
+                    self.make_degenerate(); 
+                }
+            } else {
+                // Removed an inner vertex
+                let loop_edges: Vec<_> = {
+                    let first = from_neighbors(
+                        self.s(), neighbors[0], neighbors[1]).unwrap();
+                    first.o_next_iterator().map(|e| e.fix()).collect()
+                };
+                self.fill_hole(loop_edges);
+            }
+        }
+        data
+    }
+
+    fn make_degenerate(&mut self) {
+        // Assume all points lie on a line.
+        self.s_mut().clear_edges_and_faces();
+        self.set_all_points_on_line(true);
+    }
+
+    fn repair_convex_hull(&mut self, vertices: &Vec<FixedVertexHandle>) {
+        // A vertex from the convex hull has been removed. This removal can create
+        // multiple 'pockets' in the hull that need to be re-triangulated. 
+        // 'vertices' contains all vertices that were adjacent to the removed point
+        // in ccw order.
+        let mut ch: Vec<FixedVertexHandle> = Vec::new();
+
+        // First, determine the new convex hull. Since the points are ordered
+        // counterclockwise, this can be done in O(vertices.len()) .
+        // This is similar to calculating an upper convex hull.
+        for v in vertices {
+            let vertex = self.s().vertex(*v);
+            let v_pos = (*vertex).position();
+            loop {
+                if ch.len() >= 2 {
+                    let p0 = (*self.s().vertex(ch[ch.len() - 2])).position();
+                    let p1 = (*self.s().vertex(ch[ch.len() - 1])).position();
+                    let edge = SimpleEdge::new(p0, p1);
+                    if Self::Kernel::side_query(&edge, &v_pos).is_on_left_side() {
+                        ch.pop();
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            ch.push(*v);
+        }
+        // In the next step, analyze if any pockets were created. Follow the
+        // edges of the newly created convex hull and check if the edge also exists
+        // in the triangulation. If not, a pocket was found that must be filled.
+        for vs in ch.windows(2) {
+            let v0 = vs[0];
+            let v1 = vs[1];
+            if from_neighbors(self.s(), v0, v1).is_none() {
+                // The edge does not exists, get all edges of the pocket
+                let mut edges = Vec::new();
+                let pos = vertices.iter().position(|v| *v == v0).unwrap();
+                {
+                    let mut cur_edge = from_neighbors(
+                        self.s(), v0, vertices[pos + 1]).unwrap();
+                    loop {
+                        edges.push(cur_edge.fix());
+                        cur_edge = cur_edge.o_next();
+                        if cur_edge.from().fix() == v1 {
+                            // We have reached the convex hull again, this
+                            // closes the pocket.
+                            break;
+                        }
+                    }
+                }
+                let first = self.s().edge(*edges.first().unwrap()).fix();
+                let last = self.s().edge(*edges.last().unwrap()).fix();
+                edges.push(self.s_mut().create_face(last, first));
+                // Fill the pocket
+                self.fill_hole(edges);
             }
         }
     }

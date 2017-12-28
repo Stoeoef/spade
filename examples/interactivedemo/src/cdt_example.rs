@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use graphics::{RenderData};
-use spade::delaunay::{ConstrainedDelaunayTriangulation};
+use spade::delaunay::{ConstrainedDelaunayTriangulation, NearestNeighbor};
 use spade::kernels::FloatKernel;
 use cgmath::{Point2};
 use glium::{DisplayBuild};
@@ -25,13 +25,14 @@ pub fn run() {
         .build_glium()
         .unwrap();
 
-    let mut delaunay = ConstrainedDelaunayTriangulation::new();
+    let mut cdt = ConstrainedDelaunayTriangulation::new();
 
     let mut render_data = RenderData::new(&display);
 
     let mut last_point = Point2::new(0., 0.);
+    let mut last_handle = None;
 
-    println!("Delaunay Demo");
+    println!("CDT Demo");
     print_help();
     loop {
         let events: Vec<_> = display.poll_events().collect();
@@ -55,29 +56,42 @@ pub fn run() {
                             let seed = rng.gen();
                             let new_points = ::random_points_with_seed(num, seed);
                             for point in new_points.into_iter() {
-                                delaunay.insert(point);
+                                cdt.insert(point);
                             }
-                            render_data.update_cdt_buffers(&display, &delaunay);
+                            render_data.update_cdt_buffers(&display, &cdt);
                             dirty = true;
                         },
                         _ => (),
                     }
                 },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
-                    delaunay.insert(last_point);
-                    render_data.update_cdt_buffers(&display, &delaunay);
+                    cdt.insert(last_point);
+                    render_data.update_cdt_buffers(&display, &cdt);
                     dirty = true;
                 },
                 // Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
-                //     let nn = delaunay.nearest_neighbor(&last_point).map(|p| p.fix());
+                //     let nn = cdt.nearest_neighbor(&last_point).map(|p| p.fix());
                 //     if let Some(handle) = nn {
-                //         delaunay.remove(handle);
-                //         render_data.update_cdt_buffers(&display, &delaunay);
-                //         // let selection = get_selected_vertices(&delaunay, last_point);
-                //         // render_data.update_selection(&display, &selection);
+                //         cdt.remove(handle);
+                //         render_data.update_cdt_buffers(&display, &cdt);
+                //         let selection = get_selected_vertices(&cdt, last_point);
+                //         render_data.update_selection(&display, &selection);
                 //         dirty = true;
                 //     }
-                // },   
+                // },
+                Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
+                    let nn = cdt.nearest_neighbor(&last_point).map(|p| p.fix());
+                    if let Some(handle) = nn {
+                        if let Some(last) = last_handle {
+                            cdt.add_constraint(last, handle);
+                            last_handle = None;
+                            render_data.update_cdt_buffers(&display, &cdt);
+                            dirty = true;
+                        } else {
+                            last_handle = Some(handle);
+                        }
+                    }
+                },
                 Event::MouseMoved(x, y) => {
                     let (w, h) = display.get_framebuffer_dimensions();
                     // Transform x, y into the range [-1 , 1]
@@ -85,7 +99,7 @@ pub fn run() {
                     let x = (x as f64 / w as f64) * 2. - 1.;
                     let y = (y as f64 / h as f64) * 2. - 1.;
                     last_point = Point2::new(x, y);
-                    let selection = get_selected_vertices(&delaunay, last_point);
+                    let selection = get_selected_vertices(&cdt, last_point);
                     render_data.update_selection(&display, &selection);
                     dirty = true;
                 },
@@ -98,12 +112,10 @@ pub fn run() {
     }
 }
 
-fn get_selected_vertices(delaunay: &Cdt, point: Point2<f64>) -> Vec<Point2<f64>> {
-    
-    unimplemented!();
-    // let mut points = Vec::new();
-    // points.extend(delaunay.nearest_neighbor(&point).map(|p| (*p).clone()));
-    // points
+fn get_selected_vertices(cdt: &Cdt, point: Point2<f64>) -> Vec<Point2<f64>> {    
+    let mut points = Vec::new();
+    points.extend(cdt.nearest_neighbor(&point).map(|p| (*p).clone()));
+    points
 }
 
 fn print_help() {
