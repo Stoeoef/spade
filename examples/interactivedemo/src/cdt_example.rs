@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use graphics::{RenderData};
-use spade::delaunay::{ConstrainedDelaunayTriangulation, NearestNeighbor};
+use spade::delaunay::{ConstrainedDelaunayTriangulation};
 use spade::kernels::FloatKernel;
 use cgmath::{Point2};
 use glium::{DisplayBuild};
@@ -25,7 +25,7 @@ pub fn run() {
         .build_glium()
         .unwrap();
 
-    let mut cdt = ConstrainedDelaunayTriangulation::new();
+    let mut cdt = Cdt::new();
 
     let mut render_data = RenderData::new(&display);
 

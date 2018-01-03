@@ -8,28 +8,6 @@ use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use primitives::SimpleEdge;
 use std::collections::HashSet;
 
-pub trait NearestNeighbor<V> 
-    where V: HasPosition2D,
-          V::Point: TwoDimensional,
-{
-    fn nearest_neighbor(&self, 
-                        position: &V::Point)
-                        -> Option<VertexHandle<V>>;
-}
-
-impl <T, V> NearestNeighbor<V> for T where
-    T: BasicDelaunaySubdivision<V, LocateStructure=DelaunayTreeLocate<V::Point>>,
-    V: HasPosition2D,
-    V::Point: TwoDimensional {
-
-    fn nearest_neighbor(&self, 
-                        position: &V::Point)
-                        -> Option<VertexHandle<V>> {
-        let entry = self.locate_structure().nearest_neighbor(position);
-        entry.map(|e| self.vertex(e.handle))
-    }
-}
-
 pub trait Subdivision<V>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
@@ -78,33 +56,6 @@ pub trait Subdivision<V>
 
     /// Returns an iterator over all vertices.
     fn vertices(&self) -> VerticesIterator<V>;
-
-    fn get_edge_from_vertices(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V>>;
-}
-
-pub trait Locateable<V>: Subdivision<V>
-    where V: HasPosition2D,
-          V::Point: TwoDimensional,
-{
-    /// Returns information about the location of a point in a triangulation.
-    ///
-    /// Additionally, a hint can be given to speed up computation. The hint should be a vertex close
-    /// to the position that is being looked up.
-    fn locate_with_hint
-        (&self,
-         point: &V::Point,
-         hint: FixedVertexHandle)
-         -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>>;
-
-    fn locate_vertex_with_hint(&self,
-                               point: &V::Point,
-                               hint: FixedVertexHandle)
-                               -> Option<VertexHandle<V>> {
-        match self.locate_with_hint(point, hint) {
-            PositionInTriangulation::OnPoint(h) => Some(h),
-            _ => None,
-        }
-    }
 }
 
 pub trait HasSubdivision<V>
@@ -189,31 +140,6 @@ impl<T, V> Subdivision<V> for T
     /// Returns an iterator over all vertices.
     fn vertices(&self) -> VerticesIterator<V> {
         self.s().vertices()
-    }
-
-    fn get_edge_from_vertices(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V>> {
-        from_neighbors(self.s(), from, to)
-    }
-}
-
-impl<T, V> Locateable<V> for T
-    where T: Subdivision<V> + BasicDelaunaySubdivision<V>,
-          V: HasPosition2D,
-          V::Point: TwoDimensional,
-{
-    fn locate_with_hint
-        (&self,
-         point: &V::Point,
-         hint: FixedVertexHandle)
-         -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
-        use self::PositionInTriangulation::*;
-        match self.locate_with_hint_fixed(point, hint) {
-            NoTriangulationPresent => NoTriangulationPresent,
-            InTriangle(face) => InTriangle(self.s().face(face)),
-            OutsideConvexHull(edge) => OutsideConvexHull(self.s().edge(edge)),
-            OnPoint(vertex) => OnPoint(self.s().vertex(vertex)),
-            OnEdge(edge) => OnEdge(self.s().edge(edge)),
-        }
     }
 }
 
@@ -340,8 +266,8 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                     }
                     let new_handle = self.insert_on_edge(edge, t);
                     let handles = {
-                        let e1 = from_neighbors(self.s(), from, new_handle).unwrap();
-                        let e2 = from_neighbors(self.s(), new_handle, to).unwrap();
+                        let e1 = self.s().get_edge_from_neighbors(from, new_handle).unwrap();
+                        let e2 = self.s().get_edge_from_neighbors(new_handle, to).unwrap();
                         [e1.fix(), e1.sym().fix(), e2.fix(), e2.sym().fix()]
                     };
                     self.handle_edge_split(&handles);
@@ -457,21 +383,21 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
 
         let left_handle_opt = self.get_left_triangle(from, to);
         let right_handle_opt = self.get_right_triangle(from, to);
-        let edge_handle = from_neighbors(&self.s_mut(), from, to).unwrap().fix();
+        let edge_handle = self.s().get_edge_from_neighbors(from, to).unwrap().fix();
         self.s_mut().split_edge(edge_handle, new_handle);
         if let Some(left_handle) = left_handle_opt {
-            let edge1 = from_neighbors(&self.s_mut(), to, left_handle).unwrap().fix();
-            let edge0 = from_neighbors(&self.s_mut(), left_handle, from).unwrap().fix();
-            let edge_mid = from_neighbors(&self.s_mut(), from, new_handle).unwrap().fix();
+            let edge1 = self.s().get_edge_from_neighbors(to, left_handle).unwrap().fix();
+            let edge0 = self.s().get_edge_from_neighbors(left_handle, from).unwrap().fix();
+            let edge_mid = self.s().get_edge_from_neighbors(from, new_handle).unwrap().fix();
 
             self.s_mut().create_face(edge_mid, edge0);
             illegal_edges.push(edge0);
             illegal_edges.push(edge1);
         }
         if let Some(right_handle) = right_handle_opt {
-            let edge0 = from_neighbors(&self.s_mut(), from, right_handle).unwrap().fix();
-            let edge1 = from_neighbors(&self.s_mut(), right_handle, to).unwrap().fix();
-            let edge_mid = from_neighbors(&self.s_mut(), to, new_handle).unwrap().fix();
+            let edge0 = self.s().get_edge_from_neighbors(from, right_handle).unwrap().fix();
+            let edge1 = self.s().get_edge_from_neighbors(right_handle, to).unwrap().fix();
+            let edge_mid = self.s().get_edge_from_neighbors(to, new_handle).unwrap().fix();
             self.s_mut().create_face(edge_mid, edge1);
             illegal_edges.push(edge0);
             illegal_edges.push(edge1);
@@ -479,7 +405,6 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         self.legalize_edges(&mut illegal_edges, &position);
         new_handle
     }
-
 
     fn get_convex_hull_edges_for_point(&self,
                                        first_edge: FixedEdgeHandle,
@@ -559,12 +484,12 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                          from: FixedVertexHandle,
                          to: FixedVertexHandle)
                          -> Option<FixedVertexHandle> {
-        let edge_handle = from_neighbors(&self.s(), from, to).unwrap();
+        let edge_handle = self.s().get_edge_from_neighbors(from, to).unwrap();
         let ccw_handle = edge_handle.ccw().to();
         let query = Self::Kernel::side_query(&Self::to_simple_edge(edge_handle),
                                   &(*ccw_handle).position());
         if query.is_on_left_side() {
-            debug_assert!(from_neighbors(&self.s(), ccw_handle.fix(), to).is_some());
+            debug_assert!(self.s().get_edge_from_neighbors(ccw_handle.fix(), to).is_some());
             Some(ccw_handle.fix())
         } else {
             None
@@ -688,8 +613,8 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             } else {
                 // Removed an inner vertex
                 let loop_edges: Vec<_> = {
-                    let first = from_neighbors(
-                        self.s(), neighbors[0], neighbors[1]).unwrap();
+                    let first = self.s().get_edge_from_neighbors(
+                        neighbors[0], neighbors[1]).unwrap();
                     first.o_next_iterator().map(|e| e.fix()).collect()
                 };
                 self.fill_hole(loop_edges);
@@ -739,13 +664,13 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         for vs in ch.windows(2) {
             let v0 = vs[0];
             let v1 = vs[1];
-            if from_neighbors(self.s(), v0, v1).is_none() {
+            if self.s().get_edge_from_neighbors(v0, v1).is_none() {
                 // The edge does not exists, get all edges of the pocket
                 let mut edges = Vec::new();
                 let pos = vertices.iter().position(|v| *v == v0).unwrap();
                 {
-                    let mut cur_edge = from_neighbors(
-                        self.s(), v0, vertices[pos + 1]).unwrap();
+                    let mut cur_edge = self.s().get_edge_from_neighbors(
+                        v0, vertices[pos + 1]).unwrap();
                     loop {
                         edges.push(cur_edge.fix());
                         cur_edge = cur_edge.o_next();

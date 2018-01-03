@@ -140,7 +140,14 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
         K::side_query(&self, q)
     }
 
-    pub fn intersects_edge_non_colinear<K>(&self, other: &SimpleEdge<V>) -> bool 
+
+    /// Checks if this and another edge intersect.
+    ///
+    /// The edges must not be collinear. Also, `true` is returned if the edges
+    /// just touch each other.
+    /// # Panics
+    /// Panics if both lines are collinear.
+    pub fn intersects_edge_non_collinear<K>(&self, other: &SimpleEdge<V>) -> bool 
         where K: DelaunayKernel<V::Scalar>
     {
         let other_from = self.side_query::<K>(&other.from);
@@ -148,9 +155,9 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
         let self_from = other.side_query::<K>(&self.from);
         let self_to = other.side_query::<K>(&self.to);
 
-        debug_assert!(![&other_from, &other_to, &self_from, &self_to].iter()
+        assert!(![&other_from, &other_to, &self_from, &self_to].iter()
                       .all(|q| q.is_on_line()), 
-                      "Given edge is colinear.");
+                      "intersects_edge_non_collinear: Given edge is collinear.");
 
         other_from != other_to && self_from != self_to
     }
@@ -410,36 +417,36 @@ mod test {
         let e1 = SimpleEdge::new(Point2::new(0f32, 0f32), Point2::new(5f32, 5f32));
         let e2 = SimpleEdge::new(Point2::new(-1.5, 1.), Point2::new(1.0, -1.5));
         let e3 = SimpleEdge::new(Point2::new(0.5, 4.), Point2::new(0.5, -4.));
-        assert!(!e1.intersects_edge_non_colinear::<TrivialKernel>(&e2));
-        assert!(!e2.intersects_edge_non_colinear::<TrivialKernel>(&e1));
-        assert!(e1.intersects_edge_non_colinear::<TrivialKernel>(&e3));
-        assert!(e3.intersects_edge_non_colinear::<TrivialKernel>(&e1));
-        assert!(e2.intersects_edge_non_colinear::<TrivialKernel>(&e3));
-        assert!(e3.intersects_edge_non_colinear::<TrivialKernel>(&e2));
+        assert!(!e1.intersects_edge_non_collinear::<TrivialKernel>(&e2));
+        assert!(!e2.intersects_edge_non_collinear::<TrivialKernel>(&e1));
+        assert!(e1.intersects_edge_non_collinear::<TrivialKernel>(&e3));
+        assert!(e3.intersects_edge_non_collinear::<TrivialKernel>(&e1));
+        assert!(e2.intersects_edge_non_collinear::<TrivialKernel>(&e3));
+        assert!(e3.intersects_edge_non_collinear::<TrivialKernel>(&e2));
     }
     
     #[test]
     fn test_intersects_end_points() {
-        // Check for intersection of one endpoint touches another edge
+        // Check for intersection of one endpoint touching another edge
         let e1 = SimpleEdge::new(Point2::new(0.33f64, 0.33f64), Point2::new(1.0, 0.0));
         let e2 = SimpleEdge::new(Point2::new(0.33, -1.0), Point2::new(0.33, 1.0));
-        assert!(e1.intersects_edge_non_colinear::<FloatKernel>(&e2));
-        assert!(e2.intersects_edge_non_colinear::<FloatKernel>(&e1));
+        assert!(e1.intersects_edge_non_collinear::<FloatKernel>(&e2));
+        assert!(e2.intersects_edge_non_collinear::<FloatKernel>(&e1));
         let e3 = SimpleEdge::new(Point2::new(0.0, -1.0), Point2::new(2.0, 1.0));
-        assert!(e1.intersects_edge_non_colinear::<FloatKernel>(&e3));
-        assert!(e3.intersects_edge_non_colinear::<FloatKernel>(&e1));
+        assert!(e1.intersects_edge_non_collinear::<FloatKernel>(&e3));
+        assert!(e3.intersects_edge_non_collinear::<FloatKernel>(&e1));
         // Check for intersection if only end points overlap
         let e4 = SimpleEdge::new(Point2::new(0.33, 0.33), Point2::new(0.0, 2.0));
-        assert!(e1.intersects_edge_non_colinear::<FloatKernel>(&e4));
-        assert!(e4.intersects_edge_non_colinear::<FloatKernel>(&e1));
-        // // Check for intersection if edges are colinear
-        // let e5 = SimpleEdge::new(Point2::new(1.0, 0.0), Point2::new(3.0, 2.0));
-        // let e6 = SimpleEdge::new(Point2::new(-1., -2.), Point2::new(-2., -3.));
-        // assert!(e3.intersects_edge_non_colinear::<FloatKernel>(&e5));
-        // assert!(e5.intersects_edge_non_colinear::<FloatKernel>(&e3));
-        // // These edges are colinear but not intersecting
-        // assert!(!e3.intersects_edge_non_colinear::<FloatKernel>(&e6));
-        // assert!(!e6.intersects_edge_non_colinear::<FloatKernel>(&e3));
+        assert!(e1.intersects_edge_non_collinear::<FloatKernel>(&e4));
+        assert!(e4.intersects_edge_non_collinear::<FloatKernel>(&e1));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_collinear_fail() {
+        let e1 = SimpleEdge::new(Point2::new(1.0, 2.0), Point2::new(3.0, 3.0));
+        let e2 = SimpleEdge::new(Point2::new(-1.0, 1.0), Point2::new(-3.0, 0.0));
+        e1.intersects_edge_non_collinear::<FloatKernel>(&e2);
     }
 
     #[test]

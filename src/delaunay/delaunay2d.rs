@@ -328,12 +328,22 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         self.s.face(0)
     }
 
-    /// Returns if the triangulation is degenerate, that is, if
-    /// all vertices of the triangulation lie on one line.
-    /// A degenerate triangulation will not contain any edges and
-    /// only the infinite face.
+    /// Returns `true` if the triangulation is degenerate
+    /// 
+    /// A triangulation is degenerate if all vertices of the
+    /// triangulation lie on one line. A degenerate triangulation
+    /// will not contain any edges and only the infinite face.
     pub fn is_degenerate(&self) -> bool {
         self.all_points_on_line
+    }
+
+    /// Returns an edge between two vertices.
+    ///
+    /// If the edge does not exist, `None` is returned.
+    /// This operation runs in `O(n)` time, where `n` is
+    /// the degree of `from`.
+    pub fn get_edge_from_neighbors(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V>> {
+        self.s.get_edge_from_neighbors(from, to)
     }
 
     /// Locates the nearest neighbor for a given point.
@@ -642,8 +652,8 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
 
         let mut total_area = zero();
-        let mut ccw_edge = from_neighbors(&self.s, *nns.first().unwrap(),
-                                          *nns.last().unwrap()).unwrap();
+        let mut ccw_edge = self.s.get_edge_from_neighbors(*nns.first().unwrap(),
+                                                          *nns.last().unwrap()).unwrap();
         for (index, cur) in nns.iter().enumerate() {
             // Calculate area of voronois cells
             let cur_pos = (*self.s.vertex(*cur)).position();

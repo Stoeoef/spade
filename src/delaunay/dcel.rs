@@ -110,6 +110,16 @@ impl <V> DCEL<V> {
         self.vertices.len() - 1
     }
 
+    pub fn get_edge_from_neighbors(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V>> {
+        let vertex = self.vertex(from);
+        for edge in vertex.ccw_out_edges() {
+            if edge.to().fix() == to {
+                return Some(edge);
+            }
+        }
+        None
+    }
+
     pub fn connect_two_isolated_vertices(&mut self, v0: FixedVertexHandle, v1: FixedVertexHandle,
                                          face: FixedFaceHandle) -> FixedEdgeHandle {
         assert!(self.vertices[v0].out_edge.is_none(), "v0 is not isolated");
@@ -807,19 +817,6 @@ impl <'a, V> ::std::fmt::Debug for EdgeHandle<'a, V> where V: 'a {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "EdgeHandle - id: {:?} ({:?} -> {:?})", self.handle, self.from().fix(), self.to().fix())
     }
-}
-
-pub fn from_neighbors<'a, V> (
-    dcel: &'a DCEL<V>,
-    from: FixedVertexHandle,
-    to: FixedVertexHandle) -> Option<EdgeHandle<'a, V>> {
-    let vertex = dcel.vertex(from);
-    for edge in vertex.ccw_out_edges() {
-        if edge.to().fix() == to {
-            return Some(edge);
-        }
-    }
-    None
 }
 
 impl <'a, V> EdgeHandle<'a, V> where V: 'a {

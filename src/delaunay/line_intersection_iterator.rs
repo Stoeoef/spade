@@ -77,8 +77,8 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
 
     pub fn new_from_handles(delaunay: &'a T, from: FixedVertexHandle, to: FixedVertexHandle)
         -> LineIntersectionIterator<'a, T, V> {
-        let from = delaunay.vertex(from);
-        let to = delaunay.vertex(to);
+        let from = delaunay.s().vertex(from);
+        let to = delaunay.s().vertex(to);
         let line = SimpleEdge::new(from.position(), to.position());
         LineIntersectionIterator {
             cur_intersection: Some(Intersection::VertexIntersection(from)),
@@ -116,7 +116,7 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
             OutsideConvexHull(edge) => {
                 let edges = delaunay.get_convex_hull_edges_for_point(edge.fix(), &line.from);
                 Self::get_first_edge_from_edge_ring( 
-                    edges.iter().map(|e| delaunay.edge(*e)), 
+                    edges.iter().map(|e| delaunay.s().edge(*e)), 
                     line)
             },
             NoTriangulationPresent => {
@@ -134,7 +134,7 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
                                            edge.to().position());
 
             debug_assert!(cur_edge.side_query::<T::Kernel>(&line.from).is_on_left_side_or_on_line());
-            if line.intersects_edge_non_colinear::<T::Kernel>(&cur_edge) {
+            if line.intersects_edge_non_collinear::<T::Kernel>(&cur_edge) {
                 if line.side_query::<T::Kernel>(&cur_edge.from).is_on_line() {
                     return Some(VertexIntersection(edge.from()));
                 } else if line.side_query::<T::Kernel>(&cur_edge.to).is_on_line() {
@@ -163,9 +163,9 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
                     let o_next = cur_edge.o_next();
                     // Find out which edges of the left face intersect the line
                     let e_prev_inter = T::to_simple_edge(e_prev)
-                        .intersects_edge_non_colinear::<T::Kernel>(&self.line);
+                        .intersects_edge_non_collinear::<T::Kernel>(&self.line);
                     let o_next_inter = T::to_simple_edge(o_next)
-                        .intersects_edge_non_colinear::<T::Kernel>(&self.line);
+                        .intersects_edge_non_collinear::<T::Kernel>(&self.line);
                     match (e_prev_inter, o_next_inter) {
                         (true, false) => Some(EdgeIntersection(e_prev.sym())),
                         (false, true) => Some(EdgeIntersection(cur_edge.o_next().sym())),
@@ -289,7 +289,7 @@ mod test {
         let (delaunay, _, _, v2, v3) = create_test_triangulation();
         let from = Point2::new(-0.5, -0.5);
         let to = Point2::new(0.5, 0.5);
-        let edge = delaunay.get_edge_from_vertices(v3, v2).unwrap();
+        let edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
         check(&delaunay, from, to, vec![EdgeIntersection(edge)]);
     }
 
@@ -306,7 +306,7 @@ mod test {
         let (delaunay, v0, v1, v2, v3) = create_test_triangulation();
         let from = Point2::new(-2.0, -2.0);
         let to = Point2::new(2.0, 2.0);
-        let edge = delaunay.get_edge_from_vertices(v3, v2).unwrap();
+        let edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
         let first = VertexIntersection(delaunay.vertex(v0));
         let last = VertexIntersection(delaunay.vertex(v1));
         let edges: Vec<_> = LineIntersectionIterator::new(&delaunay, &from, &to).collect();
@@ -319,8 +319,8 @@ mod test {
         let v4 = delaunay.insert(Point2::new(1.0, 1.0));
         let from = Point2::new(-1.0, -1.0);
         let to = Point2::new(2.0, 2.0);
-        let intersection_edge = delaunay.get_edge_from_vertices(v3, v2).unwrap();
-        let overlap_edge = delaunay.get_edge_from_vertices(v4, v1).unwrap();
+        let intersection_edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
+        let overlap_edge = delaunay.get_edge_from_neighbors(v4, v1).unwrap();
         check(&delaunay, from, to, vec![
             EdgeIntersection(intersection_edge),
             VertexIntersection(delaunay.vertex(v4)),
@@ -332,13 +332,13 @@ mod test {
     fn test_out_of_hull_intersections() {
         let (ref d, v0, v1, v2, v3) = create_test_triangulation();
 
-        let edge20 = d.get_edge_from_vertices(v2, v0).unwrap();
+        let edge20 = d.get_edge_from_neighbors(v2, v0).unwrap();
         let edge20 = EdgeIntersection(edge20);
-        let edge30 = d.get_edge_from_vertices(v3, v0).unwrap();
+        let edge30 = d.get_edge_from_neighbors(v3, v0).unwrap();
         let edge30 = EdgeIntersection(edge30);
-        let edge12 = d.get_edge_from_vertices(v1, v2).unwrap();
+        let edge12 = d.get_edge_from_neighbors(v1, v2).unwrap();
         let edge12 = EdgeIntersection(edge12);
-        let edge32 = d.get_edge_from_vertices(v3, v2).unwrap();
+        let edge32 = d.get_edge_from_neighbors(v3, v2).unwrap();
         let o32 = EdgeOverlap(edge32);
         let edge32 = EdgeIntersection(edge32);
 
@@ -373,7 +373,7 @@ mod test {
     fn test_on_line_intersection() {
         let (d, _, v1, v2, v3) = create_test_triangulation();
 
-        let edge = d.get_edge_from_vertices(v2, v3).unwrap();
+        let edge = d.get_edge_from_neighbors(v2, v3).unwrap();
         let e32 = EdgeIntersection(edge.sym());
         let o23 = EdgeOverlap(edge);
         let o32 = EdgeOverlap(edge.sym());

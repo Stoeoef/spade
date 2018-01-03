@@ -9,7 +9,6 @@
 use delaunay_example::{ExampleTriangulation};
 use cdt_example::Cdt;
 use spade::{BoundingRect, HasPosition};
-use spade::delaunay::Subdivision;
 use spade::rtree::{RTree, RTreeNode};
 use cgmath::{EuclideanSpace, Point2, Point3, Vector2, Vector3, Array};
 use cgmath::conv::{array2, array3};
