@@ -28,7 +28,7 @@ use num::{FromPrimitive, ToPrimitive};
 /// Since each application has different needs, a `DelaunayKernel` will define how these geometric
 /// queries are calculated for a triangulation. It is recommended to use one of the predefined
 /// kernels that fits your needs.
-pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
+pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized + Clone {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
     ///
     /// pa, pb, pc have to be ordered clockwise, otherwise the result is inverted.
@@ -95,7 +95,8 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized {
 ///
 /// If your application runs into over / underflow issues, consider 
 /// using `AdaptiveIntKernel`.
-pub struct TrivialKernel { }
+#[derive(Clone)]
+pub enum TrivialKernel { }
 
 impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
 
@@ -105,7 +106,8 @@ impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
 /// yet they are prone to over- and underflow errors.
 /// This kernel will heap allocate more bits if an under- or overflow is encountered. Since
 /// most calculations do not trigger an overflow, this still yields reasonable performance.
-pub struct AdaptiveIntKernel { }
+#[derive(Clone)]
+pub enum AdaptiveIntKernel { }
 
 impl DelaunayKernel<i64> for AdaptiveIntKernel {
     fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
@@ -138,7 +140,8 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
 /// When used with `f32` coordinates, they will be casted into `f64` before the calculation
 /// starts. Thus, the performance is the same for both `f64` and `f32`. Only the space
 /// requirements for storing the coordinates differ.
-pub struct FloatKernel { }
+#[derive(Clone)]
+pub enum FloatKernel { }
 
 fn to_f64_arr<V, S>(v: &V) -> [f64; 2] 
     where V: TwoDimensional<Scalar=S>,
