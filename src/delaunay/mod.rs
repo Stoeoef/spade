@@ -12,6 +12,7 @@ mod dcel;
 mod delaunay2d;
 mod delaunay_locate;
 mod cdt;
+mod line_intersection_iterator;
 mod delaunay_basic;
 
 pub use self::delaunay_basic::{Subdivision, Locateable, NearestNeighbor};

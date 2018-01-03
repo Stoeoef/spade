@@ -805,7 +805,7 @@ impl <'a, V> PartialEq for EdgeHandle<'a, V> where V: 'a {
 
 impl <'a, V> ::std::fmt::Debug for EdgeHandle<'a, V> where V: 'a {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "EdgeHandle({:?})", self.handle)
+        write!(f, "EdgeHandle - id: {:?} ({:?} -> {:?})", self.handle, self.from().fix(), self.to().fix())
     }
 }
 

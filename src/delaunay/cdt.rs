@@ -1,6 +1,7 @@
 use delaunay::*;
 use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
 use self::dcel::*;
+use self::line_intersection_iterator::*;
 use traits::HasPosition2D;
 use std::marker::PhantomData;
 use point_traits::{PointN, TwoDimensional};
@@ -18,6 +19,7 @@ use primitives::SimpleEdge;
 /// constraints, thus, constraint edges are allowed to touch at
 /// their start or end point, but are not allowed to intersect at
 /// any interior point.
+#[derive(Clone)]
 pub struct ConstrainedDelaunayTriangulation<V, K>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
@@ -32,11 +34,14 @@ pub struct ConstrainedDelaunayTriangulation<V, K>
     __kernel: PhantomData<K>,
 }
 
-struct ConflictRegion {
-    left_hull: Vec<(FixedVertexHandle, FixedVertexHandle)>,
-    right_hull: Vec<(FixedVertexHandle, FixedVertexHandle)>,
-    conflicts: Vec<FixedEdgeHandle>,
-    constraint_end: FixedVertexHandle,
+#[derive(Debug)]
+enum ConflictRegion {
+    ExistingEdge(FixedEdgeHandle),
+    Region {
+        left_hull: Vec<FixedEdgeHandle>,
+        right_hull: Vec<FixedEdgeHandle>,
+        conflicts: Vec<FixedEdgeHandle>,
+    }
 }
 
 impl<V, K> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V, K>
@@ -116,8 +121,17 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
         handle
     }
 
+    /// Returns a handle to the infinite face.
+    pub fn infinite_face(&self) -> FaceHandle<V> {
+        self.s.face(0)
+    }
+    
     pub fn num_constraints(&self) -> usize {
         self.num_constraints
+    }
+
+    pub fn is_degenerate(&self) -> bool {
+        self.all_points_on_line
     }
 
     /// Returns `true` if a given edge is a constraint edge.
@@ -131,125 +145,25 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
             .map(|e| self.is_constraint_edge(e.fix()))
             .unwrap_or(false)
     }
+
+    pub fn can_add_constraint_edge(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
+        self.intersects_any(LineIntersectionIterator::new_from_handles(self, from, to))
+    }
+
+    pub fn intersects_constraint(&self, from: &V::Point, to: &V::Point) -> bool {
+        self.intersects_any(LineIntersectionIterator::new(self, from, to))
+    }
+
+    fn intersects_any(&self, mut iter: LineIntersectionIterator<Self, V>) -> bool {
+        iter.any(|e| {
+            if let Intersection::EdgeIntersection(edge) = e {
+                self.is_constraint_edge(edge.fix())
+            } else {
+                false
+            }
+        })
+    }
     
-    // fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
-    //     let pos = t.position();
-    //     let position_in_triangulation = if self.all_points_on_line {
-    //         PositionInTriangulation::NoTriangulationPresent
-    //     } else {
-    //         self.locate_with_hint_fixed(&pos, hint)
-    //     };
-    //     let insertion_result = match position_in_triangulation {
-    //         PositionInTriangulation::OutsideConvexHull(edge) => {
-    //             Result::Ok(self.insert_outside_convex_hull(edge, t))
-    //         }
-    //         PositionInTriangulation::InTriangle(face) => {
-    //             Result::Ok(self.insert_into_triangle(face, t))
-    //         }
-    //         PositionInTriangulation::OnEdge(edge) => {
-    //             // Check if the edge is a constraint edge and split the
-    //             // constraint if necessary
-    //             let is_constraint = self.is_constraint_edge(edge);
-    //             let (from, to);
-    //             {
-    //                 let edge = self.s.edge(edge);
-    //                 from = edge.from().fix();
-    //                 to = edge.to().fix();
-    //             }
-    //             let new_handle = self.insert_on_edge(edge, t);
-    //             self.constraints.resize(self.s.num_edges() * 2, false);
-    //             if is_constraint {
-    //                 let handles = {
-    //                     let e1 = self.get_edge_from_vertices(from, new_handle).unwrap();
-    //                     let e2 = self.get_edge_from_vertices(new_handle, to).unwrap();
-    //                     assert!(self.is_constraint_edge(e1.fix()) ^ self.is_constraint_edge(e2.fix()));
-    //                     [e1.fix(), e1.sym().fix(), e2.fix(), e2.sym().fix()]
-    //                 };
-    //                 for h in &handles {
-    //                     self.constraints[*h] = true;
-    //                 }
-    //                 self.num_constraints += 1;
-    //             }
-    //             Result::Ok(new_handle)
-    //         },
-    //         PositionInTriangulation::OnPoint(vertex) => {
-    //             self.s.update_vertex(vertex, t);
-    //             Result::Err(vertex)
-    //         }
-    //         PositionInTriangulation::NoTriangulationPresent => self.initial_insertion(t),
-    //     };
-    //     match insertion_result {
-    //         Result::Ok(new_handle) => new_handle,
-    //         Result::Err(update_handle) => update_handle,
-    //     }
-    // }
-
-    // fn initial_insertion(&mut self, t: V) -> Result<FixedVertexHandle, FixedVertexHandle> {
-    //     assert!(self.all_points_on_line);
-    //     // Inserts points if no points are present or if all points
-    //     // lie on the same line
-    //     let new_pos = t.position();
-    //     for vertex in self.s.fixed_vertices() {
-    //         let pos = (*self.s.vertex(vertex)).position();
-    //         if pos == new_pos {
-    //             self.s.update_vertex(vertex, t);
-    //             return Result::Err(vertex);
-    //         }
-    //     }
-
-    //     if self.s.num_vertices() <= 1 {
-    //         return Result::Ok(self.s.insert_vertex(t));
-    //     }
-
-    //     // Check if the new point is on the same line as all points in the
-    //     // triangulation
-    //     let from = (*self.s.vertex(0)).position();
-    //     let to = (*self.s.vertex(1)).position();
-    //     let edge = SimpleEdge::new(from.clone(), to.clone());
-    //     if K::side_query(&edge, &new_pos).is_on_line() {
-    //         return Result::Ok(self.s.insert_vertex(t));
-    //     }
-    //     // The point does not lie on the same line as all other points.
-    //     // Start creating a triangulation
-    //     let dir = to.sub(&from);
-    //     let mut vertices: Vec<_> = self.s.vertices()
-    //         .map(|v| (v.fix(), dir.dot(&(*v).position())))
-    //         .collect();
-    //     // Sort vertices according to their position on the line
-    //     vertices.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
-
-    //     // Create line
-    //     let is_ccw = K::is_ordered_ccw(&new_pos, &from, &to);
-    //     let mut last_edge = self.s.connect_two_isolated_vertices(vertices[0].0, vertices[1].0, 0);
-    //     let mut edges = vec![last_edge];
-    //     for v in vertices.iter().skip(2) {
-    //         let edge = self.s.connect_edge_to_isolated_vertex(last_edge, v.0);
-    //         edges.push(self.s.edge(edge).fix());
-    //         last_edge = edge;
-    //     }
-    //     if is_ccw {
-    //         edges.reverse();
-    //     }
-    //     let new_vertex = self.s.insert_vertex(t);
-    //     // Connect all points on the line to the new vertex
-    //     let mut last_edge = *edges.first().unwrap();
-    //     if !is_ccw {
-    //         last_edge = self.s.edge(last_edge).sym().fix();
-    //     }
-    //     last_edge = self.s.connect_edge_to_isolated_vertex(last_edge, new_vertex);
-    //     for e in edges {
-    //         let e = if !is_ccw {
-    //             self.s.edge(e).sym().fix()
-    //         } else {
-    //             e
-    //         };
-    //         last_edge = self.s.create_face(last_edge, e);
-    //         last_edge = self.s.edge(last_edge).sym().fix();
-    //     }
-    //     self.all_points_on_line = false;
-    //     Result::Ok(new_vertex)
-    // }
-
     /// Insert two points and creates a constraint between them.
     ///
     /// Returns `true` if the constraint has not yet existed.
@@ -275,184 +189,246 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
     ///
     /// # Panics
     /// Panics if the new constraint edge intersects an existing
-    /// constraint edge.
+    /// constraint edge. It will not panic if it _overlaps_ an existing constraint.
     pub fn add_constraint(&mut self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
         assert!(from != to, "Constraint begin must be different from constraint end.");
         // Find edges that cross the constrained edge
         let mut cur_from = from;
         let mut result = false;
-        loop {
-            let mut region = self.get_conflict_region(cur_from, to);
-            let cur_to = region.constraint_end;
-            if let Some((edge, sym)) = from_neighbors(&self.s, cur_from, cur_to)
-                .map(|e| (e.fix(), e.sym().fix()))
-            {
-                // The edge already exists - probably mark it as a constraint edge
-                assert_eq!(self.constraints[edge], self.constraints[sym]);
-                if !self.constraints[edge] {
-                    // The constraint edge does not already exists
-                    self.num_constraints += 1;
-                    self.constraints[edge] = true;
-                    self.constraints[sym] = true;
-                    result |= true;
-                }
-            } else {
-                self.resolve_conflict_region(&mut region);
-                result |= true;
-            }
-            if cur_to == to {
-                break;
-            }
-            cur_from = cur_to;
+        while let Some(region) = self.get_next_conflict_region(cur_from, to) {
+            cur_from = match &region {
+                &ConflictRegion::ExistingEdge(ref edge) => self.edge(*edge).to().fix(),
+                &ConflictRegion::Region { ref right_hull, .. } => 
+                    self.edge(*right_hull.last().unwrap()).to().fix(),
+            };
+            result |= self.resolve_conflict_region(region);
         }
         result
     }
 
-    fn resolve_conflict_region(&mut self, region: &mut ConflictRegion) {
-        let &mut ConflictRegion {
-            ref left_hull,
-            ref right_hull,
-            ref mut conflicts,
-            ..
-        } = region;
-        assert!(!conflicts.is_empty());
-        {
-            // Assert that no conflict edge is a constraint edge
-            assert!(conflicts.iter().all(|e| !self.constraints[*e]),
-                    "Constraint intersects another constraint edge");
-            // Remove edges from highest to lowest value to
-            // prevent any index change of a conflicting edge
-            conflicts.sort();
-            // Delete edges
-            for handle in conflicts.iter().rev().cloned() {
-                let dual = self.s.edge(handle).sym().fix();
-                self.s.remove_edge(handle, None);
-                if handle < dual {
-                    self.constraints.swap_remove(dual);
-                    self.constraints.swap_remove(handle);
+    pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
+        BasicDelaunaySubdivision::remove(self, vertex)
+    }
+
+    fn resolve_conflict_region(&mut self, region: ConflictRegion) -> bool {
+        match region {
+            ConflictRegion::ExistingEdge(edge) => {
+                let (edge, sym) = {
+                    let edge = self.edge(edge);
+                    (edge.fix(), edge.sym().fix())
+                };
+                if !self.is_constraint_edge(edge) {
+                    self.constraints[edge] = true;
+                    self.constraints[sym] = true;
+                    self.num_constraints += 1;
+                    true
                 } else {
-                    self.constraints.swap_remove(handle);
-                    self.constraints.swap_remove(dual);
+                    false
                 }
+            },
+            ConflictRegion::Region {
+                left_hull,
+                right_hull,
+                mut conflicts,
+            } => {
+                assert!(!left_hull.is_empty());
+                assert!(!right_hull.is_empty());
+                // Assert that no conflict edge is a constraint edge
+                assert!(conflicts.iter().all(|e| !self.constraints[*e]),
+                        "Constraint intersects another constraint edge");
+                // Remove edges from highest to lowest value to
+                // prevent any index change of a conflicting edge
+                conflicts.sort_unstable();
+                // Delete edges
+                let mut left_vertices = Vec::new();
+                for edge in &left_hull {
+                    let edge = self.edge(*edge);
+                    left_vertices.push((edge.from().fix(), edge.to().fix()));
+                }
+
+                let mut right_vertices = Vec::new();
+                for edge in &right_hull {
+                    let edge = self.edge(*edge);
+                    right_vertices.push((edge.from().fix(), edge.to().fix()));
+                }
+
+                // Remove conflict edges
+                for handle in conflicts.iter().rev().cloned() {
+                    let dual = self.s.edge(handle).sym().fix();
+                    self.s.remove_edge(handle, None);
+                    if handle < dual {
+                        self.constraints.swap_remove(dual);
+                        self.constraints.swap_remove(handle);
+                    } else {
+                        self.constraints.swap_remove(handle);
+                        self.constraints.swap_remove(dual);
+                    }
+                }
+                self.constraints.truncate(self.s.num_edges() * 2);
+
+                let prev_edge = right_vertices.last().unwrap();
+                let prev_edge = from_neighbors(&self.s, prev_edge.0, prev_edge.1).unwrap().fix();
+                let next_edge = right_vertices.first().unwrap();
+                let next_edge = from_neighbors(&self.s, next_edge.0, next_edge.1).unwrap().fix();
+
+                let constraint_edge = self.s.create_face(prev_edge, next_edge);
+
+                // Push constraint, both for constraint_edge and its dual
+                self.constraints.push(true);
+                self.constraints.push(true);
+
+                // Retriangulate the areas
+                let mut edges = Vec::new();
+                for &(v0, v1) in &right_vertices {
+                    let edge = from_neighbors(&self.s, v0, v1).unwrap().fix();
+                    edges.push(edge);
+                }
+                edges.push(constraint_edge);
+                self.fill_hole(edges);
+                let mut edges = Vec::new();
+                for &(v0, v1) in left_vertices.iter().rev() {
+                    let edge = from_neighbors(&self.s, v0, v1).unwrap().fix();
+                    edges.push(edge);
+                }
+                edges.push(self.edge(constraint_edge).sym().fix());
+                self.fill_hole(edges);
+                self.constraints.resize(self.s.num_edges() * 2, false);
+                self.num_constraints += 1;
+                true
             }
         }
-
-        self.constraints.truncate(self.s.num_edges() * 2);
-
-        let prev_edge = right_hull[right_hull.len() - 1];
-        let prev_edge = from_neighbors(&self.s, prev_edge.0, prev_edge.1).unwrap().fix();
-        let next_edge = right_hull[0];
-        let next_edge = from_neighbors(&self.s, next_edge.0, next_edge.1).unwrap().fix();
-
-        let constraint_edge = self.s.create_face(prev_edge, next_edge);
-        // Push constraint, both for constraint_edge and its dual
-        self.constraints.push(true);
-        self.constraints.push(true);
-
-        // Retriangulate the areas
-        let mut edges = Vec::new();
-        for &(v0, v1) in right_hull {
-            let edge = from_neighbors(&self.s, v0, v1).unwrap().fix();
-            edges.push(edge);
-        }
-        edges.push(constraint_edge);
-        self.fill_hole(edges);
-        let mut edges = Vec::new();
-        for &(v0, v1) in left_hull.iter().rev() {
-            let edge = from_neighbors(&self.s, v0, v1).unwrap().fix();
-            edges.push(edge);
-        }
-        edges.push(self.edge(constraint_edge).sym().fix());
-        self.fill_hole(edges);
-        self.constraints.resize(self.s.num_edges() * 2, false);
-        self.num_constraints += 1;
     }
-    
-    fn get_conflict_region(&self,
+
+    fn get_next_conflict_region(&self,
                          v0: FixedVertexHandle,
                          v1: FixedVertexHandle)
-                           -> ConflictRegion {
-        let mut new_conflicts = Vec::new();
+                           -> Option<ConflictRegion> {
+        use self::Intersection::*;
+        if v0 == v1 {
+            return None;
+        }
+        let mut line_iterator = LineIntersectionIterator::new_from_handles(self, v0, v1);
+
+        let v0 = self.vertex(v0);
+        let v1 = self.vertex(v1);
+
         let mut right_hull = Vec::new();
         let mut left_hull = Vec::new();
-        let mut constraint_end = v1;
-        let rotate_vertex = self.vertex(v0);
-        let target = self.vertex(v1).position();
-        let constraint_edge = SimpleEdge::new(rotate_vertex.position(), target.clone());
+        let mut intersecting_edges = Vec::new();
 
-        let mut start_edge = None;
-        for edge in rotate_vertex.ccw_out_edges() {
-            if edge.face().fix() == 0 {
-                // Make sure this edge is not part of the convex hull
-                continue;
-            }
-            let simple = Self::to_simple_edge(edge.o_next());
-            if simple.intersects_edge_non_colinear::<K>(&constraint_edge) {
-                // Check if the edge just touches the constraint edge
-                let from_query = constraint_edge.side_query::<K>(&simple.from);
-                if from_query.is_on_line() {
-                    return ConflictRegion {
-                        conflicts: Vec::new(),
-                        right_hull: Vec::new(),
-                        left_hull: Vec::new(),
-                        constraint_end: edge.to().fix(),
-                    };
-                }
-                let to_query = constraint_edge.side_query::<K>(&simple.to);
-                if to_query.is_on_line() {
-                    return ConflictRegion {
-                        conflicts: Vec::new(),
-                        right_hull: Vec::new(),
-                        left_hull: Vec::new(),
-                        constraint_end: edge.o_next().to().fix(),
-                    };
-                }
-                start_edge = Some(edge.o_next());
-                right_hull.push((v0, edge.to().fix()));
-                left_hull.push((edge.o_prev().from().fix(), v0));
-                break;
+        while let Some(intersection) = line_iterator.next() {
+            match intersection {
+                Intersection::EdgeIntersection(edge) => {
+                    let simple_edge = SimpleEdge::new(
+                        edge.from().position(),
+                        edge.to().position());
+                    assert!(simple_edge.side_query::<K>(&v1.position()).is_on_left_side());
+                    intersecting_edges.push(edge.fix());
+                },
+                Intersection::EdgeOverlap(edge) => {
+                    return Some(ConflictRegion::ExistingEdge(edge.fix()));
+                },
+                VertexIntersection(vertex) => {
+                    if vertex != v0 {
+                        break;
+                    }
+                },
             }
         }
-        let mut cur_edge = start_edge.expect("Could not find start edge. This is a bug.").sym();
-        loop {
-            new_conflicts.push(cur_edge.fix());
-            assert!(Self::to_simple_edge(cur_edge).side_query::<K>(&target).is_on_left_side());
-            let e_prev = cur_edge.o_prev();
-            let o_next = cur_edge.o_next();
-            if e_prev.from().fix() == v1 {
-                // We've reached the target point
-                right_hull.push((cur_edge.to().fix(), v1));
-                left_hull.push((v1, cur_edge.from().fix()));
-                break;
+
+        // Create left and right hull from intersection list
+        let first_edge = self.edge(intersecting_edges[0]).sym();
+        left_hull.push(first_edge.o_next().fix());
+        right_hull.push(first_edge.o_prev().fix());
+        let mut last_intersection = None;
+        for edge in &intersecting_edges {
+            let edge = self.edge(*edge);
+            if let Some(last_intersection) = last_intersection {
+                if edge.sym().o_prev() == last_intersection {
+                    left_hull.push(edge.sym().o_next().fix());
+                } else {
+                    right_hull.push(edge.sym().o_prev().fix());
+                }
             }
-            // One of the edges of the left face must intersect the constraint edge,
-            // find out which
-            let e_prev_inter = Self::to_simple_edge(e_prev)
-                .intersects_edge_non_colinear::<K>(&constraint_edge);
-            let o_next_inter = Self::to_simple_edge(o_next)
-                .intersects_edge_non_colinear::<K>(&constraint_edge);
-            if e_prev_inter && o_next_inter {
-                // Both edges intersect - this mean the intersection edge is cutting through
-                // the common point of o_next and e_prev.
-                // This splits the constraint into multiple parts
-                constraint_end = e_prev.from().fix();
-                break;
-            } else if e_prev_inter {
-                // o_prev is intersecting, add o_next to right hull
-                right_hull.push((cur_edge.to().fix(), e_prev.from().fix()));
-                cur_edge = e_prev.sym();
-            } else {
-                // o_next is intersecting, add o_prev to left hull
-                left_hull.push((cur_edge.o_prev().from().fix(), cur_edge.from().fix()));
-                cur_edge = cur_edge.o_next().sym();
-            }
+            last_intersection = Some(edge);
         }
-        ConflictRegion {
+        let last_edge = last_intersection.unwrap();
+        left_hull.push(last_edge.o_prev().fix());
+        right_hull.push(last_edge.o_next().fix());
+
+        // right_hull.push((v0.fix(), start_edge.to().fix()));
+        // left_hull.push((start_edge.from().fix(), v0.fix()))
+            ;
+
+        // let mut cur_edge = start_edge;
+        // loop {
+        //     new_conflicts.push(cur_edge.fix());
+        //     assert!(Self::to_simple_edge(cur_edge).side_query::<K>(&to).is_on_left_side());
+        //     let e_prev = cur_edge.o_prev();
+        //     let o_next = cur_edge.o_next();
+        //     if e_prev.from() == v1 {
+        //         // We've reached the target point
+        //         right_hull.push((cur_edge.to().fix(), v1.fix()));
+        //         left_hull.push((v1.fix(), cur_edge.from().fix()));
+        //         break;
+        //     }
+        //     // One of the edges of the left face must intersect the constraint edge,
+        //     // find out which
+        //     let e_prev_inter = Self::to_simple_edge(e_prev)
+        //         .intersects_edge_non_colinear::<K>(&constraint_edge);
+        //     let o_next_inter = Self::to_simple_edge(o_next)
+        //         .intersects_edge_non_colinear::<K>(&constraint_edge);
+        //     if e_prev_inter && o_next_inter {
+        //         // Both edges intersect - this mean the intersection edge is cutting through
+        //         // the common point of o_next and e_prev.
+        //         // This splits the constraint into multiple parts
+        //         constraint_end = e_prev.from().fix();
+        //         break;
+        //     } else if e_prev_inter {
+        //         // o_prev is intersecting, add o_next to right hull
+        //         right_hull.push((cur_edge.to().fix(), e_prev.from().fix()));
+        //         cur_edge = e_prev.sym();
+        //     } else {
+        //         // o_next is intersecting, add o_prev to left hull
+        //         assert!(o_next_inter);
+        //         left_hull.push((cur_edge.o_prev().from().fix(), cur_edge.from().fix()));
+        //         cur_edge = cur_edge.o_next().sym();
+        //     }
+        // }
+        // ConflictRegion {
+        //     left_hull: left_hull,
+        //     right_hull: right_hull,
+        //     conflicts: new_conflicts,
+        //     constraint_end: constraint_end,
+        // }
+        Some(ConflictRegion::Region {
             left_hull: left_hull,
             right_hull: right_hull,
-            conflicts: new_conflicts,
-            constraint_end: constraint_end,
+            conflicts: intersecting_edges,
+        })
+    }
+
+    #[cfg(test)]
+    fn sanity_check(&self) {
+        for face in self.triangles() {
+            let triangle = face.as_triangle();
+            assert!(K::is_ordered_ccw(
+                &(*triangle[0]).position(),
+                &(*triangle[1]).position(),
+                &(*triangle[2]).position()));
         }
+        if self.is_degenerate() {
+            assert_eq!(self.num_triangles(), 0);
+            assert_eq!(self.num_edges(), 0);
+        } else {
+            for vertex in self.vertices() {
+                assert!(vertex.out_edge().is_some());
+            }
+        }
+        for edge in self.edges() {
+            assert!(edge.face() != edge.sym().face());
+        }
+        self.s.sanity_check();
     }
 
     #[cfg(test)]
@@ -465,6 +441,7 @@ impl<V, K> ConstrainedDelaunayTriangulation<V, K>
                 assert!(self.is_constraint_edge(edge.sym().fix()));
             }
         }
+        self.sanity_check();
     }
 }
 
@@ -474,11 +451,85 @@ mod test {
     use super::ConstrainedDelaunayTriangulation;
     use super::{DelaunayTriangulation, DelaunayWalkLocate};
     use traits::HasPosition;
+    use super::Subdivision;
     use kernels::FloatKernel;
     use cgmath::Point2;
 
     type CDT = ConstrainedDelaunayTriangulation<Point2<f64>, FloatKernel>;
     type Delaunay = DelaunayTriangulation<Point2<f64>, FloatKernel, DelaunayWalkLocate>;
+
+
+    #[test]
+    fn test_add_single_simple_constraint() {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0));
+        let v1 = cdt.insert(Point2::new(2.0, 2.0));
+        let v2 = cdt.insert(Point2::new(1.0, 0.5));
+        let v3 = cdt.insert(Point2::new(0.5, 1.0));
+        assert!(cdt.get_edge_from_vertices(v0, v1).is_none());
+        assert!(cdt.get_edge_from_vertices(v2, v3).is_some());
+
+        assert!(cdt.add_constraint(v1, v0));
+        assert!(!cdt.add_constraint(v0, v1));
+        let edge = cdt.get_edge_from_vertices(v0, v1).expect("Expected constraint edge").fix();
+        assert!(cdt.get_edge_from_vertices(v2, v3).is_none());
+        assert!(cdt.is_constraint_edge(edge));
+        cdt.cdt_sanity_check();
+    }
+
+    #[test]
+    fn test_existing_edge_constraint() {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0));
+        let v1 = cdt.insert(Point2::new(2.0, 2.0));
+        let v2 = cdt.insert(Point2::new(1.0, 0.0));
+        assert!(cdt.add_constraint(v0, v1));
+        assert!(cdt.add_constraint(v0, v2));
+        assert!(cdt.add_constraint(v1, v2));
+        for edge in cdt.edges() {
+            assert!(cdt.is_constraint_edge(edge.fix()));
+        }
+        assert!(!cdt.add_constraint(v1, v0));
+        assert!(!cdt.add_constraint(v1, v2));
+        assert_eq!(cdt.num_constraints, 3);
+    }
+
+    #[test]
+    fn test_mid_overlapping_constraint() {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.5));
+        let v1 = cdt.insert(Point2::new(2.0, 0.5));
+        let v2 = cdt.insert(Point2::new(3.0, 0.5));
+        let v3 = cdt.insert(Point2::new(5.0, 0.5));
+        cdt.insert(Point2::new(1.0, 1.0));
+        cdt.insert(Point2::new(1.0, 0.0));
+        cdt.insert(Point2::new(3.0, 1.0));
+        cdt.insert(Point2::new(3.0, 0.0));
+        assert!(cdt.get_edge_from_vertices(v1, v2).is_some());
+        let mut copy = cdt.clone();
+        assert!(cdt.add_constraint(v0, v3));
+        assert_eq!(cdt.num_constraints(), 3);
+        copy.add_constraint(v2, v3);
+        assert_eq!(copy.num_constraints(), 1);
+        copy.add_constraint(v0, v3);
+        assert_eq!(copy.num_constraints(), 3);
+    }
+
+    #[test]
+    fn test_add_single_complex_constraint() {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0));
+        cdt.insert(Point2::new(1.0, 0.0));
+        cdt.insert(Point2::new(0.0, 1.0));
+        cdt.insert(Point2::new(2.0, 1.0));
+        // cdt.insert(Point2::new(1.0, 2.0));
+        let v1 = cdt.insert(Point2::new(2.0, 2.0));
+        assert!(cdt.get_edge_from_vertices(v0, v1).is_none());
+        cdt.add_constraint(v0, v1);
+        let edge = cdt.get_edge_from_vertices(v0, v1).expect("Expected constraint edge").fix();
+        assert!(cdt.is_constraint_edge(edge));
+        
+    }
 
     #[test]
     fn test_add_single_constraint() {
@@ -539,7 +590,7 @@ mod test {
         };
         let delaunay_points =
             random_points_in_range::<f64>(RANGE * 0.9, 80, seed);
-        // Use a delaunay triangulation to "generate" non overlapping constraint edges
+        // Use a delaunay triangulation to "generate" non intersecting constraint edges
         let mut d = Delaunay::new();
         for p in delaunay_points {
             d.insert(p);
@@ -555,8 +606,7 @@ mod test {
                 used_vertices.insert(to.fix());
                 let h0 = cdt.insert(v.position());
                 let h1 = cdt.insert(to.position());
-                let did_insert = cdt.add_constraint(h0, h1);
-                if did_insert {
+                if cdt.add_constraint(h0, h1) {
                     inserted_constraints.push((h0, h1));
                 }
                 assert_eq!(cdt.num_constraints(), inserted_constraints.len());
@@ -577,7 +627,7 @@ mod test {
         cdt.insert(Point2::new(0.0, 1.0));
         let v0 = cdt.insert(Point2::new(0.0, 0.5));
         let v_last = cdt.insert(Point2::new(1.0, 0.5));
-        assert!(cdt.add_constraint(v0, v_last));
+        cdt.add_constraint(v0, v_last);
         assert_eq!(cdt.num_constraints(), 1);
         // These points split an existing constraint
         let v1 = cdt.insert(Point2::new(0.25, 0.5));
@@ -602,5 +652,29 @@ mod test {
         assert!(cdt.exists_constraint(v0, v1));
         assert!(cdt.exists_constraint(v1, v2));
         cdt.cdt_sanity_check();
+    }
+
+    fn test_cdt() -> CDT {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(1.0, 0.0));
+        let v1 = cdt.insert(Point2::new(0.0, 1.0));
+        cdt.insert(Point2::new(0.0, 0.0));
+        cdt.insert(Point2::new(1.0, 1.0));
+        cdt.add_constraint(v0, v1);
+        cdt
+    }
+
+    #[test]
+    fn test_check_intersects_constraint_edge() {
+        let cdt = test_cdt();
+        let from = Point2::new(0.2, 0.2);
+        let to = Point2::new(0.6, 0.7);
+        assert!(cdt.intersects_constraint(&from, &to));
+        assert!(cdt.intersects_constraint(&to, &from));
+        let to = Point2::new(-0.5, 0.2);
+        assert!(!cdt.intersects_constraint(&from, &to));
+        let from = Point2::new(0.5, 0.5);
+        assert!(cdt.intersects_constraint(&from, &to));
+        assert!(cdt.intersects_constraint(&to, &from));
     }
 }

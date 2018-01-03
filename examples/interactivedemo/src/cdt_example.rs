@@ -21,7 +21,7 @@ pub fn run() {
 
     let display = ::glium::glutin::WindowBuilder::new()
         .with_dimensions(800, 800)
-        .with_title("Delaunay Demo".to_string())
+        .with_title("CDT Demo".to_string())
         .build_glium()
         .unwrap();
 
