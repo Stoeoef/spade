@@ -40,7 +40,8 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
     OnPoint(V),
     /// The point lies on an edge.
     OnEdge(E),
-    /// There is no valid triangulation yet, thus, all points inserted so far lie on a line.
+    /// There is no valid triangulation yet, thus, less than two points where 
+    /// inserted.
     NoTriangulationPresent,
 }
 
@@ -449,7 +450,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     #[cfg(test)]
-    fn sanity_check(&self) {
+    pub fn sanity_check(&self) {
         self.s.sanity_check();
         for face in self.triangles() {
             let triangle = face.as_triangle();

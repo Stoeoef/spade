@@ -114,13 +114,38 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
                 }
             }
             OutsideConvexHull(edge) => {
-                let edges = delaunay.get_convex_hull_edges_for_point(edge.fix(), &line.from);
-                Self::get_first_edge_from_edge_ring( 
-                    edges.iter().map(|e| delaunay.s().edge(*e)), 
-                    line)
+                let query = T::to_simple_edge(edge).side_query::<T::Kernel>(&line.from);
+                if query.is_on_line() {
+                    let dist_to = edge.to().position().sub(&line.from).length2();
+                    let dist_from = edge.from().position().sub(&line.from).length2();
+                    let vertex = if dist_to < dist_from {
+                        edge.to()
+                    } else {
+                        edge.from()
+                    };
+                    Some(Intersection::VertexIntersection(vertex))
+                } else {
+                    let edges = delaunay.get_convex_hull_edges_for_point(edge.fix(), &line.from);
+                    Self::get_first_edge_from_edge_ring( 
+                        edges.iter().map(|e| delaunay.s().edge(*e)), 
+                        line)
+                }
             },
             NoTriangulationPresent => {
-                panic!("Line intersection iterator does not work for degenerate triangulations");
+                if delaunay.s().num_vertices() == 0 {
+                    None
+                } else {
+                    let vertex = delaunay.s().vertices().next().unwrap();
+                    if line.side_query::<T::Kernel>(&vertex.position()).is_on_line() {
+                        if line.is_projection_on_edge(&vertex.position()) {
+                            Some(Intersection::VertexIntersection(vertex))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
             }
         }
     }
@@ -396,5 +421,46 @@ mod test {
         check(&d, from, to, vec![o32, v2]);
         let from = Point2::new(-30.0, 30.0);
         check(&d, from, to, vec![v3, o32, v2]);
+    }
+
+    #[test]
+    fn test_degenerate_iteration() {
+        let mut t = Triangulation::new();
+        let v0 = t.insert(Point2::new(0.0, 0.0));
+
+        let from = Point2::new(-1.0, -1.0);
+        let to = Point2::new(-0.5, -0.5);
+        check(&t, from, to, vec![]);
+
+        let to = Point2::new(1.0, 1.0);
+        check(&t, from, to, vec![VertexIntersection(t.vertex(v0))]);
+
+        let v2 = t.insert(Point2::new(2.0, 2.0));
+        let v1 = t.insert(Point2::new(1.0, 1.0));
+        assert!(t.is_degenerate());
+        let to = Point2::new(3.0, 3.0);
+
+        let e01 = t.get_edge_from_neighbors(v0, v1).unwrap();
+        let e12 = t.get_edge_from_neighbors(v1, v2).unwrap();
+
+        let o01 = EdgeOverlap(e01);
+        let o12 = EdgeOverlap(e12);
+
+        let v0 = VertexIntersection(t.vertex(v0));
+        let v1 = VertexIntersection(t.vertex(v1));
+        let v2 = VertexIntersection(t.vertex(v2));
+        
+        check(&t, from, to, vec![v0, o01, v1, o12, v2]);
+        let from = Point2::new(1.0, 0.0);
+        let to = Point2::new(0.0, 1.0);
+        check(&t, from, to, vec![EdgeIntersection(e01)]);
+
+        let from = Point2::new(0.0, 2.0);
+        let to = Point2::new(2.0, 0.0);
+        check(&t, from, to, vec!(v1));
+
+        let from = Point2::new(1.0, 1.0);
+        let to = Point2::new(1.5, 1.5);
+        check(&t, from, to, vec![v1, EdgeOverlap(e12)])
     }
 }

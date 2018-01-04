@@ -276,9 +276,9 @@ impl <V> DCEL<V> {
 
         if !is_isolated {
             self.edges[edge.next].prev = new_edge_index;
-            self.edges[edge.twin].prev = new_twin_index;
+            self.edges[twin.prev].next = new_twin_index;
         }
-        self.edges[twin.prev].next = new_twin_index;
+        self.edges[edge.twin].prev = new_twin_index;
         self.edges[edge_handle].next = new_edge_index;
 
 
@@ -485,7 +485,8 @@ impl <V> DCEL<V> {
                 assert_eq!(self.edges[out_edge].origin, index);
             }
         }
-        for edge in self.edges() {
+        for handle in 0 .. self.num_edges() {
+            let edge = self.edge(handle);
             assert_eq!(edge, edge.o_next().o_prev());
             assert_eq!(edge, edge.o_prev().o_next());
             assert_eq!(edge, edge.sym().sym());
@@ -1087,6 +1088,7 @@ mod test {
         let edge = dcel.connect_two_isolated_vertices(v0, v1, 0);
         let split_vertex = dcel.insert_vertex(());
         dcel.split_edge(edge, split_vertex);
+        dcel.print();
         dcel.sanity_check();
     }
 

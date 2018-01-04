@@ -919,7 +919,7 @@ pub enum RTreeNode<T>
 /// rtree.insert(Point2::new(1.0, 1.0f32));
 ///
 /// if rtree.lookup(&Point2::new(0.5, 0.5)).is_some() {
-///   println!("We'fe found a point at [0.5, 0.5]/");
+///   println!("Found point at [0.5, 0.5]/");
 /// }
 /// 
 /// let nearest = rtree.nearest_neighbor(&Point2::new(1.5, 1.5)).unwrap();

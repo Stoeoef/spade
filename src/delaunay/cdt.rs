@@ -810,4 +810,21 @@ mod test {
         assert!(cdt.intersects_constraint(&from, &to));
         assert!(cdt.intersects_constraint(&to, &from));
     }
+
+    #[test]
+    fn test_add_constraint_degenerate() {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0));
+        let v1 = cdt.insert(Point2::new(0.0, 1.0));
+        assert!(cdt.add_constraint(v0, v1));
+        assert!(!cdt.add_constraint(v1, v0));
+        assert_eq!(cdt.num_constraints(), 1);
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0));
+        let v1 = cdt.insert(Point2::new(0.0, 2.0));
+        cdt.insert(Point2::new(0.0, 1.0));
+        assert!(cdt.add_constraint(v0, v1));
+        assert_eq!(cdt.num_constraints(), 2);
+        
+    }
 }
