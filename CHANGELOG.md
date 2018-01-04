@@ -3,6 +3,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
+## [1.3.0] - 2018-01-05
+### Depcrecated
+ - `spade::delaunay::DelaunayTriangulation::lookup` is deprecated, use `locate_vertex` instead
+ - `spade::delaunay::DelaunayTriangulation::lookup_and_remove` is deprecated, use `locate_and_remove` instead
+### Changed
+ - Bumped compatible `cgmath` and `nalgebra` versions.
+ - Spade's various kernels are not instantiable anymore and implement `Clone`.
+### Added
+ - Spade now implements constrained delaunay triangulations!
+ - `locate` and `nearest_neighbor` now also work with degenerate triangulations
+ - Added constrained triangulation example
+ - Added bulk loading for RTrees
+ - `DelaunayTriangulation` now implements `Clone`
+ - New method for triangulations: `get_edge_for_vertices` to get an existing edge from its two adjacent points.
+  
+### Bugfixes
+ - Fixed `SimpleCircle` distance calculation for more than 2 dimensions.
+ 
 
 ## [1.2.0] - 2017-05-13
 ### Changed
@@ -113,6 +131,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.3.]: https://github.com/Stoeoef/spade/compare/v1.2.0...HEAD
 
 [1.2.0]: https://github.com/Stoeoef/spade/compare/v1.1.0...v1.2.0
 
