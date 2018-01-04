@@ -350,9 +350,9 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     ///
     /// Returns `None` if this triangulation is degenerate.
     pub fn nearest_neighbor(&self, point: &V::Point) -> Option<VertexHandle<V>> {
-        if self.all_points_on_line {
+        if self.num_vertices() == 0 {
             return None;
-        } 
+        }
         let start = self.get_default_hint(point);
         let mut cur = self.vertex(start);
         let mut min_dist = cur.position().distance2(point);
@@ -460,14 +460,17 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         }
         if self.is_degenerate() {
             assert_eq!(self.num_triangles(), 0);
-            assert_eq!(self.num_edges(), 0);
+            assert_eq!(self.num_edges() as i32, 0.max(self.num_vertices() as i32 - 1));
+            for edge in self.edges() {
+                assert_eq!(edge.face(), self.infinite_face());
+            }
         } else {
             for vertex in self.vertices() {
                 assert!(vertex.out_edge().is_some());
             }
-        }
-        for edge in self.edges() {
-            assert!(edge.face() != edge.sym().face());
+            for edge in self.edges() {
+                assert_ne!(edge.face(), edge.sym().face());
+            }
         }
     }
 }
@@ -1134,36 +1137,39 @@ mod test {
     use traits::{HasPosition, SpatialObject};
 
     #[test]
-    fn test_inserting_one_point() {
+    fn test_insert_one_point() {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         assert_eq!(d.num_vertices(), 0);
         d.insert(Point2::new(0f64, 0f64));
         assert_eq!(d.num_vertices(), 1);
+        assert!(d.is_degenerate());
         d.sanity_check();
     }
 
     #[test]
-    fn test_inserting_three_points() {
+    fn test_insert_three_points() {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         d.insert(Point2::new(0f64, 0f64));
         d.insert(Point2::new(1f64, 0f64));
         d.insert(Point2::new(0f64, 1f64));
+        assert!(!d.is_degenerate());
         assert_eq!(d.num_vertices(), 3);
         d.sanity_check();
     }
 
     #[test]
-    fn test_inserting_three_points_cw() {
+    fn test_insert_three_points_cw() {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         d.insert(Point2::new(0f64, 0f64));
         d.insert(Point2::new(0f64, 1f64));
         d.insert(Point2::new(1f64, 0f64));
+        assert!(!d.is_degenerate());
         assert_eq!(d.num_vertices(), 3);
         d.sanity_check();
     }
 
     #[test]
-    fn test_inserting_four_points() {
+    fn test_insert_four_points() {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         d.insert(Point2::new(0f64, 0f64));
         d.insert(Point2::new(1f64, 0f64));
@@ -1242,7 +1248,6 @@ mod test {
         d.sanity_check();
     }
 
-
     #[test]
     fn test_insert_same_point_small() {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
@@ -1315,7 +1320,6 @@ mod test {
 
     #[test]
     fn test_insert_points_on_line_2() {
-        use super::PositionInTriangulation;
         // This test inserts the line first
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
 
@@ -1323,8 +1327,7 @@ mod test {
             d.insert(Point2::new(i as f64, 0.));
         }
         
-        assert_eq!(d.locate(&Point2::new(10., 12.)),
-                   PositionInTriangulation::NoTriangulationPresent);
+        assert!(d.is_degenerate());
 
         for i in -10 .. 10 {
             d.insert(Point2::new(i as f64, 0.5 * (i as f64)));
@@ -1348,35 +1351,62 @@ mod test {
     }
 
     #[test]
-    fn crash_test1() {
-        let points = [Point2::new(-0.47000003, -0.5525),
-                      Point2::new(-0.45499998, -0.055000007),
-                      Point2::new(0.049999952, -0.52),
-                      Point2::new(-0.10310739, -0.37901995),
-                      Point2::new(-0.29053342, -0.20643954),
-                      Point2::new(-0.19144729, -0.42079023)];
-        let mut d = FloatDelaunayTriangulation::with_tree_locate();
-        for point in points.iter().cloned() {
-            d.insert(point);
-        }
-        d.sanity_check();
+    fn test_create_edges_for_degenerate_triangulation() {
+        let mut delaunay = FloatDelaunayTriangulation::with_walk_locate();
+        delaunay.insert(Point2::new(0.0, 1.0));
+        assert_eq!(delaunay.num_edges(), 0);
+        let v0 = delaunay.insert(Point2::new(3.0, 0.0));
+        assert_eq!(delaunay.num_edges(), 1);
+        delaunay.sanity_check();
+        delaunay.insert(Point2::new(-3.0, 2.0));
+        delaunay.sanity_check();
+        assert_eq!(delaunay.num_edges(), 2);
+        delaunay.insert(Point2::new(9.0, -2.0));
+        delaunay.sanity_check();
+        assert_eq!(delaunay.num_edges(), 3);
+        delaunay.insert(Point2::new(6.0, -1.0));
+        assert_eq!(delaunay.insert(Point2::new(3.0, 0.0)), v0);
+        assert_eq!(delaunay.num_edges(), 4);
+        assert_eq!(delaunay.num_vertices(), 5);
+        assert!(delaunay.is_degenerate());
+        delaunay.sanity_check();
     }
 
     #[test]
-    fn crash_test2() {
-        let points = [
-            Point2 { x: 536f64, y: -1024f64 }, 
-            Point2 { x: 248.00000000000003, y: -1072f64 }, 
-            Point2 { x: 464f64, y: -1036f64 }, 
-            Point2 { x: 616f64, y: -1004f64 }
-        ];
-        let mut d = FloatDelaunayTriangulation::with_tree_locate();
-        for point in points.iter() {
-            d.insert(*point);
-        }
-        d.sanity_check();
+    fn test_locate_for_degenerate_triangulation() {
+        use super::PositionInTriangulation::*;
+        let mut delaunay = FloatDelaunayTriangulation::with_walk_locate();
+        let v0 = delaunay.insert(Point2::new(0.0, 1.0));
+        let v1 = delaunay.insert(Point2::new(1.0, 0.0));
+        delaunay.insert(Point2::new(2.0, -1.0));
+        delaunay.insert(Point2::new(-1.0, 2.0));
+        assert!(delaunay.is_degenerate());
+        let v0 = delaunay.vertex(v0);
+        let v1 = delaunay.vertex(v1);
+        assert_eq!(delaunay.locate(&Point2::new(0.0, 1.0)), OnPoint(v0));
+        assert_eq!(delaunay.locate(&Point2::new(1.0, 0.0)), OnPoint(v1));
+        let edge = delaunay.get_edge_from_neighbors(v0.fix(), v1.fix()).unwrap();
+        let locate = delaunay.locate(&Point2::new(0.5, 0.5));
+        assert!(locate == OnEdge(edge) || locate == OnEdge(edge.sym()));
+        let locate = delaunay.locate(&Point2::new(1.0, 1.0));
+        assert!(locate == OutsideConvexHull(edge) || 
+                locate == OutsideConvexHull(edge.sym()));
+        delaunay.sanity_check();
     }
 
+    #[test]
+    fn test_locate_for_simple_degenerate_triangulation() {
+        use super::PositionInTriangulation::*;
+        let mut d = FloatDelaunayTriangulation::with_tree_locate();
+        d.insert(Point2::new(0f64, 0f64));
+        d.insert(Point2::new(0f64, 1f64));
+        assert_eq!(d.num_edges(), 1);
+        let edge = d.edges().next().unwrap();
+        let located = d.locate(&Point2::new(1.0, 0.0));
+        assert!(located == OutsideConvexHull(edge) ||
+                located == OutsideConvexHull(edge.sym()));
+        d.sanity_check();
+    }
 
     struct PointWithHeight {
         point: Point2<f64>,
@@ -1582,10 +1612,10 @@ mod test {
         assert_eq!(d.num_triangles(), 4);
         assert!(d.lookup_and_remove(&Point2::new(1., 0.)).is_some());
         d.sanity_check();
-        assert_eq!(d.num_faces(), 1);
         assert!(d.is_degenerate());
         while d.num_vertices() != 0 {
             d.remove(0);
+            d.sanity_check();
         }
         assert!(d.is_degenerate());
         d.sanity_check();
@@ -1593,6 +1623,44 @@ mod test {
         d.insert(Point2::new(0.2, 0.5));
         d.insert(Point2::new(1.5, 0.0));
         d.sanity_check();
+    }
+
+    #[test]
+    fn test_remove_when_degenerate() {
+        let mut d = FloatDelaunayTriangulation::with_tree_locate();
+        d.insert(Point2::new(0.0, 0.0));
+        let v1 = d.insert(Point2::new(1.0, 1.0));
+        d.insert(Point2::new(2.0, 2.0));
+        assert!(d.is_degenerate());
+        assert_eq!(d.remove(v1), Point2::new(1.0, 1.0));
+        d.sanity_check();
+        let v0 = d.locate_vertex(&Point2::new(0.0, 0.0)).unwrap().fix();
+        let v2 = d.locate_vertex(&Point2::new(2.0, 2.0)).unwrap().fix();
+        assert!(d.get_edge_from_neighbors(v0, v2).is_some());
+        assert_eq!(d.num_edges(), 1);
+        assert_eq!(d.num_vertices(), 2);
+    }
+
+
+    #[test]
+    fn test_nearest_neighbor_degenerate() {
+        let mut d = FloatDelaunayTriangulation::with_walk_locate();
+        assert!(d.nearest_neighbor(&Point2::new(3.0, 4.0)).is_none());
+        let v0 = d.insert(Point2::new(0.0, 0.0));
+        assert!(d.nearest_neighbor(&Point2::new(3.0, 4.0)).is_some());
+        d.insert(Point2::new(0.0, 1.0));
+        d.insert(Point2::new(0.0, 2.0));
+        let v3 = d.insert(Point2::new(0.0, 3.0));
+        let v4 = d.insert(Point2::new(0.0, 4.0));
+
+        assert!(d.is_degenerate());
+
+        let v0 = d.vertex(v0);
+        let v3 = d.vertex(v3);
+        let v4 = d.vertex(v4);
+        assert_eq!(d.nearest_neighbor(&Point2::new(7.0, 3.2)), Some(v3));
+        assert_eq!(d.nearest_neighbor(&Point2::new(4.0, 40.0)), Some(v4));
+        assert_eq!(d.nearest_neighbor(&Point2::new(-4.0, -20.0)), Some(v0));
     }
 
     #[test]

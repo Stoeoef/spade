@@ -122,6 +122,7 @@ impl <V> DCEL<V> {
 
     pub fn connect_two_isolated_vertices(&mut self, v0: FixedVertexHandle, v1: FixedVertexHandle,
                                          face: FixedFaceHandle) -> FixedEdgeHandle {
+
         assert!(self.vertices[v0].out_edge.is_none(), "v0 is not isolated");
         assert!(self.vertices[v1].out_edge.is_none(), "v1 is not isolated");
         assert!(self.faces[face].adjacent_edge.is_none(), "face must not contain any adjacent edges");
@@ -185,15 +186,6 @@ impl <V> DCEL<V> {
         edge_index
     }
 
-    pub fn clear_edges_and_faces(&mut self) {
-        self.edges.clear();
-        self.faces.clear();
-        self.faces.push(FaceEntry { adjacent_edge: None });
-        for vertex in &mut self.vertices {
-            vertex.out_edge = None;
-        }
-    }
-
     pub fn remove_vertex(&mut self, vertex_handle: FixedVertexHandle,
                          remaining_face: Option<FixedFaceHandle>) -> VertexRemovalResult<V> {
         while let Some(out_edge) = self.vertices[vertex_handle].out_edge {
@@ -218,8 +210,8 @@ impl <V> DCEL<V> {
         }
     }
 
-    fn connect_edge_to_edge(&mut self, prev_edge_handle: FixedEdgeHandle,
-                            next_edge_handle: FixedEdgeHandle) -> FixedEdgeHandle {
+    pub fn connect_edge_to_edge(&mut self, prev_edge_handle: FixedEdgeHandle,
+                                next_edge_handle: FixedEdgeHandle) -> FixedEdgeHandle {
         let edge_index = self.edges.len();
         let twin_index = edge_index + 1;
         let next_edge = self.edges[next_edge_handle];
@@ -257,10 +249,17 @@ impl <V> DCEL<V> {
         let edge = self.edges[edge_handle];
         let twin = self.edges[edge.twin];
         
+        let is_isolated = edge.next == edge.twin;
         let new_edge_index = self.edges.len();
         let new_twin_index = new_edge_index + 1;
+        let (new_edge_next, new_twin_prev) = if is_isolated {
+            (new_twin_index, new_edge_index)
+        } else {
+            (edge.next, twin.prev)
+        };
+            
         let new_edge = HalfEdgeEntry {
-            next: edge.next,
+            next: new_edge_next,
             prev: edge_handle,
             twin: new_twin_index,
             origin: split_vertex,
@@ -269,17 +268,19 @@ impl <V> DCEL<V> {
 
         let new_twin = HalfEdgeEntry {
             next: edge.twin,
-            prev: twin.prev,
+            prev: new_twin_prev,
             twin: new_edge_index,
             origin: twin.origin,
             face: twin.face,
         };
 
-        self.edges[edge.next].prev = new_edge_index;
+        if !is_isolated {
+            self.edges[edge.next].prev = new_edge_index;
+            self.edges[edge.twin].prev = new_twin_index;
+        }
         self.edges[twin.prev].next = new_twin_index;
-
         self.edges[edge_handle].next = new_edge_index;
-        self.edges[edge.twin].prev = new_twin_index;
+
 
         self.edges[edge.twin].origin = split_vertex;
         self.vertices[twin.origin].out_edge = Some(new_twin_index);
@@ -1079,7 +1080,18 @@ mod test {
     }
 
     #[test]
-    fn test_split() {
+    fn test_split_isolated_edge() {
+        let mut dcel = DCEL::new();
+        let v0 = dcel.insert_vertex(());
+        let v1 = dcel.insert_vertex(());
+        let edge = dcel.connect_two_isolated_vertices(v0, v1, 0);
+        let split_vertex = dcel.insert_vertex(());
+        dcel.split_edge(edge, split_vertex);
+        dcel.sanity_check();
+    }
+
+    #[test]
+    fn test_split_unisolated() {
         let mut dcel = DCEL::new();
         let v0 = dcel.insert_vertex(());
         let v1 = dcel.insert_vertex(());
@@ -1133,7 +1145,19 @@ mod test {
         assert!(dcel.vertices[v3].out_edge == Some(e_split)
                 || dcel.vertices[v3].out_edge == Some(t20));
         dcel.sanity_check();
+    }
 
+    #[test]
+    fn test_split_half_isolated() {
+        let mut dcel = DCEL::new();
+        let v0 = dcel.insert_vertex(());
+        let v1 = dcel.insert_vertex(());
+        let v2 = dcel.insert_vertex(());
+        let v_split = dcel.insert_vertex(());
+        let e1 = dcel.connect_two_isolated_vertices(v0, v1, 0);
+        let e2 = dcel.connect_edge_to_isolated_vertex(e1, v2);
+        dcel.split_edge(e2, v_split);
+        dcel.sanity_check();
     }
 
     #[test]
