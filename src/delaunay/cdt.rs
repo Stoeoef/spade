@@ -5,8 +5,12 @@ use self::line_intersection_iterator::*;
 use traits::{HasPosition, HasPosition2D};
 use std::marker::PhantomData;
 use point_traits::{PointN, TwoDimensional};
-use kernels::DelaunayKernel;
+use kernels::{DelaunayKernel, FloatKernel};
 use primitives::SimpleEdge;
+
+/// Type shorthand for a constrained Delaunay triangulation using
+/// the precise `FloatKernel`.
+pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 
 /// A two dimensional constrained delaunay triangulation.
 ///
@@ -19,6 +23,37 @@ use primitives::SimpleEdge;
 /// constraints, thus, constraint edges are allowed to touch at
 /// their start or end point but are not allowed to intersect at
 /// any interior point.
+/// 
+/// The constrained triangulation shares most of the implementation of
+/// the usual delaunay triangulation, refer to `DelaunayTriangulation`
+/// for more information about type parameters, iteration, performance
+/// and more examples.
+///
+/// # Example
+///
+/// ```
+/// use spade::delaunay::FloatCDT;
+/// let mut cdt = FloatCDT::with_walk_locate();
+/// let v0 = cdt.insert([0.0, 0.0f32]);
+/// let v1 = cdt.insert([1.0, 0.0]);
+/// cdt.add_constraint(v0, v1);
+/// // Alternatively, consider using this shorthand
+/// cdt.add_constraint_edge([1.0, 1.0], [1.0, 0.0]);
+/// // This should print "2"
+/// println!("Number of constraints: {}", cdt.num_constraints());
+/// // Constraints are bidirectional!
+/// assert!(cdt.exists_constraint(v1, v0));
+/// assert!(cdt.exists_constraint(v0, v1));
+/// // Check if a new constraint could be added
+/// let from = [1.0, -2.0];
+/// let to = [1.0, 0.0];
+/// if !cdt.intersects_constraint(&from, &to) {
+///   // No intersections, the edge can be added
+///   cdt.add_constraint_edge(from, to);
+/// }
+/// ```
+
+
 #[derive(Clone)]
 pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
@@ -44,6 +79,27 @@ enum ConflictRegion {
     }
 }
 
+impl <V, K> ConstrainedDelaunayTriangulation<V, K>
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+          V::Point: TwoDimensional,
+{
+    /// Shorthand constructor for a triangulation that is backed up
+    /// by an r-tree for log(n) insertion and locate time on average.
+    pub fn with_tree_locate() -> ConstrainedDelaunayTriangulation<V, K> {
+        ConstrainedDelaunayTriangulation::new()
+    }
+
+    /// Shorthand constructor for a triangulation that uses the
+    /// `DelaunayWalkLocate` strategy for insertion and point location
+    /// queries. This yields O(sqrt(n)) insertion time on average for
+    /// randomly generated vertices.
+    pub fn with_walk_locate() -> 
+        ConstrainedDelaunayTriangulation<V, K, DelaunayWalkLocate> 
+    {
+        ConstrainedDelaunayTriangulation::new()
+    }
+}
 
 impl<V, K, L> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V, K, L>
     where V: HasPosition2D,
@@ -110,11 +166,11 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 {
 
     /// Creates a new constrained delaunay triangulation.
-    pub fn new() -> ConstrainedDelaunayTriangulation<V, K> {
+    pub fn new() -> ConstrainedDelaunayTriangulation<V, K, L> {
         ConstrainedDelaunayTriangulation {
             s: DCEL::new(),
             all_points_on_line: true,
-            locate_structure: DelaunayTreeLocate::new(),
+            locate_structure: Default::default(),
             __kernel: Default::default(),
             constraints: Vec::new(),
             num_constraints: 0,
@@ -122,6 +178,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     /// Creates a dynamic vertex handle from a fixed vertex handle.
+    ///
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
     pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
@@ -135,6 +192,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     /// Creates a dynamic face handle from a fixed face handle.
+    ///
     /// May panic if the faces was invalidated by a previous vertex
     /// removal.
     pub fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V> {
@@ -142,6 +200,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     /// Creates a dynamic edge handle from a fixed edge handle.
+    ///
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
     pub fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V> {
@@ -154,14 +213,16 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     /// Returns the number of faces in this triangulation.
-    /// *Note*: This count does include the infinite face.
+    ///
+    /// This count does include the infinite face.
     pub fn num_faces(&self) -> usize {
         self.s.num_faces()
     }
 
     /// Returns the number of triangles in this triangulation.
-    /// As there is always exactly one face not a triangle, this is
-    /// `self.num_faces() - 1`.
+    ///
+    /// As there is always exactly one face not being a triangle, 
+    /// this is equivalent to `self.num_faces() - 1`.
     pub fn num_triangles(&self) -> usize {
         self.s.num_faces() - 1
     }
@@ -197,8 +258,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// Returns `true` if the triangulation is degenerate
     /// 
     /// A triangulation is degenerate if all vertices of the
-    /// triangulation lie on one line. A degenerate triangulation
-    /// will not contain any edges and only the infinite face.
+    /// triangulation lie on one line.
     pub fn is_degenerate(&self) -> bool {
         self.all_points_on_line
     }
@@ -211,8 +271,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
     /// Locates a vertex at a given position.
     ///
-    /// Returns `None` if the point could not be found _or if the triangulation is degenerate_. In future releases,
-    /// this method might work for degenerate triangulations as well.
+    /// Returns `None` if the point could not be found.
     pub fn locate_vertex(&self, point: &V::Point) -> Option<VertexHandle<V>> {
         match self.locate(point) {
             PositionInTriangulation::OnPoint(vertex) => Some(vertex),
@@ -231,17 +290,21 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
     /// Returns information about the location of a point in a triangulation.
     ///
-    /// Additionally, a hint can be given to speed up computation. The hint should be a vertex close
-    /// to the position that is being looked up.
+    /// Additionally, a hint can be given to speed up computation. 
+    /// The hint should be a vertex close to the position that
+    /// is being looked up.
     pub fn locate_with_hint(&self, point: &V::Point, hint: FixedVertexHandle) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
         self.locate_with_hint_option(point, Some(hint))
     }
 
-    /// Inserts a new vertex into the triangulation. A hint can be given to speed up the process.
-    /// The hint should be a handle of a vertex close to the new vertex. This method is recommended
-    /// in combination with `DelaunayWalkLocate`, in this case the insertion time can be reduced
-    /// to O(1) on average if the hint is close. If the hint is randomized, running time will be O(sqrt(n))
-    /// on average with an O(n) worst case.
+    /// Inserts a new vertex into the triangulation.
+    ///
+    /// A hint can be given to speed up the process.
+    /// The hint should be a handle of a vertex close to the new vertex. This
+    /// method is recommended in combination with `DelaunayWalkLocate`, 
+    /// in this case the insertion time can be reduced to O(1) on average
+    /// if the hint is close. If the hint is randomized, running time will
+    /// be O(sqrt(n)) on average with an O(n) worst case.
     pub fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
         self.insert_with_hint_option(t, Some(hint))
     }
@@ -249,6 +312,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
 
     /// Attempts to remove a vertex from the triangulation.
+    ///
     /// Returns the removed vertex data if it could be found.
     ///
     /// # Handle invalidation
@@ -262,24 +326,14 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
         }
     }
 
-
-    // /// Removes a vertex from the triangulation.
-    // ///
-    // /// This operation runs in O(n²), where n is the degree of the
-    // /// removed vertex.
-    // ///
-    // /// # Handle invalidation
-    // /// This method will invalidate all vertex, edge and face handles.
-    // pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
-    //     BasicDelaunaySubdivision::remove(self, vertex)
-    // }
-
-
     /// Inserts a new vertex into the triangulation.
-    /// This operation runs in O(log(n)) on average when using a tree lookup to back up the 
-    /// triangulation, or in O(sqrt(n)) when using a walk lookup. n denotes the number of vertices,
-    /// the given running times assume that input data is given uniformly randomly distributed.
-    /// If the point has already been contained in the triangulation, the old vertex is overwritten.
+    ///
+    /// This operation runs in O(log(n)) on average when using a tree
+    /// lookup to back up the triangulation, or in O(sqrt(n)) when using
+    /// a walk lookup. n denotes the number of vertices, the given
+    /// running times assume that input data is given uniformly randomly
+    /// distributed. If the point has already been contained in the
+    /// triangulation, the old vertex is overwritten.
     ///
     /// Returns a handle to the new vertex. Use this handle with
     /// `ConstrainedDelaunayTriangulation::vertex(..)` to refer to it.
@@ -311,8 +365,9 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     ///
     /// Returns `false` if the line from `from` to `to` intersects another
     /// constraint edge.
-    pub fn can_add_constraint_edge(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
-        !self.intersects_any(LineIntersectionIterator::new_from_handles(self, from, to))
+    pub fn can_add_constraint(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
+        from != to && !self.intersects_any(
+            LineIntersectionIterator::new_from_handles(self, from, to))
     }
 
     /// Checks if a line intersects a constraint edge.
@@ -335,14 +390,12 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     
     /// Insert two points and creates a constraint between them.
     ///
-    /// Returns `true` if the constraint has not yet existed.
-    /// This method will only return `false` if both given vertices
-    /// have already been inserted and connected by a constraint edge.
+    /// Returns `true` if at least one constraint edge was added.
     ///
     /// # Panics
     /// Panics if the new constraint edge intersects with an existing 
     /// constraint edge.
-    pub fn add_new_constraint_edge(&mut self, from: V, to: V) -> bool {
+    pub fn add_constraint_edge(&mut self, from: V, to: V) -> bool {
         let from_handle = self.insert(from);
         let to_handle = self.insert(to);
         self.add_constraint(from_handle, to_handle)
@@ -350,7 +403,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
     /// Adds a constraint edge between to vertices.
     ///
-    /// Returns `true` if a new constraint was added.
+    /// Returns `true` if at least one constraint edge was added.
     /// Note that the given constraint might be splitted into smaller edges
     /// if a vertex in the triangulation lies exactly on the constraint edge.
     /// Thus, `cdt.exists_constraint(from, to)` is not necessarily `true`
@@ -358,7 +411,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     ///
     /// # Panics
     /// Panics if the new constraint edge intersects an existing
-    /// constraint edge. It will not panic if it _overlaps_ an existing constraint.
+    /// constraint edge.
     pub fn add_constraint(&mut self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
         assert!(from != to, "Constraint begin must be different from constraint end.");
         // Find edges that cross the constrained edge
@@ -825,6 +878,5 @@ mod test {
         cdt.insert(Point2::new(0.0, 1.0));
         assert!(cdt.add_constraint(v0, v1));
         assert_eq!(cdt.num_constraints(), 2);
-        
     }
 }

@@ -69,23 +69,16 @@ pub fn run() {
                     render_data.update_cdt_buffers(&display, &cdt);
                     dirty = true;
                 },
-                // Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
-                //     let nn = cdt.nearest_neighbor(&last_point).map(|p| p.fix());
-                //     if let Some(handle) = nn {
-                //         cdt.remove(handle);
-                //         render_data.update_cdt_buffers(&display, &cdt);
-                //         let selection = get_selected_vertices(&cdt, last_point);
-                //         render_data.update_selection(&display, &selection);
-                //         dirty = true;
-                //     }
-                // },
                 Event::MouseInput(ElementState::Pressed, MouseButton::Right) => {
                     let nn = cdt.nearest_neighbor(&last_point).map(|p| p.fix());
                     if let Some(handle) = nn {
                         if let Some(last) = last_handle {
-                            cdt.add_constraint(last, handle);
+                            if cdt.can_add_constraint(last, handle) {
+                                cdt.add_constraint(last, handle);
+                                render_data.update_cdt_buffers(&display, &cdt);
+                            }
                             last_handle = None;
-                            render_data.update_cdt_buffers(&display, &cdt);
+                            render_data.update_selection_lines(&display, &vec![]);
                             dirty = true;
                         } else {
                             last_handle = Some(handle);
@@ -101,6 +94,12 @@ pub fn run() {
                     last_point = Point2::new(x, y);
                     let selection = get_selected_vertices(&cdt, last_point);
                     render_data.update_selection(&display, &selection);
+                    if let Some(last_handle) = last_handle {
+                        let highlight_line = vec![
+                            *cdt.vertex(last_handle), last_point];
+                        render_data.update_selection_lines(
+                            &display, &highlight_line);
+                    }
                     dirty = true;
                 },
                 _ => (),

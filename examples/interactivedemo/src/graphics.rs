@@ -41,6 +41,7 @@ pub struct RenderData {
     pub edges_buffer: VertexBuffer<Vertex>,
     pub vertices_buffer: VertexBuffer<Vertex>,
     pub selection_buffer: VertexBuffer<Vertex>,
+    pub selection_lines_buffer: VertexBuffer<Vertex>,
 }
 
 impl RenderData {
@@ -50,11 +51,13 @@ impl RenderData {
         let edges_buffer = VertexBuffer::new(display, &[]).unwrap();
         let vertices_buffer = VertexBuffer::new(display, &[]).unwrap();
         let selection_buffer = VertexBuffer::new(display, &[]).unwrap();
+        let selection_lines_buffer = VertexBuffer::new(display, &[]).unwrap();
         RenderData {
             program: program,
             edges_buffer: edges_buffer,
             vertices_buffer: vertices_buffer,
             selection_buffer: selection_buffer,
+            selection_lines_buffer: selection_lines_buffer,
         }
     }
 
@@ -78,6 +81,9 @@ impl RenderData {
         };
 
         target.draw(&self.selection_buffer, &indices, &self.program,
+                    &glium::uniforms::EmptyUniforms, &parameters).unwrap();
+
+        target.draw(&self.selection_lines_buffer, &indices, &self.program,
                     &glium::uniforms::EmptyUniforms, &parameters).unwrap();
 
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::Points);
@@ -114,6 +120,19 @@ impl RenderData {
             push_cross(&mut vertices, point, color);
         }
         self.selection_buffer = VertexBuffer::new(display, &vertices).unwrap();
+    }
+
+    pub fn update_selection_lines(&mut self, 
+                                  display: &Display,
+                                  points: &Vec<Point2<f64>>) {
+        let color = [1.0, 0.0, 0.0];
+        let mut vertices = Vec::new();
+        vertices.extend(points.iter().map(|p| Vertex {
+            pos: array2(p.cast()),
+            color: color,
+        }));
+        self.selection_lines_buffer = 
+            VertexBuffer::new(display, &vertices).unwrap();
     }
 }
 

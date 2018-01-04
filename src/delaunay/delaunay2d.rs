@@ -124,11 +124,14 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
 /// - the closeness of subsequent queries
 /// - the kernel being used
 /// Depending on the use case, it can vary between O(1) to O(sqrt(n)) on average.
-/// The guide has an [own chapter](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html) about performance.
+/// The guide has an [own chapter](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html)
+/// about performance.
+///
 /// ## Auto Hinting
 /// Since version 1.1, spade uses the result of the last query as hint for the next query when
-/// using `DelaunayWalkLocate` as locate strategy. That means: Subsequent queries - like insertion, interpolation or nearest neighbor
-/// queries - will run in O(1) if the query locations are close to each other.
+/// using `DelaunayWalkLocate` as locate strategy. As a consequence, subsequent 
+/// queries - like insertion, interpolation or nearest neighbor queries - will
+/// run in O(1) if the query locations are close to each other.
 pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
           K: DelaunayKernel<<V::Point as PointN>::Scalar>,
@@ -212,7 +215,8 @@ impl <V, K> DelaunayTriangulation<V, K>
 
     /// Shorthand constructor for a delaunay triangulation that uses the
     /// `DelaunayWalkLocate` strategy for insertion and point location
-    /// queries. This yields O(sqrt(n)) insertion time on average.
+    /// queries. This yields O(sqrt(n)) insertion time on average for
+    /// randomly generated vertices.
     pub fn with_walk_locate() -> 
         DelaunayTriangulation<V, K, DelaunayWalkLocate> {
         DelaunayTriangulation::new()
@@ -231,16 +235,16 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// Using this method directly can be a bit cumbersome due to type annotations, consider using
     /// The short hand definitions `FloatDelaunayTriangulation` or `IntDelaunayTriangulation` in
     /// combination with the methods `with_walk_locate` and `with_tree_locate`.
-    /// If you want to have full control over a triangulations kernel and lookup structure, you
-    /// can use this method like this:
+    ///
+    /// # Example
     ///
     /// ```
     /// # extern crate nalgebra;
     /// # extern crate spade;
     /// use spade::delaunay::{DelaunayTriangulation, DelaunayWalkLocate};
-    /// use spade::kernels::TrivialKernel;
+    /// use spade::kernels::FloatKernel;
     /// # fn main() {
-    /// let mut triangulation = DelaunayTriangulation::<_, TrivialKernel, DelaunayWalkLocate>::new();
+    /// let mut triangulation = DelaunayTriangulation::<_, FloatKernel, DelaunayWalkLocate>::new();
     /// # triangulation.insert(nalgebra::Point2::new(332f64, 123f64));
     /// # }
     /// ```
@@ -257,6 +261,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Creates a dynamic vertex handle from a fixed vertex handle.
+    ///
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
     pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
@@ -270,6 +275,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Creates a dynamic face handle from a fixed face handle.
+    ///
     /// May panic if the faces was invalidated by a previous vertex
     /// removal.
     pub fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V> {
@@ -277,6 +283,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Creates a dynamic edge handle from a fixed edge handle.
+    ///
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
     pub fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V> {
@@ -289,14 +296,16 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Returns the number of faces in this triangulation.
-    /// *Note*: This count does include the infinite face.
+    ///
+    /// This count does include the infinite face.
     pub fn num_faces(&self) -> usize {
         self.s.num_faces()
     }
 
     /// Returns the number of triangles in this triangulation.
-    /// As there is always exactly one face not a triangle, this is
-    /// `self.num_faces() - 1`.
+    ///
+    /// As there is always exactly one face not being a triangle, 
+    /// this is equivalent to `self.num_faces() - 1`.
     pub fn num_triangles(&self) -> usize {
         self.s.num_faces() - 1
     }
@@ -314,7 +323,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         result
     }
 
-    /// Returns an iterator over all edges.
+    /// Returns an iterator over all undirected edges.
     pub fn edges(&self) -> EdgesIterator<V> {
         self.s.edges()
     }
@@ -332,8 +341,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     /// Returns `true` if the triangulation is degenerate
     /// 
     /// A triangulation is degenerate if all vertices of the
-    /// triangulation lie on one line. A degenerate triangulation
-    /// will not contain any edges and only the infinite face.
+    /// triangulation lie on one line.
     pub fn is_degenerate(&self) -> bool {
         self.all_points_on_line
     }
@@ -349,7 +357,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 
     /// Locates the nearest neighbor for a given point.
     ///
-    /// Returns `None` if this triangulation is degenerate.
+    /// Returns `None` if the triangulation is empty.
     pub fn nearest_neighbor(&self, point: &V::Point) -> Option<VertexHandle<V>> {
         if self.num_vertices() == 0 {
             return None;
@@ -381,8 +389,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 
     /// Locates a vertex at a given position.
     ///
-    /// Returns `None` if the point could not be found _or if the triangulation is degenerate_. In future releases,
-    /// this method might work for degenerate triangulations as well.
+    /// Returns `None` if the point could not be found.
     pub fn locate_vertex(&self, point: &V::Point) -> Option<VertexHandle<V>> {
         if let Some(nn) = self.nearest_neighbor(point) {
             if &nn.position() == point {
@@ -401,8 +408,9 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     }
 
     /// Inserts a new vertex into the triangulation.
-    /// This operation runs in O(log(n)) on average when using a tree lookup to back up the 
-    /// triangulation, or in O(sqrt(n)) when using a walk lookup. n denotes the number of vertices,
+    ///
+    /// This operation runs in `O(log(n))` on average when using a tree lookup to back up the 
+    /// triangulation, or in `O(sqrt(n))` when using a walk lookup. `n` denotes the number of vertices,
     /// the given running times assume that input data is given uniformly randomly distributed.
     /// If the point has already been contained in the triangulation, the old vertex is overwritten.
     ///
@@ -412,9 +420,11 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
         self.insert_with_hint_option(t, None)
     }
 
-    /// Inserts a new vertex into the triangulation. A hint can be given to speed up the process.
-    /// The hint should be a handle of a vertex close to the new vertex. This method is recommended
-    /// in combination with `DelaunayWalkLocate`, in this case the insertion time can be reduced
+    /// Inserts a new vertex into the triangulation.
+    ///
+    /// A hint can be given to speed up the process. The hint should be a handle of a vertex
+    /// close to the new vertex. This method is recommended in combination with
+    /// `DelaunayWalkLocate`, in this case the insertion time can be reduced
     /// to O(1) on average if the hint is close. If the hint is randomized, running time will be O(sqrt(n))
     /// on average with an O(n) worst case.
     pub fn insert_with_hint(&mut self, t: V, hint: FixedVertexHandle) -> FixedVertexHandle {
@@ -424,6 +434,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 
 
     /// Attempts to remove a vertex from the triangulation.
+    ///
     /// Returns the removed vertex data if it could be found.
     ///
     /// # Handle invalidation
@@ -482,6 +493,7 @@ impl <V, K> DelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
           V::Point: TwoDimensional {
 
     /// Checks if the triangulation contains an object with a given coordinate.
+    #[deprecated(since="1.3.0", note="Use locate_vertex instead")]
     pub fn lookup(&self, point: &V::Point) -> Option<VertexHandle<V>> {
         let handle = self.locate_structure.lookup(point);
         handle.map(|h| self.s.vertex(h.handle))
@@ -495,23 +507,11 @@ impl <V, K> DelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles upon
     /// successful removal.
+    #[deprecated(since="1.3", note="Use locate_and_remove instead")]
     pub fn lookup_and_remove(&mut self, point: &V::Point) -> Option<V> {
-        let handle = self.lookup(point).map(|h| h.fix());
+        let handle = self.locate_vertex(point).map(|h| h.fix());
         handle.map(|h| self.remove(h))
     }
-
-    // /// Returns all vertices contained in a rectangle.
-    // pub fn lookup_in_rect(&self, rect: &BoundingRect<V::Point>) -> Vec<VertexHandle<V>> {
-    //     let fixed_handles = self.points.lookup_in_rectangle(rect);
-    //     fixed_handles.iter().map(|entry| self.s.vertex(entry.handle)).collect()
-    // }
-
-    // /// Returns all vertices contained in a circle.
-    // pub fn lookup_in_circle(&self, center: &V::Point, 
-    //                         radius2: &<V::Point as PointN>::Scalar) -> Vec<VertexHandle<V>> {
-    //     let fixed_handles = self.points.lookup_in_circle(center, radius2);
-    //     fixed_handles.iter().map(|entry| self.s.vertex(entry.handle)).collect()
-    // }
 }
 
 const INTPL_SMALLVEC_CAPACITY: usize = 8;
@@ -1555,7 +1555,7 @@ mod test {
         rng.shuffle(&mut points);
         assert_eq!(d.num_vertices(), 1004);
         for point in &points {
-            let handle = d.lookup(point).unwrap().fix();
+            let handle = d.locate_vertex(point).unwrap().fix();
             d.remove(handle);
         }
         assert_eq!(d.num_vertices(), 4);
@@ -1572,7 +1572,7 @@ mod test {
         }
         points.sort_by(|p1, p2| p1.dot(p1.to_vec()).partial_cmp(&p2.dot(p2.to_vec())).unwrap());
         for point in points[3 ..].iter().rev() {
-            let handle = d.lookup(point).unwrap().fix();
+            let handle = d.locate_vertex(point).unwrap().fix();
             d.remove(handle);
         }
         d.sanity_check();
@@ -1611,7 +1611,7 @@ mod test {
         d.insert(Point2::new(0., 0.25));        
         d.insert(Point2::new(0., 0.75));        
         assert_eq!(d.num_triangles(), 4);
-        assert!(d.lookup_and_remove(&Point2::new(1., 0.)).is_some());
+        assert!(d.locate_and_remove(&Point2::new(1., 0.)).is_some());
         d.sanity_check();
         assert!(d.is_degenerate());
         while d.num_vertices() != 0 {
