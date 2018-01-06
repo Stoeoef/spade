@@ -582,29 +582,6 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     #[cfg(test)]
-    fn sanity_check(&self) {
-        for face in self.triangles() {
-            let triangle = face.as_triangle();
-            assert!(K::is_ordered_ccw(
-                &(*triangle[0]).position(),
-                &(*triangle[1]).position(),
-                &(*triangle[2]).position()));
-        }
-        if self.is_degenerate() {
-            assert_eq!(self.num_triangles(), 0);
-            assert_eq!(self.num_edges(), 0);
-        } else {
-            for vertex in self.vertices() {
-                assert!(vertex.out_edge().is_some());
-            }
-        }
-        for edge in self.edges() {
-            assert!(edge.face() != edge.sym().face());
-        }
-        self.s.sanity_check();
-    }
-
-    #[cfg(test)]
     fn cdt_sanity_check(&self) {
         let count_constraints = self.constraints.iter().filter(|&c| *c).count();
         let num_constraints = self.num_constraints() * 2;
@@ -638,8 +615,11 @@ mod test {
     use super::ConstrainedDelaunayTriangulation;
     use super::{DelaunayTriangulation, DelaunayWalkLocate};
     use traits::HasPosition;
-    use kernels::FloatKernel;
-    use cgmath::Point2;
+    use kernels::{AdaptiveIntKernel, FloatKernel};
+    use cgmath::{Point2, Vector2, EuclideanSpace};
+    use rand::{XorShiftRng, SeedableRng, Rng};
+    use rand::distributions::{Range, IndependentSample};
+    use super::delaunay_basic::BasicDelaunaySubdivision;
 
     type CDT = ConstrainedDelaunayTriangulation<Point2<f64>, FloatKernel>;
     type Delaunay = DelaunayTriangulation<Point2<f64>, FloatKernel, DelaunayWalkLocate>;
@@ -878,5 +858,79 @@ mod test {
         cdt.insert(Point2::new(0.0, 1.0));
         assert!(cdt.add_constraint(v0, v1));
         assert_eq!(cdt.num_constraints(), 2);
+    }
+
+    fn random_points_on_line<R>(range: i64, 
+                                num_points: usize,
+                                rng: &mut R, 
+                                line_dir: Vector2<i64>) -> Vec<Point2<i64>> 
+        where R: Rng
+    {
+        let mut result = Vec::with_capacity(num_points);
+        let range = Range::new(-range, range);
+        for _ in 0 .. num_points {
+            let factor = range.ind_sample(rng);
+            result.push(Point2::from_vec(line_dir * factor));
+        }
+        result
+    }
+
+    #[test]
+    fn fuzz_test_on_line() {
+        // Generates points on a single line and randomly connects
+        // them with constraints.
+        let seed = [441217, 22531, 4999902, 292791];
+        const RANGE: i64 = 10000;
+        const NUM_POINTS: usize = 2000;
+        let mut rng = XorShiftRng::from_seed(seed);
+        let points = random_points_on_line(RANGE, NUM_POINTS, &mut rng, Vector2::new(1, 1));
+        let mut cdt = ConstrainedDelaunayTriangulation::<_, AdaptiveIntKernel>::with_walk_locate();
+        for ps in points.chunks(2) {
+            let from = ps[0];
+            let to = ps[1];
+            let from = cdt.insert(from);
+            let to = cdt.insert(to);
+            if from != to && rng.gen() {
+                cdt.add_constraint(from, to);
+            }
+        }
+        cdt.sanity_check();
+        assert!(cdt.is_degenerate());
+    }
+
+    #[test]
+    fn fuzz_test_on_grid() {
+        // Generates points on a grid and randomly connects
+        // them with non intersecting constraints
+        let seed = [5587, 568731, 955432, 215512];
+        let mut points = Vec::with_capacity((RANGE * RANGE) as usize);
+        const RANGE: i64 = 30;
+        const NUM_CONSTRAINTS: usize = 2000;
+        for x in -RANGE .. RANGE {
+            for y in -RANGE .. RANGE {
+                points.push(Point2::new(x, y));
+            }
+        }
+        let mut rng = XorShiftRng::from_seed(seed);
+        rng.shuffle(&mut points);
+        let mut cdt = ConstrainedDelaunayTriangulation::<_, AdaptiveIntKernel>::with_walk_locate();
+        for p in points {
+            cdt.insert(p);
+        }
+        let range = Range::new(-RANGE, RANGE);
+        let directions_and_offset = [(Vector2::new(1, 0), Point2::new(0, 1)),
+                                     (Vector2::new(0, 1), Point2::new(1, 0)),
+                                     (Vector2::new(1, 1), Point2::new(0, 0))];
+        for _ in 0 .. NUM_CONSTRAINTS {
+            let &(direction, offset) = rng.choose(&directions_and_offset).unwrap();
+            let factor1 = range.ind_sample(&mut rng);
+            let factor2 = range.ind_sample(&mut rng);
+            let p1 = offset + direction * factor1;
+            let p2 = offset + direction * factor2;
+            if p1 != p2 {
+                cdt.add_constraint_edge(p1, p2);
+            }
+        }
+        cdt.sanity_check();
     }
 }

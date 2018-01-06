@@ -459,32 +459,6 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
         BasicDelaunaySubdivision::remove(self, vertex)
     }
-
-    #[cfg(test)]
-    pub fn sanity_check(&self) {
-        self.s.sanity_check();
-        for face in self.triangles() {
-            let triangle = face.as_triangle();
-            assert!(K::is_ordered_ccw(
-                &(*triangle[0]).position(),
-                &(*triangle[1]).position(),
-                &(*triangle[2]).position()));
-        }
-        if self.is_degenerate() {
-            assert_eq!(self.num_triangles(), 0);
-            assert_eq!(self.num_edges() as i32, 0.max(self.num_vertices() as i32 - 1));
-            for edge in self.edges() {
-                assert_eq!(edge.face(), self.infinite_face());
-            }
-        } else {
-            for vertex in self.vertices() {
-                assert!(vertex.out_edge().is_some());
-            }
-            for edge in self.edges() {
-                assert_ne!(edge.face(), edge.sym().face());
-            }
-        }
-    }
 }
 
 impl <V, K> DelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
@@ -1136,6 +1110,7 @@ mod test {
     use rand::{SeedableRng, XorShiftRng, Rng};
     use rand::distributions::{Range, IndependentSample};
     use traits::{HasPosition, SpatialObject};
+    use super::delaunay_basic::BasicDelaunaySubdivision;
 
     #[test]
     fn test_insert_one_point() {

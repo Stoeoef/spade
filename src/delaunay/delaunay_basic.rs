@@ -820,4 +820,30 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             }
         }
     }
+
+    #[cfg(test)]
+    fn sanity_check(&self) {
+        self.s().sanity_check();
+        for face in self.s().faces().skip(1) {
+            let triangle = face.as_triangle();
+            assert!(Self::Kernel::is_ordered_ccw(
+                &(*triangle[0]).position(),
+                &(*triangle[1]).position(),
+                &(*triangle[2]).position()));
+        }
+        if self.all_points_on_line() {
+            assert_eq!(self.s().num_faces(), 1);
+            assert_eq!(self.s().num_edges() as i32, 0.max(self.s().num_vertices() as i32 - 1));
+            for edge in self.s().edges() {
+                assert_eq!(edge.face(), self.infinite_face());
+            }
+        } else {
+            for vertex in self.s().vertices() {
+                assert!(vertex.out_edge().is_some());
+            }
+            for edge in self.s().edges() {
+                assert_ne!(edge.face(), edge.sym().face());
+            }
+        }
+    }
 }
