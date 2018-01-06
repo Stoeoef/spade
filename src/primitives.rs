@@ -30,7 +30,7 @@ pub struct SimpleEdge<V: PointN> {
 }
 
 
-/// Yields information about on which side of a line a point lies.
+/// Yields information on which side of a line a point lies.
 #[derive(Debug, Clone, Copy)]
 pub struct EdgeSideInfo<S> {
     signed_side: S,

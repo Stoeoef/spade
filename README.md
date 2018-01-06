@@ -10,17 +10,21 @@
  * [Performance](#performance)
  * [License](#license)
 
-Spade (SPAtial DatastructurEs, obviously!) implements a few nifty datastructures for spatial access operations.
+Spade (SPAtial DatastructurEs, obviously!) implements a few nifty data structures for spatial access operations:
 
-The first major datastructure is an n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree) for efficient nearest-neighbor and point lookup queries.
+- An n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree) for efficient nearest-neighbor and point lookup queries
+- 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion and nearest neighbor lookup
+- 2D constrained Delaunay triangulation (CDT)
 
-The second datastructure is a 2D [delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion and nearest neighbor lookup.
-The triangulation also implements [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor).
+Some other noteworthy features:
+- [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor) on this triangulation
+- Precise and adaptive calculation methods to avoid rounding issues
 
-All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) crates.
+All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) packages. However, using these
+packages is not required.
 
 # Compatibility note
-Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: everytime spade updates these libraries, the using code must be update too, even if spade would still work happily with the older versions. To avoid this, consider switching to fixed size arrays as points until [public / private dependencies make their way into cargo](https://github.com/rust-lang/rust/issues/44663).
+Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: every time spade updates these libraries, the using code must be update too, even if spade would still work happily with the older versions. To avoid this, consider switching to fixed size arrays as points until [public / private dependencies make their way into cargo](https://github.com/rust-lang/rust/issues/44663).
 
 # Documentation
 The documentation can be found under [docs.rs](https://docs.rs/spade/).
@@ -31,12 +35,17 @@ Do you miss a feature? Many features may be easy to implement, I might just have
 
 # Examples
 _Note: If you have opened this on docs.rs, you won't see any images. Use the README.md on the GitHub page._
+
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
 Note that the implementation tries prevent any boxes from overlapping, resulting in faster query performance. You can find this example in `/examples/interactivedemo`, run it with `cargo run rtree`.
 
 ![An example R-Tree with a few inserted points](/images/rtree_demo.png?raw=true)
+
+## CDT
+CDT's are usual Delaunay triangulations with a few "fixed" edges:
+![An example of a CDT](/images/cdt_demo.png?raw=true)
 
 ## Interpolation
 The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/) has a an [own chapter](https://stoeoef.gitbooks.io/spade-user-manual/content/interpolation.html) about interpolation, along with some nice images.

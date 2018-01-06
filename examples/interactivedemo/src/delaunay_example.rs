@@ -112,4 +112,5 @@ fn print_help() {
     println!("--------------------------");
     println!("Left click: Add single point.");
     println!("Right click: Delete closest point.");
+    println!();
 }

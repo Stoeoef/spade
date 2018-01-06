@@ -12,12 +12,33 @@ use primitives::SimpleEdge;
 /// the precise `FloatKernel`.
 pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 
-/// A two dimensional constrained delaunay triangulation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CdtEdge(bool);
+
+impl CdtEdge {
+    fn is_constraint_edge(&self) -> bool {
+        self.0
+    }
+
+    fn make_constraint_edge(&mut self) {
+        assert!(!self.is_constraint_edge());
+        self.0 = true;
+    }
+}
+
+
+impl Default for CdtEdge {
+    fn default() -> Self {
+        CdtEdge(false)
+    }
+}
+
+/// A two dimensional constrained Delaunay triangulation.
 ///
-/// A constrained delaunay triangulation is a triangulation that
+/// A constrained Delaunay triangulation is a triangulation that
 /// can contain _constraint edges_. These edges will be present
 /// in the resulting triangulation, the resulting triangulation
-/// does not necessarily fulfill the delaunay property.
+/// does not necessarily fulfill the Delaunay property.
 ///
 /// This implementation currently supports only _weakly intersecting_
 /// constraints, thus, constraint edges are allowed to touch at
@@ -25,7 +46,7 @@ pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 /// any interior point.
 /// 
 /// The constrained triangulation shares most of the implementation of
-/// the usual delaunay triangulation, refer to `DelaunayTriangulation`
+/// the usual Delaunay triangulation, refer to `DelaunayTriangulation`
 /// for more information about type parameters, iteration, performance
 /// and more examples.
 ///
@@ -52,16 +73,6 @@ pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 ///   cdt.add_constraint_edge(from, to);
 /// }
 /// ```
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CdtEdge(bool);
-
-impl Default for CdtEdge {
-    fn default() -> Self {
-        CdtEdge(false)
-    }
-}
-
 #[derive(Clone)]
 pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
@@ -72,7 +83,6 @@ pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as H
     s: DCEL<V, CdtEdge>,
     locate_structure: L,
     all_points_on_line: bool,
-    constraints: Vec<bool>,
     num_constraints: usize,
     __kernel: PhantomData<K>,
 }
@@ -135,15 +145,16 @@ impl<V, K, L> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V
     }
 
     fn is_defined_legal(&self, edge: FixedEdgeHandle) -> bool {
-        self.constraints[edge]
+        self.s.edge_data(edge).is_constraint_edge()
     }
 
-    fn handle_legal_edge_split(&mut self, handles: &[FixedEdgeHandle]) {
-        self.constraints.resize(self.s.num_edges() * 2, false);
-        for h in handles {
-            self.constraints[*h] = true;
-        }
+    fn handle_legal_edge_split(&mut self, handles: &[FixedEdgeHandle; 4]) {
         self.num_constraints += 1;
+        for h in handles {
+            if !self.is_constraint_edge(*h) {
+                self.s.edge_data_mut(*h).make_constraint_edge();
+            }
+        }
     }
 }
 
@@ -172,14 +183,13 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
           L: DelaunayLocateStructure<V::Point>,
 {
 
-    /// Creates a new constrained delaunay triangulation.
+    /// Creates a new constrained Delaunay triangulation.
     pub fn new() -> ConstrainedDelaunayTriangulation<V, K, L> {
         ConstrainedDelaunayTriangulation {
             s: DCEL::new_with_edge(),
             all_points_on_line: true,
             locate_structure: Default::default(),
             __kernel: Default::default(),
-            constraints: Vec::new(),
             num_constraints: 0,
         }
     }
@@ -341,6 +351,12 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles.
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
+        let num_removed_constraints = self.s.vertex(vertex)
+            .ccw_out_edges()
+            .map(|edge| self.is_constraint_edge(edge.fix()))
+            .filter(|b| *b)
+            .count();
+        self.num_constraints -= num_removed_constraints;
         BasicDelaunaySubdivision::remove(self, vertex)
     }
 
@@ -357,7 +373,6 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// `ConstrainedDelaunayTriangulation::vertex(..)` to refer to it.
     pub fn insert(&mut self, vertex: V) -> FixedVertexHandle {
         let handle = self.insert_with_hint_option(vertex, None);
-        self.constraints.resize(self.s.num_edges() * 2, false);
         handle
     }
 
@@ -369,7 +384,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
     /// Returns `true` if a given edge is a constraint edge.
     pub fn is_constraint_edge(&self, edge: FixedEdgeHandle) -> bool {
-        self.constraints[edge]
+        self.s.edge_data(edge).is_constraint_edge()
     }
 
     /// Checks if two vertices are connected by a constraint edge.
@@ -454,8 +469,8 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
                     (edge.fix(), edge.sym().fix())
                 };
                 if !self.is_constraint_edge(edge) {
-                    self.constraints[edge] = true;
-                    self.constraints[sym] = true;
+                    self.s.edge_data_mut(edge).make_constraint_edge();
+                    self.s.edge_data_mut(sym).make_constraint_edge();
                     self.num_constraints += 1;
                     true
                 } else {
@@ -470,7 +485,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
                 assert!(!left_hull.is_empty());
                 assert!(!right_hull.is_empty());
                 // Assert that no conflict edge is a constraint edge
-                assert!(conflicts.iter().all(|e| !self.constraints[*e]),
+                assert!(conflicts.iter().all(|e| !self.is_constraint_edge(*e)),
                         "Constraint intersects another constraint edge");
                 // Remove edges from highest to lowest value to
                 // prevent any index change of a conflicting edge
@@ -490,17 +505,8 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
                 // Remove conflict edges
                 for handle in conflicts.iter().rev().cloned() {
-                    let dual = self.s.edge(handle).sym().fix();
                     self.s.remove_edge(handle, None);
-                    if handle < dual {
-                        self.constraints.swap_remove(dual);
-                        self.constraints.swap_remove(handle);
-                    } else {
-                        self.constraints.swap_remove(handle);
-                        self.constraints.swap_remove(dual);
-                    }
                 }
-                self.constraints.truncate(self.s.num_edges() * 2);
 
                 let prev_edge = right_vertices.last().unwrap();
                 let prev_edge = self.s.get_edge_from_neighbors(prev_edge.0, prev_edge.1).unwrap().fix();
@@ -508,10 +514,11 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
                 let next_edge = self.s.get_edge_from_neighbors(next_edge.0, next_edge.1).unwrap().fix();
 
                 let constraint_edge = self.s.create_face(prev_edge, next_edge);
+                let constraint_sym = self.s.edge(constraint_edge).sym().fix();
 
-                // Push constraint, both for constraint_edge and its dual
-                self.constraints.push(true);
-                self.constraints.push(true);
+                // Create new constraint edge
+                self.s.edge_data_mut(constraint_edge).make_constraint_edge();
+                self.s.edge_data_mut(constraint_sym).make_constraint_edge();
 
                 // Retriangulate the areas
                 let mut edges = Vec::new();
@@ -526,9 +533,8 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
                     let edge = self.s.get_edge_from_neighbors(v0, v1).unwrap().fix();
                     edges.push(edge);
                 }
-                edges.push(self.edge(constraint_edge).sym().fix());
+                edges.push(constraint_sym);
                 self.fill_hole(edges);
-                self.constraints.resize(self.s.num_edges() * 2, false);
                 self.num_constraints += 1;
                 true
             }
@@ -601,14 +607,14 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
     #[cfg(test)]
     fn cdt_sanity_check(&self) {
-        let count_constraints = self.constraints.iter().filter(|&c| *c).count();
-        let num_constraints = self.num_constraints() * 2;
-        assert_eq!(count_constraints, num_constraints);
+        let mut count = 0;
         for edge in self.s.edges() {
             if self.is_constraint_edge(edge.fix()) {
+                count += 1;
                 assert!(self.is_constraint_edge(edge.sym().fix()));
             }
         }
+        assert_eq!(count, self.num_constraints());
         self.sanity_check();
     }
 }

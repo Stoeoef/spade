@@ -19,10 +19,10 @@ use self::delaunay_locate::*;
 use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
 use delaunay::*;
 
-/// Type shorthand for a delaunay triangulation with `f64` coordinates that uses `FloatKernel`
+/// Type shorthand for a Delaunay triangulation with `f64` coordinates that uses `FloatKernel`
 /// for geometric calculations.
 pub type FloatDelaunayTriangulation<T, L> = DelaunayTriangulation<T, FloatKernel, L>;
-/// Type shorthand for a delaunay triangulation with `i64` or `i32` coordinates that uses
+/// Type shorthand for a Delaunay triangulation with `i64` or `i32` coordinates that uses
 /// the trivial kernel for geometric calculations.
 pub type IntDelaunayTriangulation<T, L> = DelaunayTriangulation<T, TrivialKernel, L>;
 
@@ -45,9 +45,9 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
     NoTriangulationPresent,
 }
 
-/// A two dimensional delaunay triangulation.
+/// A two dimensional Delaunay triangulation.
 /// 
-/// A delaunay triangulation is a special triangulation of a set of points that fulfills some
+/// A Delaunay triangulation is a special triangulation of a set of points that fulfills some
 /// suitable properties for geometric operations like interpolation.
 /// There is also an [own chapter](https://stoeoef.gitbooks.io/spade-user-manual/content/delaunay-triangulation.html) in the user guide covering spade's triangulation.
 ///
@@ -55,7 +55,7 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
 /// The trait is implemented for all types that implement `TwoDimensional`, like `Point2` from
 /// the `cgmath` and `nalgebra` package or `[S; 2]` for `S: SpadeNum`.
 /// 
-/// A straightforward delaunay triangulation implementation will suffer from precision problems:
+/// A straightforward Delaunay triangulation implementation will suffer from precision problems:
 /// various geometric queries can fail if imprecise calculations (like native `f32` / `f64` operations)
 /// are used. Those failures can yield to incorrect results or panics at runtime.
 /// To prevent those crashes, Spade offers a few "calculation kernels" that may fit the 
@@ -112,10 +112,10 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
 ///
 /// # Type parameters
 /// `DelaunayTriangulation` has three type parameters: `V`, `K` and `L`.
-/// `V: HasPosition2D` defines the delaunay's vertex type. 
+/// `V: HasPosition2D` defines the triangulation's vertex type. 
 /// `K: DelaunayKernel` defines the triangulations calculation kernel.
 /// For more information, see `spade::kernels`.
-/// `L` Defines the delaunay locate structure.
+/// `L` Defines the locate structure.
 /// For more information, see `DelaunayLocateStructure`.
 ///
 /// # Performance
@@ -208,13 +208,13 @@ impl <V, K> DelaunayTriangulation<V, K>
           V::Point: TwoDimensional,
 {
 
-    /// Shorthand constructor for a delaunay triangulation that is backed up by an r-tree for
+    /// Shorthand constructor for a Delaunay triangulation that is backed up by an r-tree for
     /// log(n) insertion and locate time on average.
     pub fn with_tree_locate() -> DelaunayTriangulation<V, K> {
         DelaunayTriangulation::new()
     }
 
-    /// Shorthand constructor for a delaunay triangulation that uses the
+    /// Shorthand constructor for a Delaunay triangulation that uses the
     /// `DelaunayWalkLocate` strategy for insertion and point location
     /// queries. This yields O(sqrt(n)) insertion time on average for
     /// randomly generated vertices.

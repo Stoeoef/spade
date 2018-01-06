@@ -173,7 +173,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         self.s().face(0)
     }
 
-    fn handle_legal_edge_split(&mut self, _edges: &[FixedEdgeHandle]) { }
+    fn handle_legal_edge_split(&mut self, _edges: &[FixedEdgeHandle; 4]) { }
 
     fn initial_insertion(&mut self, position: FixedPosition, t: V) -> 
         Result<FixedVertexHandle, FixedVertexHandle> 

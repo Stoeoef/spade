@@ -62,9 +62,9 @@ pub type RTreeDelaunayLocate<V> = RTree<VertexEntry<V>>;
 /// Locate strategy that uses an r-tree to locate points in O(log(n)) time.
 pub type DelaunayTreeLocate<V> = RTree<VertexEntry<V>>;
 
-/// Locate strategy for delaunay triangulations.
+/// Locate strategy for Delaunay triangulations.
 /// 
-/// Many operations of a delaunay triangulation, like insertion, require to find
+/// Many operations of a Delaunay triangulation, like insertion, require to find
 /// the triangle that contains a certain point. For larger triangulations, this step
 /// tends to take most time, since it might be necessary to traverse large parts of
 /// the triangulation until the desired triangle is found. To mitigate this, spade
@@ -84,7 +84,7 @@ pub trait DelaunayLocateStructure<T: PointN> : Default + Clone {
     fn new_query_result(&self, entry: FixedVertexHandle);
 }
 
-/// An entry of the delaunay triangulation's internal r-tree.
+/// An entry of the Delaunay triangulation's internal r-tree.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VertexEntry<V> where V: PointN {
     pub point: V,

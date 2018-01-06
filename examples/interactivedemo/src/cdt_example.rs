@@ -61,6 +61,18 @@ pub fn run() {
                             render_data.update_cdt_buffers(&display, &cdt);
                             dirty = true;
                         },
+                        VirtualKeyCode::D => {
+                            let nn = cdt.nearest_neighbor(&last_point).map(|p| p.fix());
+                            if let Some(handle) = nn {
+                                cdt.remove(handle);
+                                render_data.update_cdt_buffers(&display, &cdt);
+                                let selection = get_selected_vertices(&cdt, last_point);
+                                render_data.update_selection(&display, &selection);
+                                render_data.update_selection_lines(&display, &vec![]);
+                                last_handle = None;
+                                dirty = true;
+                            }
+                        },
                         _ => (),
                     }
                 },
@@ -121,7 +133,9 @@ fn print_help() {
     println!("H - print this help dialog");
     println!("A - add 10 random points.");
     println!("B - add 100 random points.");
+    println!("D - delete closest point.");
     println!("--------------------------");
     println!("Left click: Add single point.");
-    println!("Right click: Delete closest point.");
+    println!("Right click: start / end adding a constraint.");
+    println!();
 }
