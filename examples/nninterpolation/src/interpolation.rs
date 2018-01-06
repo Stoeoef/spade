@@ -103,8 +103,8 @@ impl <I: InterpolationMethod> Grid<I> {
                     let to_val = self.grid[to_x][to_y] + OFFSET;
                     let to_pos = Self::transform(cg::Point2::new(to_x as f64, to_y as f64));
                     let to = PointWithHeight::new(to_pos, to_val);
-                    result.push((cg_vec_to_na(from.position_3d().to_vec().cast()),
-                                 cg_vec_to_na(to.position_3d().to_vec().cast())));
+                    result.push((cg_vec_to_na(from.position_3d().to_vec().cast().unwrap()),
+                                 cg_vec_to_na(to.position_3d().to_vec().cast().unwrap())));
                 }
             }
         }

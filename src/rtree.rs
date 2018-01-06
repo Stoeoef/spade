@@ -887,9 +887,6 @@ pub enum RTreeNode<T>
 /// the `primitives` module. If your object is not among those, consider implementing the
 /// `SpatialObject` trait.
 /// 
-/// Note that the `rtree`-structures work with fixed arrays of size 2, 3 or 4 or
-/// with the point types provided by the `nalgebra` and `cgmath` packages.
-/// Both integral and floating point scalar types are supported.
 ///
 /// ```
 /// # extern crate nalgebra;
@@ -1052,7 +1049,7 @@ impl <T> RTree<T>
     /// Creates a new rtree with some initial elements.
     ///
     /// This method should run faster than inserting all elements sequentially.
-    /// Also, the resulting rtree should have a much better quality in terms of
+    /// Also, the resulting rtree should have better quality in terms of
     /// query performance. This is an implementation of the 
     /// [OMT algorithm]
     /// (http://ftp.informatik.rwth-aachen.de/Publications/CEUR-WS/Vol-74/files/FORUM_18.pdf).

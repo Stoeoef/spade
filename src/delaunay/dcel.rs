@@ -750,9 +750,7 @@ impl <'a, V, E> Iterator for EdgesIterator<'a, V, E> where E: Default {
 
 /// A handle to a directed edge.
 ///
-/// This handle has methods that can be used to
-/// retrieve the edges neighboring edges, faces
-/// and vertices.
+/// Used to retrieve adjacent vertices and faces.
 pub struct EdgeHandle<'a, V, E=()> where V: 'a, E: 'a {
     dcel: &'a DCEL<V, E>,
     handle: FixedEdgeHandle,
@@ -760,8 +758,7 @@ pub struct EdgeHandle<'a, V, E=()> where V: 'a, E: 'a {
 
 /// A handle to a vertex.
 ///
-/// This handle has methods that can be used to retrieve
-/// the vertice's outgoing edges.
+/// Used to retrieve its outgoing edges.
 pub struct VertexHandle<'a, V, E=()> where V: 'a, E: 'a {
     dcel: &'a DCEL<V, E>,
     handle: FixedVertexHandle,
@@ -769,8 +766,7 @@ pub struct VertexHandle<'a, V, E=()> where V: 'a, E: 'a {
 
 /// A handle to a face.
 ///
-/// This handle has methods that can be used to get all
-/// edges adjacent to this face.
+/// Used to retrieve its adjacent edges.
 pub struct FaceHandle<'a, V, E=()> where V: 'a, E: 'a {
     dcel: &'a DCEL<V, E>,
     handle: FixedFaceHandle,

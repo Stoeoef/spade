@@ -1556,7 +1556,7 @@ mod test {
 
     #[test]
     fn test_removal_and_insertion() {
-        use cgmath::{EuclideanSpace, Point2};
+        use cgmath::{Point2};
         let points = random_points_with_seed::<f64>(1000, [10221, 325611, 20493, 72212]);
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for point in &points {
@@ -1566,7 +1566,9 @@ mod test {
         for _ in 0 .. 1000 {
             if rng.gen() {
                 // Insert new random point
-                d.insert(Point2::from_vec(rng.gen()));
+                let x = rng.gen();
+                let y = rng.gen();
+                d.insert(Point2::new(x, y));
             } else {
                 // Remove random point
                 let range = Range::new(0, d.num_vertices());

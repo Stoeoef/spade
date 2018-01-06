@@ -128,7 +128,7 @@ impl RenderData {
         let color = [1.0, 0.0, 0.0];
         let mut vertices = Vec::new();
         vertices.extend(points.iter().map(|p| Vertex {
-            pos: array2(p.cast()),
+            pos: array2(p.cast().unwrap()),
             color: color,
         }));
         self.selection_lines_buffer = 
@@ -156,7 +156,7 @@ pub fn push_rectangle(vec: &mut Vec<Vertex>, rect: &BoundingRect<Point2<f64>>,
     let v1 = Point2::new(v2.x, v0.y);
     let v3 = Point2::new(v0.x, v2.y);
     vec.extend([v0, v1, v1, v2, v2, v3, v3, v0].iter().cloned().map(
-        |v| Vertex::new(array2(v.to_vec().cast()), array3(color))));
+        |v| Vertex::new(array2(v.to_vec().cast().unwrap()), array3(color))));
 }
 
 pub fn push_cross(vec: &mut Vec<Vertex>, pos: &Point2<f64>, color: [f32; 3]) {
@@ -167,7 +167,7 @@ pub fn push_cross(vec: &mut Vec<Vertex>, pos: &Point2<f64>, color: [f32; 3]) {
     let v2 = pos.to_vec() + delta;
     let v3 = pos.to_vec() - delta;
     vec.extend([v0, v1, v2, v3].iter().cloned().map(
-        |v| Vertex::new(array2(v.cast()), color)));
+        |v| Vertex::new(array2(v.cast().unwrap()), color)));
 }
 
 pub fn get_color_for_depth(depth: usize) -> [f32; 3] {
@@ -189,7 +189,7 @@ fn get_tree_edges(tree: &RTree<Point2<f64>>, buffer: &mut Vec<Vertex>) -> Vec<Ve
         for child in cur.children().iter() {
             match child {
                 &RTreeNode::Leaf(point) => vertices.push(Vertex::new(
-                    array2(point.to_vec().cast()), array3(vertex_color.clone()))),
+                    array2(point.to_vec().cast().unwrap()), array3(vertex_color.clone()))),
                 &RTreeNode::DirectoryNode(ref data) => {
                     to_visit.push(data);
                     push_rectangle(buffer, &data.mbr(), get_color_for_depth(data.depth()));
@@ -206,8 +206,8 @@ fn get_delaunay_edges(delaunay: &ExampleTriangulation,
     for edge in delaunay.edges() {
         let from = edge.from().position().to_vec();
         let to = edge.to().position().to_vec();
-        edges_buffer.push(Vertex::new(array2(from.cast()), color));
-        edges_buffer.push(Vertex::new(array2(to.cast()), color));
+        edges_buffer.push(Vertex::new(array2(from.cast().unwrap()), color));
+        edges_buffer.push(Vertex::new(array2(to.cast().unwrap()), color));
     }
 }
 
@@ -223,7 +223,7 @@ fn get_cdt_edges(cdt: &Cdt,
         } else {
             normal_color
         };
-        edges_buffer.push(Vertex::new(array2(from.cast()), color));
-        edges_buffer.push(Vertex::new(array2(to.cast()), color));
+        edges_buffer.push(Vertex::new(array2(from.cast().unwrap()), color));
+        edges_buffer.push(Vertex::new(array2(to.cast().unwrap()), color));
     }
 }
