@@ -9,20 +9,21 @@ use primitives::SimpleEdge;
 use std::collections::HashSet;
 
 type FixedPosition = PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle>;
-type DynamicPosition<'a, V> = PositionInTriangulation<VertexHandle<'a, V>,
-                                                      FaceHandle<'a, V>,
-                                                      EdgeHandle<'a, V>>;
+type DynamicPosition<'a, V, E> = PositionInTriangulation<VertexHandle<'a, V, E>,
+                                                         FaceHandle<'a, V, E>,
+                                                         EdgeHandle<'a, V, E>>;
 
 pub trait Subdivision<V>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
 {
     type Kernel: DelaunayKernel<<V::Point as PointN>::Scalar>;
+    type EdgeType: Default;
 
     /// Creates a dynamic vertex handle from a fixed vertex handle.
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
-    fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V>;
+    fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V, Self::EdgeType>;
 
     /// Returns a mutable reference to the vertex data referenced by a
     /// `FixedVertexHandle`.
@@ -31,12 +32,12 @@ pub trait Subdivision<V>
     /// Creates a dynamic face handle from a fixed face handle.
     /// May panic if the faces was invalidated by a previous vertex
     /// removal.
-    fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V>;
+    fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V, Self::EdgeType>;
 
     /// Creates a dynamic edge handle from a fixed edge handle.
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
-    fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V>;
+    fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V, Self::EdgeType>;
 
     /// Returns the number of vertices in this triangulation.
     fn num_vertices(&self) -> usize;
@@ -54,13 +55,13 @@ pub trait Subdivision<V>
     fn num_edges(&self) -> usize;
 
     /// Returns an iterator over all triangles.
-    fn triangles(&self) -> FacesIterator<V>;
+    fn triangles(&self) -> FacesIterator<V, Self::EdgeType>;
 
     /// Returns an iterator over all edges.
-    fn edges(&self) -> EdgesIterator<V>;
+    fn edges(&self) -> EdgesIterator<V, Self::EdgeType>;
 
     /// Returns an iterator over all vertices.
-    fn vertices(&self) -> VerticesIterator<V>;
+    fn vertices(&self) -> VerticesIterator<V, Self::EdgeType>;
 }
 
 pub trait HasSubdivision<V>
@@ -68,9 +69,10 @@ pub trait HasSubdivision<V>
           V::Point: TwoDimensional,
 {
     type Kernel: DelaunayKernel<<V::Point as PointN>::Scalar>;
+    type EdgeType: Default + Copy;
 
-    fn s(&self) -> &DCEL<V>;
-    fn s_mut(&mut self) -> &mut DCEL<V>;
+    fn s(&self) -> &DCEL<V, Self::EdgeType>;
+    fn s_mut(&mut self) -> &mut DCEL<V, Self::EdgeType>;
 }
 
 impl<T, V> Subdivision<V> for T
@@ -79,10 +81,12 @@ impl<T, V> Subdivision<V> for T
           V::Point: TwoDimensional,
 {
     type Kernel = T::Kernel;
+    type EdgeType = T::EdgeType;
+
     /// Creates a dynamic vertex handle from a fixed vertex handle.
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
-    fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
+    fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V, Self::EdgeType> {
         self.s().vertex(handle)
     }
 
@@ -95,14 +99,14 @@ impl<T, V> Subdivision<V> for T
     /// Creates a dynamic face handle from a fixed face handle.
     /// May panic if the faces was invalidated by a previous vertex
     /// removal.
-    fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V> {
+    fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V, Self::EdgeType> {
         self.s().face(handle)
     }
 
     /// Creates a dynamic edge handle from a fixed edge handle.
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
-    fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V> {
+    fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V, Self::EdgeType> {
         self.s().edge(handle)
     }
 
@@ -130,7 +134,7 @@ impl<T, V> Subdivision<V> for T
     }
 
     /// Returns an iterator over all triangles.
-    fn triangles(&self) -> FacesIterator<V> {
+    fn triangles(&self) -> FacesIterator<V, Self::EdgeType> {
         let mut result = self.s().faces();
         // Skip the outer face
         result.next();
@@ -138,12 +142,12 @@ impl<T, V> Subdivision<V> for T
     }
 
     /// Returns an iterator over all edges.
-    fn edges(&self) -> EdgesIterator<V> {
+    fn edges(&self) -> EdgesIterator<V, Self::EdgeType> {
         self.s().edges()
     }
 
     /// Returns an iterator over all vertices.
-    fn vertices(&self) -> VerticesIterator<V> {
+    fn vertices(&self) -> VerticesIterator<V, Self::EdgeType> {
         self.s().vertices()
     }
 }
@@ -165,11 +169,11 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         false
     }
 
-    fn infinite_face(&self) -> FaceHandle<V> {
+    fn infinite_face(&self) -> FaceHandle<V, Self::EdgeType> {
         self.s().face(0)
     }
 
-    fn handle_edge_split(&mut self, _edges: &[FixedEdgeHandle]) { }
+    fn handle_legal_edge_split(&mut self, _edges: &[FixedEdgeHandle]) { }
 
     fn initial_insertion(&mut self, position: FixedPosition, t: V) -> 
         Result<FixedVertexHandle, FixedVertexHandle> 
@@ -279,7 +283,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                             let e2 = self.s().get_edge_from_neighbors(new_handle, to).unwrap();
                             [e1.fix(), e1.sym().fix(), e2.fix(), e2.sym().fix()]
                         };
-                        self.handle_edge_split(&handles);
+                        self.handle_legal_edge_split(&handles);
                         Result::Ok(new_handle)
                     } else {
                         Result::Ok(self.insert_on_edge(edge, t))
@@ -309,7 +313,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
     }
 
     fn locate_with_hint_option(&self, point: &V::Point, hint: Option<FixedVertexHandle>) 
-                               -> DynamicPosition<V> 
+                               -> DynamicPosition<V, Self::EdgeType> 
     {
         use self::PositionInTriangulation::*;
         match self.locate_with_hint_option_fixed(point, hint) {
@@ -510,7 +514,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         result
     }
 
-    fn to_simple_edge<'a>(edge: EdgeHandle<'a, V>) -> SimpleEdge<V::Point> {
+    fn to_simple_edge<'a>(edge: EdgeHandle<'a, V, Self::EdgeType>) -> SimpleEdge<V::Point> {
         let from = (edge.from()).position();
         let to = (edge.to()).position();
         SimpleEdge::new(from, to)

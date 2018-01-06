@@ -53,6 +53,14 @@ pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 /// }
 /// ```
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CdtEdge(bool);
+
+impl Default for CdtEdge {
+    fn default() -> Self {
+        CdtEdge(false)
+    }
+}
 
 #[derive(Clone)]
 pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
@@ -61,7 +69,7 @@ pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as H
           K: DelaunayKernel<<V::Point as PointN>::Scalar>,
           L: DelaunayLocateStructure<V::Point>,
 {
-    s: DCEL<V>,
+    s: DCEL<V, CdtEdge>,
     locate_structure: L,
     all_points_on_line: bool,
     constraints: Vec<bool>,
@@ -130,9 +138,7 @@ impl<V, K, L> BasicDelaunaySubdivision<V> for ConstrainedDelaunayTriangulation<V
         self.constraints[edge]
     }
 
-    fn handle_edge_split(&mut self, handles: &[FixedEdgeHandle]) {
-        // Check if the edge is a constraint edge and split the
-        // constraint if necessary
+    fn handle_legal_edge_split(&mut self, handles: &[FixedEdgeHandle]) {
         self.constraints.resize(self.s.num_edges() * 2, false);
         for h in handles {
             self.constraints[*h] = true;
@@ -148,12 +154,13 @@ impl<V, K, L> HasSubdivision<V> for ConstrainedDelaunayTriangulation<V, K, L>
           L: DelaunayLocateStructure<V::Point>,
 {
     type Kernel = K;
+    type EdgeType = CdtEdge;
 
-    fn s(&self) -> &DCEL<V> {
+    fn s(&self) -> &DCEL<V, CdtEdge> {
         &self.s
     }
 
-    fn s_mut(&mut self) -> &mut DCEL<V> {
+    fn s_mut(&mut self) -> &mut DCEL<V, CdtEdge> {
         &mut self.s
     }
 }
@@ -168,7 +175,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// Creates a new constrained delaunay triangulation.
     pub fn new() -> ConstrainedDelaunayTriangulation<V, K, L> {
         ConstrainedDelaunayTriangulation {
-            s: DCEL::new(),
+            s: DCEL::new_with_edge(),
             all_points_on_line: true,
             locate_structure: Default::default(),
             __kernel: Default::default(),
@@ -181,7 +188,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     ///
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
-    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V> {
+    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V, CdtEdge> {
         self.s.vertex(handle)
     }
 
@@ -195,7 +202,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     ///
     /// May panic if the faces was invalidated by a previous vertex
     /// removal.
-    pub fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V> {
+    pub fn face(&self, handle: FixedFaceHandle) -> FaceHandle<V, CdtEdge> {
         self.s.face(handle)
     }
 
@@ -203,7 +210,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     ///
     /// May panic if the handle was invalidated by a previous vertex
     /// removal.
-    pub fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V> {
+    pub fn edge(&self, handle: FixedEdgeHandle) -> EdgeHandle<V, CdtEdge> {
         self.s.edge(handle)
     }
 
@@ -233,7 +240,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     /// Returns an iterator over all triangles.
-    pub fn triangles(&self) -> FacesIterator<V> {
+    pub fn triangles(&self) -> FacesIterator<V, CdtEdge> {
         let mut result = self.s.faces();
         // Skip the outer face
         result.next();
@@ -241,17 +248,17 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     }
 
     /// Returns an iterator over all edges.
-    pub fn edges(&self) -> EdgesIterator<V> {
+    pub fn edges(&self) -> EdgesIterator<V, CdtEdge> {
         self.s.edges()
     }
 
     /// Returns an iterator over all vertices.
-    pub fn vertices(&self) -> VerticesIterator<V> {
+    pub fn vertices(&self) -> VerticesIterator<V, CdtEdge> {
         self.s.vertices()
     }
 
     /// Returns a handle to the infinite face.
-    pub fn infinite_face(&self) -> FaceHandle<V> {
+    pub fn infinite_face(&self) -> FaceHandle<V, CdtEdge> {
         self.s.face(0)
     }
 
@@ -265,14 +272,14 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
 
     /// Returns information about the location of a point in a triangulation.
     pub fn locate(
-        &self, point: &V::Point) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
+        &self, point: &V::Point) -> PositionInTriangulation<VertexHandle<V, CdtEdge>, FaceHandle<V, CdtEdge>, EdgeHandle<V, CdtEdge>> {
         self.locate_with_hint_option(point, None)
     }
 
     /// Locates a vertex at a given position.
     ///
     /// Returns `None` if the point could not be found.
-    pub fn locate_vertex(&self, point: &V::Point) -> Option<VertexHandle<V>> {
+    pub fn locate_vertex(&self, point: &V::Point) -> Option<VertexHandle<V, CdtEdge>> {
         match self.locate(point) {
             PositionInTriangulation::OnPoint(vertex) => Some(vertex),
             _ => None
@@ -284,7 +291,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// If the edge does not exist, `None` is returned.
     /// This operation runs in `O(n)` time, where `n` is
     /// the degree of `from`.
-    pub fn get_edge_from_neighbors(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V>> {
+    pub fn get_edge_from_neighbors(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V, CdtEdge>> {
         self.s.get_edge_from_neighbors(from, to)
     }
 
@@ -293,7 +300,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// Additionally, a hint can be given to speed up computation. 
     /// The hint should be a vertex close to the position that
     /// is being looked up.
-    pub fn locate_with_hint(&self, point: &V::Point, hint: FixedVertexHandle) -> PositionInTriangulation<VertexHandle<V>, FaceHandle<V>, EdgeHandle<V>> {
+    pub fn locate_with_hint(&self, point: &V::Point, hint: FixedVertexHandle) -> PositionInTriangulation<VertexHandle<V, CdtEdge>, FaceHandle<V, CdtEdge>, EdgeHandle<V, CdtEdge>> {
         self.locate_with_hint_option(point, Some(hint))
     }
 
@@ -324,6 +331,17 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
             OnPoint(handle) => Some(self.remove(handle)),
             _ => None,
         }
+    }
+
+    /// Removes a vertex from the triangulation.
+    ///
+    /// This operation runs in O(n²), where n is the degree of the
+    /// removed vertex.
+    ///
+    /// # Handle invalidation
+    /// This method will invalidate all vertex, edge and face handles.
+    pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
+        BasicDelaunaySubdivision::remove(self, vertex)
     }
 
     /// Inserts a new vertex into the triangulation.
@@ -378,7 +396,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
         self.intersects_any(LineIntersectionIterator::new(self, from, to))
     }
 
-    fn intersects_any(&self, mut iter: LineIntersectionIterator<Self, V>) -> bool {
+    fn intersects_any(&self, mut iter: LineIntersectionIterator<Self, V, CdtEdge>) -> bool {
         iter.any(|e| {
             if let Intersection::EdgeIntersection(edge) = e {
                 self.is_constraint_edge(edge.fix())
@@ -603,7 +621,7 @@ impl <V, K> ConstrainedDelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
     /// Locates the nearest neighbor for a given point.
     pub fn nearest_neighbor(&self, 
                             position: &V::Point)
-                            -> Option<VertexHandle<V>> {
+                            -> Option<VertexHandle<V, CdtEdge>> {
         let entry = self.locate_structure().nearest_neighbor(position);
         entry.map(|e| self.vertex(e.handle))
     }
@@ -932,5 +950,21 @@ mod test {
             }
         }
         cdt.sanity_check();
+    }
+
+    #[test]
+    fn test_cdt_remove_degenerate() {
+        let mut cdt = CDT::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0));
+        let v1 = cdt.insert(Point2::new(1.0, 0.0));
+        let v2 = cdt.insert(Point2::new(0.0, 1.0));
+        cdt.add_constraint(v0, v1);
+        cdt.add_constraint(v1, v2);
+        cdt.add_constraint(v2, v0);
+        assert_eq!(cdt.num_constraints(), 3);
+        assert!(!cdt.is_degenerate());
+        cdt.remove(v1);
+        assert_eq!(cdt.num_constraints(), 1);
+        assert!(cdt.is_degenerate());
     }
 }

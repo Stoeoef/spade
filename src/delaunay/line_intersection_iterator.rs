@@ -4,26 +4,28 @@ use self::delaunay_basic::BasicDelaunaySubdivision;
 use traits::{HasPosition2D};
 use point_traits::{PointN, TwoDimensional, PointNExtensions};
 
-pub struct LineIntersectionIterator<'a, T, V> where
-    T: BasicDelaunaySubdivision<V> + 'a,
+pub struct LineIntersectionIterator<'a, T, V, E=()> where
+    T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
     V: HasPosition2D + 'a,
     V::Point: TwoDimensional,
+    E: Default + Copy + 'a,
 {
-    cur_intersection: Option<Intersection<'a, V>>,
+    cur_intersection: Option<Intersection<'a, V, E>>,
     line: SimpleEdge<V::Point>,
     delaunay: &'a T,
 }
 
-pub enum Intersection<'a, V> where
-    V: 'a 
+pub enum Intersection<'a, V, E=()> where
+    V: 'a, E: 'a
 {
-    EdgeIntersection(EdgeHandle<'a, V>),
-    VertexIntersection(VertexHandle<'a, V>),
-    EdgeOverlap(EdgeHandle<'a, V>),
+    EdgeIntersection(EdgeHandle<'a, V, E>),
+    VertexIntersection(VertexHandle<'a, V, E>),
+    EdgeOverlap(EdgeHandle<'a, V, E>),
 }
 
-impl <'a, V> ::std::fmt::Debug for Intersection<'a, V> where
-    V: 'a
+impl <'a, V, E> ::std::fmt::Debug for Intersection<'a, V, E> where
+    V: 'a,
+    E: Default,
 {
      fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
          use self::Intersection::*;
@@ -35,7 +37,7 @@ impl <'a, V> ::std::fmt::Debug for Intersection<'a, V> where
     }
 }
 
-impl <'a, V> PartialEq for Intersection<'a, V> {
+impl <'a, V, E> PartialEq for Intersection<'a, V, E> {
     fn eq(&self, other: &Self) -> bool {
         use self::Intersection::*;
         match (self, other) {
@@ -47,9 +49,9 @@ impl <'a, V> PartialEq for Intersection<'a, V> {
     }
 }
 
-impl <'a, V> Copy for Intersection<'a, V> {}
+impl <'a, V, E> Copy for Intersection<'a, V, E> {}
 
-impl <'a, V> Clone for Intersection<'a, V> {
+impl <'a, V, E> Clone for Intersection<'a, V, E> {
     fn clone(&self) -> Self {
         use self::Intersection::*;
         match self {
@@ -60,12 +62,13 @@ impl <'a, V> Clone for Intersection<'a, V> {
     }
 }
 
-impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
-    T: BasicDelaunaySubdivision<V> + 'a,
+impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
+    T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
     V: HasPosition2D + 'a,
     V::Point: TwoDimensional,
+    E: Default + Copy,
 {
-    pub fn new(delaunay: &'a T, from: &V::Point, to: &V::Point) -> LineIntersectionIterator<'a, T, V> {
+    pub fn new(delaunay: &'a T, from: &V::Point, to: &V::Point) -> LineIntersectionIterator<'a, T, V, E> {
         let line = SimpleEdge::new(from.clone(), to.clone());
         let first_intersection = Self::get_first_intersection(delaunay, &line);
         LineIntersectionIterator {
@@ -76,7 +79,7 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
     }
 
     pub fn new_from_handles(delaunay: &'a T, from: FixedVertexHandle, to: FixedVertexHandle)
-        -> LineIntersectionIterator<'a, T, V> {
+        -> LineIntersectionIterator<'a, T, V, E> {
         let from = delaunay.s().vertex(from);
         let to = delaunay.s().vertex(to);
         let line = SimpleEdge::new(from.position(), to.position());
@@ -87,7 +90,7 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
         }
     }
 
-    fn get_first_intersection(delaunay: &'a T, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V>> {
+    fn get_first_intersection(delaunay: &'a T, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V, E>> {
         use delaunay::PositionInTriangulation::*;
         match delaunay.locate_with_hint_option(&line.from, None) {
             InTriangle(face_handle) => {
@@ -150,8 +153,8 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
         }
     }
 
-    fn get_first_edge_from_edge_ring<I>(ring: I, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V>> where
-        I: IntoIterator<Item=EdgeHandle<'a, V>>,
+    fn get_first_edge_from_edge_ring<I>(ring: I, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V, E>> where
+        I: IntoIterator<Item=EdgeHandle<'a, V, E>>,
     {
         use self::Intersection::*;
         for edge in ring {
@@ -171,7 +174,7 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
         None
     }
 
-    fn get_next(&mut self) -> Option<Intersection<'a, V>> {
+    fn get_next(&mut self) -> Option<Intersection<'a, V, E>> {
         use self::Intersection::*;
         match self.cur_intersection {
             Some(EdgeIntersection(cur_edge)) => {
@@ -248,13 +251,14 @@ impl <'a, T, V>  LineIntersectionIterator<'a, T, V> where
     }
 }
 
-impl <'a, T, V> Iterator for LineIntersectionIterator<'a, T, V> 
+impl <'a, T, V, E> Iterator for LineIntersectionIterator<'a, T, V, E> 
     where 
-          T: BasicDelaunaySubdivision<V> + 'a,
+          T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
           V: HasPosition2D + 'a,
           V::Point: TwoDimensional,
+          E: Default + Copy + 'a,
 {
-    type Item = Intersection<'a, V>;
+    type Item = Intersection<'a, V, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let cur = self.cur_intersection;

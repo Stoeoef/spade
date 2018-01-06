@@ -175,6 +175,7 @@ impl <V, K, L> HasSubdivision<V> for DelaunayTriangulation<V, K, L>
           L: DelaunayLocateStructure<V::Point> {
 
     type Kernel = K;
+    type EdgeType = ();
 
     fn s(&self) -> &DCEL<V> {
         &self.s
