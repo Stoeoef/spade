@@ -572,8 +572,8 @@ impl <'a, V, E> Iterator for ONextIterator<'a, V, E> where V: 'a, E: Default + '
     }
 }
 
-impl <'a, V> DoubleEndedIterator for ONextIterator<'a, V> where V: 'a {
-    fn next_back(&mut self) -> Option<EdgeHandle<'a, V>> {
+impl <'a, V, E> DoubleEndedIterator for ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
+    fn next_back(&mut self) -> Option<EdgeHandle<'a, V, E>> {
         if let Some((cur, until)) = self.cur_until {
             let until_handle = self.dcel.edge(until);
             if cur == until {
@@ -640,8 +640,8 @@ impl <'a, V, E> Iterator for CCWIterator<'a, V, E> where V: 'a, E: Default + 'a 
     }
 }
 
-impl <'a, V> DoubleEndedIterator for CCWIterator<'a, V> where V: 'a {
-    fn next_back(&mut self) -> Option<EdgeHandle<'a, V>> {
+impl <'a, V, E> DoubleEndedIterator for CCWIterator<'a, V, E> where V: 'a, E: Default + 'a {
+    fn next_back(&mut self) -> Option<EdgeHandle<'a, V, E>> {
         if let Some((cur, until)) = self.cur_until {
             let until_handle = self.dcel.edge(until);
             if cur == until {
