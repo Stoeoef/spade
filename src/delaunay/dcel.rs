@@ -865,7 +865,7 @@ impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: 'a {
 }
 
 impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
-    /// Creates a fixed vertex handle from this dynamic handle.
+    /// Creates a fixed edge handle from this dynamic handle.
     pub fn fix(&self) -> FixedEdgeHandle {
         self.handle
     }
@@ -1024,7 +1024,7 @@ impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: Default + 'a {
         }
     }
 
-    /// Creates a fixed vertex handle from this dynamic vertex handle.
+    /// Creates a fixed face handle from this dynamic face handle.
     pub fn fix(&self) -> FixedFaceHandle {
         self.handle
     }
