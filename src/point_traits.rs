@@ -36,7 +36,7 @@ pub trait PointN
     /// The (fixed) number of dimensions of this point type.
     fn dimensions() -> usize;
 
-    /// Creates a new point with all compoenents set to a certain value.
+    /// Creates a new point with all components set to a certain value.
     fn from_value(value: Self::Scalar) -> Self;
 
     /// Returns the nth element of this point.

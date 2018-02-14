@@ -179,3 +179,19 @@ impl <V> BoundingRect<V> where V: PointN {
         result
     }
 }
+
+impl <V> SpatialObject for BoundingRect<V> where V: PointN {
+    type Point = V;
+
+    fn mbr(&self) -> BoundingRect<V> {
+        self.clone()
+    }
+
+    fn distance2(&self, point: &Self::Point) -> V::Scalar {
+        self.min_dist2(point)
+    }
+
+    fn contains(&self, point: &Self::Point) -> bool {
+        self.contains_point(point)
+    }
+}
