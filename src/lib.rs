@@ -49,7 +49,7 @@ mod testutils;
 mod traits;
 mod point_traits;
 mod misc;
-mod boundingvolume;
+mod boundingrect;
 mod bigvec;
 mod exactpred;
 
@@ -59,5 +59,5 @@ pub mod primitives;
 pub mod rtree;
 
 pub use traits::*;
-pub use boundingvolume::*;
+pub use boundingrect::*;
 pub use point_traits::{PointN, TwoDimensional, ThreeDimensional};

@@ -17,7 +17,7 @@ use cgmath::{Point3, Zero, One};
 use traits::{SpadeFloat, SpadeNum, SpatialObject};
 use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use num::{Float, one, zero, Signed};
-use boundingvolume::BoundingRect;
+use boundingrect::BoundingRect;
 use kernels::{TrivialKernel, DelaunayKernel};
 
 /// An edge defined by it's two end points.

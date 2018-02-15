@@ -14,7 +14,7 @@ use traits::{SpatialObject};
 use ::TwoDimensional;
 use point_traits::{PointN, PointNExtensions};
 use num::{zero};
-use boundingvolume::BoundingRect;
+use boundingrect::BoundingRect;
 use std::iter::Once;
 use smallvec::SmallVec;
 
@@ -1197,7 +1197,7 @@ fn create_clusters<T: SpatialObject>(array: &mut [T], cluster_size: usize, dimen
 #[cfg(test)]
 mod test {
     use super::{RTree};
-    use boundingvolume::BoundingRect;
+    use boundingrect::BoundingRect;
     use primitives::{SimpleTriangle, SimpleEdge};
     use cgmath::{Point2, InnerSpace};
     use num::Float;

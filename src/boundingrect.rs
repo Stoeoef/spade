@@ -9,6 +9,7 @@
 use num::{Signed, zero, one};
 use point_traits::{PointN, PointNExtensions};
 use misc::max_inline;
+use traits::SpatialObject;
 
 /// An axis aligned minimal bounding rectangle.
 ///
@@ -31,6 +32,20 @@ impl <V> BoundingRect<V> where V: PointN {
             lower: point.clone(),
             upper: point,
         }
+    }
+
+    /// Create a bounding rectangle from a set of points
+    ///
+    /// # Panics
+    /// Panics if the given iterator is empty.
+    pub fn from_points<I>(points: I) -> Self where I: IntoIterator<Item=V> {
+        let mut iter = points.into_iter();
+        let first = iter.next();
+        let mut result = Self::from_point(first.expect("Expected at least one point"));
+        for p in iter {
+            result.add_point(p);
+        }
+        result
     }
 
     /// Creates a bounding rectangle that contains two points.
@@ -193,5 +208,25 @@ impl <V> SpatialObject for BoundingRect<V> where V: PointN {
 
     fn contains(&self, point: &Self::Point) -> bool {
         self.contains_point(point)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::BoundingRect;
+
+    #[test]
+    fn test_add_points() {
+        let points = [
+            [0.0, 1.0f32],
+            [1.0, 0.5],
+            [2.0, -2.0],
+            [0.0, 0.0]];
+        let bb = BoundingRect::from_points(points.iter().cloned());
+        assert_eq!(bb,
+                   BoundingRect {
+                       lower: [0.0, -2.0],
+                       upper: [2.0, 1.0],
+                   });
     }
 }

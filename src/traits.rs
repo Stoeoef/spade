@@ -10,7 +10,7 @@ use cgmath as cg;
 
 use num::{Signed, BigInt, BigRational, zero};
 use num::rational::Ratio;
-use boundingvolume::BoundingRect;
+use boundingrect::BoundingRect;
 use bigvec::{AdaptiveInt};
 use point_traits::{PointN, PointNExtensions, TwoDimensional};
 use std::fmt::Debug;
