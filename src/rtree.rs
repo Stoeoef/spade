@@ -935,6 +935,21 @@ pub struct RTree<T> where T: SpatialObject {
     size: usize,
 }
 
+impl <T> ::std::fmt::Debug for RTree<T> where T: SpatialObject + ::std::fmt::Debug {
+
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        let mut iter = self.iter();
+        write!(f, "RTree {{")?;
+        if let Some(next) = iter.next() {
+            next.fmt(f)?
+        }
+        for t in iter {
+            write!(f, ", {:?}", t)?;
+        }
+        write!(f, "}}")
+    }
+}
+
 impl<T> Default for RTree<T> where T: SpatialObject {
     fn default() -> RTree<T> {
         RTree::new()
