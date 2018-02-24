@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## [1.4.0] - 2018-02-25
+### Added
+ - Added cargo feature 'serde_serialize', rtrees, triangulations and primitives now support serialization with serde!
+ - `RTree`s implement `Debug`
+ - New constructor: `BoundingRect::from_points`
+### Changed
+ - Bumped compatible nalgebra version to 0.14.*
+ ### Bugfixes
+  - `BoundingRect` now implements `SpatialObject`
+
 ## [1.3.0] - 2018-01-06
 ### Depcrecated
  - `spade::delaunay::DelaunayTriangulation::lookup` is deprecated, use `locate_vertex` instead
@@ -131,6 +142,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.4.0]: https://github.com/Stoeoef/spade/compare/v1.3.0...v1.4.0
 
 [1.3.0]: https://github.com/Stoeoef/spade/compare/v1.2.0...v1.3.0
 
