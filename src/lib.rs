@@ -38,6 +38,13 @@ extern crate clamp;
 extern crate smallvec;
 extern crate pdqselect;
 
+#[cfg(feature = "serde_serialize")]
+#[macro_use]
+extern crate serde;
+
+#[cfg(all(feature = "serde_serialize", test))]
+extern crate serde_json;
+
 #[cfg(test)]
 extern crate approx;
 #[cfg(test)]

@@ -17,6 +17,7 @@ use traits::SpatialObject;
 /// surrounds an object and is aligned along all axes. The vector type `V`'s dimension
 /// determines if this is a rectangle, a box or a higher dimensional volume.
 #[derive(Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct BoundingRect<V: PointN> {
     lower: V,
     upper: V,

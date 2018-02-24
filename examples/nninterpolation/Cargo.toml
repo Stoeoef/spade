@@ -9,7 +9,7 @@ name = "nninterpolation"
 cgmath = "*"
 nalgebra = "*"
 noise = "0.2.*"
-kiss3d = "0.12.*"
+kiss3d = "0.13.*"
 glfw = "0.19"
 rand = "*"
 spade = { path = "../../" }

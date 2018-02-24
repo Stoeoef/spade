@@ -18,8 +18,12 @@ use boundingrect::BoundingRect;
 use std::iter::Once;
 use smallvec::SmallVec;
 
+#[cfg(feature = "serde_serialize")]
+use serde::{Serialize, Deserialize};
+
 #[doc(hidden)]
 #[derive(Eq, PartialEq, Clone, Debug)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct RTreeOptions {
     max_size: usize,
     min_size: usize,
@@ -859,6 +863,8 @@ impl <T> RTreeNode<T>
 
 #[doc(hidden)]
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_serialize", serde(bound(serialize="T: Serialize, T::Point: Serialize", deserialize="T: Deserialize<'de>, T::Point: Deserialize<'de>")))]
 pub struct DirectoryNodeData<T>
     where T: SpatialObject {
     bounding_box: Option<BoundingRect<T::Point>>,
@@ -869,6 +875,8 @@ pub struct DirectoryNodeData<T>
 
 #[doc(hidden)]
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_serialize", serde(bound(serialize="T: Serialize, T::Point: Serialize", deserialize="T: Deserialize<'de>, T::Point: Deserialize<'de>")))]
 pub enum RTreeNode<T>
     where T: SpatialObject {
     Leaf(T),
@@ -930,6 +938,8 @@ pub enum RTreeNode<T>
 /// ```
 
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_serialize", serde(bound(serialize="T: Serialize, T::Point: Serialize", deserialize="T: Deserialize<'de>, T::Point: Deserialize<'de>")))]
 pub struct RTree<T> where T: SpatialObject {
     root: DirectoryNodeData<T>,
     size: usize,
@@ -1454,6 +1464,21 @@ mod test {
         // Check if all points have been inserted
         for p in &points {
             assert!(tree.lookup(p).is_some());
+        }
+    }
+
+    #[cfg(feature="serde")]
+    #[test]
+    fn test_serialization() {
+        use serde_json;
+        const SIZE: usize = 1000;
+        let points = random_points_with_seed::<f32>(SIZE, [78444, 280, 2071, 229011]);
+        let tree = RTree::bulk_load(points.clone());
+        let json = serde_json::to_string(&tree).expect("Serializing tree failed");
+        let parsed: RTree<Point2<f32>> = serde_json::from_str(&json).expect("Deserializing tree failed");
+        assert_eq!(parsed.size(), SIZE);
+        for point in &points {
+            assert!(parsed.contains(point));
         }
     }
 }

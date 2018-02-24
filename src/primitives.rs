@@ -20,8 +20,12 @@ use num::{Float, one, zero, Signed};
 use boundingrect::BoundingRect;
 use kernels::{TrivialKernel, DelaunayKernel};
 
+#[cfg(feature = "serde_serialize")]
+use serde::{Serialize, Deserialize};
+
 /// An edge defined by it's two end points.
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct SimpleEdge<V: PointN> {
     /// The edge's origin.
     pub from: V,
@@ -32,6 +36,7 @@ pub struct SimpleEdge<V: PointN> {
 
 /// Yields information on which side of a line a point lies.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct EdgeSideInfo<S> {
     signed_side: S,
 }
@@ -219,6 +224,7 @@ impl <V: PointN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
 
 /// A triangle, defined by it's three points.
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct SimpleTriangle<V: PointN> {
     v0: V,
     v1: V,
@@ -346,6 +352,8 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
 }
 
 /// An n-dimensional circle, defined by its origin and radius.
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_serialize", serde(bound(serialize="V: Serialize, V::Scalar: Serialize", deserialize="V: Deserialize<'de>, V::Scalar: Deserialize<'de>")))]
 pub struct SimpleCircle<V: PointN> {
     /// The circle's center.
     pub center: V,

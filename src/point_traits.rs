@@ -27,9 +27,7 @@ use misc::{min_inline, max_inline};
 /// Also, an empty implementation `TwoDimensional` or `ThreeDimensional`
 /// should be given if appropriate.
 pub trait PointN
-    where Self: Clone,
-          Self: Debug,
-          Self: PartialEq {
+    where Self: Clone + Debug + PartialEq {
     /// The points's internal scalar type.
     type Scalar: SpadeNum;
 

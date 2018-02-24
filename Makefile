@@ -10,7 +10,7 @@ update:
 
 .PHONY: test
 test:
-	cargo test
+	cargo test --features serde_serialize
 
 .PHONY: clean
 clean:
