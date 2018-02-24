@@ -6,7 +6,7 @@
  * [Documentation](https://docs.rs/spade/)
  * [Using spade](#using-spade)
  * [Examples](#examples)
- * [Feedback](#feedback)
+ * [Project state](#project-state)
  * [Performance](#performance)
  * [License](#license)
 
@@ -19,6 +19,7 @@ Spade (SPAtial DatastructurEs, obviously!) implements a few nifty data structure
 Some other noteworthy features:
 - [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor) on this triangulation
 - Precise and adaptive calculation methods to avoid rounding issues
+- supports serde 1.0 serialization
 
 All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) packages. However, using these
 packages is not required.
@@ -30,12 +31,10 @@ Spade complies with semantic versioning, and since it is past its 1.0 version, c
 The documentation can be found under [docs.rs](https://docs.rs/spade/).
 There is also a [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available.
 
-# Feedback and contributing
-Do you miss a feature? Many features may be easy to implement, I might just have missed that use case. Please do post an issue on GitHub. If you think there's a feature missing and you are interested to implement it yourself, don't be shy to mention it - I'd be happy to help you getting started. Just post an appropriate issue on GitHub.
+# Project state
+I (the main developer) am currently working on splitting up this package into smaller packages (for rtrees and delaunay triangulations), along with some larger API changes. Thus, I won't add large features to spade. However, I will still be monitoring pull requests and try to implement smaller, easily fixable tasks - please do not hesitate to open an appropriate issue!
 
 # Examples
-_Note: If you have opened this on docs.rs, you won't see any images. Use the README.md on the GitHub page._
-
 ## R-Tree
 This image shows the structure of an r*-tree with some points inserted in a circular pattern.
 Points are shown as blue dots, the tree's directory nodes are displayed as boxes of different colors (depending on their depth in the tree).
