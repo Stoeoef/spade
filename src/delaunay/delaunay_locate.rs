@@ -86,6 +86,7 @@ pub trait DelaunayLocateStructure<T: PointN> : Default + Clone {
 
 /// An entry of the Delaunay triangulation's internal r-tree.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct VertexEntry<V> where V: PointN {
     pub point: V,
     pub handle: FixedVertexHandle,
@@ -117,7 +118,9 @@ impl <V: PointN> VertexEntry<V> {
 /// or locate queries, are performed close to each other, as the result of the last query
 /// operation will be used as hint for the next operation.
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct DelaunayWalkLocate {
+    #[cfg_attr(feature = "serde_serialize", serde(skip))]
     last: Arc<AtomicUsize>,
 }
 

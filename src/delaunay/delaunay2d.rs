@@ -132,6 +132,7 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
 /// using `DelaunayWalkLocate` as locate strategy. As a consequence, subsequent 
 /// queries - like insertion, interpolation or nearest neighbor queries - will
 /// run in O(1) if the query locations are close to each other.
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
           K: DelaunayKernel<<V::Point as PointN>::Scalar>,
@@ -1661,5 +1662,28 @@ mod test {
             });
             assert_eq!(nn_delaunay.map(|p| p.position()), nn_linear_search.cloned());
         }
+    }
+
+    #[test]
+    #[cfg(feature="serde_serialize")]
+    fn test_serialization() {
+        use serde_json;
+        use delaunay::{DelaunayWalkLocate, DelaunayTreeLocate};
+        let mut t1 = IntDelaunayTriangulation::with_tree_locate();
+        t1.insert([0i32, 12]);
+        let mut t2 = IntDelaunayTriangulation::with_walk_locate();
+        t2.insert([0i32, 22]);
+        t2.insert([2, 10]);
+        t2.insert([19, 29]);
+
+        let json = serde_json::to_string(&t2).unwrap();
+        let parsed: IntDelaunayTriangulation<[i32; 2], DelaunayWalkLocate> = 
+            serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.num_vertices(), 3);
+
+        let json = serde_json::to_string(&t1).unwrap();
+        let parsed: IntDelaunayTriangulation<[i32; 2], DelaunayTreeLocate<[i32; 2]>> = 
+            serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.num_vertices(), 1);
     }
 }

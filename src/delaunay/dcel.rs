@@ -31,11 +31,13 @@ pub struct VertexRemovalResult<V> {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 struct FaceEntry {
     adjacent_edge: Option<FixedEdgeHandle>,
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 struct VertexEntry<V> {
     data: V,
     out_edge: Option<FixedEdgeHandle>,
@@ -51,6 +53,7 @@ impl <V> VertexEntry<V> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 struct HalfEdgeEntry<T> {
     next: FixedEdgeHandle,
     prev: FixedEdgeHandle,
@@ -62,6 +65,7 @@ struct HalfEdgeEntry<T> {
     
 
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct DCEL<V, E=()> {
     vertices: Vec<VertexEntry<V>>,
     faces: Vec<FaceEntry>,

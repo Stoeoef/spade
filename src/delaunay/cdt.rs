@@ -21,6 +21,7 @@ use primitives::SimpleEdge;
 pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct CdtEdge(bool);
 
 impl CdtEdge {
@@ -82,6 +83,7 @@ impl Default for CdtEdge {
 /// }
 /// ```
 #[derive(Clone)]
+#[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
           V::Point: TwoDimensional,
@@ -644,7 +646,7 @@ impl <V, K> ConstrainedDelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
 #[cfg(test)]
 mod test {
     use testutils::*;
-    use super::ConstrainedDelaunayTriangulation;
+    use super::{ConstrainedDelaunayTriangulation, FloatCDT};
     use super::{DelaunayTriangulation, DelaunayWalkLocate};
     use traits::HasPosition;
     use kernels::{AdaptiveIntKernel, FloatKernel};
@@ -980,5 +982,16 @@ mod test {
         cdt.remove(v1);
         assert_eq!(cdt.num_constraints(), 1);
         assert!(cdt.is_degenerate());
+    }
+
+    #[test]
+    #[cfg(feature="serde_serialize")]
+    fn test_serialization() {
+        use serde_json;
+        let mut cdt = FloatCDT::with_walk_locate();
+        cdt.insert([0.1, 12.]);
+        let json = serde_json::to_string(&cdt).unwrap();
+        let parsed: FloatCDT<[f32; 2], DelaunayWalkLocate> = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.num_vertices(), 1);
     }
 }
