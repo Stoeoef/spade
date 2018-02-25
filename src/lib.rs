@@ -18,6 +18,8 @@
 //!   * Can be backed up by an r*-tree to improve performance when inserting randomly distributed points
 //!   * Supports vertex removal
 //! * A 2D constrained Delaunay triangulation: `spade::delaunay::ConstrainedDelaunayTriangulation`
+//! * Supports serde. Activate the `serde_serialize` feature to enable (de)serialization of r*-trees,
+//! (constrained) Delaunay triangulations and primitives.
 //!
 //! # Supported point types
 //! Spade works well with points from the `nalgebra` and `cgmath` packages. Also, fixed size arrays of size 2, 3 and 4 are
