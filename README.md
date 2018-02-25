@@ -19,7 +19,7 @@ Spade (SPAtial DatastructurEs, obviously!) implements a few nifty data structure
 Some other noteworthy features:
 - [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor) on this triangulation
 - Precise and adaptive calculation methods to avoid rounding issues
-- supports serde 1.0 serialization
+- supports [serde](https://crates.io/crates/serde) with the `serde_serialize` feature
 
 All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) packages. However, using these
 packages is not required.
