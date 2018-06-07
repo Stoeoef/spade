@@ -14,8 +14,8 @@ extern crate num;
 use spade::delaunay::*;
 use spade::kernels::*;
 use spade::{SpadeNum, HasPosition};
-use rand::{Rand, XorShiftRng, SeedableRng};
-use rand::distributions::{Range, IndependentSample};
+use rand::{XorShiftRng, SeedableRng};
+use rand::distributions::{Range, Distribution};
 use rand::distributions::range::SampleRange;
 use cgmath::{Point2, BaseNum};
 
@@ -36,9 +36,8 @@ const NUM_QUERY_POINTS: usize = 400;
 
 fn main() {
 
-    let seed = [66719311, 3577332191, 127720921, 1790772261];
     let vertices = random_points_with_seed_range_and_origin::<f64>(
-        20.0, Point2::new(0., 0.), SIZE, seed);
+        20.0, Point2::new(0., 0.), SIZE, b"Look out through");
 
     let mut delaunay = FloatDelaunayTriangulation::with_walk_locate();
     for (index, p) in vertices.iter().enumerate() {
@@ -50,7 +49,7 @@ fn main() {
                                 &(|v: &mut PointWithHeightAndGradient, g| v.2 = g));
 
     let query_vertices = random_points_with_seed_range_and_origin::<f64>(
-        10.0, Point2::new(0., 0.), NUM_QUERY_POINTS, [299, 233519, 78922, 266123]);
+        10.0, Point2::new(0., 0.), NUM_QUERY_POINTS, b"the window. Clin");
     
     println!("Starting interpolation benchmark...");
     bench(&query_vertices, &delaunay, "Barycentric interpolation", 
@@ -82,15 +81,15 @@ fn bench<F>(query_vertices: &Vec<Point2<f64>>, delaunay: &Delaunay, title: &str,
     println!("{} benchmark: {:?}ms", title, millis);
 }
 
-fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + Rand + SampleRange>(
-    range: S, origin: Point2<S>, size: usize, seed: [u32; 4])
+fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + SampleRange>(
+    range: S, origin: Point2<S>, size: usize, seed: &[u8; 16])
     -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed);
+    let mut rng = XorShiftRng::from_seed(seed.clone());
     let range = Range::new(-range, range);
     let mut points = Vec::new();
     for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng) + origin.x;
-        let y = range.ind_sample(&mut rng) + origin.y;
+        let x = range.sample(&mut rng) + origin.x;
+        let y = range.sample(&mut rng) + origin.y;
         points.push(Point2::new(x, y));
     }
     points    

@@ -787,7 +787,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                     let mut result = RV::new();
                     *result.nth_mut(0) = *pos.nth(0);
                     *result.nth_mut(1) = *pos.nth(1);
-                    *result.nth_mut(2) = f((&*e.to()));
+                    *result.nth_mut(2) = f(&*e.to());
                     result
                 }).collect()
         };
@@ -1110,7 +1110,7 @@ mod test {
     use cgmath::{Point2};
     use testutils::*;
     use rand::{SeedableRng, XorShiftRng, Rng};
-    use rand::distributions::{Range, IndependentSample};
+    use rand::distributions::{Range, Distribution};
     use traits::{HasPosition, SpatialObject};
     use super::delaunay_basic::BasicDelaunaySubdivision;
 
@@ -1166,7 +1166,7 @@ mod test {
         d.insert(Point2::new(1f64, -1f64));
         assert_eq!(d.triangles().count(), 2);
         const SIZE: usize = 1000;
-        let points = random_points_with_seed::<f64>(SIZE, [2, 3, 112, 2000]);
+        let points = random_points_with_seed::<f64>(SIZE, b"ilikechillychees");
         for p in points {
             d.insert(p);
         }
@@ -1191,7 +1191,7 @@ mod test {
     fn test_insert_points() {
         // Just check if this won't crash
         const SIZE: usize = 10000;
-        let mut points = random_points_with_seed::<f64>(SIZE, [1, 3, 3, 7]);
+        let mut points = random_points_with_seed::<f64>(SIZE, b"test_insert_poin");
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for p in points.drain(..) {
             d.insert(p);
@@ -1203,7 +1203,7 @@ mod test {
     #[test]
     fn test_insert_integral_points() {
         const SIZE: usize = 10000;
-        let mut points = random_points_in_range(1000i64, SIZE, [100934, 1235, 701, 12355]);
+        let mut points = random_points_in_range(1000i64, SIZE, b"test insert inte");
         let mut d = IntDelaunayTriangulation::with_tree_locate();
         for p in points.drain(..) {
             d.insert(p);
@@ -1214,11 +1214,11 @@ mod test {
     #[test]
     fn test_insert_outside_convex_hull() {
         const NUM: usize = 100;
-        let mut rng = XorShiftRng::from_seed([94, 62, 2010, 2016]);
+        let mut rng = XorShiftRng::from_seed(b"insert_outside_c".clone());
         let range = Range::new(0., ::std::f64::consts::PI);
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for _ in 0 .. NUM {
-            let ang = range.ind_sample(&mut rng);
+            let ang = range.sample(&mut rng);
             let vec = Point2::new(ang.sin(), ang.cos()) * 100.;
             d.insert(vec);
         }
@@ -1246,7 +1246,7 @@ mod test {
     #[test]
     fn test_insert_same_point() {
         const SIZE: usize = 300;
-        let mut points = random_points_with_seed::<f64>(SIZE, [2, 123, 43, 7]);
+        let mut points = random_points_with_seed::<f64>(SIZE, b"insert same.poi!");
         let mut d = FloatDelaunayTriangulation::with_walk_locate();
         for p in &points {
             d.insert(*p);
@@ -1439,7 +1439,7 @@ mod test {
     #[test]
     fn test_insert_points_with_increasing_distance() {
         use cgmath::{EuclideanSpace};
-        let mut points = random_points_with_seed::<f64>(1000, [2, 23, 493, 712]);
+        let mut points = random_points_with_seed::<f64>(1000, b"with_increasing.");
         points.sort_by(|p1, p2| p1.dot(p1.to_vec()).partial_cmp(&p2.dot(p2.to_vec())).unwrap());
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for point in &points {
@@ -1516,7 +1516,7 @@ mod test {
     fn test_remove_inner() {
         use ::rand::{SeedableRng, Rng};
 
-        let mut points = random_points_with_seed::<f64>(1000, [22, 231, 493, 712]);
+        let mut points = random_points_with_seed::<f64>(1000, b"remove inner!?&.");
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for point in &points {
             d.insert(*point);
@@ -1528,7 +1528,7 @@ mod test {
         d.insert(Point2::new(2.0, -2.0));
         d.insert(Point2::new(2.0, 2.0));
         // Now remove all inner points
-        let mut rng = ::rand::XorShiftRng::from_seed([10, 10, 20, 1203031]);
+        let mut rng = ::rand::XorShiftRng::from_seed(b" next_seed/%&&2+".clone());
         rng.shuffle(&mut points);
         assert_eq!(d.num_vertices(), 1004);
         for point in &points {
@@ -1542,7 +1542,7 @@ mod test {
     #[test]
     fn test_remove_outer() {
         use cgmath::{EuclideanSpace};
-        let mut points = random_points_with_seed::<f64>(1000, [1022, 35611, 2493, 7212]);
+        let mut points = random_points_with_seed::<f64>(1000, b"-testremoveouter");
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for point in &points {
             d.insert(*point);
@@ -1558,12 +1558,12 @@ mod test {
     #[test]
     fn test_removal_and_insertion() {
         use cgmath::{Point2};
-        let points = random_points_with_seed::<f64>(1000, [10221, 325611, 20493, 72212]);
+        let points = random_points_with_seed::<f64>(1000, b"al and insertion");
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for point in &points {
             d.insert(*point);
         }
-        let mut rng = XorShiftRng::from_seed([92211, 88213, 3992, 2991]);
+        let mut rng = XorShiftRng::from_seed(b"?i like fried&)%".clone());
         for _ in 0 .. 1000 {
             if rng.gen() {
                 // Insert new random point
@@ -1573,7 +1573,7 @@ mod test {
             } else {
                 // Remove random point
                 let range = Range::new(0, d.num_vertices());
-                let handle = range.ind_sample(&mut rng);
+                let handle = range.sample(&mut rng);
                 d.remove(handle);
             }
         }
@@ -1646,13 +1646,13 @@ mod test {
     #[test]
     fn test_nearest_neighbor() {
         const SIZE: usize = 100;
-        let points = random_points_with_seed::<f64>(SIZE, [20000, 12003, 10029943, 701111]);
+        let points = random_points_with_seed::<f64>(SIZE, b"very nice test!_");
         let mut d = FloatDelaunayTriangulation::with_walk_locate();
         assert!(d.nearest_neighbor(&points[0]).is_none());
         for p in &points {
             d.insert(*p);
         }
-        let sample_points = random_points_with_seed::<f64>(SIZE * 3, [884423, 12345661, 7023123, 6198825]);
+        let sample_points = random_points_with_seed::<f64>(SIZE * 3, b"nearest_neighbor");
         for p in &sample_points {
             let nn_delaunay = d.nearest_neighbor(p);
             let nn_linear_search = points.iter().min_by(|l, r| {

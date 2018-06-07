@@ -19,6 +19,7 @@ use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 use rand::Rng;
+use rand::distributions::Standard;
 
 #[derive(Clone, Copy)]
 pub enum LookupMode {
@@ -47,8 +48,8 @@ pub fn run() {
         .build_glium()
         .unwrap();
 
-    let seed = ::rand::thread_rng().gen();
-    let initial_points = ::random_points_with_seed(30, seed);
+    let seed = ::rand::thread_rng().sample(Standard);
+    let initial_points = ::random_points_with_seed(30, &seed);
     let mut rtree = RTree::bulk_load(initial_points);
 
     let mut render_data = RenderData::new(&display);
@@ -89,8 +90,8 @@ pub fn run() {
                         VirtualKeyCode::A | VirtualKeyCode::B => {
                             // Insert some random points
                             let num = if key == VirtualKeyCode::A { 10usize } else { 100 };
-                            let seed = ::rand::thread_rng().gen();
-                            let new_points = ::random_points_with_seed(num, seed);
+                            let seed = ::rand::thread_rng().sample(Standard);
+                            let new_points = ::random_points_with_seed(num, &seed);
                             for point in new_points.into_iter() {
                                 rtree.insert(point);
                             }

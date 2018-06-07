@@ -234,7 +234,7 @@ fn get_normals(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)> {
         let n = v.normal;
         let p = v.position_3d();
         result.push((cg_vec_to_na(p.to_vec()),
-                    cg_vec_to_na((p.to_vec() - n * 0.3))));
+                    cg_vec_to_na(p.to_vec() - n * 0.3)));
     }
     result
 }

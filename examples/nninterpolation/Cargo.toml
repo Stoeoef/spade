@@ -9,9 +9,9 @@ name = "nninterpolation"
 cgmath = "*"
 nalgebra = "*"
 noise = "0.2.*"
-kiss3d = "0.13.*"
+kiss3d = "0.15.*"
 glfw = "0.19"
-rand = "*"
+rand = "0.5.*"
 spade = { path = "../../" }
 
 [profile.dev]

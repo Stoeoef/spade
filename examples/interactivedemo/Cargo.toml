@@ -8,6 +8,6 @@ name = "interactivedemo"
 [dependencies]
 glfw = "0.8.*"
 glium = "0.15.*"
-rand = "0.3.*"
+rand = "0.5.*"
 cgmath = "*"
 spade = { path = "../../" }

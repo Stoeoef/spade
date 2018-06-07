@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rand::distributions::{IndependentSample, Range};
+use rand::distributions::{Distribution, Range};
 use rand::Rng;
 
 use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, DelaunayWalkLocate};
@@ -58,8 +58,8 @@ pub fn generate_random_triangulation() -> Delaunay {
 
     let range = Range::new(-SAMPLE_REGION, SAMPLE_REGION);
     for _ in 0 .. NUM_POINTS {
-        let x = range.ind_sample(&mut rng);
-        let y = range.ind_sample(&mut rng);
+        let x = range.sample(&mut rng);
+        let y = range.sample(&mut rng);
         let height = ::noise::open_simplex2(&seed, &[x * FREQUENCY, y * FREQUENCY]) * MAX_HEIGHT;
         // Try out some other height functions, like those:
         // let height = (x * x + y * y) * 0.3;

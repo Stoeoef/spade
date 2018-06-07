@@ -157,6 +157,6 @@ impl <I: InterpolationMethod> Grid<I> {
     }
 
     fn transform(v: cg::Point2<f64>) -> cg::Point2<f64> {
-        cg::Point2::from_vec(((v * SCALE).to_vec() - GRID_OFFSET))
+        cg::Point2::from_vec((v * SCALE).to_vec() - GRID_OFFSET)
     }
 }

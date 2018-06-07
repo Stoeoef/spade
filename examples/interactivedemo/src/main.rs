@@ -23,8 +23,8 @@ mod delaunay_example;
 mod cdt_example;
 use spade::SpadeNum;
 use cgmath::{Point2, BaseNum, BaseFloat};
-use rand::{Rand, XorShiftRng, SeedableRng};
-use rand::distributions::{Range, IndependentSample};
+use rand::{XorShiftRng, SeedableRng};
+use rand::distributions::{Range, Distribution};
 use rand::distributions::range::SampleRange;
 
 enum App {
@@ -61,18 +61,18 @@ fn main() {
     }
 }
 
-fn random_points_in_range<S: SpadeNum + Rand + SampleRange + BaseNum>(range: S, size: usize, seed: [u32; 4]) -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed);
+fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
+    let mut rng = XorShiftRng::from_seed(seed.clone());
     let range = Range::new(-range.clone(), range.clone());
     let mut points = Vec::with_capacity(size);
     for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng);
-        let y = range.ind_sample(&mut rng);
+        let x = range.sample(&mut rng);
+        let y = range.sample(&mut rng);
         points.push(Point2::new(x, y));
     }
     points
 }
 
-fn random_points_with_seed<S: SpadeNum + BaseFloat + Rand + SampleRange>(size: usize, seed: [u32; 4]) -> Vec<Point2<S>> {
+fn random_points_with_seed<S: SpadeNum + BaseFloat + SampleRange>(size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
     random_points_in_range(S::one(), size, seed)
 }

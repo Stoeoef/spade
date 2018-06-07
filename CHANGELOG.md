@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.5.0] - 2018-06-07
+### Added
+ - Added `RTree::nearest_neighbor_iterator`
+### Changed
+ - Bumped compatible nalgebra version to 0.15.*
+ - Bumped compatible cgmath version to 0.16.*
+
 ## [1.4.0] - 2018-02-25
 ### Added
  - Added cargo feature 'serde_serialize', rtrees, triangulations and primitives now support serialization with serde!
@@ -142,6 +149,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.5.0]: https://github.com/Stoeoef/spade/compare/v1.4.0...v1.5.0
 
 [1.4.0]: https://github.com/Stoeoef/spade/compare/v1.3.0...v1.4.0
 

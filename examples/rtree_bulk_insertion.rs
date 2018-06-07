@@ -8,9 +8,9 @@ use std::io::{Write};
 use spade::rtree::{RTree, RTreeOptions};
 use spade::SpadeNum;
 use cgmath::{Point2, BaseNum};
-use rand::{Rand, XorShiftRng, SeedableRng};
+use rand::{XorShiftRng, SeedableRng};
 use rand::distributions::range::SampleRange;
-use rand::distributions::{Range, IndependentSample};
+use rand::distributions::{Range, Distribution};
 use std::time::{Instant, Duration};
 
 struct TestTimes {
@@ -49,8 +49,8 @@ impl BenchSetup {
 }
 
 pub fn main() {
-    let insertion_points: Vec<Point2<f32>> = random_points_with_seed(*CHUNK_SIZES.last().unwrap(), [32, 21992, 38332, 218882]);
-    let query_points: Vec<Point2<f32>> = random_points_with_seed(QUERY_SIZE, [1232, 32345, 69696, 32921211]);
+    let insertion_points: Vec<Point2<f32>> = random_points_with_seed(*CHUNK_SIZES.last().unwrap(), b"Back to where it".clone());
+    let query_points: Vec<Point2<f32>> = random_points_with_seed(QUERY_SIZE, b"back to...began!".clone());
 
     let mut benchmarks = vec![
         BenchSetup::new(3, 6, "Default options (3-6)"),
@@ -152,15 +152,15 @@ fn duration_ns(duration: Duration) -> f32 {
     duration.as_secs() as f32 * 1_000_000_000. + duration.subsec_nanos() as f32
 }
 
-fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + Rand + SampleRange>(
-    size: usize, seed: [u32; 4])
+fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + SampleRange>(
+    size: usize, seed: [u8; 16])
     -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();
     for _ in 0 .. size {
-        let x = range.ind_sample(&mut rng);
-        let y = range.ind_sample(&mut rng);
+        let x = range.sample(&mut rng);
+        let y = range.sample(&mut rng);
         points.push(Point2::new(x, y));
     }
     points    

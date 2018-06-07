@@ -14,6 +14,7 @@ use glium::{DisplayBuild};
 use glium::glutin::{Event, ElementState, MouseButton};
 use glium::glutin::VirtualKeyCode;
 use rand::Rng;
+use rand::distributions::Standard;
 
 pub type ExampleTriangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
 
@@ -52,8 +53,8 @@ pub fn run() {
                             let num = if key == VirtualKeyCode::A { 10usize } else { 100 };
                             let mut rng = ::rand::thread_rng();
                             
-                            let seed = rng.gen();
-                            let new_points = ::random_points_with_seed(num, seed);
+                            let seed = rng.sample(Standard);
+                            let new_points = ::random_points_with_seed(num, &seed);
                             for point in new_points.into_iter() {
                                 delaunay.insert(point);
                             }
