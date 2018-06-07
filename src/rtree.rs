@@ -157,6 +157,99 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T>
     }
 }
 
+/// An iterator yielding the elements of an `RTree` ordered by their distance to a query point.
+/// 
+/// This `struct` is created by the `nearest_neighbor_iter` method on `RTree`
+pub struct NearestNeighborIterator<'a, T>
+    where T: SpatialObject + 'a
+{
+    nodes: ::std::collections::binary_heap::BinaryHeap<RTreeNodeDistanceWrapper<'a, T>>,
+    query_point: T::Point,
+}
+
+struct RTreeNodeDistanceWrapper<'a, T>
+    where T: SpatialObject + 'a
+{
+    node: &'a RTreeNode<T>,
+    distance: <T::Point as PointN>::Scalar
+}
+
+impl <'a, T> PartialEq for RTreeNodeDistanceWrapper<'a, T>
+    where T: SpatialObject + 'a
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.distance == other.distance
+    }
+}
+
+impl <'a, T> PartialOrd for RTreeNodeDistanceWrapper<'a, T> 
+    where T: SpatialObject + 'a
+{
+    fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+        // Inverse comparison creates a min heap
+        other.distance.partial_cmp(&self.distance)
+    }
+}
+
+impl <'a, T> Eq for RTreeNodeDistanceWrapper<'a, T>
+    where T: SpatialObject + 'a
+{
+
+}
+
+impl <'a, T> Ord for RTreeNodeDistanceWrapper<'a, T> where T: SpatialObject + 'a {
+    fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl <'a, T> NearestNeighborIterator<'a, T>
+    where T: SpatialObject + 'a
+{
+    fn new(root: &'a DirectoryNodeData<T>, query_point: T::Point) -> Self {
+        let mut result = NearestNeighborIterator {
+            nodes: Default::default(),
+            query_point: query_point,
+        };
+        result.extend(&root.children);
+        result
+    }
+
+    fn extend(&mut self, children: &'a [RTreeNode<T>]) {
+        let query_point = self.query_point.clone();
+        self.nodes.extend(children.iter().map(|child| {
+            let distance = match child {
+                RTreeNode::DirectoryNode(ref data) => data.mbr().min_dist2(&query_point),
+                RTreeNode::Leaf(ref t) => t.distance2(&query_point),
+            };
+
+            RTreeNodeDistanceWrapper {
+                node: child,
+                distance: distance
+            }
+        }));
+    }
+}
+
+impl <'a, T> Iterator for NearestNeighborIterator<'a, T>
+    where T: SpatialObject + 'a
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.nodes.pop() {
+            Some(RTreeNodeDistanceWrapper { node: RTreeNode::DirectoryNode(ref data), .. }) => {
+                self.extend(&data.children);
+                self.next()
+            },
+            Some(RTreeNodeDistanceWrapper { node: RTreeNode::Leaf(ref t), ..}) => {
+                Some(t)
+            },
+            None => None,
+        }
+    }
+}
+
 impl <T> DirectoryNodeData<T>
     where T: SpatialObject + Clone,
           T::Point: TwoDimensional {
@@ -299,7 +392,6 @@ impl <T> DirectoryNodeData<T>
         }
     }
 
-    #[inline(never)]
     fn split(&mut self) -> RTreeNode<T> {
         let axis = self.get_split_axis();
         assert!(self.children.len() >= 2);
@@ -334,7 +426,6 @@ impl <T> DirectoryNodeData<T>
         result
     }
 
-    #[inline(never)]
     fn reinsert(&mut self) -> Vec<RTreeNode<T>> {
         let center = self.mbr().center();
         // Sort with increasing order so we can use Vec::split_off
@@ -1034,8 +1125,6 @@ impl<T> RTree<T>
 
     /// Returns the nearest n neighbors.
     pub fn nearest_n_neighbors(&self, query_point: &T::Point, n: usize) -> Vec<&T> {
-        // let iter= NearestNeighborIterator::new(self, query_point);
-        // Iterator::collect(iter.take(n))
 
         let mut result = Vec::new();
         if self.size > 0 {
@@ -1043,6 +1132,13 @@ impl<T> RTree<T>
         }
         result
     }
+
+   /// Returns an iterator over the nearest neighbors of a point.
+    pub fn nearest_neighbor_iterator(&self, query_point: &T::Point) -> NearestNeighborIterator<T> {
+        NearestNeighborIterator::new(&self.root, query_point.clone())
+    }
+    
+
 
     /// Returns all objects (partially) contained in a rectangle
     pub fn lookup_in_rectangle(&self, query_rect: &BoundingRect<T::Point>) -> Vec<&T> {
@@ -1226,6 +1322,7 @@ mod test {
     use primitives::{SimpleTriangle, SimpleEdge};
     use cgmath::{Point2, InnerSpace};
     use num::Float;
+    use traits::SpatialObject;
     use testutils::*;
 
     #[test]
@@ -1269,6 +1366,24 @@ mod test {
     }
 
     #[test]
+    fn test_nearest_neighbor_iterator() {
+
+        let (tree, mut points) = create_random_tree::<f32>(100, [10, 233, 588812, 411112]);
+        let sample_points = random_points_with_seed(10, [66, 123, 12345, 112]);
+        for sample_point in &sample_points {
+            points.sort_by(|l, r| l.distance2(sample_point).partial_cmp(&r.distance2(sample_point)).unwrap());
+            let collected: Vec<_> = tree.nearest_neighbor_iterator(sample_point).cloned().collect();
+            assert_eq!(points, collected);
+        }
+    }
+
+    #[test]
+    fn test_nearest_neighbor_iterator_empty() {
+        let tree: RTree<[f32; 2]> = RTree::new();
+        assert_eq!(tree.nearest_neighbor_iterator(&[0.0, 0.0]).next(), None);
+    }
+
+    #[test]
     fn test_lookup_in_circle() {
         let (tree, points) = create_random_tree::<f32>(1000, [10, 233, 588812, 411112]);
         let sample_points = random_points_with_seed(100, [66, 123, 12345, 112]);
@@ -1301,7 +1416,7 @@ mod test {
         const SIZE: f32 = 20.;
         for sample_point in &sample_points {
             let sample_rect = BoundingRect::from_corners(
-                sample_point, &Point2::from_vec((sample_point.to_vec() + Vector2::new(SIZE, SIZE))));
+                sample_point, &Point2::from_vec(sample_point.to_vec() + Vector2::new(SIZE, SIZE)));
             let mut expected = Vec::new();
             for point in &points {
                 if sample_rect.contains_point(point) {

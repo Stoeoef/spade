@@ -646,7 +646,7 @@ impl <V, K> ConstrainedDelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
 #[cfg(test)]
 mod test {
     use testutils::*;
-    use super::{ConstrainedDelaunayTriangulation, FloatCDT};
+    use super::{ConstrainedDelaunayTriangulation};
     use super::{DelaunayTriangulation, DelaunayWalkLocate};
     use traits::HasPosition;
     use kernels::{AdaptiveIntKernel, FloatKernel};

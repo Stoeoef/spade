@@ -215,7 +215,8 @@ impl <V> SpatialObject for BoundingRect<V> where V: PointN {
 #[cfg(test)]
 mod test {
     use super::BoundingRect;
-
+    use traits::SpatialObject;
+    
     #[test]
     fn test_add_points() {
         let points = [
@@ -229,5 +230,18 @@ mod test {
                        lower: [0.0, -2.0],
                        upper: [2.0, 1.0],
                    });
+    }
+
+    #[test]
+    fn test_bounding_rect_distance2() {
+        let rect = BoundingRect {
+            lower: [0.0, 0.0],
+            upper: [1.0, 1.0]
+        };
+        assert_eq!(rect.distance2(&[0.0, 0.5]), 0.0);
+        assert_eq!(rect.distance2(&[0.0, -1.0]), 1.0);
+        assert_eq!(rect.distance2(&[0.2, 0.7]), 0.0);
+        assert_eq!(rect.distance2(&[2.0, 2.0]), 2.0);
+        assert_eq!(rect.distance2(&[2.0, 0.5]), 1.0);
     }
 }
