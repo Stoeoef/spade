@@ -16,7 +16,6 @@ use point_traits::{PointN, PointNExtensions};
 use num::{zero};
 use boundingrect::BoundingRect;
 use std::iter::Once;
-use smallvec::SmallVec;
 
 #[cfg(feature = "serde_serialize")]
 use serde::{Serialize, Deserialize};
@@ -211,11 +210,11 @@ impl <'a, T> NearestNeighborIterator<'a, T>
             nodes: Default::default(),
             query_point: query_point,
         };
-        result.extend(&root.children);
+        result.extend_heap(&root.children);
         result
     }
 
-    fn extend(&mut self, children: &'a [RTreeNode<T>]) {
+    fn extend_heap(&mut self, children: &'a [RTreeNode<T>]) {
         let query_point = self.query_point.clone();
         self.nodes.extend(children.iter().map(|child| {
             let distance = match child {
@@ -237,16 +236,17 @@ impl <'a, T> Iterator for NearestNeighborIterator<'a, T>
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.nodes.pop() {
-            Some(RTreeNodeDistanceWrapper { node: RTreeNode::DirectoryNode(ref data), .. }) => {
-                self.extend(&data.children);
-                self.next()
-            },
-            Some(RTreeNodeDistanceWrapper { node: RTreeNode::Leaf(ref t), ..}) => {
-                Some(t)
-            },
-            None => None,
+        while let Some(current) = self.nodes.pop() {
+            match current {
+                RTreeNodeDistanceWrapper { node: RTreeNode::DirectoryNode(ref data), .. } => {
+                    self.extend_heap(&data.children);
+                },
+                RTreeNodeDistanceWrapper { node: RTreeNode::Leaf(ref t), ..} => {
+                    return Some(t);
+                },
+            }
         }
+        None
     }
 }
 
@@ -576,44 +576,54 @@ impl <T> DirectoryNodeData<T>
         }
     }
 
-    fn nearest_neighbor(&self, point: &T::Point, 
-                        mut nearest_distance: Option<<T::Point as PointN>::Scalar>) -> Option<&T> {
-        let mut nearest = None;
-        // Calculate smallest minmax-distance
-        let mut smallest_min_max: <T::Point as PointN>::Scalar = zero();
-        let mut first = true;
-        for child in self.children.iter() {
-            let new_min = child.mbr().min_max_dist2(point);
-            smallest_min_max = if first {
-                first = false;
-                new_min
-            } else {
-                min_inline(smallest_min_max, new_min)
-            };
-        }
-        let mut sorted: SmallVec<[_; 8]> = SmallVec::new();
-        for child in self.children.iter() {
-            let min_dist = child.mbr().min_dist2(point);
-            if min_dist <= smallest_min_max {
-                sorted.push((child, min_dist));
+    fn extend_heap<'a>(
+            heap: &mut ::std::collections::BinaryHeap<RTreeNodeDistanceWrapper<'a, T>>,
+            children: &'a [RTreeNode<T>],
+            query_point: &T::Point,
+            prune_distance_option: &mut Option<<T::Point as PointN>::Scalar>) {
+            for child in children {
+                let distance = match child {
+                    RTreeNode::DirectoryNode(ref data) => data.mbr().min_dist2(query_point),
+                    RTreeNode::Leaf(ref t) => t.distance2(query_point)
+                };
+                let do_prune;
+                if let Some(prune_distance) = prune_distance_option.clone() {
+                    if distance > prune_distance {
+                        do_prune = true;
+                    } else {
+                        let new_prune_distance = child.mbr().min_max_dist2(query_point);
+                        *prune_distance_option = Some(min_inline(prune_distance, new_prune_distance));
+                        do_prune = false;
+                    }
+                } else {
+                    *prune_distance_option = Some(child.mbr().min_max_dist2(query_point));
+                    do_prune = false;
+                }
+                if !do_prune {
+                    heap.push(RTreeNodeDistanceWrapper {
+                        distance: distance,
+                        node: child,
+                    });
+                }
             }
         }
-        sorted.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
 
-        for &(child, ref min_dist) in sorted.iter() {
-            if nearest_distance.clone().map(|d| min_dist.clone() > d).unwrap_or(false) {
-                // Prune this element
-                break;
-            }
-            match child.nearest_neighbor(point, nearest_distance.clone()) {
-                Some(t) => {
-                    nearest_distance = Some(t.distance2(point));
-                    nearest = Some(t);
+    fn nearest_neighbor(&self, point: &T::Point) -> Option<&T> {
+        
+        let mut smallest_min_max: Option<<T::Point as PointN>::Scalar> = None;
+        let mut heap = ::std::collections::binary_heap::BinaryHeap::new();
+        Self::extend_heap(&mut heap, &self.children, point, &mut smallest_min_max);
+        while let Some(current) = heap.pop() {
+            match current {
+                RTreeNodeDistanceWrapper { node: RTreeNode::DirectoryNode(ref data), .. } => {
+                    Self::extend_heap(&mut heap, &data.children, point, &mut smallest_min_max);
                 },
-                None => {}
+                RTreeNodeDistanceWrapper { node: RTreeNode::Leaf(ref t), ..} => {
+                    return Some(t);
+                },
             }
         }
-        nearest
+        None
     }
 
     fn nearest_neighbors<'a>(&'a self, point: &T::Point,
@@ -648,36 +658,6 @@ impl <T> DirectoryNodeData<T>
             }
         }
         nearest_distance
-    }
-
-    fn nearest_n_neighbors<'a>(&'a self, point: &T::Point, n: usize, result: &mut Vec<&'a T>) {
-
-        for child in self.children.iter() {
-            let min_dist = child.mbr().min_dist2(point);
-            if result.len() == n && min_dist >= result.last().unwrap().distance2(point) {
-                // Prune this element
-                continue;
-            }
-            match child {
-                &RTreeNode::DirectoryNode(ref data) => {
-                    data.nearest_n_neighbors(point, n, result);
-                },
-                &RTreeNode::Leaf(ref b) => {
-                    let distance = b.distance2(point);
-                    if result.len() != n || distance < result.last().unwrap().distance2(point) {
-                        if result.len() == n {
-                            result.pop();
-                        }
-                        let index = match result.binary_search_by(|e| e.distance2(point).partial_cmp(
-                            &distance).unwrap()) {
-                            Ok(index) => index,
-                            Err(index) => index,
-                        };
-                        result.insert(index, b);
-                    }
-                }
-            }
-        }
     }
 
     fn lookup_and_remove(&mut self, point: &T::Point) -> Option<T> {
@@ -906,21 +886,6 @@ impl <T> RTreeNode<T>
         }
     }
 
-    fn nearest_neighbor(&self, point: &T::Point, nearest_distance: Option<<T::Point as PointN>::Scalar>) 
-                        -> Option<&T> {
-        match self {
-            &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbor(point, nearest_distance),
-            &RTreeNode::Leaf(ref t) => {
-                let distance = t.distance2(point);
-                if nearest_distance.map(|d| distance < d).unwrap_or(true) {
-                    Some(t)
-                } else {
-                    None
-                }
-            }
-        }
-    }
-
     fn nearest_neighbors<'a>(&'a self, point: &T::Point, 
                              nearest_distance: Option<<T::Point as PointN>::Scalar>,
                              result: &mut Vec<&'a T>) -> Option<<T::Point as PointN>::Scalar> {
@@ -1098,11 +1063,7 @@ impl<T> RTree<T>
     ///
     /// Returns `None` if the tree is empty.
     pub fn nearest_neighbor(&self, query_point: &T::Point) -> Option<&T> {
-        if self.size > 0 {
-            self.root.nearest_neighbor(query_point, None)
-        } else {
-            None
-        }
+        self.root.nearest_neighbor(query_point)
     }
 
     /// Returns an object close to a given point. This operation is faster than
@@ -1125,12 +1086,7 @@ impl<T> RTree<T>
 
     /// Returns the nearest n neighbors.
     pub fn nearest_n_neighbors(&self, query_point: &T::Point, n: usize) -> Vec<&T> {
-
-        let mut result = Vec::new();
-        if self.size > 0 {
-            self.root.nearest_n_neighbors(query_point, n, &mut result);
-        }
-        result
+        self.nearest_neighbor_iterator(query_point).take(n).collect()        
     }
 
    /// Returns an iterator over the nearest neighbors of a point.

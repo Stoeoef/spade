@@ -67,6 +67,7 @@ fn run_compare_operations_bench() {
     let mut nearest_neighbor_times = Vec::new();
     let mut unsuccsessful_lookup_times = Vec::new();
     let mut succsessful_lookup_times = Vec::new();
+    let mut nn_iterator_times = Vec::new();
 
     for chunk in vertices.chunks(CHUNK_SIZE) {
         print!(".");
@@ -76,6 +77,7 @@ fn run_compare_operations_bench() {
         measure(&mut nearest_neighbor_times, &query_points, |point| tree.nearest_neighbor(&point));
         measure(&mut unsuccsessful_lookup_times, &query_points, |point| tree.lookup(&point));
         measure(&mut succsessful_lookup_times, chunk, |point| tree.lookup(&point));
+        measure(&mut nn_iterator_times, &query_points, |point| tree.nearest_neighbor_iterator(&point).skip(10).next());
     }
 
     // Print all measurements to a file
@@ -92,6 +94,7 @@ fn run_compare_operations_bench() {
     print_measurements("nearest_neighbor", &nearest_neighbor_times);
     print_measurements("successful lookup", &succsessful_lookup_times);
     print_measurements("unsuccessful lookup", &unsuccsessful_lookup_times);
+    print_measurements("nn_iterator_times", &nn_iterator_times);
 
     println!("Done!");
 }
