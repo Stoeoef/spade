@@ -1,6 +1,6 @@
 [package]
 name = "spade"
-version = "1.5.0"
+version = "1.5.1"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 description="Spatial datastructures like r-trees and delaunay triangulations for rust."
 documentation = "https://docs.rs/spade/"

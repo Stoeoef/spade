@@ -610,7 +610,7 @@ impl <T> DirectoryNodeData<T>
 
     fn nearest_neighbor(&self, point: &T::Point) -> Option<&T> {
         
-        let mut smallest_min_max: Option<<T::Point as PointN>::Scalar> = None;
+        let mut smallest_min_max = None;
         let mut heap = ::std::collections::binary_heap::BinaryHeap::new();
         Self::extend_heap(&mut heap, &self.children, point, &mut smallest_min_max);
         while let Some(current) = heap.pop() {
@@ -1063,7 +1063,14 @@ impl<T> RTree<T>
     ///
     /// Returns `None` if the tree is empty.
     pub fn nearest_neighbor(&self, query_point: &T::Point) -> Option<&T> {
-        self.root.nearest_neighbor(query_point)
+        let result = self.root.nearest_neighbor(query_point);
+        if result.is_none() && self.size > 0 {
+            // In some cases, the nearest element can be pruned by its own MinMax distance
+            // Use the iterator for these cases (which doesn't prune)
+            self.nearest_neighbor_iterator(query_point).next()
+        } else {
+            result
+        }
     }
 
     /// Returns an object close to a given point. This operation is faster than
@@ -1318,6 +1325,28 @@ mod test {
                 }
             }
             assert!(nearest == tree.nearest_neighbor(sample_point));
+        }
+    }
+
+    #[test]
+    fn test_nearest_neighbor_lines() {
+        let points = random_points_with_seed::<f32>(200, b"ThirstyChicken?=");
+        let lines: Vec<_> = points.chunks(2)
+                                .map(|xs| SimpleEdge::new(xs[0], xs[1]))
+                                .collect();
+        let tree = RTree::bulk_load(lines.clone());
+        let sample_points = random_points_with_seed(1000, b"S)nug( life .rat");
+        for sample_point in &sample_points {
+            let mut nearest = None;
+            let mut closest_dist = Float::infinity();
+            for line in &lines {
+                let new_dist = line.distance2(sample_point);
+                if new_dist < closest_dist {
+                    closest_dist = new_dist;
+                    nearest = Some(line);
+                }
+            }
+            assert_eq!(nearest, tree.nearest_neighbor(sample_point));
         }
     }
 
