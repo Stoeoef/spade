@@ -352,6 +352,7 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
 }
 
 /// An n-dimensional circle, defined by its origin and radius.
+#[derive(Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde_serialize", serde(bound(serialize="V: Serialize, V::Scalar: Serialize", deserialize="V: Deserialize<'de>, V::Scalar: Deserialize<'de>")))]
 pub struct SimpleCircle<V: PointN> {
