@@ -1135,8 +1135,7 @@ impl <T> RTree<T>
     /// This method should run faster than inserting all elements sequentially.
     /// Also, the resulting rtree should have better quality in terms of
     /// query performance. This is an implementation of the 
-    /// [OMT algorithm]
-    /// (http://ftp.informatik.rwth-aachen.de/Publications/CEUR-WS/Vol-74/files/FORUM_18.pdf).
+    /// [OMT algorithm](http://ftp.informatik.rwth-aachen.de/Publications/CEUR-WS/Vol-74/files/FORUM_18.pdf).
     ///
     /// *Note*: The current implementation only works for two dimensional data. If
     /// other dimensions are needed, please create an issue.
