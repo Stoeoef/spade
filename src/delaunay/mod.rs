@@ -16,7 +16,7 @@ mod line_intersection_iterator;
 mod delaunay_basic;
 
 pub use self::delaunay2d::*;
-pub use self::cdt::{ConstrainedDelaunayTriangulation, FloatCDT};
+pub use self::cdt::{ConstrainedDelaunayTriangulation, FloatCDT, CdtEdge};
 pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,
                      VertexHandle, EdgeHandle, FaceHandle,
                      CCWIterator, ONextIterator};
