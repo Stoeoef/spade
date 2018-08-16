@@ -992,7 +992,9 @@ impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: Default + 'a {
     /// Tries to interpret this face as a triangle, returning its 3 vertices.
     ///
     /// # Panic
-    /// This method will panic if the face does not form a triangle.
+    /// This method will panic if the face does not form a triangle, for example if it is called on the [infinite face].
+    ///
+    /// [infinite face]: struct.DelaunayTriangulation.html#method.infinite_face
     pub fn as_triangle(&self) -> [VertexHandle<'a, V, E>; 3] {
         let adjacent = self.dcel.faces[self.handle].adjacent_edge
             .expect("Face has no adjacent edge");
