@@ -15,7 +15,7 @@ serde_serialize = ["num/serde", "serde"]
 [dependencies]
 cgmath = ">=0.10.0, <=0.16.*"
 nalgebra = ">=0.11.0, <= 0.15.*"
-num = "0.1.*"
+num = "0.2.*"
 clamp = "0.1.*"
 smallvec = "0.6.*"
 pdqselect = "0.1.*"
