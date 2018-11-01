@@ -180,7 +180,7 @@ mod test {
     fn test_contained_in_circumference() {
         let (a1, a2, a3) = (1f32, 2f32, 3f32);
         let offset = na::Vector2::new(0.5, 0.7);
-        let p_offset = na::Point2::from_coordinates(offset);
+        let p_offset = na::Point::from(offset);
         let v1 = na::Point2::new(a1.sin(), a1.cos()) * 2. + offset;
         let v2 = na::Point2::new(a2.sin(), a2.cos()) * 2. + offset;
         let v3 = na::Point2::new(a3.sin(), a3.cos()) * 2. + offset;

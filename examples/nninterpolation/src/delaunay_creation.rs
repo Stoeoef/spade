@@ -6,13 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rand::distributions::{Distribution, Range};
+use rand::distributions::{Range, Distribution};
 use rand::Rng;
 
 use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, DelaunayWalkLocate};
 use cgmath::{EuclideanSpace, Point2, Vector3, Point3};
 use spade::{HasPosition,};
 
+use noise::{Seedable, NoiseFn};
 use constants::*;
 
 pub type Delaunay = FloatDelaunayTriangulation<
@@ -53,14 +54,14 @@ impl PointWithHeight {
 pub fn generate_random_triangulation() -> Delaunay {
 
     let mut rng = ::rand::thread_rng();
-    let seed = ::noise::Seed::new(rng.gen());
     let mut delaunay = DelaunayTriangulation::with_walk_locate();
-
+    let noise = ::noise::OpenSimplex::new()
+                    .set_seed(rng.gen());
     let range = Range::new(-SAMPLE_REGION, SAMPLE_REGION);
     for _ in 0 .. NUM_POINTS {
         let x = range.sample(&mut rng);
         let y = range.sample(&mut rng);
-        let height = ::noise::open_simplex2(&seed, &[x * FREQUENCY, y * FREQUENCY]) * MAX_HEIGHT;
+        let height = noise.get([x * FREQUENCY, y * FREQUENCY]) * MAX_HEIGHT;
         // Try out some other height functions, like those:
         // let height = (x * x + y * y) * 0.3;
         // let height = (x * 3.).sin() + (y - 2.).exp();

@@ -25,7 +25,6 @@ extern crate cgmath;
 extern crate rand;
 extern crate noise;
 extern crate spade;
-extern crate glfw;
 
 mod interpolation;
 mod constants;
@@ -37,6 +36,7 @@ use cgmath::EuclideanSpace;
 use cgmath as cg;
 
 use kiss3d::window::Window;
+use kiss3d::event::{WindowEvent, Action, Key};
 use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
 use kiss3d::resource::Mesh;
@@ -119,9 +119,6 @@ impl GridRenderType {
 }
 
 fn main() {
-    use glfw::WindowEvent;
-    use glfw::Action::Press;
-    use glfw::Key;
     let mut window = Window::new("Delaunay Demo");
     window.set_light(Light::StickToCamera);
 
@@ -156,9 +153,9 @@ fn main() {
         for event in window.events().iter() {
             let mut update_interpolation_mesh = false;
             match event.value {
-                WindowEvent::Key(Key::H, _, Press, _) => print_help(),
-                WindowEvent::Key(Key::N, _, Press, _) => show_normals = !show_normals,
-                WindowEvent::Key(Key::G, _, Press, _) => {
+                WindowEvent::Key(Key::H, Action::Press, _) => print_help(),
+                WindowEvent::Key(Key::N, Action::Press, _) => show_normals = !show_normals,
+                WindowEvent::Key(Key::G, Action::Press, _) => {
                     cur_interpolation_mesh_index += 1;
                     update_interpolation_mesh = true;
                     if cur_interpolation_mesh_index > interpolation_meshes.len() {
@@ -169,11 +166,11 @@ fn main() {
                                  interpolation_meshes[cur_interpolation_mesh_index].title);
                     }
                 },
-                WindowEvent::Key(Key::T, _, Press, _) => {
+                WindowEvent::Key(Key::T, Action::Press, _) => {
                     grid_render_type = grid_render_type.next();
                     update_interpolation_mesh = true;
                 },
-                WindowEvent::Key(Key::D, _, Press, _) => {
+                WindowEvent::Key(Key::D, Action::Press, _) => {
                     delaunay_visibility = delaunay_visibility.next();
                     if delaunay_visibility == DelaunayVisibility::All {
                         delaunay_node = window.scene_mut().add_mesh(delaunay_mesh.clone(), 
@@ -262,7 +259,7 @@ fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
         let h0 = triangle[0].fix();
         let h1 = triangle[1].fix();
         let h2 = triangle[2].fix();
-        faces.push(na::Point3::new(h0 as u32, h1 as u32, h2 as u32));
+        faces.push(na::Point3::new(h0 as u16, h1 as u16, h2 as u16));
     }
     return Mesh::new(coords, faces, None, None, false);
 }

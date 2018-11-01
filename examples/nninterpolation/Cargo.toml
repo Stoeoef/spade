@@ -8,10 +8,9 @@ name = "nninterpolation"
 [dependencies]
 cgmath = "*"
 nalgebra = "*"
-noise = "0.2.*"
-kiss3d = "0.15.*"
-glfw = "0.19"
-rand = "0.5.*"
+noise = "*"
+kiss3d = "*"
+rand = "*"
 spade = { path = "../../" }
 
 [profile.dev]

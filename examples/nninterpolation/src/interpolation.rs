@@ -113,7 +113,7 @@ impl <I: InterpolationMethod> Grid<I> {
 
     // Returns a list of vertices and a list of triangle indices that form the
     // grid's mesh.
-    pub fn get_triangles(&self) -> (Vec<na::Point3<f32>>, Vec<na::Point3<u32>>) {
+    pub fn get_triangles(&self) -> (Vec<na::Point3<f32>>, Vec<na::Point3<u16>>) {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
@@ -127,10 +127,10 @@ impl <I: InterpolationMethod> Grid<I> {
         for x in 0 .. GRID_SUBDIVISIONS {
             for y in 0 .. GRID_SUBDIVISIONS {
                 let index = |x, y| x * (GRID_SUBDIVISIONS + 1) + y;
-                let v00 = index(x, y) as u32;
-                let v10 = index(x + 1, y) as u32;
-                let v01 = index(x, y + 1) as u32;
-                let v11 = index(x + 1, y + 1) as u32;
+                let v00 = index(x, y) as u16;
+                let v10 = index(x + 1, y) as u16;
+                let v01 = index(x, y + 1) as u16;
+                let v11 = index(x + 1, y + 1) as u16;
                 indices.push(na::Point3::new(v00, v10, v11));
                 indices.push(na::Point3::new(v00, v11, v01));
             }
