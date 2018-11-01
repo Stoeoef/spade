@@ -25,18 +25,19 @@ pub type FixedEdgeHandle = usize;
 /// face handles.
 pub type FixedFaceHandle = usize;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VertexRemovalResult<V> {
     pub updated_vertex: Option<FixedVertexHandle>,
     pub data: V,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 struct FaceEntry {
     adjacent_edge: Option<FixedEdgeHandle>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 struct VertexEntry<V> {
     data: V,
@@ -52,7 +53,7 @@ impl <V> VertexEntry<V> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 struct HalfEdgeEntry<T> {
     next: FixedEdgeHandle,
@@ -64,7 +65,7 @@ struct HalfEdgeEntry<T> {
 }
     
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct DCEL<V, E=()> {
     vertices: Vec<VertexEntry<V>>,

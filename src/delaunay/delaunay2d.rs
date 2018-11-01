@@ -132,6 +132,7 @@ pub enum PositionInTriangulation<V: Copy, F: Copy, E: Copy> {
 /// using `DelaunayWalkLocate` as locate strategy. As a consequence, subsequent 
 /// queries - like insertion, interpolation or nearest neighbor queries - will
 /// run in O(1) if the query locations are close to each other.
+#[derive(Debug)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>::Point>>
     where V: HasPosition2D,
@@ -139,7 +140,7 @@ pub struct DelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as HasPosition>
           V::Point: TwoDimensional,
           L: DelaunayLocateStructure<V::Point>,
 {
-    __kernel: PhantomData<K>,
+    __kernel: PhantomData<*const K>,
     s: DCEL<V>,
     all_points_on_line: bool,
     locate_structure: L,
@@ -200,6 +201,17 @@ impl<V, K, L> Clone for DelaunayTriangulation<V, K, L>
             all_points_on_line: self.all_points_on_line,
             locate_structure: self.locate_structure.clone(),
         }
+    }
+}
+
+impl<V, K, L> Default for DelaunayTriangulation<V, K, L> 
+    where V: HasPosition2D,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+          V::Point: TwoDimensional,
+          L: DelaunayLocateStructure<V::Point> 
+{
+    fn default() -> Self {
+        DelaunayTriangulation::new()
     }
 }
 

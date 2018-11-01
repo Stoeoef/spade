@@ -20,7 +20,8 @@ use primitives::SimpleEdge;
 /// the precise `FloatKernel`.
 pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct CdtEdge(bool);
 
@@ -94,7 +95,7 @@ pub struct ConstrainedDelaunayTriangulation<V, K, L = DelaunayTreeLocate<<V as H
     locate_structure: L,
     all_points_on_line: bool,
     num_constraints: usize,
-    __kernel: PhantomData<K>,
+    __kernel: PhantomData<*const K>,
 }
 
 #[derive(Debug)]
@@ -183,6 +184,17 @@ impl<V, K, L> HasSubdivision<V> for ConstrainedDelaunayTriangulation<V, K, L>
 
     fn s_mut(&mut self) -> &mut DCEL<V, CdtEdge> {
         &mut self.s
+    }
+}
+
+impl<V, K, L> Default for ConstrainedDelaunayTriangulation<V, K, L>
+    where V: HasPosition2D,
+          V::Point: TwoDimensional,
+          K: DelaunayKernel<<V::Point as PointN>::Scalar>,
+          L: DelaunayLocateStructure<V::Point> 
+{
+    fn default() -> Self {
+        ConstrainedDelaunayTriangulation::new()
     }
 }
 

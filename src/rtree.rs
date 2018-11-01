@@ -21,7 +21,7 @@ use std::iter::Once;
 use serde::{Serialize, Deserialize};
 
 #[doc(hidden)]
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct RTreeOptions {
     max_size: usize,
@@ -918,7 +918,7 @@ impl <T> RTreeNode<T>
 }
 
 #[doc(hidden)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde_serialize", serde(bound(serialize="T: Serialize, T::Point: Serialize", deserialize="T: Deserialize<'de>, T::Point: Deserialize<'de>")))]
 pub struct DirectoryNodeData<T>
@@ -930,7 +930,7 @@ pub struct DirectoryNodeData<T>
 }
 
 #[doc(hidden)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde_serialize", serde(bound(serialize="T: Serialize, T::Point: Serialize", deserialize="T: Deserialize<'de>, T::Point: Deserialize<'de>")))]
 pub enum RTreeNode<T>
@@ -992,7 +992,6 @@ pub enum RTreeNode<T>
 /// }
 /// }
 /// ```
-
 #[derive(Clone)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde_serialize", serde(bound(serialize="T: Serialize, T::Point: Serialize", deserialize="T: Deserialize<'de>, T::Point: Deserialize<'de>")))]
