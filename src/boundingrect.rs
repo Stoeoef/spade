@@ -16,7 +16,7 @@ use traits::SpatialObject;
 /// An axis aligned minimal bounding rectangle is the smallest rectangle that completely
 /// surrounds an object and is aligned along all axes. The vector type `V`'s dimension
 /// determines if this is a rectangle, a box or a higher dimensional volume.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct BoundingRect<V: PointN> {
     lower: V,
