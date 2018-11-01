@@ -1137,8 +1137,7 @@ impl <T> RTree<T>
     /// query performance. This is an implementation of the 
     /// [OMT algorithm](http://ftp.informatik.rwth-aachen.de/Publications/CEUR-WS/Vol-74/files/FORUM_18.pdf).
     ///
-    /// *Note*: The current implementation only works for two dimensional data. If
-    /// other dimensions are needed, please create an issue.
+    /// The current implementation only works for two dimensional data.
     pub fn bulk_load(elements: Vec<T>) -> RTree<T> {
         Self::bulk_load_with_options(Default::default(), elements)
     }
