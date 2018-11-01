@@ -5,10 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [1.6.0] - 2018-11-1
 ###
- - `SimpleEdge`, `SimpleCircle`, 
+ - `SimpleEdge`, `SimpleCircle`, `BoundingRect` now derive `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord` and `Hash`
+ - `CdtEdge` is now public - the type cannot be used, but may be necessary for method signatures containing CDTs.
+ - Added some standard `derive`s for various other types that are applicable.
 ### Changed
  - Bumped compatible nalgebra version to 0.16.*
  - Bumped compatible num version to `>=0.1, <=0.2.*`. This may be a breaking change due to the way cargo resolves dependencies. An upgrade to num 0.2 is recommended.
+
 ## [1.5.1] - 2018-06-12
 ### Bugfixes
  - `nearest_neighbor` sometimes incorrectly returned `None`
@@ -160,7 +163,7 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 ## 0.1.0 - 2016-09-23
 Initial commit
 
-[1.6.0]: https://github.com/Stoeoef/spade/compare/v1.5.1...v1.6.0]
+[1.6.0]: https://github.com/Stoeoef/spade/compare/v1.5.1...v1.6.0
 
 [1.5.1]: https://github.com/Stoeoef/spade/compare/v1.5.0...v1.5.1
 
