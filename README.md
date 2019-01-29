@@ -12,7 +12,7 @@
 
 Spade (SPAtial DatastructurEs, obviously!) implements a few nifty data structures for spatial access operations:
 
-- An n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree) for efficient nearest-neighbor and point lookup queries
+- An n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree) for efficient nearest-neighbor and point lookup queries. Note that a faster successor is available with the [rstar crate](https://crates.io/crates/rstar).
 - 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion and nearest neighbor lookup
 - 2D constrained Delaunay triangulation (CDT)
 
@@ -25,14 +25,15 @@ All structures are purely written in rust, the package currently supports vector
 packages is not required.
 
 # Compatibility note
-Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: every time spade updates these libraries, the using code must be update too, even if spade would still work happily with the older versions. To avoid this, consider switching to fixed size arrays as points until [public / private dependencies make their way into cargo](https://github.com/rust-lang/rust/issues/44663).
+Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: every time spade updates these libraries, the using code must be update too, even if spade would still work happily with an older version. To avoid this, consider switching to fixed size arrays as points, implementing your own point type or do some creative hacking into your cargo.lock to force cargo into using the correct cgmath / nalgebra version.
 
 # Documentation
-The documentation can be found under [docs.rs](https://docs.rs/spade/).
+The documentation can be found on [docs.rs](https://docs.rs/spade/).
 There is also a [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available.
 
 # Project state
-I (the main developer) am currently working on splitting up this package into smaller packages (for rtrees and delaunay triangulations), along with some larger API changes. Thus, I won't add large features to spade. However, I will still be monitoring pull requests and try to implement smaller, easily fixable tasks - please do not hesitate to open an appropriate issue!
+Spade is being passively maintained, please file all bugs that you can find! However, I don't plan any major release at the moment.
+Spade's r-tree has been split off into the smaller [rstar crate](https://crates.io/crates/rstar) which is the recommended replacement. rstar compiles faster, runs faster and is more actively developed. 
 
 # Examples
 ## R-Tree
@@ -51,10 +52,11 @@ The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/) has a an [own c
 An example showcasing spade's interpolation features can be found in `/examples/nninterpolation`, run it with `cargo run`.
 
 # Performance
-The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html) contains detailed graphs and information about the delaunay triangulation's performance.
+Neither spade's triangulation nor r-tree were optimized to be exceptionally fast. The library focussed on a rich and high quality feature set and an early 1.0 release at the cost of performance. Compared to any GCed language, spade's performance is likely better (feel free to contribute a benchmark!) but it is _by far not_ in the same ballpark as its C/C++ contenders like CGAL. However, for many use cases, spade will hopefully be fast enough and a viable rust only alternative.
+
+The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html) contains detailed graphs, benchmarks and more information about the delaunay triangulation's performance.
 
 # License
-
 Licensed under either of
 
  * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)

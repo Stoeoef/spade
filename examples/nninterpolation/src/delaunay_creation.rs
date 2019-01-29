@@ -6,7 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rand::distributions::{Range, Distribution};
 use rand::Rng;
 
 use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, DelaunayWalkLocate};
@@ -57,10 +56,9 @@ pub fn generate_random_triangulation() -> Delaunay {
     let mut delaunay = DelaunayTriangulation::with_walk_locate();
     let noise = ::noise::OpenSimplex::new()
                     .set_seed(rng.gen());
-    let range = Range::new(-SAMPLE_REGION, SAMPLE_REGION);
     for _ in 0 .. NUM_POINTS {
-        let x = range.sample(&mut rng);
-        let y = range.sample(&mut rng);
+        let x = rng.gen_range(-SAMPLE_REGION, SAMPLE_REGION);
+        let y = rng.gen_range(-SAMPLE_REGION, SAMPLE_REGION);
         let height = noise.get([x * FREQUENCY, y * FREQUENCY]) * MAX_HEIGHT;
         // Try out some other height functions, like those:
         // let height = (x * x + y * y) * 0.3;

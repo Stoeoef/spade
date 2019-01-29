@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## [1.7.0] - 2019-01-29
+### Changed
+ - Updated README.md
+ - Bumped compatible cgmath version to 0.17.*
+  
 ## [1.6.0] - 2018-11-1
 ###
  - `SimpleEdge`, `SimpleCircle`, `BoundingRect` now derive `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord` and `Hash`
@@ -162,6 +168,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.7.0]: https://github.com/Stoeoef/spade/compare/v1.6.0...v1.7.0
 
 [1.6.0]: https://github.com/Stoeoef/spade/compare/v1.5.1...v1.6.0
 
