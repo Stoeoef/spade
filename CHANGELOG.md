@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - Updated README.md
  - Merge #41: Use smallvec in barycentric interpolation
  - Bumped compatible cgmath version to 0.17.*
+ - Bumped compatible nalgebra version to 0.17.*
   
 ## [1.6.0] - 2018-11-1
 ###
