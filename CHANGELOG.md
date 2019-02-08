@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.7.0] - 2019-01-29
+## [1.7.0] - 2019-02-08
 ### Changed
  - Updated README.md
+ - Merge #41: Use smallvec in barycentric interpolation
  - Bumped compatible cgmath version to 0.17.*
   
 ## [1.6.0] - 2018-11-1
