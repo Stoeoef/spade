@@ -12,7 +12,7 @@ use point_traits::{PointN, PointNExtensions, TwoDimensional, ThreeDimensional};
 use kernels::{DelaunayKernel, TrivialKernel, FloatKernel};
 use primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 
 use self::dcel::*;
 use self::delaunay_locate::*;
@@ -518,15 +518,15 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
     pub fn barycentric_interpolation<F> (&self, point: &V::Point, f: F) 
                                          -> Option<<V::Point as PointN>::Scalar> 
         where F: Fn(&V) -> <V::Point as PointN>::Scalar {
-        let vertices = match self.locate(point) {
+        let vertices: SmallVec<[_; 3]> = match self.locate(point) {
             PositionInTriangulation::NoTriangulationPresent => return None,
-            PositionInTriangulation::OnPoint(v) => vec![v],
-            PositionInTriangulation::OnEdge(e) => vec![e.from(), e.to()],
+            PositionInTriangulation::OnPoint(v) => smallvec![v],
+            PositionInTriangulation::OnEdge(e) => smallvec![e.from(), e.to()],
             PositionInTriangulation::InTriangle(f) => {
                 let vs = f.as_triangle();
-                vec![vs[0], vs[1], vs[2]]
+                smallvec![vs[0], vs[1], vs[2]]
             }
-            PositionInTriangulation::OutsideConvexHull(e) => vec![e.from(), e.to()],
+            PositionInTriangulation::OutsideConvexHull(e) => smallvec![e.from(), e.to()],
         };
         if vertices.len() == 1 {
             Some(f(&*vertices[0]))
