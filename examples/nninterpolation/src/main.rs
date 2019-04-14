@@ -19,6 +19,7 @@
  * and nalgebra points for the rendering in kiss3d. Once kiss3d updates,
  * only nalgebra will be used.
  */
+#![warn(clippy::all)]
 extern crate cgmath;
 extern crate kiss3d;
 extern crate nalgebra;
@@ -100,9 +101,9 @@ impl DelaunayVisibility {
     fn next(&self) -> DelaunayVisibility {
         use crate::DelaunayVisibility::*;
         match self {
-            &All => OnlyLines,
-            &OnlyLines => None,
-            &None => All,
+            All => OnlyLines,
+            OnlyLines => None,
+            None => All,
         }
     }
 }
@@ -111,8 +112,8 @@ impl GridRenderType {
     fn next(&self) -> GridRenderType {
         use crate::GridRenderType::*;
         match self {
-            &Lines => Polygons,
-            &Polygons => Lines,
+            Lines => Polygons,
+            Polygons => Lines,
         }
     }
 }
@@ -264,5 +265,5 @@ fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
         let h2 = triangle[2].fix();
         faces.push(na::Point3::new(h0 as u16, h1 as u16, h2 as u16));
     }
-    return Mesh::new(coords, faces, None, None, false);
+    Mesh::new(coords, faces, None, None, false)
 }

@@ -38,8 +38,8 @@ pub fn run() {
     print_help();
     let mut dirty = false;
     events_loop.run_forever(|event| {
-        match event {
-            Event::WindowEvent { event, .. } => match event {
+        if let Event::WindowEvent { event, .. } = event {
+            match event {
                 WindowEvent::Refresh => render_data.draw(&display),
                 WindowEvent::CloseRequested => return glutin::ControlFlow::Break,
                 WindowEvent::MouseInput { state, button, .. }
@@ -60,7 +60,7 @@ pub fn run() {
                                 render_data.update_cdt_buffers(&display, &cdt);
                             }
                             last_handle = None;
-                            render_data.update_selection_lines(&display, &vec![]);
+                            render_data.update_selection_lines(&display, &[]);
                             dirty = true;
                         } else {
                             last_handle = Some(handle);
@@ -73,8 +73,8 @@ pub fn run() {
                     let x = position.x as i32;
                     let y = position.y as i32;
                     let y = h as i32 - y;
-                    let x = (x as f64 / w as f64) * 2. - 1.;
-                    let y = (y as f64 / h as f64) * 2. - 1.;
+                    let x = (f64::from(x) / f64::from(w)) * 2. - 1.;
+                    let y = (f64::from(y) / f64::from(h)) * 2. - 1.;
                     last_point = Point2::new(x, y);
                     let selection = get_selected_vertices(&cdt, last_point);
                     render_data.update_selection(&display, &selection);
@@ -116,7 +116,7 @@ pub fn run() {
                                 render_data.update_cdt_buffers(&display, &cdt);
                                 let selection = get_selected_vertices(&cdt, last_point);
                                 render_data.update_selection(&display, &selection);
-                                render_data.update_selection_lines(&display, &vec![]);
+                                render_data.update_selection_lines(&display, &[]);
                                 last_handle = None;
                                 dirty = true;
                             }
@@ -125,8 +125,7 @@ pub fn run() {
                     }
                 }
                 _ => (),
-            },
-            _ => (),
+            }
         }
         if dirty {
             render_data.draw(&display);
@@ -135,9 +134,10 @@ pub fn run() {
     });
 }
 
+#[allow(clippy::map_clone)]
 fn get_selected_vertices(cdt: &Cdt, point: Point2<f64>) -> Vec<Point2<f64>> {
     let mut points = Vec::new();
-    points.extend(cdt.nearest_neighbor(&point).map(|p| (*p).clone()));
+    points.extend(cdt.nearest_neighbor(&point).map(|p| *p));
     points
 }
 

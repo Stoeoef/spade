@@ -40,8 +40,8 @@ impl PointWithHeight {
 
     pub fn new(point: Point2<f64>, height: f64) -> PointWithHeight {
         PointWithHeight {
-            point: point,
-            height: height,
+            point,
+            height,
             gradient: Point2::new(0.0, 0.0),
             normal: Vector3::new(0.0, 0.0, 0.0),
         }

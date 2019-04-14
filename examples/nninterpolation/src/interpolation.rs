@@ -129,8 +129,8 @@ impl<I: InterpolationMethod> Grid<I> {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
-        for x in 0..GRID_SUBDIVISIONS + 1 {
-            for y in 0..GRID_SUBDIVISIONS + 1 {
+        for x in 0..=GRID_SUBDIVISIONS {
+            for y in 0..=GRID_SUBDIVISIONS {
                 let val = self.grid[x][y] + OFFSET;
                 let pos = Self::transform(cg::Point2::new(x as f64, y as f64));
                 vertices.push(na::Point3::new(pos.x as f32, pos.y as f32, val as f32));
@@ -151,10 +151,11 @@ impl<I: InterpolationMethod> Grid<I> {
     }
 
     // This will do the actual interpolation and store it in the triangulation
+    #[allow(clippy::needless_range_loop)]
     pub fn from_delaunay_interpolation(delaunay: &Delaunay) -> Grid<I> {
         let mut values = [[0.0; GRID_SUBDIVISIONS + 1]; GRID_SUBDIVISIONS + 1];
-        for x in 0..GRID_SUBDIVISIONS + 1 {
-            for y in 0..GRID_SUBDIVISIONS + 1 {
+        for x in 0..=GRID_SUBDIVISIONS {
+            for y in 0..=GRID_SUBDIVISIONS {
                 let pos = Self::transform(cg::Point2::new(x as f64, y as f64));
                 let value = I::interpolate(delaunay, pos);
                 values[x][y] = value;

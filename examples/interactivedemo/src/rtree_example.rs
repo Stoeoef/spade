@@ -33,10 +33,10 @@ impl ::std::fmt::Display for LookupMode {
             f,
             "{}",
             match self {
-                &LookupMode::Nearest => "Nearest neighbor",
-                &LookupMode::NearestN => "Nearest N neighbors",
-                &LookupMode::InCircle => "Contained in Circle",
-                &LookupMode::CloseN => "Close neighbor",
+                LookupMode::Nearest => "Nearest neighbor",
+                LookupMode::NearestN => "Nearest N neighbors",
+                LookupMode::InCircle => "Contained in Circle",
+                LookupMode::CloseN => "Close neighbor",
             }
         )
     }
@@ -65,86 +65,83 @@ pub fn run() {
     print_help();
     let mut dirty = false;
     events_loop.run_forever(|event| {
-        match event {
-            Event::WindowEvent { event, .. } => {
-                match event {
-                    WindowEvent::Refresh => render_data.draw(&display),
-                    WindowEvent::CloseRequested => return glutin::ControlFlow::Break,
-                    WindowEvent::MouseInput { state, button, .. }
-                        if state == ElementState::Pressed && button == MouseButton::Left =>
-                    {
-                        rtree.insert(last_point);
+        if let Event::WindowEvent { event, .. } = event {
+            match event {
+                WindowEvent::Refresh => render_data.draw(&display),
+                WindowEvent::CloseRequested => return glutin::ControlFlow::Break,
+                WindowEvent::MouseInput { state, button, .. }
+                    if state == ElementState::Pressed && button == MouseButton::Left =>
+                {
+                    rtree.insert(last_point);
+                    render_data.update_rtree_buffers(&display, &rtree);
+                    dirty = true;
+                }
+                WindowEvent::MouseInput { state, button, .. }
+                    if state == ElementState::Pressed && button == MouseButton::Right =>
+                {
+                    let nn = rtree.nearest_neighbor(&last_point).cloned();
+                    if let Some(p) = nn {
+                        rtree.remove(&p);
                         render_data.update_rtree_buffers(&display, &rtree);
-                        dirty = true;
-                    }
-                    WindowEvent::MouseInput { state, button, .. }
-                        if state == ElementState::Pressed && button == MouseButton::Right =>
-                    {
-                        let nn = rtree.nearest_neighbor(&last_point).cloned();
-                        if let Some(p) = nn {
-                            rtree.remove(&p);
-                            render_data.update_rtree_buffers(&display, &rtree);
-                            let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
-                            render_data.update_selection(&display, &selection);
-                            dirty = true;
-                        }
-                    }
-                    WindowEvent::CursorMoved { position, .. } => {
-                        let (w, h) = display.get_framebuffer_dimensions();
-                        let x = position.x as i32;
-                        let y = position.y as i32;
-                        // Transform x, y into the range [-1 , 1]
-                        let y = h as i32 - y;
-                        let x = (x as f64 / w as f64) * 2. - 1.;
-                        let y = (y as f64 / h as f64) * 2. - 1.;
-                        last_point = Point2::new(x, y);
                         let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
                         render_data.update_selection(&display, &selection);
                         dirty = true;
                     }
-                    WindowEvent::KeyboardInput { input, .. }
-                        if input.state == ElementState::Pressed =>
-                    {
-                        match input.virtual_keycode {
-                            Some(VirtualKeyCode::Escape) => return glutin::ControlFlow::Break,
-                            Some(VirtualKeyCode::H) => {
-                                print_help();
-                            }
-                            Some(VirtualKeyCode::F) => {
-                                render_data.update_rtree_buffers(&display, &rtree);
-                                dirty = true;
-                            }
-                            Some(VirtualKeyCode::M) => {
-                                match lookup_mode {
-                                    LookupMode::Nearest => lookup_mode = LookupMode::NearestN,
-                                    LookupMode::NearestN => lookup_mode = LookupMode::InCircle,
-                                    LookupMode::InCircle => lookup_mode = LookupMode::CloseN,
-                                    LookupMode::CloseN => lookup_mode = LookupMode::Nearest,
-                                }
-                                println!("Changed lookup mode to {}", lookup_mode);
-                            }
-                            Some(VirtualKeyCode::A) | Some(VirtualKeyCode::B) => {
-                                // Insert some random points
-                                let num = if input.virtual_keycode == Some(VirtualKeyCode::A) {
-                                    10usize
-                                } else {
-                                    100
-                                };
-                                let seed = ::rand::thread_rng().sample(Standard);
-                                let new_points = crate::random_points_with_seed(num, &seed);
-                                for point in new_points.into_iter() {
-                                    rtree.insert(point);
-                                }
-                                render_data.update_rtree_buffers(&display, &rtree);
-                                dirty = true;
-                            }
-                            _ => (),
-                        }
-                    }
-                    _ => (),
                 }
+                WindowEvent::CursorMoved { position, .. } => {
+                    let (w, h) = display.get_framebuffer_dimensions();
+                    let x = position.x as i32;
+                    let y = position.y as i32;
+                    // Transform x, y into the range [-1 , 1]
+                    let y = h as i32 - y;
+                    let x = (f64::from(x) / f64::from(w)) * 2. - 1.;
+                    let y = (f64::from(y) / f64::from(h)) * 2. - 1.;
+                    last_point = Point2::new(x, y);
+                    let selection = get_selected_vertices(&rtree, last_point, lookup_mode);
+                    render_data.update_selection(&display, &selection);
+                    dirty = true;
+                }
+                WindowEvent::KeyboardInput { input, .. }
+                    if input.state == ElementState::Pressed =>
+                {
+                    match input.virtual_keycode {
+                        Some(VirtualKeyCode::Escape) => return glutin::ControlFlow::Break,
+                        Some(VirtualKeyCode::H) => {
+                            print_help();
+                        }
+                        Some(VirtualKeyCode::F) => {
+                            render_data.update_rtree_buffers(&display, &rtree);
+                            dirty = true;
+                        }
+                        Some(VirtualKeyCode::M) => {
+                            match lookup_mode {
+                                LookupMode::Nearest => lookup_mode = LookupMode::NearestN,
+                                LookupMode::NearestN => lookup_mode = LookupMode::InCircle,
+                                LookupMode::InCircle => lookup_mode = LookupMode::CloseN,
+                                LookupMode::CloseN => lookup_mode = LookupMode::Nearest,
+                            }
+                            println!("Changed lookup mode to {}", lookup_mode);
+                        }
+                        Some(VirtualKeyCode::A) | Some(VirtualKeyCode::B) => {
+                            // Insert some random points
+                            let num = if input.virtual_keycode == Some(VirtualKeyCode::A) {
+                                10usize
+                            } else {
+                                100
+                            };
+                            let seed = ::rand::thread_rng().sample(Standard);
+                            let new_points = crate::random_points_with_seed(num, &seed);
+                            for point in new_points.into_iter() {
+                                rtree.insert(point);
+                            }
+                            render_data.update_rtree_buffers(&display, &rtree);
+                            dirty = true;
+                        }
+                        _ => (),
+                    }
+                }
+                _ => (),
             }
-            _ => (),
         }
         if dirty {
             render_data.draw(&display);

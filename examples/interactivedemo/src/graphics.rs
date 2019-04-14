@@ -15,7 +15,7 @@ use glium::{Display, DrawParameters, Program, Surface, VertexBuffer};
 use spade::rtree::{RTree, RTreeNode};
 use spade::{BoundingRect, HasPosition};
 
-const VERTEX_SHADER_SRC: &'static str = r#"
+const VERTEX_SHADER_SRC: &str = r#"
     #version 140
     in vec2 pos;
     in vec3 color;
@@ -27,7 +27,7 @@ const VERTEX_SHADER_SRC: &'static str = r#"
         }
     "#;
 
-const FRAGMENT_SHADER_SRC: &'static str = r#"
+const FRAGMENT_SHADER_SRC: &str = r#"
     #version 140
     out vec4 out_color;
     in vec3 fragment_color;
@@ -53,11 +53,11 @@ impl RenderData {
         let selection_buffer = VertexBuffer::new(display, &[]).unwrap();
         let selection_lines_buffer = VertexBuffer::new(display, &[]).unwrap();
         RenderData {
-            program: program,
-            edges_buffer: edges_buffer,
-            vertices_buffer: vertices_buffer,
-            selection_buffer: selection_buffer,
-            selection_lines_buffer: selection_lines_buffer,
+            program,
+            edges_buffer,
+            vertices_buffer,
+            selection_buffer,
+            selection_lines_buffer,
         }
     }
 
@@ -139,7 +139,7 @@ impl RenderData {
         self.vertices_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }
 
-    pub fn update_selection(&mut self, display: &Display, points: &Vec<Point2<f64>>) {
+    pub fn update_selection(&mut self, display: &Display, points: &[Point2<f64>]) {
         let color = [1.0, 0.0, 0.0];
         let mut vertices = Vec::new();
         for point in points {
@@ -148,12 +148,12 @@ impl RenderData {
         self.selection_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }
 
-    pub fn update_selection_lines(&mut self, display: &Display, points: &Vec<Point2<f64>>) {
+    pub fn update_selection_lines(&mut self, display: &Display, points: &[Point2<f64>]) {
         let color = [1.0, 0.0, 0.0];
         let mut vertices = Vec::new();
         vertices.extend(points.iter().map(|p| Vertex {
             pos: array2(p.cast().unwrap()),
-            color: color,
+            color,
         }));
         self.selection_lines_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }
@@ -168,10 +168,7 @@ pub struct Vertex {
 implement_vertex!(Vertex, pos, color);
 impl Vertex {
     pub fn new(pos: [f32; 2], color: [f32; 3]) -> Vertex {
-        Vertex {
-            pos: pos,
-            color: color,
-        }
+        Vertex { pos, color }
     }
 }
 
@@ -221,11 +218,11 @@ fn get_tree_edges(tree: &RTree<Point2<f64>>, buffer: &mut Vec<Vertex>) -> Vec<Ve
     while let Some(cur) = to_visit.pop() {
         for child in cur.children().iter() {
             match child {
-                &RTreeNode::Leaf(point) => vertices.push(Vertex::new(
+                RTreeNode::Leaf(point) => vertices.push(Vertex::new(
                     array2(point.to_vec().cast().unwrap()),
-                    array3(vertex_color.clone()),
+                    array3(vertex_color),
                 )),
-                &RTreeNode::DirectoryNode(ref data) => {
+                RTreeNode::DirectoryNode(ref data) => {
                     to_visit.push(data);
                     push_rectangle(buffer, &data.mbr(), get_color_for_depth(data.depth()));
                 }

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+##[1.8.0] - 2019-04-15
+### Changed
+ - Bumped compatible nalgebra version to 0.18
+ - Updated edition to 2018
+ - Fixed all clippy findings
+ - Cargo fmt'ed source code
+### Bugfixes
+ - SimpleTriangle now overwrites both Hash and PartialEq
+
 ## [1.7.0] - 2019-02-08
 ### Changed
  - Updated README.md
@@ -170,6 +179,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.8.0]: https://github.com/Stoeoef/spade/compare/v1.7.0...v1.8.0
 
 [1.7.0]: https://github.com/Stoeoef/spade/compare/v1.6.0...v1.7.0
 
