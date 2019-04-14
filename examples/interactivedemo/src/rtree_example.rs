@@ -14,7 +14,7 @@
 use cgmath::Point2;
 use glium::glutin;
 use glium::glutin::{ElementState, Event, MouseButton, VirtualKeyCode, WindowEvent};
-use graphics::RenderData;
+use crate::graphics::RenderData;
 use rand::distributions::Standard;
 use rand::Rng;
 use spade::rtree::RTree;
@@ -52,7 +52,7 @@ pub fn run() {
     let display = glium::Display::new(window, context, &events_loop).unwrap();
 
     let seed = ::rand::thread_rng().sample(Standard);
-    let initial_points = ::random_points_with_seed(30, &seed);
+    let initial_points = crate::random_points_with_seed(30, &seed);
     let mut rtree = RTree::bulk_load(initial_points);
 
     let mut render_data = RenderData::new(&display);
@@ -131,7 +131,7 @@ pub fn run() {
                                     100
                                 };
                                 let seed = ::rand::thread_rng().sample(Standard);
-                                let new_points = ::random_points_with_seed(num, &seed);
+                                let new_points = crate::random_points_with_seed(num, &seed);
                                 for point in new_points.into_iter() {
                                     rtree.insert(point);
                                 }

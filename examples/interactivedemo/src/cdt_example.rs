@@ -10,7 +10,7 @@ use cgmath::Point2;
 use glium::glutin;
 use glium::glutin::VirtualKeyCode;
 use glium::glutin::{ElementState, Event, MouseButton, WindowEvent};
-use graphics::RenderData;
+use crate::graphics::RenderData;
 use rand::distributions::Standard;
 use rand::Rng;
 use spade::delaunay::ConstrainedDelaunayTriangulation;
@@ -102,7 +102,7 @@ pub fn run() {
                             let mut rng = ::rand::thread_rng();
 
                             let seed = rng.sample(Standard);
-                            let new_points = ::random_points_with_seed(num, &seed);
+                            let new_points = crate::random_points_with_seed(num, &seed);
                             for point in new_points.into_iter() {
                                 cdt.insert(point);
                             }

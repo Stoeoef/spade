@@ -1680,7 +1680,7 @@ mod test {
     #[cfg(feature="serde_serialize")]
     fn test_serialization() {
         use serde_json;
-        use delaunay::{DelaunayWalkLocate, DelaunayTreeLocate};
+        use crate::delaunay::{DelaunayWalkLocate, DelaunayTreeLocate};
         let mut t1 = IntDelaunayTriangulation::with_tree_locate();
         t1.insert([0i32, 12]);
         let mut t2 = IntDelaunayTriangulation::with_walk_locate();

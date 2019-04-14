@@ -13,7 +13,7 @@ use cgmath::{EuclideanSpace, Point2, Vector3, Point3};
 use spade::{HasPosition,};
 
 use noise::{Seedable, NoiseFn};
-use constants::*;
+use crate::constants::*;
 
 pub type Delaunay = FloatDelaunayTriangulation<
         PointWithHeight, DelaunayWalkLocate>;

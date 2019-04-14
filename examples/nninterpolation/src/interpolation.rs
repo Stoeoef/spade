@@ -9,9 +9,9 @@
 use cgmath::{EuclideanSpace};
 use cgmath as cg;
 use nalgebra as na;
-use delaunay_creation::{Delaunay, PointWithHeight};
-use constants::*;
-use ::cg_vec_to_na;
+use crate::delaunay_creation::{Delaunay, PointWithHeight};
+use crate::constants::*;
+use crate::cg_vec_to_na;
 
 // Interpolation Methods ------------------------------
 pub trait InterpolationMethod {
@@ -21,7 +21,7 @@ pub trait InterpolationMethod {
 
 pub mod interpolation_methods {
     use super::InterpolationMethod;
-    use ::delaunay_creation::Delaunay;
+    use crate::delaunay_creation::Delaunay;
     use cgmath as cg;
 
     pub struct BarycentricInterpolation;

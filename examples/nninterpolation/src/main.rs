@@ -44,12 +44,12 @@ use kiss3d::resource::Mesh;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use interpolation::{InterpolationMethod, Grid};
-use interpolation::interpolation_methods::{BarycentricInterpolation,
+use crate::interpolation::{InterpolationMethod, Grid};
+use crate::interpolation::interpolation_methods::{BarycentricInterpolation,
                                            NaturalNeighborInterpolation,
                                            SibsonC1Interpolation,
                                            FarinC1Interpolation};
-use delaunay_creation::Delaunay;
+use crate::delaunay_creation::Delaunay;
 
 struct InterpolationRenderData {
     edges: Vec<(na::Point3<f32>, na::Point3<f32>)>,
@@ -99,7 +99,7 @@ enum GridRenderType {
 
 impl DelaunayVisibility {
     fn next(&self) -> DelaunayVisibility {
-        use DelaunayVisibility::*;
+        use crate::DelaunayVisibility::*;
         match self {
             &All => OnlyLines,
             &OnlyLines => None,
@@ -110,7 +110,7 @@ impl DelaunayVisibility {
 
 impl GridRenderType {
     fn next(&self) -> GridRenderType {
-        use GridRenderType::*;
+        use crate::GridRenderType::*;
         match self {
             &Lines => Polygons,
             &Polygons => Lines
@@ -129,7 +129,7 @@ fn main() {
     let mut show_normals = false;
 
     // Create delaunay triangulation and its mesh
-    let delaunay = ::delaunay_creation::generate_random_triangulation();
+    let delaunay = crate::delaunay_creation::generate_random_triangulation();
     let delaunay_mesh = create_mesh_from_triangulation(&delaunay);
     let delaunay_mesh = Rc::new(RefCell::new(delaunay_mesh));
     let mut delaunay_node = window.add_mesh(delaunay_mesh.clone(), 

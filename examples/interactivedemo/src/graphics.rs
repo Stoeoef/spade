@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use delaunay_example::{ExampleTriangulation};
-use cdt_example::Cdt;
+use crate::delaunay_example::{ExampleTriangulation};
+use crate::cdt_example::Cdt;
 use spade::{BoundingRect, HasPosition};
 use spade::rtree::{RTree, RTreeNode};
 use cgmath::{EuclideanSpace, Point2, Point3, Vector2, Vector3, Array};
