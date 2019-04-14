@@ -11,11 +11,11 @@
 //! These kernels determine how precise geometric calculations are performed and how they
 //! deal with overflow issues.
 
-use traits::{SpadeNum, SpadeFloat};
-use point_traits::{TwoDimensional};
-use primitives::{SimpleEdge, EdgeSideInfo};
-use bigvec::{BigVec2, AdaptiveInt};
-use exactpred::{orient2d, incircle};
+use crate::traits::{SpadeNum, SpadeFloat};
+use crate::point_traits::{TwoDimensional};
+use crate::primitives::{SimpleEdge, EdgeSideInfo};
+use crate::bigvec::{BigVec2, AdaptiveInt};
+use crate::exactpred::{orient2d, incircle};
 use num::{FromPrimitive, ToPrimitive};
 
 /// Determines how a delaunay triangulation performs its basic geometry computations.

@@ -10,9 +10,9 @@ use cgmath as cg;
 
 use num::{Signed, BigInt, BigRational, zero};
 use num::rational::Ratio;
-use boundingrect::BoundingRect;
-use bigvec::{AdaptiveInt};
-use point_traits::{PointN, PointNExtensions, TwoDimensional};
+use crate::boundingrect::BoundingRect;
+use crate::bigvec::{AdaptiveInt};
+use crate::point_traits::{PointN, PointNExtensions, TwoDimensional};
 use std::fmt::Debug;
 
 /// Number types that can be used with spade.

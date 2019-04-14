@@ -18,7 +18,7 @@
 //! The "adaptive" nature will increase performance only if a simpler calculation 
 //! cannot be guaranteed to be accurate enough, yielding a higher performance on
 //! average.
-use point_traits::PointN;
+use crate::point_traits::PointN;
 
 // These values are precomputed from the "exactinit" method of the c-source code. They should? be 
 // the same in all IEEE-754 environments, including rust f64

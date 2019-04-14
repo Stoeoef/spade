@@ -6,10 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use traits::HasPosition;
-use point_traits::PointN;
-use rtree::RTree;
-use delaunay::FixedVertexHandle;
+use crate::traits::HasPosition;
+use crate::point_traits::PointN;
+use crate::rtree::RTree;
+use crate::delaunay::FixedVertexHandle;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

@@ -1,11 +1,11 @@
-use delaunay::*;
+use crate::delaunay::*;
 use self::dcel::*;
 use self::delaunay_locate::VertexEntry;
-use traits::HasPosition2D;
+use crate::traits::HasPosition2D;
 use smallvec::SmallVec;
-use kernels::DelaunayKernel;
-use point_traits::{PointN, PointNExtensions, TwoDimensional};
-use primitives::SimpleEdge;
+use crate::kernels::DelaunayKernel;
+use crate::point_traits::{PointN, PointNExtensions, TwoDimensional};
+use crate::primitives::SimpleEdge;
 use std::collections::HashSet;
 
 type FixedPosition = PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle>;

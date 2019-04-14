@@ -8,6 +8,7 @@ repository = "https://github.com/Stoeoef/spade"
 readme = "README.md"
 keywords = ["delaunay", "triangulation", "rtree", "geometry", "interpolation"]
 license = "MIT/Apache-2.0"
+edition = "2018"
 
 [features]
 serde_serialize = ["num/serde", "serde"]

@@ -7,17 +7,17 @@
 // except according to those terms.
 
 use num::{One, Float, Zero, one, zero};
-use traits::{SpatialObject, HasPosition2D, SpadeFloat, HasPosition};
-use point_traits::{PointN, PointNExtensions, TwoDimensional, ThreeDimensional};
-use kernels::{DelaunayKernel, TrivialKernel, FloatKernel};
-use primitives::{SimpleEdge, SimpleTriangle};
+use crate::traits::{SpatialObject, HasPosition2D, SpadeFloat, HasPosition};
+use crate::point_traits::{PointN, PointNExtensions, TwoDimensional, ThreeDimensional};
+use crate::kernels::{DelaunayKernel, TrivialKernel, FloatKernel};
+use crate::primitives::{SimpleEdge, SimpleTriangle};
 use std::marker::PhantomData;
 use smallvec::{SmallVec, smallvec};
 
 use self::dcel::*;
 use self::delaunay_locate::*;
 use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
-use delaunay::*;
+use crate::delaunay::*;
 
 /// Type shorthand for a Delaunay triangulation with `f64` coordinates that uses `FloatKernel`
 /// for geometric calculations.
@@ -539,7 +539,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
             let w0 = one - w1;
             Some(w1 * f(&*vertices[1]) + w0 * f(&*vertices[0]))
         } else {
-            let triangle = ::primitives::SimpleTriangle::new(
+            let triangle = crate::primitives::SimpleTriangle::new(
                 vertices[0].position(),
                 vertices[1].position(),
                 vertices[2].position());
@@ -1120,10 +1120,10 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 mod test {
     use super::{FloatDelaunayTriangulation, IntDelaunayTriangulation};
     use cgmath::{Point2};
-    use testutils::*;
+    use crate::testutils::*;
     use rand::{SeedableRng, XorShiftRng, Rng};
     use rand::distributions::{Range, Distribution};
-    use traits::{HasPosition, SpatialObject};
+    use crate::traits::{HasPosition, SpatialObject};
     use super::delaunay_basic::BasicDelaunaySubdivision;
 
     #[test]

@@ -10,9 +10,9 @@ use nalgebra as na;
 use cgmath as cg;
 
 use std::fmt::Debug;
-use traits::SpadeNum;
+use crate::traits::SpadeNum;
 use num::{zero};
-use misc::{min_inline, max_inline};
+use crate::misc::{min_inline, max_inline};
 
 /// Abstraction over a point with a fixed number of dimensions.
 ///

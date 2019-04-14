@@ -14,11 +14,11 @@
 
 
 use cgmath::{Point3, Zero, One};
-use traits::{SpadeFloat, SpadeNum, SpatialObject};
-use point_traits::{PointN, PointNExtensions, TwoDimensional};
+use crate::traits::{SpadeFloat, SpadeNum, SpatialObject};
+use crate::point_traits::{PointN, PointNExtensions, TwoDimensional};
 use num::{Float, one, zero, Signed};
-use boundingrect::BoundingRect;
-use kernels::{TrivialKernel, DelaunayKernel};
+use crate::boundingrect::BoundingRect;
+use crate::kernels::{TrivialKernel, DelaunayKernel};
 
 #[cfg(feature = "serde_serialize")]
 use serde::{Serialize, Deserialize};
@@ -399,8 +399,8 @@ impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloa
 #[cfg(test)]
 mod test {
     use super::{SimpleEdge, SimpleTriangle, SimpleCircle};
-    use traits::SpatialObject;
-    use kernels::{TrivialKernel, FloatKernel};
+    use crate::traits::SpatialObject;
+    use crate::kernels::{TrivialKernel, FloatKernel};
     use cgmath::{Point2, Point3};
 
     #[test]

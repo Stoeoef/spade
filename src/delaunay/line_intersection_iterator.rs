@@ -1,8 +1,8 @@
-use primitives::SimpleEdge;
-use delaunay::*;
+use crate::primitives::SimpleEdge;
+use crate::delaunay::*;
 use self::delaunay_basic::BasicDelaunaySubdivision;
-use traits::{HasPosition2D};
-use point_traits::{PointN, TwoDimensional, PointNExtensions};
+use crate::traits::{HasPosition2D};
+use crate::point_traits::{PointN, TwoDimensional, PointNExtensions};
 
 pub struct LineIntersectionIterator<'a, T, V, E=()> where
     T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
@@ -91,7 +91,7 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
     }
 
     fn get_first_intersection(delaunay: &'a T, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V, E>> {
-        use delaunay::PositionInTriangulation::*;
+        use crate::delaunay::PositionInTriangulation::*;
         match delaunay.locate_with_hint_option(&line.from, None) {
             InTriangle(face_handle) => {
                 Self::get_first_edge_from_edge_ring(face_handle.adjacent_edges(), line)
@@ -272,7 +272,7 @@ impl <'a, T, V, E> Iterator for LineIntersectionIterator<'a, T, V, E>
 mod test {
     use super::*;
     use cgmath::Point2;
-    use kernels::FloatKernel;
+    use crate::kernels::FloatKernel;
     use self::Intersection::*;
 
     type Triangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;

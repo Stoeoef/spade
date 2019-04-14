@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use traits::{SpadeNum};
+use crate::traits::{SpadeNum};
 
 // A call to l.min(r) does not seem to be inlined, thus we define it ourselves
 // This does improve performance significantly.

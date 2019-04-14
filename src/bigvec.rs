@@ -11,8 +11,8 @@ use cgmath as cg;
 use std::ops::{Add, Sub, Index, IndexMut, Div, Mul, Rem, Neg};
 use num::{Num, BigInt, Zero, One, Signed, ToPrimitive, Integer};
 use num::bigint::ToBigInt;
-use traits::{SpadeNum};
-use point_traits::{PointN, TwoDimensional};
+use crate::traits::{SpadeNum};
+use crate::point_traits::{PointN, TwoDimensional};
 
 
 /// BigVec2 is a two dimensional vector that does not _require_ it's
@@ -148,7 +148,7 @@ impl Num for AdaptiveInt {
 
 impl Integer for AdaptiveInt {
     fn div_floor(&self, other: &Self) -> Self {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.div_floor(r)).reduce(),
             (&HighRes(ref l), &LowRes(ref r)) => HighRes(l.div_floor(&r.to_bigint().unwrap())).reduce(),
@@ -158,7 +158,7 @@ impl Integer for AdaptiveInt {
     }
 
     fn mod_floor(&self, other: &Self) -> Self {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.mod_floor(r)).reduce(),
             (&HighRes(ref l), &LowRes(ref r)) => HighRes(l.mod_floor(&r.to_bigint().unwrap())).reduce(),
@@ -168,7 +168,7 @@ impl Integer for AdaptiveInt {
     }
 
     fn gcd(&self, other: &Self) -> Self {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.gcd(r)).reduce(),
             (&HighRes(ref l), &LowRes(ref r)) => HighRes(l.gcd(&r.to_bigint().unwrap())).reduce(),
@@ -178,7 +178,7 @@ impl Integer for AdaptiveInt {
     }
 
     fn lcm(&self, other: &Self) -> Self {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.lcm(r)),
             (&HighRes(ref l), &LowRes(ref r)) => HighRes(l.lcm(&r.to_bigint().unwrap())),
@@ -188,7 +188,7 @@ impl Integer for AdaptiveInt {
     }
 
     fn divides(&self, other: &Self) -> bool {
-                use bigvec::AdaptiveInt::*;
+                use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => l.divides(r),
             (&HighRes(ref l), &LowRes(ref r)) => l.divides(&r.to_bigint().unwrap()),
@@ -198,7 +198,7 @@ impl Integer for AdaptiveInt {
     }
 
     fn is_multiple_of(&self, other: &Self) -> bool {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => l.is_multiple_of(r),
             (&HighRes(ref l), &LowRes(ref r)) => l.is_multiple_of(&r.to_bigint().unwrap()),
@@ -217,7 +217,7 @@ impl Integer for AdaptiveInt {
     fn is_odd(&self) -> bool { !self.is_even() }
 
     fn div_rem(&self, other: &Self) -> (Self, Self) {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         let (div, rem) = match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => l.div_rem(r),
             (&HighRes(ref l), &LowRes(ref r)) => l.div_rem(&r.to_bigint().unwrap()),
@@ -250,7 +250,7 @@ impl One for AdaptiveInt {
 impl Add for AdaptiveInt {
     type Output = Self;
     fn add(self, rhs: AdaptiveInt) -> AdaptiveInt {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l + r).reduce(),
             (HighRes(hr), LowRes(lr))
@@ -269,7 +269,7 @@ impl Add for AdaptiveInt {
 impl Sub for AdaptiveInt {
     type Output = Self;
     fn sub(self, rhs: AdaptiveInt) -> AdaptiveInt {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l - r).reduce(),
             (HighRes(l), LowRes(r)) => HighRes(l - r.to_bigint().unwrap()).reduce(),
@@ -288,7 +288,7 @@ impl Sub for AdaptiveInt {
 impl Mul for AdaptiveInt {
     type Output = Self;
     fn mul(self, rhs: AdaptiveInt) -> AdaptiveInt {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l * r),
             (HighRes(hr), LowRes(lr))
@@ -308,7 +308,7 @@ impl Div for AdaptiveInt {
     type Output = Self;
 
     fn div(self, rhs: AdaptiveInt) -> AdaptiveInt {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l / r).reduce(),
             (HighRes(l), LowRes(r)) => HighRes(l / r.to_bigint().unwrap()).reduce(),
@@ -327,7 +327,7 @@ impl Div for AdaptiveInt {
 impl Rem for AdaptiveInt {
     type Output = Self;
     fn rem(self, rhs: AdaptiveInt) -> AdaptiveInt {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l % r),
             (HighRes(l), LowRes(r)) => HighRes(l % r.to_bigint().unwrap()),
@@ -361,7 +361,7 @@ impl Signed for AdaptiveInt {
         }
     }
     fn abs_sub(&self, other: &Self) -> Self {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.abs_sub(r)),
             (&LowRes(ref l), &HighRes(ref r)) => HighRes(l.to_bigint().unwrap().abs_sub(r)),
@@ -394,7 +394,7 @@ impl Signed for AdaptiveInt {
 
 impl PartialEq for AdaptiveInt {
     fn eq(&self, rhs: &AdaptiveInt) -> bool {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (&HighRes(ref l), &HighRes(ref r)) => l == r,
             (&HighRes(ref hr), &LowRes(ref lr)) 
@@ -408,7 +408,7 @@ impl Eq for AdaptiveInt { }
 
 impl PartialOrd for AdaptiveInt {
     fn partial_cmp(&self, rhs: &AdaptiveInt) -> Option<::std::cmp::Ordering> {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (&HighRes(ref l), &HighRes(ref r)) => l.partial_cmp(r),
             (&HighRes(ref l), &LowRes(ref r)) => l.partial_cmp(&r.to_bigint().unwrap()),
@@ -420,7 +420,7 @@ impl PartialOrd for AdaptiveInt {
 
 impl Ord for AdaptiveInt {
     fn cmp(&self, rhs: &AdaptiveInt) -> ::std::cmp::Ordering {
-        use bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (&HighRes(ref l), &HighRes(ref r)) => l.cmp(r),
             (&HighRes(ref l), &LowRes(ref r)) => l.cmp(&r.to_bigint().unwrap()),

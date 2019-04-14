@@ -68,6 +68,6 @@ pub mod kernels;
 pub mod primitives;
 pub mod rtree;
 
-pub use traits::*;
-pub use boundingrect::*;
-pub use point_traits::{PointN, TwoDimensional, ThreeDimensional};
+pub use crate::traits::*;
+pub use crate::boundingrect::*;
+pub use crate::point_traits::{PointN, TwoDimensional, ThreeDimensional};

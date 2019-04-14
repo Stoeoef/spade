@@ -6,15 +6,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use delaunay::*;
+use crate::delaunay::*;
 use self::delaunay_basic::{BasicDelaunaySubdivision, HasSubdivision};
 use self::dcel::*;
 use self::line_intersection_iterator::*;
-use traits::{HasPosition, HasPosition2D};
+use crate::traits::{HasPosition, HasPosition2D};
 use std::marker::PhantomData;
-use point_traits::{PointN, TwoDimensional};
-use kernels::{DelaunayKernel, FloatKernel};
-use primitives::SimpleEdge;
+use crate::point_traits::{PointN, TwoDimensional};
+use crate::kernels::{DelaunayKernel, FloatKernel};
+use crate::primitives::SimpleEdge;
 
 /// Type shorthand for a constrained Delaunay triangulation using
 /// the precise `FloatKernel`.
@@ -657,11 +657,11 @@ impl <V, K> ConstrainedDelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
 
 #[cfg(test)]
 mod test {
-    use testutils::*;
+    use crate::testutils::*;
     use super::{ConstrainedDelaunayTriangulation};
     use super::{DelaunayTriangulation, DelaunayWalkLocate};
-    use traits::HasPosition;
-    use kernels::{AdaptiveIntKernel, FloatKernel};
+    use crate::traits::HasPosition;
+    use crate::kernels::{AdaptiveIntKernel, FloatKernel};
     use cgmath::{Point2, Vector2, EuclideanSpace};
     use rand::{XorShiftRng, SeedableRng, Rng};
     use rand::distributions::{Range, Distribution};

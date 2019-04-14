@@ -8,11 +8,11 @@
 
 #![allow(missing_docs)]
 use cgmath::{BaseFloat, Point2, BaseNum};
-use rtree::RTree;
+use crate::rtree::RTree;
 use rand::{XorShiftRng, SeedableRng};
 use rand::distributions::{Range, Distribution};
 use rand::distributions::range::SampleRange;
-use traits::SpadeNum;
+use crate::traits::SpadeNum;
 
 pub fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());

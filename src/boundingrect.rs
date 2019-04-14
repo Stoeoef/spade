@@ -7,9 +7,9 @@
 // except according to those terms.
 
 use num::{Signed, zero, one};
-use point_traits::{PointN, PointNExtensions};
-use misc::max_inline;
-use traits::SpatialObject;
+use crate::point_traits::{PointN, PointNExtensions};
+use crate::misc::max_inline;
+use crate::traits::SpatialObject;
 
 /// An axis aligned minimal bounding rectangle.
 ///
@@ -215,7 +215,7 @@ impl <V> SpatialObject for BoundingRect<V> where V: PointN {
 #[cfg(test)]
 mod test {
     use super::BoundingRect;
-    use traits::SpatialObject;
+    use crate::traits::SpatialObject;
     
     #[test]
     fn test_add_points() {

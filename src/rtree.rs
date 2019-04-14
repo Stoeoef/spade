@@ -8,13 +8,13 @@
 
 //! Implementation of an n-dimensional r*-tree.
 
-use misc::min_inline;
+use crate::misc::min_inline;
 use std::sync::Arc;
-use traits::{SpatialObject};
-use ::TwoDimensional;
-use point_traits::{PointN, PointNExtensions};
+use crate::traits::{SpatialObject};
+use crate::TwoDimensional;
+use crate::point_traits::{PointN, PointNExtensions};
 use num::{zero};
-use boundingrect::BoundingRect;
+use crate::boundingrect::BoundingRect;
 use std::iter::Once;
 
 #[cfg(feature = "serde_serialize")]
@@ -1278,12 +1278,12 @@ fn create_clusters<T: SpatialObject>(array: &mut [T], cluster_size: usize, dimen
 #[cfg(test)]
 mod test {
     use super::{RTree};
-    use boundingrect::BoundingRect;
-    use primitives::{SimpleTriangle, SimpleEdge};
+    use crate::boundingrect::BoundingRect;
+    use crate::primitives::{SimpleTriangle, SimpleEdge};
     use cgmath::{Point2, InnerSpace};
     use num::Float;
-    use traits::SpatialObject;
-    use testutils::*;
+    use crate::traits::SpatialObject;
+    use crate::testutils::*;
 
     #[test]
     fn test_tree_with_integral_points() {
