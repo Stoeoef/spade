@@ -103,8 +103,8 @@ impl<V> HasPosition for VertexEntry<V>
 impl <V: PointN> VertexEntry<V> {
     pub fn new(point: V, handle: FixedVertexHandle) -> VertexEntry<V> {
         VertexEntry {
-            point: point,
-            handle: handle,
+            point,
+            handle,
         }
     }
 }

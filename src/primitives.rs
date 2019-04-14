@@ -99,8 +99,8 @@ impl <V> SimpleEdge<V> where V: PointN {
     /// Creates a new edge from `from` to `to`.
     pub fn new(from: V, to: V) -> SimpleEdge<V> {
         SimpleEdge {
-            from: from,
-            to: to,
+            from,
+            to,
         }
     }
 
@@ -177,12 +177,11 @@ impl <V> SimpleEdge<V> where V: PointN, V::Scalar: SpadeFloat {
         if V::Scalar::zero() < s && s < one() {
             p1.add(&dir.mul(s))
 
-        } else {
-            if s <= V::Scalar::zero() {
+        }else             if s <= V::Scalar::zero() {
                 p1.clone()
             } else {
                 p2.clone()
-            }
+         
         }
     }
 
@@ -223,7 +222,7 @@ impl <V: PointN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
 }
 
 /// A triangle, defined by it's three points.
-#[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct SimpleTriangle<V: PointN> {
     v0: V,
@@ -234,7 +233,7 @@ pub struct SimpleTriangle<V: PointN> {
 impl <V> SimpleTriangle<V> where V: PointN {
     /// Checks if the given points are ordered counter clock wise.
     pub fn new(v0: V, v1: V, v2: V) -> SimpleTriangle<V> {
-        SimpleTriangle { v0: v0, v1: v1, v2: v2 }
+        SimpleTriangle { v0, v1, v2 }
     }
 
     /// Returns the triangle's vertices.
@@ -268,6 +267,15 @@ impl <V> PartialEq for SimpleTriangle<V> where V: PointN {
     }
 }
 
+impl <V> std::hash::Hash for SimpleTriangle<V> where V: PointN + std::hash::Hash {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Needs to be adjusted as PartialEq is overwritten
+        let mut to_sort = [&self.v0, &self.v1, &self.v2];
+        to_sort.sort_by(|l, r| l.lex_compare(r));
+        to_sort.hash(state);
+    }
+}
+
 impl <V> SimpleTriangle<V> where V: PointN, V::Scalar: SpadeFloat {
 
     /// Returns the nearest point lying on any of the triangle's edges.
@@ -294,6 +302,7 @@ impl <V> SimpleTriangle<V> where V: PointN, V::Scalar: SpadeFloat {
 impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
 
     /// Returns the position of the triangle's circumcenter.
+    #[allow(clippy::many_single_char_names)]
     pub fn circumcenter(&self) -> V {
         let one: V::Scalar = One::one();
         let two = one + one;
@@ -367,8 +376,8 @@ impl <V> SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloat {
     /// Create a new circle.
     pub fn new(center: V, radius: V::Scalar) -> SimpleCircle<V> {
         SimpleCircle {
-            center: center,
-            radius: radius,
+            center,
+            radius
         }
     }
 }
@@ -471,6 +480,30 @@ mod test {
         relative_eq!(t.distance2(&Point2::new(1., 1.)), 0.5);
         relative_eq!(t.distance2(&Point2::new(0.5, 0.5)), 0.0);
         assert!(t.distance2(&Point2::new(0.6, 0.6)) > 0.001);
+    }
+
+    #[test]
+    fn test_triangle_hash() {
+        use std::hash::{Hash, Hasher};
+        let v1 = Point2::new(4, 5);
+        let v2 = Point2::new(1, 2);
+        let v3 = Point2::new(10, 1);
+        let tri1 = SimpleTriangle::new(v1, v2, v3);
+        let tri2 = SimpleTriangle::new(v1, v3, v2);
+        let tri3 = SimpleTriangle::new(v1, v1, v2);
+
+        let get_hash = |triangle: SimpleTriangle<_>| {
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            triangle.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        let hash1 = get_hash(tri1);
+        let hash2 = get_hash(tri2);
+        let hash3 = get_hash(tri3);
+
+        assert_eq!(hash1, hash2);
+        assert_ne!(hash1, hash3);
     }
 
     #[test]

@@ -26,7 +26,7 @@ pub struct BigVec2<N: Num> {
 
 impl <N: Num + Clone> BigVec2<N> {
     pub fn new(x: N, y: N) -> BigVec2<N> {
-        BigVec2 { x: x, y: y }
+        BigVec2 { x, y }
     }
 }
 
@@ -79,19 +79,22 @@ impl <N: SpadeNum> Div<N> for BigVec2<N> {
 impl <N: SpadeNum> Index<usize> for BigVec2<N> {
     type Output = N;
 
-    fn index<'a>(&'a self, index: usize) -> &'a N {
-        unsafe {
-            &::std::mem::transmute::<_, &[N; 2]>(self)[index]
+    fn index(&self, index: usize) -> &N {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            _ => unreachable!()
         }
-
     }
 }
 
 impl <N: SpadeNum> IndexMut<usize> for BigVec2<N> {
 
-    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut N {
-        unsafe {
-            &mut ::std::mem::transmute::<_, &mut [N; 2]>(self)[index]
+    fn index_mut(&mut self, index: usize) -> &mut N {
+        match index {
+            0 => &mut self.x,
+            1 => &mut self.y,
+            _ => unreachable!()
         }
     }
 }
@@ -116,8 +119,8 @@ pub enum AdaptiveInt {
 }
 
 impl AdaptiveInt {
-    pub fn from_i64(i: &i64) -> AdaptiveInt {
-        AdaptiveInt::LowRes(*i)
+    pub fn from_i64(i: i64) -> AdaptiveInt {
+        AdaptiveInt::LowRes(i)
     }
     
     pub fn from_bigint(i: BigInt) -> AdaptiveInt {
@@ -142,7 +145,7 @@ impl Num for AdaptiveInt {
     type FromStrRadixErr = ::std::num::ParseIntError;
     fn from_str_radix(s: &str, radix: u32) -> Result<Self, ::std::num::ParseIntError>
     {
-        i64::from_str_radix(s, radix).map(|val| AdaptiveInt::LowRes(val))
+        i64::from_str_radix(s, radix).map(AdaptiveInt::LowRes)
     }
 }
 
@@ -209,8 +212,8 @@ impl Integer for AdaptiveInt {
 
     fn is_even(&self) -> bool {
         match self {
-            &AdaptiveInt::HighRes(ref v) => v.is_even(),
-            &AdaptiveInt::LowRes(ref v) => v.is_even(),
+            AdaptiveInt::HighRes(ref v) => v.is_even(),
+            AdaptiveInt::LowRes(ref v) => v.is_even(),
         }
     }
 
@@ -356,8 +359,8 @@ impl Neg for AdaptiveInt {
 impl Signed for AdaptiveInt {
     fn abs(&self) -> Self {
         match self {
-            &AdaptiveInt::HighRes(ref v) => AdaptiveInt::HighRes(v.abs()),
-            &AdaptiveInt::LowRes(ref v) => AdaptiveInt::LowRes(v.abs()),
+            AdaptiveInt::HighRes(ref v) => AdaptiveInt::HighRes(v.abs()),
+            AdaptiveInt::LowRes(ref v) => AdaptiveInt::LowRes(v.abs()),
         }
     }
     fn abs_sub(&self, other: &Self) -> Self {
@@ -372,22 +375,22 @@ impl Signed for AdaptiveInt {
 
     fn signum(&self) -> Self {
         match self {
-            &AdaptiveInt::HighRes(ref v) => AdaptiveInt::HighRes(v.signum()),
-            &AdaptiveInt::LowRes(ref v) => AdaptiveInt::LowRes(v.signum()),
+            AdaptiveInt::HighRes(ref v) => AdaptiveInt::HighRes(v.signum()),
+            AdaptiveInt::LowRes(ref v) => AdaptiveInt::LowRes(v.signum()),
         }
     }
 
     fn is_positive(&self) -> bool {
         match self {
-            &AdaptiveInt::HighRes(ref v) => v.is_positive(),
-            &AdaptiveInt::LowRes(ref v) => v.is_positive(),
+            AdaptiveInt::HighRes(ref v) => v.is_positive(),
+            AdaptiveInt::LowRes(ref v) => v.is_positive(),
         }
     }
 
     fn is_negative(&self) -> bool {
         match self {
-            &AdaptiveInt::HighRes(ref v) => v.is_negative(),
-            &AdaptiveInt::LowRes(ref v) => v.is_negative(),
+            AdaptiveInt::HighRes(ref v) => v.is_negative(),
+            AdaptiveInt::LowRes(ref v) => v.is_negative(),
         }
     }
 }

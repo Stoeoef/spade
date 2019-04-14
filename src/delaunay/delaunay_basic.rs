@@ -201,7 +201,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             },
             PositionInTriangulation::OnPoint(vertex) => {
                 self.s_mut().update_vertex(vertex, t);
-                return Result::Err(vertex);
+                Result::Err(vertex)
             },
             PositionInTriangulation::OutsideConvexHull(edge) => {
                 let line = Self::to_simple_edge(self.s().edge(edge));
@@ -514,7 +514,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         result
     }
 
-    fn to_simple_edge<'a>(edge: EdgeHandle<'a, V, Self::EdgeType>) -> SimpleEdge<V::Point> {
+    fn to_simple_edge(edge: EdgeHandle<V, Self::EdgeType>) -> SimpleEdge<V::Point> {
         let from = (edge.from()).position();
         let to = (edge.to()).position();
         SimpleEdge::new(from, to)
@@ -702,7 +702,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         data
     }
 
-    fn repair_edge(&mut self, vertices: &Vec<FixedVertexHandle>) {
+    fn repair_edge(&mut self, vertices: &[FixedVertexHandle]) {
         assert_eq!(vertices.len(), 2);
         assert!(self.all_points_on_line());
         let v0 = vertices[0];
@@ -721,7 +721,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         };
     }
 
-    fn repair_convex_hull(&mut self, vertices: &Vec<FixedVertexHandle>) {
+    fn repair_convex_hull(&mut self, vertices: &[FixedVertexHandle]) {
         // A vertex from the convex hull has been removed. This removal can create
         // multiple 'pockets' in the hull that need to be re-triangulated. 
         // 'vertices' contains all vertices that were adjacent to the removed point
@@ -794,8 +794,8 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
 
         // Fill the hole
         let mut todo = Vec::new();
-        for i in 2 .. loop_edges.len() - 1 {
-            let edge = self.s_mut().create_face(last_edge, loop_edges[i]);
+        for edge in &loop_edges[2 .. loop_edges.len() - 1] {
+            let edge = self.s_mut().create_face(last_edge, *edge);
             todo.push(edge);
         }
         // Legalize edges

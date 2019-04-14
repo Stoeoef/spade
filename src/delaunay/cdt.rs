@@ -26,7 +26,7 @@ pub type FloatCDT<T, L> = ConstrainedDelaunayTriangulation<T, FloatKernel, L>;
 pub struct CdtEdge(bool);
 
 impl CdtEdge {
-    fn is_constraint_edge(&self) -> bool {
+    fn is_constraint_edge(self) -> bool {
         self.0
     }
 
@@ -394,8 +394,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
     /// Returns a handle to the new vertex. Use this handle with
     /// `ConstrainedDelaunayTriangulation::vertex(..)` to refer to it.
     pub fn insert(&mut self, vertex: V) -> FixedVertexHandle {
-        let handle = self.insert_with_hint_option(vertex, None);
-        handle
+        self.insert_with_hint_option(vertex, None)
     }
 
 
@@ -473,9 +472,9 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
         let mut cur_from = from;
         let mut result = false;
         while let Some(region) = self.get_next_conflict_region(cur_from, to) {
-            cur_from = match &region {
-                &ConflictRegion::ExistingEdge(ref edge) => self.edge(*edge).to().fix(),
-                &ConflictRegion::Region { ref right_hull, .. } => 
+            cur_from = match region {
+                ConflictRegion::ExistingEdge(ref edge) => self.edge(*edge).to().fix(),
+                ConflictRegion::Region { ref right_hull, .. } => 
                     self.edge(*right_hull.last().unwrap()).to().fix(),
             };
             result |= self.resolve_conflict_region(region);
@@ -571,7 +570,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
         if v0 == v1 {
             return None;
         }
-        let mut line_iterator = LineIntersectionIterator::new_from_handles(self, v0, v1);
+        let line_iterator = LineIntersectionIterator::new_from_handles(self, v0, v1);
 
         let v0 = self.vertex(v0);
         let v1 = self.vertex(v1);
@@ -580,7 +579,7 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
         let mut left_hull = Vec::new();
         let mut intersecting_edges = Vec::new();
 
-        while let Some(intersection) = line_iterator.next() {
+        for intersection in line_iterator {
             match intersection {
                 Intersection::EdgeIntersection(edge) => {
                     let simple_edge = SimpleEdge::new(
@@ -621,8 +620,8 @@ impl<V, K, L> ConstrainedDelaunayTriangulation<V, K, L>
         right_hull.push(last_edge.o_next().fix());
 
         Some(ConflictRegion::Region {
-            left_hull: left_hull,
-            right_hull: right_hull,
+            left_hull,
+            right_hull,
             conflicts: intersecting_edges,
         })
     }
@@ -928,7 +927,7 @@ mod test {
         let seed = b"fuzztestonline__";
         const RANGE: i64 = 10000;
         const NUM_POINTS: usize = 2000;
-        let mut rng = XorShiftRng::from_seed(seed.clone());
+        let mut rng = XorShiftRng::from_seed(*seed);
         let points = random_points_on_line(RANGE, NUM_POINTS, &mut rng, Vector2::new(1, 1));
         let mut cdt = ConstrainedDelaunayTriangulation::<_, AdaptiveIntKernel>::with_walk_locate();
         for ps in points.chunks(2) {
@@ -957,7 +956,7 @@ mod test {
                 points.push(Point2::new(x, y));
             }
         }
-        let mut rng = XorShiftRng::from_seed(seed.clone());
+        let mut rng = XorShiftRng::from_seed(*seed);
         rng.shuffle(&mut points);
         let mut cdt = ConstrainedDelaunayTriangulation::<_, AdaptiveIntKernel>::with_walk_locate();
         for p in points {

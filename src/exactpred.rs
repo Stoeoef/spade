@@ -7,6 +7,7 @@
 // except according to those terms.
 
 #![allow(non_snake_case)]
+#![allow(clippy::all)]
 
 //! This is a direct transcript of the sourcecode and algorithms provided by
 //! Jonathan Richard Shewchuk (https://www.cs.cmu.edu/~quake/robust.html)
@@ -22,8 +23,8 @@ use crate::point_traits::PointN;
 
 // These values are precomputed from the "exactinit" method of the c-source code. They should? be 
 // the same in all IEEE-754 environments, including rust f64
-const SPLITTER: f64 = 134217729f64;
-const EPSILON: f64 =  0.00000000000000011102230246251565;
+const SPLITTER: f64 = 134_217_729f64;
+const EPSILON: f64 =  0.000_000_000_000_000_111_022_302_462_515_65;
 const RESULTERRBOUND: f64 = (3.0 + 8.0 * EPSILON) * EPSILON;
 const CCWERRBOUND_A: f64 = (3.0 + 16.0 * EPSILON) * EPSILON;
 const CCWERRBOUND_B: f64 = (2.0 + 12.0 * EPSILON) * EPSILON;
@@ -162,7 +163,7 @@ pub fn incircle<V: PointN<Scalar=f64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> f64 {
     if det > errbound || -det > errbound {
         return det;
     }
-    return incircleadapt(pa, pb, pc, pd, permanent);
+    incircleadapt(pa, pb, pc, pd, permanent)
 }
 
 fn incircleadapt(pa: [f64; 2], pb: [f64; 2], pc: [f64; 2], pd: [f64; 2], permanent: f64) -> f64 {
@@ -807,8 +808,8 @@ fn two_product_presplit(a: f64, b: f64, bhi: f64, blo: f64) -> (f64, f64) {
 
 #[inline]
 fn two_two_diff(a1: f64, a0: f64, b1: f64, b0: f64) -> (f64, f64, f64, f64) {
-    let (j, _0, x0) = two_one_diff(a1, a0, b0);
-    let (x3, x2, x1) = two_one_diff(j, _0, b1);
+    let (j, _r0, x0) = two_one_diff(a1, a0, b0);
+    let (x3, x2, x1) = two_one_diff(j, _r0, b1);
     (x3, x2, x1, x0)
 }
 
@@ -985,8 +986,8 @@ fn two_one_sum(a1: f64, a0: f64, b: f64) -> (f64, f64, f64) {
 
 #[inline]
 fn two_two_sum(a1: f64, a0: f64, b1: f64, b0: f64) -> (f64, f64, f64, f64) {
-    let (_j, _0, x0) = two_one_sum(a1, a0, b0);
-    let (x3, x2, x1) = two_one_sum(_j, _0, b1);
+    let (_j, _r0, x0) = two_one_sum(a1, a0, b0);
+    let (x3, x2, x1) = two_one_sum(_j, _r0, b1);
     (x3, x2, x1, x0)
 }
 

@@ -32,6 +32,9 @@
 
 
 #![warn(missing_docs)]
+#![warn(clippy::all)]
+#![allow(clippy::float_cmp)]
+
 
 extern crate num;
 extern crate cgmath;

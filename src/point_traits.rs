@@ -91,12 +91,12 @@ pub trait PointNExtensions : PointN {
 
     /// Returns a new point containing the minimum values of this and another point (componentwise)
     fn min_point(&self, rhs: &Self) -> Self {
-        self.component_wise(rhs, |l, r| min_inline(l, r))
+        self.component_wise(rhs, min_inline)
     }
 
     /// Returns a new point containing the maximum values of this and another point (componentwise)
     fn max_point(&self, rhs: &Self) -> Self {
-        self.component_wise(rhs, |l, r| max_inline(l, r))
+        self.component_wise(rhs, max_inline)
     }
 
     /// Fold operation over all point components.
@@ -125,6 +125,18 @@ pub trait PointNExtensions : PointN {
     /// Returns the point's squared length.
     fn length2(&self) -> Self::Scalar {
         self.dot(&self)
+    }
+
+    fn lex_compare(&self, other: &Self) -> std::cmp::Ordering {
+        for i in 0 .. Self::dimensions() {
+            let left = self.nth(i);
+            let right = other.nth(i);
+            let compare = left.partial_cmp(right).unwrap();
+            if compare != std::cmp::Ordering::Equal {
+                return compare;
+            }
+        }
+        std::cmp::Ordering::Equal
     }
 }
 

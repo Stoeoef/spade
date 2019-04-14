@@ -47,7 +47,7 @@ struct VertexEntry<V> {
 impl <V> VertexEntry<V> {
     fn new(data: V) -> VertexEntry<V> {
         VertexEntry {
-            data: data,
+            data,
             out_edge: None,
         }
     }
@@ -156,7 +156,7 @@ impl <V, E> DCEL<V, E> where E: Default {
             prev: twin_index,
             twin: twin_index,
             origin: v0,
-            face: face,
+            face,
             data: Default::default(),
         };
         self.edges.push(edge);
@@ -166,7 +166,7 @@ impl <V, E> DCEL<V, E> where E: Default {
             prev: edge_index,
             twin: edge_index,
             origin: v1,
-            face: face,
+            face,
             data: Default::default(),
         };
         self.edges.push(twin);
@@ -255,8 +255,8 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         };
 
         VertexRemovalResult {
-            updated_vertex: updated_vertex,
-            data: data,
+            updated_vertex,
+            data,
         }
     }
 
@@ -544,7 +544,7 @@ pub struct ONextIterator<'a, V, E=()> where V: 'a, E: 'a {
 impl <'a, V, E> ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
     fn new_empty(dcel: &'a DCEL<V, E>) -> Self {
         ONextIterator {
-            dcel: dcel,
+            dcel,
             cur_until: None,
         }
     }
@@ -552,7 +552,7 @@ impl <'a, V, E> ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
     fn new(dcel: &'a DCEL<V, E>, edge: FixedEdgeHandle) -> Self {
         let edge = dcel.edge(edge);
         ONextIterator {
-            dcel: dcel,
+            dcel,
             cur_until: Some((edge.fix(), edge.o_prev().fix())),
         }
     }
@@ -612,15 +612,15 @@ impl <'a, V, E> CCWIterator<'a, V, E> where V: 'a, E: Default + 'a {
             None
         };
         CCWIterator {
-            dcel: dcel,
-            cur_until: cur_until,
+            dcel,
+            cur_until,
         }
     }
 
     fn from_edge(dcel: &'a DCEL<V, E>, edge: FixedEdgeHandle) -> Self {
         let edge = dcel.edge(edge);
         CCWIterator {
-            dcel: dcel,
+            dcel,
             cur_until: Some((edge.fix(), edge.cw().fix())),
         }
     }
@@ -671,7 +671,7 @@ pub struct FacesIterator<'a, V, E=()> where V: 'a, E: 'a {
 impl <'a, V, E> FacesIterator<'a, V, E> where V: 'a, E: 'a {
     fn new(dcel: &'a DCEL<V, E>) -> Self {
         FacesIterator {
-            dcel: dcel,
+            dcel,
             current: 0,
         }
     }
@@ -701,7 +701,7 @@ pub struct VerticesIterator<'a, V, E=()> where V: 'a, E: 'a {
 impl <'a, V, E> VerticesIterator<'a, V, E> where V: 'a, E: 'a {
     fn new(dcel: &'a DCEL<V, E>) -> Self {
         VerticesIterator {
-            dcel: dcel,
+            dcel,
             current: 0,
         }
     }
@@ -729,7 +729,7 @@ pub struct EdgesIterator<'a, V, E=()> where V: 'a, E: 'a {
 impl <'a, V, E> EdgesIterator<'a, V, E> where V: 'a, E: 'a {
     fn new(dcel: &'a DCEL<V, E>) -> Self {
         EdgesIterator {
-            dcel: dcel,
+            dcel,
             current: 0
         }
     }
@@ -794,8 +794,8 @@ impl <'a, V, E> Copy for VertexHandle<'a, V, E> where V: 'a { }
 impl <'a, V, E> VertexHandle<'a, V, E> where V: 'a, E: 'a {
     fn new(dcel: &'a DCEL<V, E>, handle: FixedVertexHandle) -> Self {
         VertexHandle {
-            dcel: dcel,
-            handle: handle,
+            dcel,
+            handle,
         }
     }
 }
@@ -859,8 +859,8 @@ impl <'a, V, E> ::std::fmt::Debug for EdgeHandle<'a, V, E> where V: 'a, E: Defau
 impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: 'a {
     fn new(dcel: &'a DCEL<V, E>, handle: FixedEdgeHandle) -> Self {
         EdgeHandle {
-            dcel: dcel,
-            handle: handle,
+            dcel,
+            handle,
         }
     }
 }
@@ -873,7 +873,7 @@ impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
 
     /// Returns the edge's source vertex.
     pub fn from(&self) -> VertexHandle<'a, V, E> {
-        let ref edge = self.dcel.edges[self.handle];
+        let edge = &self.dcel.edges[self.handle];
         VertexHandle::new(self.dcel, edge.origin)
     }
 
@@ -983,8 +983,8 @@ impl <'a, V, E> ::std::fmt::Debug for FaceHandle<'a, V, E> where V: 'a {
 impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: 'a {
     fn new(dcel: &'a DCEL<V, E>, handle: FixedFaceHandle) -> Self {
         FaceHandle {
-            dcel: dcel,
-            handle: handle,
+            dcel,
+            handle,
         }
     }
 }
@@ -1265,8 +1265,8 @@ mod test {
         }
         let mut last_edge = dcel.connect_two_isolated_vertices(central, vs[0], 0);
         last_edge = dcel.edge(last_edge).sym().fix();
-        for i in 1 .. 5 {
-            last_edge = dcel.connect_edge_to_isolated_vertex(last_edge, vs[i]);
+        for vertex in &vs[1..] {
+            last_edge = dcel.connect_edge_to_isolated_vertex(last_edge, *vertex);
             last_edge = dcel.edge(last_edge).sym().fix();
         }
         
@@ -1293,8 +1293,8 @@ mod test {
         
         let mut last_edge = dcel.connect_two_isolated_vertices(vs[0], vs[1], 0);
         let mut edges = vec![last_edge];
-        for i in 2 .. 5 {
-            last_edge = dcel.connect_edge_to_isolated_vertex(last_edge, vs[i]);
+        for vertex in &vs[2..] {
+            last_edge = dcel.connect_edge_to_isolated_vertex(last_edge, *vertex);
             edges.push(last_edge);
         }
         edges.push(dcel.connect_edge_to_edge(last_edge, vs[0]));

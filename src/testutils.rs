@@ -15,8 +15,8 @@ use rand::distributions::range::SampleRange;
 use crate::traits::SpadeNum;
 
 pub fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed.clone());
-    let range = Range::new(-range.clone(), range.clone());
+    let mut rng = XorShiftRng::from_seed(*seed);
+    let range = Range::new(-range, range);
     let mut points = Vec::with_capacity(size);
     for _ in 0 .. size {
         let x = range.sample(&mut rng);

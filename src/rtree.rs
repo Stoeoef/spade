@@ -89,7 +89,7 @@ impl <'a, T> RTreeIterator<'a, T>
     where T: SpatialObject {
     fn new(data: &'a DirectoryNodeData<T>) -> RTreeIterator<'a, T> {
         RTreeIterator {
-            data: data,
+            data,
             cur_index: 0,
             cur_iterator: data.children.first().map(
                 |child| Box::new(RTreeNodeIterator::new(child))),
@@ -136,8 +136,8 @@ impl <'a, T> RTreeNodeIterator<'a, T>
     fn new(node: &'a RTreeNode<T>) -> RTreeNodeIterator<'a, T> {
         use self::RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
         match node {
-            &RTreeNode::Leaf(ref b) => LeafIterator(::std::iter::once(b)),
-            &RTreeNode::DirectoryNode(ref data) => 
+            RTreeNode::Leaf(ref b) => LeafIterator(::std::iter::once(b)),
+            RTreeNode::DirectoryNode(ref data) => 
                 DirectoryNodeIterator(RTreeIterator::new(data)),
         }
     }
@@ -150,8 +150,8 @@ impl <'a, T> Iterator for RTreeNodeIterator<'a, T>
     fn next(&mut self) -> Option<&'a T> {
         use self::RTreeNodeIterator::{LeafIterator, DirectoryNodeIterator};
         match self {
-            &mut LeafIterator(ref mut once) => once.next(),
-            &mut DirectoryNodeIterator(ref mut iter) => iter.next(),
+            LeafIterator(ref mut once) => once.next(),
+            DirectoryNodeIterator(ref mut iter) => iter.next(),
         }
     }
 }
@@ -208,7 +208,7 @@ impl <'a, T> NearestNeighborIterator<'a, T>
     fn new(root: &'a DirectoryNodeData<T>, query_point: T::Point) -> Self {
         let mut result = NearestNeighborIterator {
             nodes: Default::default(),
-            query_point: query_point,
+            query_point,
         };
         result.extend_heap(&root.children);
         result
@@ -224,7 +224,7 @@ impl <'a, T> NearestNeighborIterator<'a, T>
 
             RTreeNodeDistanceWrapper {
                 node: child,
-                distance: distance
+                distance,
             }
         }));
     }
@@ -258,7 +258,7 @@ impl <T> DirectoryNodeData<T>
         let m = options.max_size;
         if elements.len() <= m {
             // Reached leaf level
-            let elements: Vec<_> = elements.into_iter().map(|e| RTreeNode::Leaf(e.clone())).collect();
+            let elements: Vec<_> = elements.iter_mut().map(|e| RTreeNode::Leaf(e.clone())).collect();
             return DirectoryNodeData::new_parent(elements, 1, options);
         }
 
@@ -308,8 +308,8 @@ impl <T> DirectoryNodeData<T>
         DirectoryNodeData {
             bounding_box: None,
             children: Vec::with_capacity(options.max_size + 1),
-            options: options,
-            depth: depth,
+            options,
+            depth,
         }
     }
 
@@ -318,9 +318,9 @@ impl <T> DirectoryNodeData<T>
                   ) -> DirectoryNodeData<T> {
         let mut result = DirectoryNodeData {
             bounding_box: None,
-            children: children,
-            depth: depth,
-            options: options
+            children,
+            depth,
+            options,
         };
         result.update_mbr();
         result
@@ -400,7 +400,7 @@ impl <T> DirectoryNodeData<T>
         let mut best = (zero(), zero());
         let mut best_index = self.options.min_size;
 
-        for k in self.options.min_size .. self.children.len() - self.options.min_size + 1 {
+        for k in self.options.min_size ..= self.children.len() - self.options.min_size {
             let mut first_mbr = self.children[k - 1].mbr();
             let mut second_mbr = self.children[k].mbr();
             let (l, r) = self.children.split_at(k);
@@ -447,7 +447,7 @@ impl <T> DirectoryNodeData<T>
             // Sort children along the current axis
             self.children.sort_by(|l, r| l.mbr().lower().nth(axis)
                                   .partial_cmp(&r.mbr().lower().nth(axis)).unwrap());
-            for k in self.options.min_size .. self.children.len() - self.options.min_size + 1 {
+            for k in self.options.min_size ..= self.children.len() - self.options.min_size {
                 let mut first_mbr = self.children[k - 1].mbr();
                 let mut second_mbr = self.children[k].mbr();
                 let (l, r) = self.children.split_at(k);
@@ -507,8 +507,7 @@ impl <T> DirectoryNodeData<T>
                             new_overlap = new_overlap.clone() + new_mbr.intersect(&child_mbr).area();
                         }
                     }
-                    let overlap_increase = new_overlap - overlap;
-                    overlap_increase
+                    new_overlap - overlap
                 } else {
                     // Don't calculate overlap increase if not all children are leaves
                     zero()
@@ -531,7 +530,7 @@ impl <T> DirectoryNodeData<T>
     }
 
     fn add_children(&mut self, mut new_children: Vec<RTreeNode<T>>) {
-        if let &mut Some(ref mut bb) = &mut self.bounding_box {
+        if let Some(ref mut bb) = &mut self.bounding_box {
             for child in &new_children {
                 bb.add_rect(&child.mbr());
             }
@@ -566,10 +565,10 @@ impl <T> DirectoryNodeData<T>
                 }
             }
             match new_follow {
-                &RTreeNode::DirectoryNode(ref data) => {
+                RTreeNode::DirectoryNode(ref data) => {
                     follow = data;
                 },
-                &RTreeNode::Leaf(ref t) => {
+                RTreeNode::Leaf(ref t) => {
                     return Some(t)
                 }
             }
@@ -601,7 +600,7 @@ impl <T> DirectoryNodeData<T>
                 }
                 if !do_prune {
                     heap.push(RTreeNodeDistanceWrapper {
-                        distance: distance,
+                        distance,
                         node: child,
                     });
                 }
@@ -650,11 +649,8 @@ impl <T> DirectoryNodeData<T>
                 // Prune this element
                 continue;
             }
-            match child.nearest_neighbors(point, nearest_distance.clone(), result) {
-                Some(nearest) => {
-                    nearest_distance = Some(nearest);
-                },
-                None => {}
+            if let Some(nearest) = child.nearest_neighbors(point, nearest_distance.clone(), result) {
+                nearest_distance = Some(nearest);
             }
         }
         nearest_distance
@@ -701,10 +697,10 @@ impl <T> DirectoryNodeData<T>
             if next.mbr().contains_point(point) {
                 for child in next.children.iter() {
                     match child {
-                        &RTreeNode::DirectoryNode(ref data) => {
+                        RTreeNode::DirectoryNode(ref data) => {
                             todo_list.push(data);
                         },
-                        &RTreeNode::Leaf(ref obj) => {
+                        RTreeNode::Leaf(ref obj) => {
                             if obj.contains(point) {
                                 return Some(obj);
                             }
@@ -725,9 +721,9 @@ impl <T> DirectoryNodeData<T>
             min_dist2 <= *radius2
         }) {
             match child {
-                &RTreeNode::DirectoryNode(ref data) =>
+                RTreeNode::DirectoryNode(ref data) =>
                     data.lookup_in_circle(result, origin, radius2),
-                &RTreeNode::Leaf(ref t) => {
+                RTreeNode::Leaf(ref t) => {
                     if t.distance2(origin) < *radius2 {
                         result.push(t);
                     }
@@ -740,8 +736,8 @@ impl <T> DirectoryNodeData<T>
                                query_rect: &BoundingRect<T::Point>) {
         for child in self.children.iter().filter(|c| c.mbr().intersects(query_rect)) {
             match child {
-                &RTreeNode::DirectoryNode(ref data) => data.lookup_in_rectangle(result, query_rect),
-                &RTreeNode::Leaf(ref t) => {
+                RTreeNode::DirectoryNode(ref data) => data.lookup_in_rectangle(result, query_rect),
+                RTreeNode::Leaf(ref t) => {
                     if t.mbr().intersects(query_rect) {
                         result.push(t);
                     }
@@ -760,10 +756,10 @@ impl <T> DirectoryNodeData<T>
             if next.mbr().contains_point(point) {
                 for child in next.children.iter_mut() {
                     match child {
-                        &mut RTreeNode::DirectoryNode(ref mut data) => {
+                        RTreeNode::DirectoryNode(ref mut data) => {
                             todo_list.push(data);
                         },
-                        &mut RTreeNode::Leaf(ref mut obj) => {
+                        RTreeNode::Leaf(ref mut obj) => {
                             if (*obj).contains(point) {
                                 return Some(obj);
                             }
@@ -788,7 +784,7 @@ impl <T> DirectoryNodeData<T>
             let mut remove_index = None;
             for (index, child) in self.children.iter_mut().enumerate() {
                 match child {
-                    &mut RTreeNode::DirectoryNode(ref mut data) => {
+                    RTreeNode::DirectoryNode(ref mut data) => {
                         if data.remove(to_remove) {
                             result = true;
                             if data.children.is_empty() {
@@ -798,7 +794,7 @@ impl <T> DirectoryNodeData<T>
                             break;
                         }
                     },
-                    &mut RTreeNode::Leaf(ref t) => {
+                    RTreeNode::Leaf(ref t) => {
                         if t == to_remove {
                             remove_index = Some(index);
                             result = true;
@@ -823,12 +819,12 @@ impl <T> DirectoryNodeData<T>
         if contains {
             for child in self.children.iter() {
                 match child {
-                    &RTreeNode::DirectoryNode(ref data) => {
+                    RTreeNode::DirectoryNode(ref data) => {
                         if data.contains(obj) {
                             return true;
                         }
                     },
-                    &RTreeNode::Leaf(ref t) => {
+                    RTreeNode::Leaf(ref t) => {
                         if t == obj {
                             return true
                         }
@@ -856,7 +852,7 @@ impl InsertionState {
         let mut reinsertions = Vec::with_capacity(max_depth + 1);
         reinsertions.resize(max_depth, false);
         InsertionState {
-            reinsertions: reinsertions,
+            reinsertions
         }
     }
 
@@ -874,15 +870,15 @@ impl <T> RTreeNode<T>
     where T: SpatialObject {
     pub fn depth(&self) -> usize {
         match self {
-            &RTreeNode::DirectoryNode(ref data) => data.depth,
+            RTreeNode::DirectoryNode(ref data) => data.depth,
             _ => 0
         }
     }
 
     pub fn mbr(&self) -> BoundingRect<T::Point> {
         match self {
-            &RTreeNode::DirectoryNode(ref data) => data.bounding_box.clone().unwrap(),
-            &RTreeNode::Leaf(ref t) => t.mbr(),
+            RTreeNode::DirectoryNode(ref data) => data.bounding_box.clone().unwrap(),
+            RTreeNode::Leaf(ref t) => t.mbr(),
         }
     }
 
@@ -890,8 +886,8 @@ impl <T> RTreeNode<T>
                              nearest_distance: Option<<T::Point as PointN>::Scalar>,
                              result: &mut Vec<&'a T>) -> Option<<T::Point as PointN>::Scalar> {
         match self {
-            &RTreeNode::DirectoryNode(ref data) => data.nearest_neighbors(point, nearest_distance, result),
-            &RTreeNode::Leaf(ref t) => {
+            RTreeNode::DirectoryNode(ref data) => data.nearest_neighbors(point, nearest_distance, result),
+            RTreeNode::Leaf(ref t) => {
                 let distance = t.distance2(point);
                 match nearest_distance {
                     Some(nearest) => {                
@@ -1119,7 +1115,7 @@ impl<T> RTree<T>
                             radius2: &<T::Point as PointN>::Scalar) -> Vec<&T> {
         let mut result = Vec::new();
         if self.size > 0 {
-            self.root.lookup_in_circle(&mut result, circle_origin.into(), radius2);
+            self.root.lookup_in_circle(&mut result, circle_origin, radius2);
         }
         result
     }
@@ -1185,26 +1181,22 @@ impl<T> RTree<T>
     pub fn insert(&mut self, t: T) {
         let mut state = InsertionState::new(self.root.depth + 1);
         let mut insertion_stack = vec![RTreeNode::Leaf(t)];
-        loop {
-            if let Some(next) = insertion_stack.pop() {
-                match self.root.insert(next, &mut state) {
-                    InsertionResult::Split(node) => {
-                        // The root node was split, create a new root and increase depth
-                        let new_depth = self.root.depth + 1;
-                        let options = self.root.options.clone();
-                        let old_root = ::std::mem::replace(
-                            &mut self.root, DirectoryNodeData::new(
-                                new_depth, options));
-                        self.root.add_children(vec![RTreeNode::DirectoryNode(old_root), node]);
-                    },
-                    InsertionResult::Reinsert(nodes) => {
-                        // Schedule elements for reinsertion
-                        insertion_stack.extend(nodes);
-                    },
-                    _ => {},
-                }
-            } else {
-                break;
+        while let Some(next) = insertion_stack.pop() {
+            match self.root.insert(next, &mut state) {
+                InsertionResult::Split(node) => {
+                    // The root node was split, create a new root and increase depth
+                    let new_depth = self.root.depth + 1;
+                    let options = self.root.options.clone();
+                    let old_root = ::std::mem::replace(
+                        &mut self.root, DirectoryNodeData::new(
+                            new_depth, options));
+                    self.root.add_children(vec![RTreeNode::DirectoryNode(old_root), node]);
+                },
+                InsertionResult::Reinsert(nodes) => {
+                    // Schedule elements for reinsertion
+                    insertion_stack.extend(nodes);
+                },
+                _ => {},
             }
         }
         self.size += 1;
@@ -1503,7 +1495,7 @@ mod test {
     fn test_remove_line() {
         let mut tree = RTree::new();
         let edge = SimpleEdge::new([0f32, 0.], [1., 1.]);
-        tree.insert(edge.clone());
+        tree.insert(edge);
         tree.insert(SimpleEdge::new([3., 4.], [0., 2.]));
         tree.insert(SimpleEdge::new([-3., -4.], [0., 2.]));
         tree.remove(&edge);
@@ -1517,7 +1509,7 @@ mod test {
         // Check if the set of reference points and the points given by
         // iteration are equal
         assert_eq!(tree.iter().count(), 100);
-        let points: Vec<_> = tree.iter().map(|v| v.clone()).collect();
+        let points: Vec<_> = tree.iter().cloned().collect();
         for p in points.iter() {
             assert!(reference_points.contains(p));
         }
@@ -1533,7 +1525,7 @@ mod test {
         use rand::distributions::{Standard, Distribution};
 
         let mut tree: RTree<Point4<f32>> = RTree::new();
-        let mut rng = XorShiftRng::from_seed(b"crept in and cha".clone());
+        let mut rng = XorShiftRng::from_seed(*b"crept in and cha");
         let mut entries = Vec::new();
         for _ in 0 .. 500 {
             let (x, y, z, w) = Standard.sample(&mut rng);
@@ -1557,7 +1549,7 @@ mod test {
         // Check if no number of points crashes
         let mut tree = RTree::new();
         for num in 0 .. MAX_POINTS {
-            tree = RTree::bulk_load(points[..num + 1].to_vec());
+            tree = RTree::bulk_load(points[..=num].to_vec());
         }
         assert_eq!(tree.iter().count(), MAX_POINTS);
         // Check if all points have been inserted

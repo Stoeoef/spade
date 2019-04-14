@@ -30,9 +30,9 @@ impl <'a, V, E> ::std::fmt::Debug for Intersection<'a, V, E> where
      fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
          use self::Intersection::*;
          match self {
-             &EdgeIntersection(handle) => write!(f, "EdgeIntersection({:?})", handle),
-             &VertexIntersection(handle) => write!(f, "VertexIntersection({:?})", handle),
-             &EdgeOverlap(handle) => write!(f, "EdgeOverlap({:?})", handle),
+             EdgeIntersection(handle) => write!(f, "EdgeIntersection({:?})", handle),
+             VertexIntersection(handle) => write!(f, "VertexIntersection({:?})", handle),
+             EdgeOverlap(handle) => write!(f, "EdgeOverlap({:?})", handle),
          }
     }
 }
@@ -55,9 +55,9 @@ impl <'a, V, E> Clone for Intersection<'a, V, E> {
     fn clone(&self) -> Self {
         use self::Intersection::*;
         match self {
-            &EdgeIntersection(handle) => EdgeIntersection(handle),
-            &VertexIntersection(handle) => VertexIntersection(handle),
-            &EdgeOverlap(handle) => EdgeOverlap(handle),
+            EdgeIntersection(handle) => EdgeIntersection(*handle),
+            VertexIntersection(handle) => VertexIntersection(*handle),
+            EdgeOverlap(handle) => EdgeOverlap(*handle),
         }
     }
 }
@@ -73,8 +73,8 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
         let first_intersection = Self::get_first_intersection(delaunay, &line);
         LineIntersectionIterator {
             cur_intersection: first_intersection,
-            line: line,
-            delaunay: delaunay,
+            line,
+            delaunay,
         }
     }
 
@@ -85,8 +85,8 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
         let line = SimpleEdge::new(from.position(), to.position());
         LineIntersectionIterator {
             cur_intersection: Some(Intersection::VertexIntersection(from)),
-            line: line,
-            delaunay: delaunay,
+            line,
+            delaunay,
         }
     }
 
@@ -182,7 +182,7 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
                     // The line has reached the convex hull
                     None
                 } else {
-                    let ref target = self.line.to;
+                    let target = &self.line.to;
                     assert!(T::to_simple_edge(cur_edge)
                             .side_query::<T::Kernel>(&target).is_on_left_side_or_on_line(),
                             "The target must be on the left side of the current edge");
@@ -238,12 +238,11 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
             Some(EdgeOverlap(edge)) => {
                 if self.line.from == self.line.to {
                     None
-                } else {
-                    if self.line.is_projection_on_edge(&edge.to().position()) {
+                } else if self.line.is_projection_on_edge(&edge.to().position()) {
                         Some(VertexIntersection(edge.to()))
                     } else {
                         None
-                    }
+                    
                 }
             },
             None => None
@@ -279,9 +278,9 @@ mod test {
 
     fn reverse<'a, V>(intersection: &Intersection<'a, V>) -> Intersection<'a, V> {
         match intersection {
-            &EdgeIntersection(edge) => EdgeIntersection(edge.sym()),
-            &VertexIntersection(vertex) => VertexIntersection(vertex),
-            &EdgeOverlap(edge) => EdgeOverlap(edge.sym()),
+            EdgeIntersection(edge) => EdgeIntersection(edge.sym()),
+            VertexIntersection(vertex) => VertexIntersection(*vertex),
+            EdgeOverlap(edge) => EdgeOverlap(edge.sym()),
         }
     }
 

@@ -666,16 +666,16 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
 
                 let tri = SimpleTriangle::new(first.clone(), cur.clone(), last);
                 last = cur;
-                polygon_area = polygon_area + tri.double_area();
+                polygon_area += tri.double_area();
                 ccw_edge = cw_edge;
             }
             ccw_edge = ccw_edge.sym();
 
-            total_area = total_area + polygon_area;
+            total_area += polygon_area;
             result.push(polygon_area);
         }
         for area in &mut result {
-            *area = *area / total_area;
+            *area /= total_area;
         }
         result
     }
@@ -990,8 +990,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                         // Control point is one of the original data points
                         control_height = f(&*handles[first_index]);
                         norm = six;
-                    } else {
-                        if first_index == second_index || first_index == third_index ||
+                    } else if first_index == second_index || first_index == third_index ||
                             second_index == third_index 
                         {
                             // Point lies on an edge of the bezier simplex
@@ -1027,7 +1026,7 @@ impl <V, K, L> DelaunayTriangulation<V, K, L>
                             control_height = edge_contrib - inner_contrib;
                             norm = one;
                         }
-                    }
+                    
                     // Add control height to result, weight it with the appropriate natural
                     // neighbor coordinates.
                     result += six * ws[first_index] * ws[second_index] * ws[third_index] 
@@ -1226,7 +1225,7 @@ mod test {
     #[test]
     fn test_insert_outside_convex_hull() {
         const NUM: usize = 100;
-        let mut rng = XorShiftRng::from_seed(b"insert_outside_c".clone());
+        let mut rng = XorShiftRng::from_seed(*b"insert_outside_c");
         let range = Range::new(0., ::std::f64::consts::PI);
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for _ in 0 .. NUM {
@@ -1303,7 +1302,7 @@ mod test {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         d.insert(Point2::new(0., 1f64));
         for i in -50 .. 50 {
-            d.insert(Point2::new(i as f64, 0.));
+            d.insert(Point2::new(f64::from(i), 0.));
         }
         d.sanity_check();
     }
@@ -1314,13 +1313,13 @@ mod test {
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
 
         for i in -50 .. 50 {
-            d.insert(Point2::new(i as f64, 0.));
+            d.insert(Point2::new(f64::from(i), 0.));
         }
         
         assert!(d.is_degenerate());
 
         for i in -10 .. 10 {
-            d.insert(Point2::new(i as f64, 0.5 * (i as f64)));
+            d.insert(Point2::new(f64::from(i), 0.5 * f64::from(i)));
         }
         d.sanity_check();
     }
@@ -1334,7 +1333,7 @@ mod test {
         d.insert(Point2::new(1.0, 0.0));
         for y in 0 .. 20 {
             for x in 0 .. 7 {
-                d.insert(Point2::new(x as f64, y as f64));
+                d.insert(Point2::new(f64::from(x), f64::from(y)));
             }
         }
         d.sanity_check();
@@ -1414,7 +1413,7 @@ mod test {
         fn new(x: f64, y: f64, height: f64) -> PointWithHeight {
             PointWithHeight {
                 point: Point2::new(x, y),
-                height: height
+                height,
             }
         }
     }
@@ -1540,7 +1539,7 @@ mod test {
         d.insert(Point2::new(2.0, -2.0));
         d.insert(Point2::new(2.0, 2.0));
         // Now remove all inner points
-        let mut rng = ::rand::XorShiftRng::from_seed(b" next_seed/%&&2+".clone());
+        let mut rng = ::rand::XorShiftRng::from_seed(*b" next_seed/%&&2+");
         rng.shuffle(&mut points);
         assert_eq!(d.num_vertices(), 1004);
         for point in &points {
@@ -1575,7 +1574,7 @@ mod test {
         for point in &points {
             d.insert(*point);
         }
-        let mut rng = XorShiftRng::from_seed(b"?i like fried&)%".clone());
+        let mut rng = XorShiftRng::from_seed(*b"?i like fried&)%");
         for _ in 0 .. 1000 {
             if rng.gen() {
                 // Insert new random point

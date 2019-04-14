@@ -112,7 +112,7 @@ pub enum AdaptiveIntKernel { }
 impl DelaunayKernel<i64> for AdaptiveIntKernel {
     fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
         let to_bigvec = |v: &V| BigVec2::new(
-            AdaptiveInt::from_i64(&v.nth(0)), AdaptiveInt::from_i64(&v.nth(1)));
+            AdaptiveInt::from_i64(*v.nth(0)), AdaptiveInt::from_i64(*v.nth(1)));
         // Cast input to adaptive ints to prevent overflows
         let v1: BigVec2<_> = to_bigvec(pa);
         let v2: BigVec2<_> = to_bigvec(pb);
