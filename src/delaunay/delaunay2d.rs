@@ -495,7 +495,7 @@ impl <V, K> DelaunayTriangulation<V, K, DelaunayTreeLocate<V::Point>>
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles upon
     /// successful removal.
-    #[deprecated(since="1.3", note="Use locate_and_remove instead")]
+    #[deprecated(since="1.3.0", note="Use locate_and_remove instead")]
     pub fn lookup_and_remove(&mut self, point: &V::Point) -> Option<V> {
         let handle = self.locate_vertex(point).map(|h| h.fix());
         handle.map(|h| self.remove(h))
