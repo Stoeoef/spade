@@ -11,21 +11,21 @@
  * triangulation and R-Tree. Press h for help.
  */
 
-extern crate spade;
-extern crate rand;
 extern crate cgmath;
+extern crate rand;
+extern crate spade;
 #[macro_use]
 extern crate glium;
 
+mod cdt_example;
+mod delaunay_example;
 mod graphics;
 mod rtree_example;
-mod delaunay_example;
-mod cdt_example;
-use spade::SpadeNum;
-use cgmath::{Point2, BaseNum, BaseFloat};
-use rand::{XorShiftRng, SeedableRng};
-use rand::distributions::{Range, Distribution};
+use cgmath::{BaseFloat, BaseNum, Point2};
 use rand::distributions::range::SampleRange;
+use rand::distributions::{Distribution, Range};
+use rand::{SeedableRng, XorShiftRng};
+use spade::SpadeNum;
 
 enum App {
     RTreeDemo,
@@ -50,22 +50,26 @@ fn main() {
             } else {
                 println!("Expected either \"delaunay\" or \"rtree\" as argument");
             }
-        },
+        }
         other => println!("Expected one argument, found {}", other),
     }
     match app {
         App::RTreeDemo => rtree_example::run(),
         App::DelaunayDemo => delaunay_example::run(),
         App::CdtDemo => cdt_example::run(),
-        App::Invalid => {},
+        App::Invalid => {}
     }
 }
 
-fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
+fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(
+    range: S,
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());
     let range = Range::new(-range.clone(), range.clone());
     let mut points = Vec::with_capacity(size);
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = range.sample(&mut rng);
         let y = range.sample(&mut rng);
         points.push(Point2::new(x, y));
@@ -73,6 +77,9 @@ fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, size: u
     points
 }
 
-fn random_points_with_seed<S: SpadeNum + BaseFloat + SampleRange>(size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
+fn random_points_with_seed<S: SpadeNum + BaseFloat + SampleRange>(
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     random_points_in_range(S::one(), size, seed)
 }

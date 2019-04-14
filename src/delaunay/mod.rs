@@ -8,19 +8,19 @@
 
 //! A two dimensional Delaunay triangulation.
 
+mod cdt;
 mod dcel;
 mod delaunay2d;
-mod delaunay_locate;
-mod cdt;
-mod line_intersection_iterator;
 mod delaunay_basic;
+mod delaunay_locate;
+mod line_intersection_iterator;
 
+pub use self::cdt::{CdtEdge, ConstrainedDelaunayTriangulation, FloatCDT};
+pub use self::dcel::{
+    CCWIterator, EdgeHandle, FaceHandle, FixedEdgeHandle, FixedFaceHandle, FixedVertexHandle,
+    ONextIterator, VertexHandle,
+};
 pub use self::delaunay2d::*;
-pub use self::cdt::{ConstrainedDelaunayTriangulation, FloatCDT, CdtEdge};
-pub use self::dcel::{FixedVertexHandle, FixedEdgeHandle, FixedFaceHandle,
-                     VertexHandle, EdgeHandle, FaceHandle,
-                     CCWIterator, ONextIterator};
-pub use self::delaunay_locate::{DelaunayTreeLocate, DelaunayWalkLocate,
-                                DelaunayLocateStructure};
+pub use self::delaunay_locate::{DelaunayLocateStructure, DelaunayTreeLocate, DelaunayWalkLocate};
 #[allow(deprecated)]
-pub use self::delaunay_locate::{TriangulationWalkLocate, RTreeDelaunayLocate};
+pub use self::delaunay_locate::{RTreeDelaunayLocate, TriangulationWalkLocate};

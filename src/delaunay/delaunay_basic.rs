@@ -1,21 +1,21 @@
-use crate::delaunay::*;
 use self::dcel::*;
 use self::delaunay_locate::VertexEntry;
-use crate::traits::HasPosition2D;
-use smallvec::SmallVec;
+use crate::delaunay::*;
 use crate::kernels::DelaunayKernel;
 use crate::point_traits::{PointN, PointNExtensions, TwoDimensional};
 use crate::primitives::SimpleEdge;
+use crate::traits::HasPosition2D;
+use smallvec::SmallVec;
 use std::collections::HashSet;
 
 type FixedPosition = PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle>;
-type DynamicPosition<'a, V, E> = PositionInTriangulation<VertexHandle<'a, V, E>,
-                                                         FaceHandle<'a, V, E>,
-                                                         EdgeHandle<'a, V, E>>;
+type DynamicPosition<'a, V, E> =
+    PositionInTriangulation<VertexHandle<'a, V, E>, FaceHandle<'a, V, E>, EdgeHandle<'a, V, E>>;
 
 pub trait Subdivision<V>
-    where V: HasPosition2D,
-          V::Point: TwoDimensional,
+where
+    V: HasPosition2D,
+    V::Point: TwoDimensional,
 {
     type Kernel: DelaunayKernel<<V::Point as PointN>::Scalar>;
     type EdgeType: Default;
@@ -65,8 +65,9 @@ pub trait Subdivision<V>
 }
 
 pub trait HasSubdivision<V>
-    where V: HasPosition2D,
-          V::Point: TwoDimensional,
+where
+    V: HasPosition2D,
+    V::Point: TwoDimensional,
 {
     type Kernel: DelaunayKernel<<V::Point as PointN>::Scalar>;
     type EdgeType: Default + Copy;
@@ -76,9 +77,10 @@ pub trait HasSubdivision<V>
 }
 
 impl<T, V> Subdivision<V> for T
-    where T: HasSubdivision<V>,
-          V: HasPosition2D,
-          V::Point: TwoDimensional,
+where
+    T: HasSubdivision<V>,
+    V: HasPosition2D,
+    V::Point: TwoDimensional,
 {
     type Kernel = T::Kernel;
     type EdgeType = T::EdgeType;
@@ -154,8 +156,9 @@ impl<T, V> Subdivision<V> for T
 
 // This trait implements most common operations on regular delaunay triangulations and cdts.
 pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
-    where V: HasPosition2D,
-          V::Point: TwoDimensional,
+where
+    V: HasPosition2D,
+    V::Point: TwoDimensional,
 {
     type LocateStructure: DelaunayLocateStructure<V::Point>;
 
@@ -173,11 +176,13 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         self.s().face(0)
     }
 
-    fn handle_legal_edge_split(&mut self, _edges: &[FixedEdgeHandle; 4]) { }
+    fn handle_legal_edge_split(&mut self, _edges: &[FixedEdgeHandle; 4]) {}
 
-    fn initial_insertion(&mut self, position: FixedPosition, t: V) -> 
-        Result<FixedVertexHandle, FixedVertexHandle> 
-    {
+    fn initial_insertion(
+        &mut self,
+        position: FixedPosition,
+        t: V,
+    ) -> Result<FixedVertexHandle, FixedVertexHandle> {
         assert!(self.all_points_on_line());
         // Inserts points if no points are present or if all points
         // lie on the same line
@@ -190,19 +195,20 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                         let mut iter = self.s().fixed_vertices();
                         (iter.next().unwrap(), iter.next().unwrap())
                     };
-                    self.s_mut().connect_two_isolated_vertices(handle0, handle1, 0);
+                    self.s_mut()
+                        .connect_two_isolated_vertices(handle0, handle1, 0);
                 }
                 Ok(new_handle)
-            },
+            }
             PositionInTriangulation::OnEdge(edge) => {
                 let new_vertex = self.s_mut().insert_vertex(t);
                 self.s_mut().split_edge(edge, new_vertex);
                 Ok(new_vertex)
-            },
+            }
             PositionInTriangulation::OnPoint(vertex) => {
                 self.s_mut().update_vertex(vertex, t);
                 Result::Err(vertex)
-            },
+            }
             PositionInTriangulation::OutsideConvexHull(edge) => {
                 let line = Self::to_simple_edge(self.s().edge(edge));
                 let pos = t.position();
@@ -219,10 +225,11 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                         }
                     };
                     let new_handle = self.s_mut().insert_vertex(t);
-                    self.s_mut().connect_edge_to_isolated_vertex(prev_edge, new_handle);
+                    self.s_mut()
+                        .connect_edge_to_isolated_vertex(prev_edge, new_handle);
                     Ok(new_handle)
                 } else {
-                    // The new vertex does not lay on the same line as the 
+                    // The new vertex does not lay on the same line as the
                     // points before
                     self.set_all_points_on_line(false);
                     let oriented_edge = if query.is_on_right_side() {
@@ -233,9 +240,8 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                         edge
                     };
                     Ok(self.insert_outside_convex_hull(oriented_edge, t))
-                        
                 }
-            },
+            }
             PositionInTriangulation::InTriangle(_) => {
                 panic!("Impossible control flow path. This is a bug.");
             }
@@ -251,10 +257,11 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         }
     }
 
-    fn insert_with_hint_option(&mut self, 
-                               t: V,
-                               hint: Option<FixedVertexHandle>)
-                               -> FixedVertexHandle {
+    fn insert_with_hint_option(
+        &mut self,
+        t: V,
+        hint: Option<FixedVertexHandle>,
+    ) -> FixedVertexHandle {
         let pos = t.position();
         let position_in_triangulation = self.locate_with_hint_option_fixed(&pos, hint);
         let insertion_result = if self.all_points_on_line() {
@@ -263,10 +270,10 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             match position_in_triangulation {
                 PositionInTriangulation::OutsideConvexHull(edge) => {
                     Result::Ok(self.insert_outside_convex_hull(edge, t))
-                },
+                }
                 PositionInTriangulation::InTriangle(face) => {
                     Result::Ok(self.insert_into_triangle(face, t))
-                },
+                }
                 PositionInTriangulation::OnEdge(edge) => {
                     if self.is_defined_legal(edge) {
                         // If the edge is defined as legal the resulting edges must
@@ -288,11 +295,11 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                     } else {
                         Result::Ok(self.insert_on_edge(edge, t))
                     }
-                },
+                }
                 PositionInTriangulation::OnPoint(vertex) => {
                     self.s_mut().update_vertex(vertex, t);
                     Result::Err(vertex)
-                },
+                }
                 PositionInTriangulation::NoTriangulationPresent => {
                     panic!("Impossible control path. This is a bug");
                 }
@@ -300,21 +307,22 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         };
         match insertion_result {
             Result::Ok(new_handle) => {
-                self.locate_structure_mut().insert_vertex_entry(VertexEntry {
-                    point: pos,
-                    handle: new_handle
-                });
+                self.locate_structure_mut()
+                    .insert_vertex_entry(VertexEntry {
+                        point: pos,
+                        handle: new_handle,
+                    });
                 new_handle
-            },
-            Result::Err(update_handle) => {
-                update_handle
             }
+            Result::Err(update_handle) => update_handle,
         }
     }
 
-    fn locate_with_hint_option(&self, point: &V::Point, hint: Option<FixedVertexHandle>) 
-                               -> DynamicPosition<V, Self::EdgeType> 
-    {
+    fn locate_with_hint_option(
+        &self,
+        point: &V::Point,
+        hint: Option<FixedVertexHandle>,
+    ) -> DynamicPosition<V, Self::EdgeType> {
         use self::PositionInTriangulation::*;
         match self.locate_with_hint_option_fixed(point, hint) {
             NoTriangulationPresent => NoTriangulationPresent,
@@ -325,18 +333,20 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         }
     }
 
-    fn locate_with_hint_option_fixed(&self, point: &V::Point, hint: Option<FixedVertexHandle>) -> 
-        PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
+    fn locate_with_hint_option_fixed(
+        &self,
+        point: &V::Point,
+        hint: Option<FixedVertexHandle>,
+    ) -> PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
         if self.all_points_on_line() {
             self.brute_force_locate(point)
         } else {
             let start = hint.unwrap_or_else(|| self.get_default_hint(point));
-            self.locate_with_hint_fixed(point, start) 
+            self.locate_with_hint_fixed(point, start)
         }
     }
 
-    fn brute_force_locate(&self, point: &V::Point)
-                          -> FixedPosition {
+    fn brute_force_locate(&self, point: &V::Point) -> FixedPosition {
         assert!(self.all_points_on_line());
         for vertex in self.s().vertices() {
             if &vertex.position() == point {
@@ -355,8 +365,11 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             ::std::mem::swap(&mut line.from, &mut line.to);
         }
         let dir = line.to.sub(&line.from);
-        let mut vertices: Vec<_> = self.s().vertices().map(
-            |v| (v.fix(), dir.dot(&(*v).position()))).collect();
+        let mut vertices: Vec<_> = self
+            .s()
+            .vertices()
+            .map(|v| (v.fix(), dir.dot(&(*v).position())))
+            .collect();
         // Sort vertices according to their position on the line
         vertices.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap());
 
@@ -374,7 +387,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                 } else {
                     PositionInTriangulation::OutsideConvexHull(get_edge(1))
                 }
-            },
+            }
             Err(index) => {
                 let len = vertices.len();
                 if index == 0 {
@@ -393,24 +406,23 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         }
     }
 
-    fn insert_outside_convex_hull(&mut self,
-                                  closest_edge: FixedEdgeHandle,
-                                  t: V)
-                                  -> FixedVertexHandle {
+    fn insert_outside_convex_hull(
+        &mut self,
+        closest_edge: FixedEdgeHandle,
+        t: V,
+    ) -> FixedVertexHandle {
         let position = t.position();
         let mut ch_edges = self.get_convex_hull_edges_for_point(closest_edge, &position);
         let new_handle = self.s_mut().insert_vertex(t);
         // Make new connections
-        let mut last_edge =
-            self.s_mut().connect_edge_to_isolated_vertex(*ch_edges.last().unwrap(), new_handle);
+        let mut last_edge = self
+            .s_mut()
+            .connect_edge_to_isolated_vertex(*ch_edges.last().unwrap(), new_handle);
 
         for edge in ch_edges.iter().rev() {
             last_edge = self.s_mut().create_face(last_edge, *edge);
             // Reverse last_edge
-            last_edge = self.s_mut()
-                .edge(last_edge)
-                .sym()
-                .fix();
+            last_edge = self.s_mut().edge(last_edge).sym().fix();
         }
         self.legalize_edges(&mut ch_edges, &position);
         new_handle
@@ -427,15 +439,9 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         };
 
         let mut last_edge = self.s_mut().connect_edge_to_isolated_vertex(e2, new_handle);
-        last_edge = self.s_mut()
-            .edge(last_edge)
-            .sym()
-            .fix();
+        last_edge = self.s_mut().edge(last_edge).sym().fix();
         last_edge = self.s_mut().create_face(e0, last_edge);
-        last_edge = self.s_mut()
-            .edge(last_edge)
-            .sym()
-            .fix();
+        last_edge = self.s_mut().edge(last_edge).sym().fix();
         self.s_mut().create_face(e1, last_edge);
         let mut edges = SmallVec::new();
         edges.push(e0);
@@ -459,18 +465,42 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         let edge_handle = self.s().get_edge_from_neighbors(from, to).unwrap().fix();
         self.s_mut().split_edge(edge_handle, new_handle);
         if let Some(left_handle) = left_handle_opt {
-            let edge1 = self.s().get_edge_from_neighbors(to, left_handle).unwrap().fix();
-            let edge0 = self.s().get_edge_from_neighbors(left_handle, from).unwrap().fix();
-            let edge_mid = self.s().get_edge_from_neighbors(from, new_handle).unwrap().fix();
+            let edge1 = self
+                .s()
+                .get_edge_from_neighbors(to, left_handle)
+                .unwrap()
+                .fix();
+            let edge0 = self
+                .s()
+                .get_edge_from_neighbors(left_handle, from)
+                .unwrap()
+                .fix();
+            let edge_mid = self
+                .s()
+                .get_edge_from_neighbors(from, new_handle)
+                .unwrap()
+                .fix();
 
             self.s_mut().create_face(edge_mid, edge0);
             illegal_edges.push(edge0);
             illegal_edges.push(edge1);
         }
         if let Some(right_handle) = right_handle_opt {
-            let edge0 = self.s().get_edge_from_neighbors(from, right_handle).unwrap().fix();
-            let edge1 = self.s().get_edge_from_neighbors(right_handle, to).unwrap().fix();
-            let edge_mid = self.s().get_edge_from_neighbors(to, new_handle).unwrap().fix();
+            let edge0 = self
+                .s()
+                .get_edge_from_neighbors(from, right_handle)
+                .unwrap()
+                .fix();
+            let edge1 = self
+                .s()
+                .get_edge_from_neighbors(right_handle, to)
+                .unwrap()
+                .fix();
+            let edge_mid = self
+                .s()
+                .get_edge_from_neighbors(to, new_handle)
+                .unwrap()
+                .fix();
             self.s_mut().create_face(edge_mid, edge1);
             illegal_edges.push(edge0);
             illegal_edges.push(edge1);
@@ -479,14 +509,16 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         new_handle
     }
 
-    fn get_convex_hull_edges_for_point(&self,
-                                       first_edge: FixedEdgeHandle,
-                                       point: &V::Point)
-                                       -> SmallVec<[FixedEdgeHandle; 16]>
-    {
+    fn get_convex_hull_edges_for_point(
+        &self,
+        first_edge: FixedEdgeHandle,
+        point: &V::Point,
+    ) -> SmallVec<[FixedEdgeHandle; 16]> {
         let mut result = SmallVec::new();
         let first_edge = self.s().edge(first_edge);
-        debug_assert!(Self::Kernel::side_query(&Self::to_simple_edge(first_edge), point).is_on_left_side());
+        debug_assert!(
+            Self::Kernel::side_query(&Self::to_simple_edge(first_edge), point).is_on_left_side()
+        );
 
         let mut last_edge = first_edge;
         result.push(last_edge.fix());
@@ -521,8 +553,9 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
     }
 
     fn legalize_edges(&mut self, edges: &mut SmallVec<[FixedEdgeHandle; 16]>, position: &V::Point)
-        where V: HasPosition2D,
-              V::Point: TwoDimensional,
+    where
+        V: HasPosition2D,
+        V::Point: TwoDimensional,
     {
         while let Some(e) = edges.pop() {
             if !self.is_ch_edge(e) && !self.is_defined_legal(e) {
@@ -553,35 +586,43 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         edge.face().fix() == 0 || sym.face().fix() == 0
     }
 
-    fn get_left_triangle(&self,
-                         from: FixedVertexHandle,
-                         to: FixedVertexHandle)
-                         -> Option<FixedVertexHandle> {
+    fn get_left_triangle(
+        &self,
+        from: FixedVertexHandle,
+        to: FixedVertexHandle,
+    ) -> Option<FixedVertexHandle> {
         let edge_handle = self.s().get_edge_from_neighbors(from, to).unwrap();
         let ccw_handle = edge_handle.ccw().to();
-        let query = Self::Kernel::side_query(&Self::to_simple_edge(edge_handle),
-                                  &(*ccw_handle).position());
+        let query = Self::Kernel::side_query(
+            &Self::to_simple_edge(edge_handle),
+            &(*ccw_handle).position(),
+        );
         if query.is_on_left_side() {
-            debug_assert!(self.s().get_edge_from_neighbors(ccw_handle.fix(), to).is_some());
+            debug_assert!(self
+                .s()
+                .get_edge_from_neighbors(ccw_handle.fix(), to)
+                .is_some());
             Some(ccw_handle.fix())
         } else {
             None
         }
     }
 
-    fn get_right_triangle(&self,
-                          from: FixedVertexHandle,
-                          to: FixedVertexHandle)
-                          -> Option<FixedVertexHandle> {
+    fn get_right_triangle(
+        &self,
+        from: FixedVertexHandle,
+        to: FixedVertexHandle,
+    ) -> Option<FixedVertexHandle> {
         self.get_left_triangle(to, from)
     }
 
-    fn locate_with_hint_fixed
-        (&self,
-         point: &V::Point,
-         start: FixedVertexHandle)
-         -> PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
-        let mut cur_edge = self.s()
+    fn locate_with_hint_fixed(
+        &self,
+        point: &V::Point,
+        start: FixedVertexHandle,
+    ) -> PositionInTriangulation<FixedVertexHandle, FixedFaceHandle, FixedEdgeHandle> {
+        let mut cur_edge = self
+            .s()
             .vertex(start)
             .out_edge()
             .expect("Cannot start search with an isolated vertex");
@@ -652,23 +693,27 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             neighbors.push(edge.to().fix());
         }
         ch_removal |= neighbors.is_empty();
-        
+
         let infinite = self.infinite_face().fix();
 
-        let VertexRemovalResult { updated_vertex, data } = 
-            self.s_mut().remove_vertex(vertex, Some(infinite));
+        let VertexRemovalResult {
+            updated_vertex,
+            data,
+        } = self.s_mut().remove_vertex(vertex, Some(infinite));
 
         // Remove point from locate structure
         let vertex_pos = data.position();
-        self.locate_structure_mut().remove_vertex_entry(&VertexEntry::new(vertex_pos, vertex));
+        self.locate_structure_mut()
+            .remove_vertex_entry(&VertexEntry::new(vertex_pos, vertex));
 
         if let Some(updated_vertex) = updated_vertex {
             // Update locate structure if necessary
             let pos = (*self.s().vertex(vertex)).position();
-            self.locate_structure_mut().update_vertex_entry(VertexEntry {
-                point: pos,
-                handle: vertex,
-            });
+            self.locate_structure_mut()
+                .update_vertex_entry(VertexEntry {
+                    point: pos,
+                    handle: vertex,
+                });
             // Update a vertex entry in the neighbors vector
             for n in &mut neighbors {
                 if *n == updated_vertex {
@@ -677,7 +722,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                 }
             }
         }
-        
+
         if ch_removal {
             if self.all_points_on_line() {
                 if neighbors.len() > 1 {
@@ -693,8 +738,10 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
         } else {
             // Removed an inner vertex
             let loop_edges: Vec<_> = {
-                let first = self.s().get_edge_from_neighbors(
-                    neighbors[0], neighbors[1]).unwrap();
+                let first = self
+                    .s()
+                    .get_edge_from_neighbors(neighbors[0], neighbors[1])
+                    .unwrap();
                 first.o_next_iterator().map(|e| e.fix()).collect()
             };
             self.fill_hole(loop_edges);
@@ -723,7 +770,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
 
     fn repair_convex_hull(&mut self, vertices: &[FixedVertexHandle]) {
         // A vertex from the convex hull has been removed. This removal can create
-        // multiple 'pockets' in the hull that need to be re-triangulated. 
+        // multiple 'pockets' in the hull that need to be re-triangulated.
         // 'vertices' contains all vertices that were adjacent to the removed point
         // in ccw order.
         let mut ch: Vec<FixedVertexHandle> = Vec::new();
@@ -761,8 +808,10 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
                 let mut edges = Vec::new();
                 let pos = vertices.iter().position(|v| *v == v0).unwrap();
                 {
-                    let mut cur_edge = self.s().get_edge_from_neighbors(
-                        v0, vertices[pos + 1]).unwrap();
+                    let mut cur_edge = self
+                        .s()
+                        .get_edge_from_neighbors(v0, vertices[pos + 1])
+                        .unwrap();
                     loop {
                         edges.push(cur_edge.fix());
                         cur_edge = cur_edge.o_next();
@@ -784,7 +833,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
 
     fn fill_hole(&mut self, loop_edges: Vec<FixedEdgeHandle>) {
         let mut border_edges = HashSet::new();
-        
+
         for e in &loop_edges {
             border_edges.insert(*e);
             border_edges.insert(self.s().edge(*e).sym().fix());
@@ -794,7 +843,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
 
         // Fill the hole
         let mut todo = Vec::new();
-        for edge in &loop_edges[2 .. loop_edges.len() - 1] {
+        for edge in &loop_edges[2..loop_edges.len() - 1] {
             let edge = self.s_mut().create_face(last_edge, *edge);
             todo.push(edge);
         }
@@ -815,7 +864,7 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             if !Self::Kernel::contained_in_circumference(&v0, &v1, &vl, &vr) {
                 // Flip edge
                 self.s_mut().flip_cw(fixed_edge_handle);
-                
+
                 for e in &[e1, e2, e3, e4] {
                     if !border_edges.contains(e) {
                         todo.push(*e);
@@ -833,11 +882,15 @@ pub trait BasicDelaunaySubdivision<V>: HasSubdivision<V>
             assert!(Self::Kernel::is_ordered_ccw(
                 &(*triangle[0]).position(),
                 &(*triangle[1]).position(),
-                &(*triangle[2]).position()));
+                &(*triangle[2]).position()
+            ));
         }
         if self.all_points_on_line() {
             assert_eq!(self.s().num_faces(), 1);
-            assert_eq!(self.s().num_edges() as i32, 0.max(self.s().num_vertices() as i32 - 1));
+            assert_eq!(
+                self.s().num_edges() as i32,
+                0.max(self.s().num_vertices() as i32 - 1)
+            );
             for edge in self.s().edges() {
                 assert_eq!(edge.face(), self.infinite_face());
             }

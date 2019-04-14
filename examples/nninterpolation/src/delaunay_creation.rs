@@ -8,15 +8,14 @@
 
 use rand::Rng;
 
-use spade::delaunay::{DelaunayTriangulation, FloatDelaunayTriangulation, DelaunayWalkLocate};
-use cgmath::{EuclideanSpace, Point2, Vector3, Point3};
-use spade::{HasPosition,};
+use cgmath::{EuclideanSpace, Point2, Point3, Vector3};
+use spade::delaunay::{DelaunayTriangulation, DelaunayWalkLocate, FloatDelaunayTriangulation};
+use spade::HasPosition;
 
-use noise::{Seedable, NoiseFn};
 use crate::constants::*;
+use noise::{NoiseFn, Seedable};
 
-pub type Delaunay = FloatDelaunayTriangulation<
-        PointWithHeight, DelaunayWalkLocate>;
+pub type Delaunay = FloatDelaunayTriangulation<PointWithHeight, DelaunayWalkLocate>;
 
 pub struct PointWithHeight {
     point: Point2<f64>,
@@ -51,12 +50,10 @@ impl PointWithHeight {
 
 // Triangulation creation and normal estimation
 pub fn generate_random_triangulation() -> Delaunay {
-
     let mut rng = ::rand::thread_rng();
     let mut delaunay = DelaunayTriangulation::with_walk_locate();
-    let noise = ::noise::OpenSimplex::new()
-                    .set_seed(rng.gen());
-    for _ in 0 .. NUM_POINTS {
+    let noise = ::noise::OpenSimplex::new().set_seed(rng.gen());
+    for _ in 0..NUM_POINTS {
         let x = rng.gen_range(-SAMPLE_REGION, SAMPLE_REGION);
         let y = rng.gen_range(-SAMPLE_REGION, SAMPLE_REGION);
         let height = noise.get([x * FREQUENCY, y * FREQUENCY]) * MAX_HEIGHT;
@@ -69,8 +66,10 @@ pub fn generate_random_triangulation() -> Delaunay {
     // Note that, for interpolation, we only need the gradients. For visualization
     // purposes, the normals are also generated and stored within the vertices
     delaunay.estimate_gradients(&(|v| v.height), &(|v, g| v.gradient = g));
-    delaunay.estimate_normals(&(|v| v.height), 
-                              &(|v: &mut PointWithHeight, n: Point3<_>| v.normal = n.to_vec()));
-    
+    delaunay.estimate_normals(
+        &(|v| v.height),
+        &(|v: &mut PointWithHeight, n: Point3<_>| v.normal = n.to_vec()),
+    );
+
     delaunay
 }

@@ -6,11 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::graphics::RenderData;
 use cgmath::Point2;
 use glium::glutin;
 use glium::glutin::VirtualKeyCode;
 use glium::glutin::{ElementState, Event, MouseButton, WindowEvent};
-use crate::graphics::RenderData;
 use rand::distributions::Standard;
 use rand::Rng;
 use spade::delaunay::ConstrainedDelaunayTriangulation;
@@ -123,7 +123,7 @@ pub fn run() {
                         }
                         _ => (),
                     }
-                },
+                }
                 _ => (),
             },
             _ => (),

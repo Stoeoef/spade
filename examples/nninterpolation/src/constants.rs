@@ -17,4 +17,7 @@ pub const GRID_SUBDIVISIONS: usize = 250;
 pub const OFFSET: f64 = -0.01;
 pub const GRID_SIZE: f64 = SAMPLE_REGION * 1.05;
 pub const SCALE: f64 = 2.0 * GRID_SIZE / (GRID_SUBDIVISIONS as f64);
-pub const GRID_OFFSET: Vector2<f64> = Vector2 { x: GRID_SIZE, y: GRID_SIZE };
+pub const GRID_OFFSET: Vector2<f64> = Vector2 {
+    x: GRID_SIZE,
+    y: GRID_SIZE,
+};

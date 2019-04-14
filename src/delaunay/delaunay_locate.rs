@@ -6,15 +6,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::traits::HasPosition;
+use crate::delaunay::FixedVertexHandle;
 use crate::point_traits::PointN;
 use crate::rtree::RTree;
-use crate::delaunay::FixedVertexHandle;
-use std::sync::Arc;
+use crate::traits::HasPosition;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 #[derive(Clone)]
-#[deprecated(since="1.0.1", note="Replaced by DelaunayWalkLocate")]
+#[deprecated(since = "1.0.1", note = "Replaced by DelaunayWalkLocate")]
 #[allow(deprecated)]
 #[allow(missing_docs)]
 pub struct TriangulationWalkLocate<T: PointN> {
@@ -23,7 +23,7 @@ pub struct TriangulationWalkLocate<T: PointN> {
 }
 
 #[allow(deprecated)]
-impl <T: PointN> Default for TriangulationWalkLocate<T> {
+impl<T: PointN> Default for TriangulationWalkLocate<T> {
     fn default() -> Self {
         TriangulationWalkLocate {
             marker: Default::default(),
@@ -33,7 +33,7 @@ impl <T: PointN> Default for TriangulationWalkLocate<T> {
 }
 
 #[allow(deprecated)]
-impl <T: PointN> DelaunayLocateStructure<T> for TriangulationWalkLocate<T> {
+impl<T: PointN> DelaunayLocateStructure<T> for TriangulationWalkLocate<T> {
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
         self.locate.insert_vertex_entry(entry);
     }
@@ -56,22 +56,21 @@ impl <T: PointN> DelaunayLocateStructure<T> for TriangulationWalkLocate<T> {
 }
 
 /// Locate strategy that uses an r-tree to locate points in O(log(n)) time.
-#[deprecated(since="1.0.1", note="Renamed to DelaunayTreeLocate")]
+#[deprecated(since = "1.0.1", note = "Renamed to DelaunayTreeLocate")]
 pub type RTreeDelaunayLocate<V> = RTree<VertexEntry<V>>;
 
 /// Locate strategy that uses an r-tree to locate points in O(log(n)) time.
 pub type DelaunayTreeLocate<V> = RTree<VertexEntry<V>>;
 
 /// Locate strategy for Delaunay triangulations.
-/// 
+///
 /// Many operations of a Delaunay triangulation, like insertion, require to find
 /// the triangle that contains a certain point. For larger triangulations, this step
 /// tends to take most time, since it might be necessary to traverse large parts of
 /// the triangulation until the desired triangle is found. To mitigate this, spade
-/// offers different methods on how point are located. Each method implements this 
+/// offers different methods on how point are located. Each method implements this
 /// trait. It is recommended to choose from one of the given implementations.
-pub trait DelaunayLocateStructure<T: PointN> : Default + Clone {
-    
+pub trait DelaunayLocateStructure<T: PointN>: Default + Clone {
     /// This method is called when a new vertex entry has been inserted.
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>);
     /// This method is called when a vertex has been updated.
@@ -87,25 +86,27 @@ pub trait DelaunayLocateStructure<T: PointN> : Default + Clone {
 /// An entry of the Delaunay triangulation's internal r-tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
-pub struct VertexEntry<V> where V: PointN {
+pub struct VertexEntry<V>
+where
+    V: PointN,
+{
     pub point: V,
     pub handle: FixedVertexHandle,
 }
 
-impl<V> HasPosition for VertexEntry<V> 
-    where V: PointN {
+impl<V> HasPosition for VertexEntry<V>
+where
+    V: PointN,
+{
     type Point = V;
     fn position(&self) -> V {
         self.point.clone()
     }
 }
 
-impl <V: PointN> VertexEntry<V> {
+impl<V: PointN> VertexEntry<V> {
     pub fn new(point: V, handle: FixedVertexHandle) -> VertexEntry<V> {
-        VertexEntry {
-            point,
-            handle,
-        }
+        VertexEntry { point, handle }
     }
 }
 
@@ -132,28 +133,25 @@ impl Default for DelaunayWalkLocate {
     }
 }
 
-impl <T: PointN>  DelaunayLocateStructure<T> for DelaunayWalkLocate {
-
+impl<T: PointN> DelaunayLocateStructure<T> for DelaunayWalkLocate {
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
         self.last.store(entry.handle, Ordering::Relaxed);
     }
 
-    fn update_vertex_entry(&mut self, _: VertexEntry<T>) {
-    }
+    fn update_vertex_entry(&mut self, _: VertexEntry<T>) {}
 
-    fn remove_vertex_entry(&mut self, _: &VertexEntry<T>) {
-    }
+    fn remove_vertex_entry(&mut self, _: &VertexEntry<T>) {}
 
-     fn find_close_handle(&self, _: &T) -> FixedVertexHandle {
-         self.last.load(Ordering::Relaxed)
-     }
+    fn find_close_handle(&self, _: &T) -> FixedVertexHandle {
+        self.last.load(Ordering::Relaxed)
+    }
 
     fn new_query_result(&self, entry: FixedVertexHandle) {
         self.last.store(entry, Ordering::Relaxed);
     }
 }
 
-impl <T: PointN> DelaunayLocateStructure<T> for RTree<VertexEntry<T>> {
+impl<T: PointN> DelaunayLocateStructure<T> for RTree<VertexEntry<T>> {
     fn insert_vertex_entry(&mut self, entry: VertexEntry<T>) {
         self.insert(entry);
     }
@@ -171,6 +169,5 @@ impl <T: PointN> DelaunayLocateStructure<T> for RTree<VertexEntry<T>> {
         self.close_neighbor(point).map(|e| e.handle).unwrap()
     }
 
-    fn new_query_result(&self, _: FixedVertexHandle) {
-    }
+    fn new_query_result(&self, _: FixedVertexHandle) {}
 }

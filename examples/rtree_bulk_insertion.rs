@@ -1,17 +1,17 @@
-extern crate spade;
 extern crate cgmath;
 extern crate rand;
+extern crate spade;
 
-use std::path::Path;
-use std::fs::File;
-use std::io::{Write};
+use cgmath::{BaseNum, Point2};
+use rand::distributions::range::SampleRange;
+use rand::distributions::{Distribution, Range};
+use rand::{SeedableRng, XorShiftRng};
 use spade::rtree::{RTree, RTreeOptions};
 use spade::SpadeNum;
-use cgmath::{Point2, BaseNum};
-use rand::{XorShiftRng, SeedableRng};
-use rand::distributions::range::SampleRange;
-use rand::distributions::{Range, Distribution};
-use std::time::{Instant, Duration};
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+use std::time::{Duration, Instant};
 
 struct TestTimes {
     chunk_size: usize,
@@ -22,10 +22,11 @@ struct TestTimes {
 }
 
 static CHUNK_SIZES: &[usize] = &[
-    100, 200, 400, 700, 1000, 1500,
-    2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000];
-    // 5_000, 10_000, 25_000, 50_000, 100_000, 500_000,
-    // 1_000_000];
+    100, 200, 400, 700, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500,
+    7000, 7500, 8000, 8500, 9000, 9500, 10000,
+];
+// 5_000, 10_000, 25_000, 50_000, 100_000, 500_000,
+// 1_000_000];
 
 const QUERY_SIZE: usize = 1000;
 
@@ -49,8 +50,10 @@ impl BenchSetup {
 }
 
 pub fn main() {
-    let insertion_points: Vec<Point2<f32>> = random_points_with_seed(*CHUNK_SIZES.last().unwrap(), b"Back to where it".clone());
-    let query_points: Vec<Point2<f32>> = random_points_with_seed(QUERY_SIZE, b"back to...began!".clone());
+    let insertion_points: Vec<Point2<f32>> =
+        random_points_with_seed(*CHUNK_SIZES.last().unwrap(), b"Back to where it".clone());
+    let query_points: Vec<Point2<f32>> =
+        random_points_with_seed(QUERY_SIZE, b"back to...began!".clone());
 
     let mut benchmarks = vec![
         BenchSetup::new(3, 6, "Default options (3-6)"),
@@ -66,11 +69,15 @@ pub fn main() {
     }
 }
 
-fn run_benchmark(benchmark: &mut BenchSetup, insertion_points: &Vec<Point2<f32>>, query_points: &Vec<Point2<f32>>) {
+fn run_benchmark(
+    benchmark: &mut BenchSetup,
+    insertion_points: &Vec<Point2<f32>>,
+    query_points: &Vec<Point2<f32>>,
+) {
     let &mut BenchSetup {
         ref title,
         ref mut times,
-        ref options
+        ref options,
     } = benchmark;
 
     println!("Running benchmark \"{}\"", title);
@@ -83,7 +90,7 @@ fn run_benchmark(benchmark: &mut BenchSetup, insertion_points: &Vec<Point2<f32>>
         }
         let elapsed = now.elapsed();
         let sequential_insertion_time = duration_ns(elapsed) / *chunk_size as f32;
-        
+
         let now = Instant::now();
         for query_point in query_points {
             tree.nearest_neighbor(query_point);
@@ -104,7 +111,7 @@ fn run_benchmark(benchmark: &mut BenchSetup, insertion_points: &Vec<Point2<f32>>
         }
         let elapsed = now.elapsed();
         let bulk_insertion_query_time = duration_ns(elapsed) / query_points.len() as f32;
-        
+
         let new_times = TestTimes {
             chunk_size: *chunk_size,
             sequential_insertion_time,
@@ -119,8 +126,14 @@ fn run_benchmark(benchmark: &mut BenchSetup, insertion_points: &Vec<Point2<f32>>
     println!();
 }
 
-fn print_measurements<F>(result_file: &mut ::std::fs::File, description: &str, measurements: &Vec<TestTimes>, f: F) 
-    where F: Fn(&TestTimes) -> f32 {
+fn print_measurements<F>(
+    result_file: &mut ::std::fs::File,
+    description: &str,
+    measurements: &Vec<TestTimes>,
+    f: F,
+) where
+    F: Fn(&TestTimes) -> f32,
+{
     write!(result_file, "\"{}\"\n", description).unwrap();
     for test_time in measurements {
         write!(result_file, "{} {}\n", test_time.chunk_size, f(test_time)).unwrap();
@@ -134,18 +147,26 @@ fn output_benchmark(result_file: &mut ::std::fs::File, benchmark: &BenchSetup) {
         ref title,
         ..
     } = benchmark;
-        
+
     let description = format!("{} - sequential query time", title);
-    print_measurements(result_file, &description, times, |time| time.sequential_insertion_query_time);
+    print_measurements(result_file, &description, times, |time| {
+        time.sequential_insertion_query_time
+    });
 
     let description = format!("{} - sequential insertion time", title);
-    print_measurements(result_file, &description, times, |time| time.sequential_insertion_time);
+    print_measurements(result_file, &description, times, |time| {
+        time.sequential_insertion_time
+    });
 
     let description = format!("{} - bulk query time", title);
-    print_measurements(result_file, &description, times, |time| time.bulk_insertion_query_time);
+    print_measurements(result_file, &description, times, |time| {
+        time.bulk_insertion_query_time
+    });
 
     let description = format!("{} - bulk insertion time", title);
-    print_measurements(result_file, &description, times, |time| time.bulk_insertion_time);
+    print_measurements(result_file, &description, times, |time| {
+        time.bulk_insertion_time
+    });
 }
 
 fn duration_ns(duration: Duration) -> f32 {
@@ -153,15 +174,16 @@ fn duration_ns(duration: Duration) -> f32 {
 }
 
 fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + SampleRange>(
-    size: usize, seed: [u8; 16])
-    -> Vec<Point2<S>> {
+    size: usize,
+    seed: [u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed);
     let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = range.sample(&mut rng);
         let y = range.sample(&mut rng);
         points.push(Point2::new(x, y));
     }
-    points    
+    points
 }

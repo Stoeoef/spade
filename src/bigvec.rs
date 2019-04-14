@@ -6,14 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use nalgebra as na;
-use cgmath as cg;
-use std::ops::{Add, Sub, Index, IndexMut, Div, Mul, Rem, Neg};
-use num::{Num, BigInt, Zero, One, Signed, ToPrimitive, Integer};
-use num::bigint::ToBigInt;
-use crate::traits::{SpadeNum};
 use crate::point_traits::{PointN, TwoDimensional};
-
+use crate::traits::SpadeNum;
+use cgmath as cg;
+use nalgebra as na;
+use num::bigint::ToBigInt;
+use num::{BigInt, Integer, Num, One, Signed, ToPrimitive, Zero};
+use std::ops::{Add, Div, Index, IndexMut, Mul, Neg, Rem, Sub};
 
 /// BigVec2 is a two dimensional vector that does not _require_ it's
 /// internal scalar type to be `Copy`.
@@ -24,93 +23,100 @@ pub struct BigVec2<N: Num> {
     pub y: N,
 }
 
-impl <N: Num + Clone> BigVec2<N> {
+impl<N: Num + Clone> BigVec2<N> {
     pub fn new(x: N, y: N) -> BigVec2<N> {
         BigVec2 { x, y }
     }
 }
 
-impl <N: SpadeNum> PointN for BigVec2<N> {
+impl<N: SpadeNum> PointN for BigVec2<N> {
     type Scalar = N;
 
     fn dimensions() -> usize {
         2
     }
 
-    fn nth(&self, index: usize) -> &N { &self[index] }
-    fn nth_mut(&mut self, index: usize) -> &mut N { &mut self[index] }
+    fn nth(&self, index: usize) -> &N {
+        &self[index]
+    }
+    fn nth_mut(&mut self, index: usize) -> &mut N {
+        &mut self[index]
+    }
 
     fn from_value(val: N) -> Self {
         BigVec2::new(val.clone(), val.clone())
     }
 }
 
+impl<S: SpadeNum> TwoDimensional for BigVec2<S> {}
 
-impl <S: SpadeNum> TwoDimensional for BigVec2<S> { }
-
-impl <N: SpadeNum> Add for BigVec2<N> {
+impl<N: SpadeNum> Add for BigVec2<N> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         BigVec2::new(self.x + rhs.x, self.y + rhs.y)
     }
 }
 
-impl <N: SpadeNum> Sub for BigVec2<N> {
+impl<N: SpadeNum> Sub for BigVec2<N> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
         BigVec2::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
 
-impl <N: SpadeNum> Mul<N> for BigVec2<N> {
+impl<N: SpadeNum> Mul<N> for BigVec2<N> {
     type Output = Self;
     fn mul(self, rhs: N) -> Self {
         BigVec2::new(self.x * rhs.clone(), self.y * rhs.clone())
     }
 }
 
-impl <N: SpadeNum> Div<N> for BigVec2<N> {
+impl<N: SpadeNum> Div<N> for BigVec2<N> {
     type Output = Self;
     fn div(self, rhs: N) -> Self {
         BigVec2::new(self.x / rhs.clone(), self.y / rhs.clone())
     }
 }
 
-impl <N: SpadeNum> Index<usize> for BigVec2<N> {
+impl<N: SpadeNum> Index<usize> for BigVec2<N> {
     type Output = N;
 
     fn index(&self, index: usize) -> &N {
         match index {
             0 => &self.x,
             1 => &self.y,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
 
-impl <N: SpadeNum> IndexMut<usize> for BigVec2<N> {
-
+impl<N: SpadeNum> IndexMut<usize> for BigVec2<N> {
     fn index_mut(&mut self, index: usize) -> &mut N {
         match index {
             0 => &mut self.x,
             1 => &mut self.y,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
 
-impl <I> From<cg::Point2<I>> for BigVec2<BigInt> where I: cg::BaseNum + ToBigInt {
+impl<I> From<cg::Point2<I>> for BigVec2<BigInt>
+where
+    I: cg::BaseNum + ToBigInt,
+{
     fn from(v: cg::Point2<I>) -> Self {
         BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
     }
 }
 
-impl <I> From<na::Point2<I>> for BigVec2<BigInt> where I: ToBigInt + na::Scalar {
+impl<I> From<na::Point2<I>> for BigVec2<BigInt>
+where
+    I: ToBigInt + na::Scalar,
+{
     fn from(v: na::Point2<I>) -> Self {
         BigVec2::new(v[0].to_bigint().unwrap(), v[1].to_bigint().unwrap())
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub enum AdaptiveInt {
@@ -122,7 +128,7 @@ impl AdaptiveInt {
     pub fn from_i64(i: i64) -> AdaptiveInt {
         AdaptiveInt::LowRes(i)
     }
-    
+
     pub fn from_bigint(i: BigInt) -> AdaptiveInt {
         AdaptiveInt::HighRes(i.clone()).reduce()
     }
@@ -141,10 +147,9 @@ impl AdaptiveInt {
     }
 }
 
-impl Num for AdaptiveInt { 
+impl Num for AdaptiveInt {
     type FromStrRadixErr = ::std::num::ParseIntError;
-    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ::std::num::ParseIntError>
-    {
+    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ::std::num::ParseIntError> {
         i64::from_str_radix(s, radix).map(AdaptiveInt::LowRes)
     }
 }
@@ -154,8 +159,12 @@ impl Integer for AdaptiveInt {
         use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.div_floor(r)).reduce(),
-            (&HighRes(ref l), &LowRes(ref r)) => HighRes(l.div_floor(&r.to_bigint().unwrap())).reduce(),
-            (&LowRes(ref l), &HighRes(ref r)) => HighRes(l.to_bigint().unwrap().div_floor(r)).reduce(),
+            (&HighRes(ref l), &LowRes(ref r)) => {
+                HighRes(l.div_floor(&r.to_bigint().unwrap())).reduce()
+            }
+            (&LowRes(ref l), &HighRes(ref r)) => {
+                HighRes(l.to_bigint().unwrap().div_floor(r)).reduce()
+            }
             (&LowRes(ref l), &LowRes(ref r)) => LowRes(l.div_floor(r)),
         }
     }
@@ -164,8 +173,12 @@ impl Integer for AdaptiveInt {
         use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => HighRes(l.mod_floor(r)).reduce(),
-            (&HighRes(ref l), &LowRes(ref r)) => HighRes(l.mod_floor(&r.to_bigint().unwrap())).reduce(),
-            (&LowRes(ref l), &HighRes(ref r)) => HighRes(l.to_bigint().unwrap().mod_floor(r)).reduce(),
+            (&HighRes(ref l), &LowRes(ref r)) => {
+                HighRes(l.mod_floor(&r.to_bigint().unwrap())).reduce()
+            }
+            (&LowRes(ref l), &HighRes(ref r)) => {
+                HighRes(l.to_bigint().unwrap().mod_floor(r)).reduce()
+            }
             (&LowRes(ref l), &LowRes(ref r)) => LowRes(l.mod_floor(r)),
         }
     }
@@ -191,7 +204,7 @@ impl Integer for AdaptiveInt {
     }
 
     fn divides(&self, other: &Self) -> bool {
-                use crate::bigvec::AdaptiveInt::*;
+        use crate::bigvec::AdaptiveInt::*;
         match (self, other) {
             (&HighRes(ref l), &HighRes(ref r)) => l.divides(r),
             (&HighRes(ref l), &LowRes(ref r)) => l.divides(&r.to_bigint().unwrap()),
@@ -217,7 +230,9 @@ impl Integer for AdaptiveInt {
         }
     }
 
-    fn is_odd(&self) -> bool { !self.is_even() }
+    fn is_odd(&self) -> bool {
+        !self.is_even()
+    }
 
     fn div_rem(&self, other: &Self) -> (Self, Self) {
         use crate::bigvec::AdaptiveInt::*;
@@ -233,7 +248,6 @@ impl Integer for AdaptiveInt {
         (HighRes(div).reduce(), HighRes(rem).reduce())
     }
 }
-
 
 impl Zero for AdaptiveInt {
     fn zero() -> Self {
@@ -256,15 +270,16 @@ impl Add for AdaptiveInt {
         use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l + r).reduce(),
-            (HighRes(hr), LowRes(lr))
-                | (LowRes(lr), HighRes(hr)) => HighRes(hr + lr.to_bigint().unwrap()).reduce(),
+            (HighRes(hr), LowRes(lr)) | (LowRes(lr), HighRes(hr)) => {
+                HighRes(hr + lr.to_bigint().unwrap()).reduce()
+            }
             (LowRes(l), LowRes(r)) => {
                 if let Some(sum) = l.checked_add(r) {
                     LowRes(sum)
                 } else {
                     HighRes(l.to_bigint().unwrap() + r.to_bigint().unwrap())
                 }
-            },
+            }
         }
     }
 }
@@ -283,7 +298,7 @@ impl Sub for AdaptiveInt {
                 } else {
                     HighRes(l.to_bigint().unwrap() - r.to_bigint().unwrap())
                 }
-            },
+            }
         }
     }
 }
@@ -294,15 +309,16 @@ impl Mul for AdaptiveInt {
         use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (HighRes(l), HighRes(r)) => HighRes(l * r),
-            (HighRes(hr), LowRes(lr))
-                | (LowRes(lr), HighRes(hr)) => HighRes(hr * lr.to_bigint().unwrap()),
+            (HighRes(hr), LowRes(lr)) | (LowRes(lr), HighRes(hr)) => {
+                HighRes(hr * lr.to_bigint().unwrap())
+            }
             (LowRes(l), LowRes(r)) => {
                 if let Some(prod) = l.checked_mul(r) {
                     LowRes(prod)
                 } else {
                     HighRes(l.to_bigint().unwrap() * r.to_bigint().unwrap())
                 }
-            },
+            }
         }
     }
 }
@@ -322,7 +338,7 @@ impl Div for AdaptiveInt {
                 } else {
                     HighRes(l.to_bigint().unwrap() / r.to_bigint().unwrap()).reduce()
                 }
-            },
+            }
         }
     }
 }
@@ -341,7 +357,7 @@ impl Rem for AdaptiveInt {
                 } else {
                     HighRes(l.to_bigint().unwrap() % r.to_bigint().unwrap())
                 }
-            },
+            }
         }
     }
 }
@@ -400,14 +416,15 @@ impl PartialEq for AdaptiveInt {
         use crate::bigvec::AdaptiveInt::*;
         match (self, rhs) {
             (&HighRes(ref l), &HighRes(ref r)) => l == r,
-            (&HighRes(ref hr), &LowRes(ref lr)) 
-                | (&LowRes(ref lr), &HighRes(ref hr)) => hr == &lr.to_bigint().unwrap(),
+            (&HighRes(ref hr), &LowRes(ref lr)) | (&LowRes(ref lr), &HighRes(ref hr)) => {
+                hr == &lr.to_bigint().unwrap()
+            }
             (&LowRes(ref l), &LowRes(ref r)) => l == r,
         }
     }
 }
 
-impl Eq for AdaptiveInt { }
+impl Eq for AdaptiveInt {}
 
 impl PartialOrd for AdaptiveInt {
     fn partial_cmp(&self, rhs: &AdaptiveInt) -> Option<::std::cmp::Ordering> {
@@ -433,15 +450,26 @@ impl Ord for AdaptiveInt {
     }
 }
 
-
-impl <I> From<cg::Point2<I>> for BigVec2<AdaptiveInt> where I: ::std::convert::Into<i64> + Copy {
+impl<I> From<cg::Point2<I>> for BigVec2<AdaptiveInt>
+where
+    I: ::std::convert::Into<i64> + Copy,
+{
     fn from(v: cg::Point2<I>) -> Self {
-        BigVec2::new(AdaptiveInt::LowRes(v[0].into()), AdaptiveInt::LowRes(v[1].into()))
+        BigVec2::new(
+            AdaptiveInt::LowRes(v[0].into()),
+            AdaptiveInt::LowRes(v[1].into()),
+        )
     }
 }
 
-impl <I> From<na::Point2<I>> for BigVec2<AdaptiveInt> where I: ::std::convert::Into<i64> + na::Scalar {
+impl<I> From<na::Point2<I>> for BigVec2<AdaptiveInt>
+where
+    I: ::std::convert::Into<i64> + na::Scalar,
+{
     fn from(v: na::Point2<I>) -> Self {
-        BigVec2::new(AdaptiveInt::LowRes(v[0].into()), AdaptiveInt::LowRes(v[1].into()))
+        BigVec2::new(
+            AdaptiveInt::LowRes(v[0].into()),
+            AdaptiveInt::LowRes(v[1].into()),
+        )
     }
 }

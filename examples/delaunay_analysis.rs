@@ -6,32 +6,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rand;
-extern crate spade;
 extern crate cgmath;
 extern crate num;
+extern crate rand;
+extern crate spade;
 
+use cgmath::{BaseNum, EuclideanSpace, Point2};
+use rand::distributions::range::SampleRange;
+use rand::distributions::{Distribution, Range};
+use rand::{SeedableRng, XorShiftRng};
 use spade::delaunay::*;
 use spade::kernels::*;
 use spade::rtree::RTree;
-use spade::{TwoDimensional, SpadeNum};
-use rand::{XorShiftRng, SeedableRng};
-use rand::distributions::{Range, Distribution};
-use rand::distributions::range::SampleRange;
-use std::time::{Instant, Duration};
-use cgmath::{Point2, BaseNum, EuclideanSpace};
-use std::path::Path;
+use spade::{SpadeNum, TwoDimensional};
 use std::fs::File;
-use std::io::{Write};
+use std::io::Write;
+use std::path::Path;
+use std::time::{Duration, Instant};
 
 type DWL = DelaunayWalkLocate;
 type Delaunay<Scalar, K, L> = DelaunayTriangulation<Point2<Scalar>, K, L>;
 
-struct BenchSetup<'a, V, K, L> where
+struct BenchSetup<'a, V, K, L>
+where
     V: TwoDimensional + 'a,
     K: DelaunayKernel<V::Scalar>,
-    L: DelaunayLocateStructure<V> {
-
+    L: DelaunayLocateStructure<V>,
+{
     title: &'static str,
     delaunay: DelaunayTriangulation<V, K, L>,
     vertices: &'a [V],
@@ -51,11 +52,12 @@ fn duration_ns(duration: Duration) -> u32 {
     duration.as_secs() as u32 * 1_000_000_000 + duration.subsec_nanos()
 }
 
-impl <'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L> where
+impl<'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L>
+where
     V: TwoDimensional + 'a,
     K: DelaunayKernel<V::Scalar>,
-    L: DelaunayLocateStructure<V> {
-    
+    L: DelaunayLocateStructure<V>,
+{
     fn do_bench(&mut self) -> BenchResult {
         println!("{}", self.title);
         let mut result = Vec::new();
@@ -71,7 +73,7 @@ impl <'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L> where
             let ns = duration_ns(elapsed);
             sum += ns;
             result.push(ns / self.chunk_size as u32);
-        };
+        }
         assert!(self.delaunay.num_vertices() > self.vertices.len() / 2);
         println!("time / op: {:?}ns", sum / self.vertices.len() as u32);
         BenchResult {
@@ -82,15 +84,14 @@ impl <'a, V, K, L> Benchmark for BenchSetup<'a, V, K, L> where
 }
 
 fn main() {
-
     const SIZE: usize = 400000;
     const CHUNK_SIZE: usize = SIZE / 100;
 
     let seed = b"Our universe its";
     let vertices_f64_walk = random_walk_with_seed_and_origin::<f64>(0.001, SIZE, seed);
     let vertices_i64_walk = random_walk_with_seed_and_origin::<i64>(3, SIZE, seed);
-    let vertices_f64_uniform = random_points_with_seed_range_and_origin::<f64>(
-            20.0, Point2::new(1e10, -1e10), SIZE, seed);
+    let vertices_f64_uniform =
+        random_points_with_seed_range_and_origin::<f64>(20.0, Point2::new(1e10, -1e10), SIZE, seed);
     let vertices_i64_uniform = random_points_in_range::<i64>(10000, SIZE, seed);
 
     let mut benches: Vec<Box<Benchmark>> = vec![
@@ -101,14 +102,12 @@ fn main() {
             vertices: &vertices_f64_uniform,
             chunk_size: CHUNK_SIZE,
         }),
-
         Box::new(BenchSetup {
             title: "f64T - uniform - walk lookup",
             delaunay: Delaunay::<f64, TrivialKernel, DWL>::new(),
             vertices: &vertices_f64_uniform,
             chunk_size: CHUNK_SIZE,
         }),
-
         Box::new(BenchSetup {
             title: "f64T - random walk - tree lookup",
             delaunay: Delaunay::<f64, TrivialKernel, RTree<_>>::new(),
@@ -135,7 +134,6 @@ fn main() {
         //     vertices: &vertices_f64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
-
         Box::new(BenchSetup {
             title: "f64F - random walk - tree lookup",
             delaunay: Delaunay::<f64, FloatKernel, RTree<_>>::new(),
@@ -155,14 +153,12 @@ fn main() {
             vertices: &vertices_i64_uniform,
             chunk_size: CHUNK_SIZE,
         }),
-
         // Box::new(BenchSetup {
         //     title: "i64T - uniform - walk lookup",
         //     delaunay: Delaunay::<i64, TrivialKernel, DWL>::new(),
         //     vertices: &vertices_i64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
-
         Box::new(BenchSetup {
             title: "i64T - random walk - tree lookup",
             delaunay: Delaunay::<i64, TrivialKernel, RTree<_>>::new(),
@@ -175,7 +171,6 @@ fn main() {
             vertices: &vertices_i64_walk,
             chunk_size: CHUNK_SIZE,
         }),
-
         // Adaptive Int Benchmarks
         // Box::new(BenchSetup {
         //     title: "i64A - uniform - tree lookup",
@@ -183,28 +178,24 @@ fn main() {
         //     vertices: &vertices_i64_uniform,
         //     chunk_size: CHUNK_SIZE,
         // }),
-
         Box::new(BenchSetup {
             title: "i64A - uniform - walk lookup",
             delaunay: Delaunay::<i64, AdaptiveIntKernel, DWL>::new(),
             vertices: &vertices_i64_uniform,
             chunk_size: CHUNK_SIZE,
         }),
-
         // Box::new(BenchSetup {
         //     title: "i64A - random walk - tree lookup",
         //     delaunay: Delaunay::<i64, AdaptiveIntKernel, RTree<_>>::new(),
         //     vertices: &vertices_i64_walk,
         //     chunk_size: CHUNK_SIZE,
         // }),
-
         Box::new(BenchSetup {
             title: "i64A - random walk - walk lookup",
             delaunay: Delaunay::<i64, AdaptiveIntKernel, DWL>::new(),
             vertices: &vertices_i64_walk,
             chunk_size: CHUNK_SIZE,
         }),
-
     ];
     let mut results = Vec::new();
     for config in &mut benches {
@@ -225,14 +216,17 @@ fn main() {
         print_measurements(result);
     }
     println!("Done!");
-
 }
 
-pub fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
+pub fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(
+    range: S,
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());
     let range = Range::new(-range.clone(), range.clone());
     let mut points = Vec::with_capacity(size);
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = range.sample(&mut rng);
         let y = range.sample(&mut rng);
         points.push(Point2::new(x, y));
@@ -241,25 +235,32 @@ pub fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(range: S, siz
 }
 
 pub fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + SampleRange>(
-    range: S, origin: Point2<S>, size: usize, seed: &[u8; 16])
-    -> Vec<Point2<S>> {
+    range: S,
+    origin: Point2<S>,
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());
     let range = Range::new(-range, range);
     let mut points = Vec::new();
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = range.sample(&mut rng) + origin.x;
         let y = range.sample(&mut rng) + origin.y;
         points.push(Point2::new(x, y));
     }
-    points    
+    points
 }
 
-pub fn random_walk_with_seed_and_origin<S: SpadeNum + SampleRange + BaseNum>(step: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
+pub fn random_walk_with_seed_and_origin<S: SpadeNum + SampleRange + BaseNum>(
+    step: S,
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());
     let rand_range = Range::new(-step, step);
     let mut points = Vec::new();
     let mut last = Point2::origin();
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = rand_range.sample(&mut rng);
         let y = rand_range.sample(&mut rng);
         last = Point2::new(last.x + x, last.y + y);

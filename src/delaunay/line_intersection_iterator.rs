@@ -1,11 +1,12 @@
-use crate::primitives::SimpleEdge;
-use crate::delaunay::*;
 use self::delaunay_basic::BasicDelaunaySubdivision;
-use crate::traits::{HasPosition2D};
-use crate::point_traits::{PointN, TwoDimensional, PointNExtensions};
+use crate::delaunay::*;
+use crate::point_traits::{PointN, PointNExtensions, TwoDimensional};
+use crate::primitives::SimpleEdge;
+use crate::traits::HasPosition2D;
 
-pub struct LineIntersectionIterator<'a, T, V, E=()> where
-    T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
+pub struct LineIntersectionIterator<'a, T, V, E = ()>
+where
+    T: BasicDelaunaySubdivision<V, EdgeType = E> + 'a,
     V: HasPosition2D + 'a,
     V::Point: TwoDimensional,
     E: Default + Copy + 'a,
@@ -15,43 +16,46 @@ pub struct LineIntersectionIterator<'a, T, V, E=()> where
     delaunay: &'a T,
 }
 
-pub enum Intersection<'a, V, E=()> where
-    V: 'a, E: 'a
+pub enum Intersection<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
 {
     EdgeIntersection(EdgeHandle<'a, V, E>),
     VertexIntersection(VertexHandle<'a, V, E>),
     EdgeOverlap(EdgeHandle<'a, V, E>),
 }
 
-impl <'a, V, E> ::std::fmt::Debug for Intersection<'a, V, E> where
+impl<'a, V, E> ::std::fmt::Debug for Intersection<'a, V, E>
+where
     V: 'a,
     E: Default,
 {
-     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-         use self::Intersection::*;
-         match self {
-             EdgeIntersection(handle) => write!(f, "EdgeIntersection({:?})", handle),
-             VertexIntersection(handle) => write!(f, "VertexIntersection({:?})", handle),
-             EdgeOverlap(handle) => write!(f, "EdgeOverlap({:?})", handle),
-         }
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        use self::Intersection::*;
+        match self {
+            EdgeIntersection(handle) => write!(f, "EdgeIntersection({:?})", handle),
+            VertexIntersection(handle) => write!(f, "VertexIntersection({:?})", handle),
+            EdgeOverlap(handle) => write!(f, "EdgeOverlap({:?})", handle),
+        }
     }
 }
 
-impl <'a, V, E> PartialEq for Intersection<'a, V, E> {
+impl<'a, V, E> PartialEq for Intersection<'a, V, E> {
     fn eq(&self, other: &Self) -> bool {
         use self::Intersection::*;
         match (self, other) {
             (&EdgeIntersection(h0), &EdgeIntersection(h1)) => h0 == h1,
             (&VertexIntersection(h0), &VertexIntersection(h1)) => h0 == h1,
             (&EdgeOverlap(h0), &EdgeOverlap(h1)) => h0 == h1,
-             _ => false,
+            _ => false,
         }
     }
 }
 
-impl <'a, V, E> Copy for Intersection<'a, V, E> {}
+impl<'a, V, E> Copy for Intersection<'a, V, E> {}
 
-impl <'a, V, E> Clone for Intersection<'a, V, E> {
+impl<'a, V, E> Clone for Intersection<'a, V, E> {
     fn clone(&self) -> Self {
         use self::Intersection::*;
         match self {
@@ -62,13 +66,18 @@ impl <'a, V, E> Clone for Intersection<'a, V, E> {
     }
 }
 
-impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
-    T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
+impl<'a, T, V, E> LineIntersectionIterator<'a, T, V, E>
+where
+    T: BasicDelaunaySubdivision<V, EdgeType = E> + 'a,
     V: HasPosition2D + 'a,
     V::Point: TwoDimensional,
     E: Default + Copy,
 {
-    pub fn new(delaunay: &'a T, from: &V::Point, to: &V::Point) -> LineIntersectionIterator<'a, T, V, E> {
+    pub fn new(
+        delaunay: &'a T,
+        from: &V::Point,
+        to: &V::Point,
+    ) -> LineIntersectionIterator<'a, T, V, E> {
         let line = SimpleEdge::new(from.clone(), to.clone());
         let first_intersection = Self::get_first_intersection(delaunay, &line);
         LineIntersectionIterator {
@@ -78,8 +87,11 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
         }
     }
 
-    pub fn new_from_handles(delaunay: &'a T, from: FixedVertexHandle, to: FixedVertexHandle)
-        -> LineIntersectionIterator<'a, T, V, E> {
+    pub fn new_from_handles(
+        delaunay: &'a T,
+        from: FixedVertexHandle,
+        to: FixedVertexHandle,
+    ) -> LineIntersectionIterator<'a, T, V, E> {
         let from = delaunay.s().vertex(from);
         let to = delaunay.s().vertex(to);
         let line = SimpleEdge::new(from.position(), to.position());
@@ -90,15 +102,16 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
         }
     }
 
-    fn get_first_intersection(delaunay: &'a T, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V, E>> {
+    fn get_first_intersection(
+        delaunay: &'a T,
+        line: &SimpleEdge<V::Point>,
+    ) -> Option<Intersection<'a, V, E>> {
         use crate::delaunay::PositionInTriangulation::*;
         match delaunay.locate_with_hint_option(&line.from, None) {
             InTriangle(face_handle) => {
                 Self::get_first_edge_from_edge_ring(face_handle.adjacent_edges(), line)
-            },
-            OnPoint(vertex_handle) => {
-                Some(Intersection::VertexIntersection(vertex_handle))
-            },
+            }
+            OnPoint(vertex_handle) => Some(Intersection::VertexIntersection(vertex_handle)),
             OnEdge(edge) => {
                 let edge_from = edge.from().position();
                 let edge_to = edge.to().position();
@@ -129,17 +142,21 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
                     Some(Intersection::VertexIntersection(vertex))
                 } else {
                     let edges = delaunay.get_convex_hull_edges_for_point(edge.fix(), &line.from);
-                    Self::get_first_edge_from_edge_ring( 
-                        edges.iter().map(|e| delaunay.s().edge(*e)), 
-                        line)
+                    Self::get_first_edge_from_edge_ring(
+                        edges.iter().map(|e| delaunay.s().edge(*e)),
+                        line,
+                    )
                 }
-            },
+            }
             NoTriangulationPresent => {
                 if delaunay.s().num_vertices() == 0 {
                     None
                 } else {
                     let vertex = delaunay.s().vertices().next().unwrap();
-                    if line.side_query::<T::Kernel>(&vertex.position()).is_on_line() {
+                    if line
+                        .side_query::<T::Kernel>(&vertex.position())
+                        .is_on_line()
+                    {
                         if line.is_projection_on_edge(&vertex.position()) {
                             Some(Intersection::VertexIntersection(vertex))
                         } else {
@@ -153,15 +170,20 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
         }
     }
 
-    fn get_first_edge_from_edge_ring<I>(ring: I, line: &SimpleEdge<V::Point>) -> Option<Intersection<'a, V, E>> where
-        I: IntoIterator<Item=EdgeHandle<'a, V, E>>,
+    fn get_first_edge_from_edge_ring<I>(
+        ring: I,
+        line: &SimpleEdge<V::Point>,
+    ) -> Option<Intersection<'a, V, E>>
+    where
+        I: IntoIterator<Item = EdgeHandle<'a, V, E>>,
     {
         use self::Intersection::*;
         for edge in ring {
-            let cur_edge = SimpleEdge::new(edge.from().position(),
-                                           edge.to().position());
+            let cur_edge = SimpleEdge::new(edge.from().position(), edge.to().position());
 
-            debug_assert!(cur_edge.side_query::<T::Kernel>(&line.from).is_on_left_side_or_on_line());
+            debug_assert!(cur_edge
+                .side_query::<T::Kernel>(&line.from)
+                .is_on_left_side_or_on_line());
             if line.intersects_edge_non_collinear::<T::Kernel>(&cur_edge) {
                 if line.side_query::<T::Kernel>(&cur_edge.from).is_on_line() {
                     return Some(VertexIntersection(edge.from()));
@@ -183,9 +205,12 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
                     None
                 } else {
                     let target = &self.line.to;
-                    assert!(T::to_simple_edge(cur_edge)
-                            .side_query::<T::Kernel>(&target).is_on_left_side_or_on_line(),
-                            "The target must be on the left side of the current edge");
+                    assert!(
+                        T::to_simple_edge(cur_edge)
+                            .side_query::<T::Kernel>(&target)
+                            .is_on_left_side_or_on_line(),
+                        "The target must be on the left side of the current edge"
+                    );
 
                     let e_prev = cur_edge.o_prev();
                     let o_next = cur_edge.o_next();
@@ -200,11 +225,11 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
                         (true, true) => {
                             // Both edges intersect - this mean line is cutting through a common point
                             Some(VertexIntersection(e_prev.from()))
-                        },
+                        }
                         (false, false) => None,
                     }
                 }
-            },
+            }
             Some(VertexIntersection(vertex)) => {
                 if vertex.position() == self.line.to {
                     // Target point was reached - the iteration can finish
@@ -223,39 +248,37 @@ impl <'a, T, V, E>  LineIntersectionIterator<'a, T, V, E> where
                             }
                         }
                     }
-                    let ring_iterator = vertex.ccw_out_edges()
-                        .filter_map(|e| {
-                            let edge = e.o_next();
-                            if edge.face() == self.delaunay.infinite_face() {
-                                None
-                            } else {
-                                Some(edge)
-                            }
-                        });
+                    let ring_iterator = vertex.ccw_out_edges().filter_map(|e| {
+                        let edge = e.o_next();
+                        if edge.face() == self.delaunay.infinite_face() {
+                            None
+                        } else {
+                            Some(edge)
+                        }
+                    });
                     Self::get_first_edge_from_edge_ring(ring_iterator, &line)
                 }
-            },
+            }
             Some(EdgeOverlap(edge)) => {
                 if self.line.from == self.line.to {
                     None
                 } else if self.line.is_projection_on_edge(&edge.to().position()) {
-                        Some(VertexIntersection(edge.to()))
-                    } else {
-                        None
-                    
+                    Some(VertexIntersection(edge.to()))
+                } else {
+                    None
                 }
-            },
-            None => None
+            }
+            None => None,
         }
     }
 }
 
-impl <'a, T, V, E> Iterator for LineIntersectionIterator<'a, T, V, E> 
-    where 
-          T: BasicDelaunaySubdivision<V, EdgeType=E> + 'a,
-          V: HasPosition2D + 'a,
-          V::Point: TwoDimensional,
-          E: Default + Copy + 'a,
+impl<'a, T, V, E> Iterator for LineIntersectionIterator<'a, T, V, E>
+where
+    T: BasicDelaunaySubdivision<V, EdgeType = E> + 'a,
+    V: HasPosition2D + 'a,
+    V::Point: TwoDimensional,
+    E: Default + Copy + 'a,
 {
     type Item = Intersection<'a, V, E>;
 
@@ -266,13 +289,12 @@ impl <'a, T, V, E> Iterator for LineIntersectionIterator<'a, T, V, E>
     }
 }
 
-
 #[cfg(test)]
 mod test {
-    use super::*;
-    use cgmath::Point2;
-    use crate::kernels::FloatKernel;
     use self::Intersection::*;
+    use super::*;
+    use crate::kernels::FloatKernel;
+    use cgmath::Point2;
 
     type Triangulation = DelaunayTriangulation<Point2<f64>, FloatKernel>;
 
@@ -284,10 +306,12 @@ mod test {
         }
     }
 
-    fn check(delaunay: &Triangulation, 
-             from: Point2<f64>,
-             to: Point2<f64>,
-             mut expected: Vec<Intersection<Point2<f64>>>) {
+    fn check(
+        delaunay: &Triangulation,
+        from: Point2<f64>,
+        to: Point2<f64>,
+        mut expected: Vec<Intersection<Point2<f64>>>,
+    ) {
         let collected: Vec<_> = LineIntersectionIterator::new(delaunay, &from, &to).collect();
         assert_eq!(collected, expected);
         let mut reversed = Vec::new();
@@ -299,11 +323,13 @@ mod test {
         assert_eq!(reversed, expected);
     }
 
-    fn create_test_triangulation() -> (Triangulation, 
-                                       FixedVertexHandle, 
-                                       FixedVertexHandle, 
-                                       FixedVertexHandle, 
-                                       FixedVertexHandle) {
+    fn create_test_triangulation() -> (
+        Triangulation,
+        FixedVertexHandle,
+        FixedVertexHandle,
+        FixedVertexHandle,
+        FixedVertexHandle,
+    ) {
         let mut delaunay = Triangulation::new();
         let v0 = delaunay.insert(Point2::new(-2.0, -2.0));
         let v1 = delaunay.insert(Point2::new(2.0, 2.0));
@@ -311,7 +337,7 @@ mod test {
         let v3 = delaunay.insert(Point2::new(-1.0, 1.0));
         (delaunay, v0, v1, v2, v3)
     }
-    
+
     #[test]
     fn test_single_line_intersection() {
         let (delaunay, _, _, v2, v3) = create_test_triangulation();
@@ -326,7 +352,9 @@ mod test {
         let (delaunay, _, _, _, _) = create_test_triangulation();
         let from = Point2::new(-0.5, -0.5);
         let to = Point2::new(-0.25, -0.25);
-        assert!(LineIntersectionIterator::new(&delaunay, &from, &to).next().is_none());
+        assert!(LineIntersectionIterator::new(&delaunay, &from, &to)
+            .next()
+            .is_none());
     }
 
     #[test]
@@ -349,11 +377,17 @@ mod test {
         let to = Point2::new(2.0, 2.0);
         let intersection_edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
         let overlap_edge = delaunay.get_edge_from_neighbors(v4, v1).unwrap();
-        check(&delaunay, from, to, vec![
-            EdgeIntersection(intersection_edge),
-            VertexIntersection(delaunay.vertex(v4)),
-            EdgeOverlap(overlap_edge),
-            VertexIntersection(delaunay.vertex(v1))]);
+        check(
+            &delaunay,
+            from,
+            to,
+            vec![
+                EdgeIntersection(intersection_edge),
+                VertexIntersection(delaunay.vertex(v4)),
+                EdgeOverlap(overlap_edge),
+                VertexIntersection(delaunay.vertex(v1)),
+            ],
+        );
     }
 
     #[test]
@@ -452,7 +486,7 @@ mod test {
         let v0 = VertexIntersection(t.vertex(v0));
         let v1 = VertexIntersection(t.vertex(v1));
         let v2 = VertexIntersection(t.vertex(v2));
-        
+
         check(&t, from, to, vec![v0, o01, v1, o12, v2]);
         let from = Point2::new(1.0, 0.0);
         let to = Point2::new(0.0, 1.0);
@@ -460,7 +494,7 @@ mod test {
 
         let from = Point2::new(0.0, 2.0);
         let to = Point2::new(2.0, 0.0);
-        check(&t, from, to, vec!(v1));
+        check(&t, from, to, vec![v1]);
 
         let from = Point2::new(1.0, 1.0);
         let to = Point2::new(1.5, 1.5);

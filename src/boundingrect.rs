@@ -6,10 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use num::{Signed, zero, one};
-use crate::point_traits::{PointN, PointNExtensions};
 use crate::misc::max_inline;
+use crate::point_traits::{PointN, PointNExtensions};
 use crate::traits::SpatialObject;
+use num::{one, zero, Signed};
 
 /// An axis aligned minimal bounding rectangle.
 ///
@@ -23,8 +23,10 @@ pub struct BoundingRect<V: PointN> {
     upper: V,
 }
 
-impl <V> BoundingRect<V> where V: PointN {
-
+impl<V> BoundingRect<V>
+where
+    V: PointN,
+{
     /// Creates a bounding rectangle that contains exactly one point.
     ///
     /// This will create a bounding rectangle with `lower == upper == point`.
@@ -39,7 +41,10 @@ impl <V> BoundingRect<V> where V: PointN {
     ///
     /// # Panics
     /// Panics if the given iterator is empty.
-    pub fn from_points<I>(points: I) -> Self where I: IntoIterator<Item=V> {
+    pub fn from_points<I>(points: I) -> Self
+    where
+        I: IntoIterator<Item = V>,
+    {
         let mut iter = points.into_iter();
         let first = iter.next();
         let mut result = Self::from_point(first.expect("Expected at least one point"));
@@ -76,17 +81,17 @@ impl <V> BoundingRect<V> where V: PointN {
     /// A point lying exactly on the bounding rectangle's border is also contained.
     #[inline]
     pub fn contains_point(&self, point: &V) -> bool {
-        self.lower.all_comp_wise(&point, |l, r| l <= r) &&
-            self.upper.all_comp_wise(&point, |l, r| l >= r)
+        self.lower.all_comp_wise(&point, |l, r| l <= r)
+            && self.upper.all_comp_wise(&point, |l, r| l >= r)
     }
-    
+
     /// Checks if another bounding rectangle is completley contained withing this rectangle.
     ///
     /// A rectangle is contained if and only if all four corner are contained (see `contains_point`).
     #[inline]
     pub fn contains_rect(&self, rect: &BoundingRect<V>) -> bool {
-        self.lower.all_comp_wise(&rect.lower(), |l, r| l <= r) &&
-            self.upper.all_comp_wise(&rect.upper(), |l, r| l >= r)
+        self.lower.all_comp_wise(&rect.lower(), |l, r| l <= r)
+            && self.upper.all_comp_wise(&rect.upper(), |l, r| l >= r)
     }
 
     /// Enlarges this bounding rectangle to contain a point.
@@ -126,7 +131,8 @@ impl <V> BoundingRect<V> where V: PointN {
     /// Returns the rectangle's center.
     pub fn center(&self) -> V {
         let two = one::<V::Scalar>() + one::<V::Scalar>();
-        self.lower().add(&(self.upper().sub(&self.lower()).div(two)))
+        self.lower()
+            .add(&(self.upper().sub(&self.lower()).div(two)))
     }
 
     /// Returns the intersection of this and another bounding rectangle.
@@ -143,8 +149,8 @@ impl <V> BoundingRect<V> where V: PointN {
     /// Returns true if this and another bounding rectangle intersect each other.
     /// If the rectangles just "touch" each other at one side, true is returned.
     pub fn intersects(&self, other: &BoundingRect<V>) -> bool {
-        self.lower.all_comp_wise(&other.upper(), |l, r| l <= r) &&
-            self.upper.all_comp_wise(&other.lower(), |l, r| l >= r)
+        self.lower.all_comp_wise(&other.upper(), |l, r| l <= r)
+            && self.upper.all_comp_wise(&other.lower(), |l, r| l >= r)
     }
 
     #[doc(hidden)]
@@ -167,14 +173,13 @@ impl <V> BoundingRect<V> where V: PointN {
         max_delta.length2()
     }
 
-
     #[doc(hidden)]
     pub fn min_max_dist2(&self, point: &V) -> V::Scalar {
         let l = self.lower().sub(point);
         let u = self.upper().sub(point);
         let (mut min, mut max) = (V::new(), V::new());
-        for i in 0 .. V::dimensions() {
-            if l.nth(i).abs() < u.nth(i).abs() { 
+        for i in 0..V::dimensions() {
+            if l.nth(i).abs() < u.nth(i).abs() {
                 *min.nth_mut(i) = l.nth(i).clone();
                 *max.nth_mut(i) = u.nth(i).clone();
             } else {
@@ -183,7 +188,7 @@ impl <V> BoundingRect<V> where V: PointN {
             }
         }
         let mut result = zero();
-        for i in 0 .. V::dimensions() {
+        for i in 0..V::dimensions() {
             let mut p = min.clone();
             // Only set one component to the maximum distance
             *p.nth_mut(i) = max.nth(i).clone();
@@ -196,7 +201,10 @@ impl <V> BoundingRect<V> where V: PointN {
     }
 }
 
-impl <V> SpatialObject for BoundingRect<V> where V: PointN {
+impl<V> SpatialObject for BoundingRect<V>
+where
+    V: PointN,
+{
     type Point = V;
 
     fn mbr(&self) -> BoundingRect<V> {
@@ -216,27 +224,25 @@ impl <V> SpatialObject for BoundingRect<V> where V: PointN {
 mod test {
     use super::BoundingRect;
     use crate::traits::SpatialObject;
-    
+
     #[test]
     fn test_add_points() {
-        let points = [
-            [0.0, 1.0f32],
-            [1.0, 0.5],
-            [2.0, -2.0],
-            [0.0, 0.0]];
+        let points = [[0.0, 1.0f32], [1.0, 0.5], [2.0, -2.0], [0.0, 0.0]];
         let bb = BoundingRect::from_points(points.iter().cloned());
-        assert_eq!(bb,
-                   BoundingRect {
-                       lower: [0.0, -2.0],
-                       upper: [2.0, 1.0],
-                   });
+        assert_eq!(
+            bb,
+            BoundingRect {
+                lower: [0.0, -2.0],
+                upper: [2.0, 1.0],
+            }
+        );
     }
 
     #[test]
     fn test_bounding_rect_distance2() {
         let rect = BoundingRect {
             lower: [0.0, 0.0],
-            upper: [1.0, 1.0]
+            upper: [1.0, 1.0],
         };
         assert_eq!(rect.distance2(&[0.0, 0.5]), 0.0);
         assert_eq!(rect.distance2(&[0.0, -1.0]), 1.0);

@@ -6,33 +6,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rand;
-extern crate spade;
 extern crate cgmath;
 extern crate num;
+extern crate rand;
+extern crate spade;
 
-use rand::{XorShiftRng, SeedableRng};
-use rand::distributions::{Range, Distribution};
-use rand::distributions::range::SampleRange;
-use spade::SpadeNum;
-use spade::rtree::RTree;
-use std::time::{Instant, Duration};
-use cgmath::{Point2, BaseNum};
-use std::path::Path;
-use std::fs::File;
-use std::io::{Write, stdout};
+use cgmath::{BaseNum, Point2};
 use num::zero;
+use rand::distributions::range::SampleRange;
+use rand::distributions::{Distribution, Range};
+use rand::{SeedableRng, XorShiftRng};
+use spade::rtree::RTree;
+use spade::SpadeNum;
+use std::fs::File;
+use std::io::{stdout, Write};
+use std::path::Path;
+use std::time::{Duration, Instant};
 
 fn main() {
     run_compare_operations_bench();
 }
 
 #[inline(never)]
-fn blackbox<T: ?Sized>(_: &T) {
-}
+fn blackbox<T: ?Sized>(_: &T) {}
 
-fn measure<F, T>(result: &mut Vec<u32>, points: &[Point2<f32>], mut operation: F) 
-    where F: FnMut(Point2<f32>) -> T {
+fn measure<F, T>(result: &mut Vec<u32>, points: &[Point2<f32>], mut operation: F)
+where
+    F: FnMut(Point2<f32>) -> T,
+{
     let now = Instant::now();
     for point in points {
         blackbox(&operation(*point));
@@ -40,12 +41,11 @@ fn measure<F, T>(result: &mut Vec<u32>, points: &[Point2<f32>], mut operation: F
     let elapsed = now.elapsed();
     let ns = duration_ns(elapsed) as u32;
     result.push(ns / points.len() as u32);
- }
+}
 
 fn duration_ns(duration: Duration) -> u32 {
     duration.as_secs() as u32 * 1_000_000_000 + duration.subsec_nanos()
 }
-
 
 fn run_compare_operations_bench() {
     const MAX_VERTICES: usize = 4000000;
@@ -62,7 +62,7 @@ fn run_compare_operations_bench() {
     println!("Running benchmark...");
 
     let mut tree = RTree::new();
-    
+
     let mut insert_times = Vec::new();
     let mut nearest_neighbor_times = Vec::new();
     let mut unsuccsessful_lookup_times = Vec::new();
@@ -74,10 +74,18 @@ fn run_compare_operations_bench() {
         stdout().flush().unwrap();
 
         measure(&mut insert_times, chunk, |point| tree.insert(point));
-        measure(&mut nearest_neighbor_times, &query_points, |point| tree.nearest_neighbor(&point));
-        measure(&mut unsuccsessful_lookup_times, &query_points, |point| tree.lookup(&point));
-        measure(&mut succsessful_lookup_times, chunk, |point| tree.lookup(&point));
-        measure(&mut nn_iterator_times, &query_points, |point| tree.nearest_neighbor_iterator(&point).skip(10).next());
+        measure(&mut nearest_neighbor_times, &query_points, |point| {
+            tree.nearest_neighbor(&point)
+        });
+        measure(&mut unsuccsessful_lookup_times, &query_points, |point| {
+            tree.lookup(&point)
+        });
+        measure(&mut succsessful_lookup_times, chunk, |point| {
+            tree.lookup(&point)
+        });
+        measure(&mut nn_iterator_times, &query_points, |point| {
+            tree.nearest_neighbor_iterator(&point).skip(10).next()
+        });
     }
 
     // Print all measurements to a file
@@ -100,25 +108,30 @@ fn run_compare_operations_bench() {
 }
 
 pub fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + SampleRange>(
-    size: usize, seed: &[u8; 16])
-    -> Vec<Point2<S>> {
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());
     let range = Range::new(-S::one(), S::one());
     let mut points = Vec::new();
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = range.sample(&mut rng);
         let y = range.sample(&mut rng);
         points.push(Point2::new(x, y));
     }
-    points    
+    points
 }
 
-pub fn random_walk_with_seed<S: SpadeNum + SampleRange + BaseNum>(step: S, size: usize, seed: &[u8; 16]) -> Vec<Point2<S>> {
+pub fn random_walk_with_seed<S: SpadeNum + SampleRange + BaseNum>(
+    step: S,
+    size: usize,
+    seed: &[u8; 16],
+) -> Vec<Point2<S>> {
     let mut rng = XorShiftRng::from_seed(seed.clone());
     let rand_range = Range::new(-step, step);
     let mut points = Vec::new();
     let mut last = Point2::new(zero(), zero());
-    for _ in 0 .. size {
+    for _ in 0..size {
         let x = rand_range.sample(&mut rng);
         let y = rand_range.sample(&mut rng);
         last = Point2::new(last.x + x, last.y + y);

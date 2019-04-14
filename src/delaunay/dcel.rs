@@ -44,7 +44,7 @@ struct VertexEntry<V> {
     out_edge: Option<FixedEdgeHandle>,
 }
 
-impl <V> VertexEntry<V> {
+impl<V> VertexEntry<V> {
     fn new(data: V) -> VertexEntry<V> {
         VertexEntry {
             data,
@@ -63,30 +63,32 @@ struct HalfEdgeEntry<T> {
     face: FixedFaceHandle,
     data: T,
 }
-    
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
-pub struct DCEL<V, E=()> {
+pub struct DCEL<V, E = ()> {
     vertices: Vec<VertexEntry<V>>,
     faces: Vec<FaceEntry>,
     edges: Vec<HalfEdgeEntry<E>>,
 }
 
-
-impl <V> DCEL<V> {
+impl<V> DCEL<V> {
     pub fn new() -> Self {
         Self::new_with_edge()
     }
 }
 
-impl <V, E> DCEL<V, E> where E: Default {
-
+impl<V, E> DCEL<V, E>
+where
+    E: Default,
+{
     pub fn new_with_edge() -> Self {
         DCEL {
             vertices: Vec::new(),
             edges: Vec::new(),
-            faces: vec![FaceEntry { adjacent_edge: None } ],
+            faces: vec![FaceEntry {
+                adjacent_edge: None,
+            }],
         }
     }
 
@@ -131,7 +133,11 @@ impl <V, E> DCEL<V, E> where E: Default {
         self.vertices.len() - 1
     }
 
-    pub fn get_edge_from_neighbors(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> Option<EdgeHandle<V, E>> {
+    pub fn get_edge_from_neighbors(
+        &self,
+        from: FixedVertexHandle,
+        to: FixedVertexHandle,
+    ) -> Option<EdgeHandle<V, E>> {
         let vertex = self.vertex(from);
         for edge in vertex.ccw_out_edges() {
             if edge.to().fix() == to {
@@ -141,14 +147,18 @@ impl <V, E> DCEL<V, E> where E: Default {
         None
     }
 
-    pub fn connect_two_isolated_vertices(&mut self, 
-                                         v0: FixedVertexHandle, 
-                                         v1: FixedVertexHandle,
-                                         face: FixedFaceHandle) -> FixedEdgeHandle {
-
+    pub fn connect_two_isolated_vertices(
+        &mut self,
+        v0: FixedVertexHandle,
+        v1: FixedVertexHandle,
+        face: FixedFaceHandle,
+    ) -> FixedEdgeHandle {
         assert!(self.vertices[v0].out_edge.is_none(), "v0 is not isolated");
         assert!(self.vertices[v1].out_edge.is_none(), "v1 is not isolated");
-        assert!(self.faces[face].adjacent_edge.is_none(), "face must not contain any adjacent edges");
+        assert!(
+            self.faces[face].adjacent_edge.is_none(),
+            "face must not contain any adjacent edges"
+        );
         let edge_index = self.edges.len();
         let twin_index = edge_index + 1;
         let edge = HalfEdgeEntry {
@@ -192,7 +202,7 @@ impl <V, E> DCEL<V, E> where E: Default {
     }
 
     pub fn fixed_vertices(&self) -> FixedVerticesIterator {
-        (0 .. self.num_vertices())
+        (0..self.num_vertices())
     }
 
     pub fn faces(&self) -> FacesIterator<V, E> {
@@ -200,11 +210,19 @@ impl <V, E> DCEL<V, E> where E: Default {
     }
 }
 
-impl <V, E> DCEL<V, E> where E: Default + Copy {
-
-    pub fn connect_edge_to_isolated_vertex(&mut self, prev_handle: FixedEdgeHandle,
-                                           vertex: FixedVertexHandle) -> FixedEdgeHandle {
-        assert!(self.vertices[vertex].out_edge.is_none(), "Given vertex is not isolated");
+impl<V, E> DCEL<V, E>
+where
+    E: Default + Copy,
+{
+    pub fn connect_edge_to_isolated_vertex(
+        &mut self,
+        prev_handle: FixedEdgeHandle,
+        vertex: FixedVertexHandle,
+    ) -> FixedEdgeHandle {
+        assert!(
+            self.vertices[vertex].out_edge.is_none(),
+            "Given vertex is not isolated"
+        );
         let prev = self.edges[prev_handle];
 
         let edge_index = self.edges.len();
@@ -231,13 +249,16 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
 
         self.edges[prev_handle].next = edge_index;
         self.edges[prev.next].prev = twin_index;
-        
+
         self.vertices[vertex].out_edge = Some(twin_index);
         edge_index
     }
 
-    pub fn remove_vertex(&mut self, vertex_handle: FixedVertexHandle,
-                         remaining_face: Option<FixedFaceHandle>) -> VertexRemovalResult<V> {
+    pub fn remove_vertex(
+        &mut self,
+        vertex_handle: FixedVertexHandle,
+        remaining_face: Option<FixedFaceHandle>,
+    ) -> VertexRemovalResult<V> {
         while let Some(out_edge) = self.vertices[vertex_handle].out_edge {
             self.remove_edge(out_edge, remaining_face);
         }
@@ -246,8 +267,11 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
             None
         } else {
             // Update origin of all out edges
-            let to_update: Vec<_> = self.vertex(vertex_handle).ccw_out_edges().map(
-                |e| e.fix()).collect();
+            let to_update: Vec<_> = self
+                .vertex(vertex_handle)
+                .ccw_out_edges()
+                .map(|e| e.fix())
+                .collect();
             for e in to_update {
                 self.edges[e].origin = vertex_handle;
             }
@@ -260,8 +284,11 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         }
     }
 
-    pub fn connect_edge_to_edge(&mut self, prev_edge_handle: FixedEdgeHandle,
-                                next_edge_handle: FixedEdgeHandle) -> FixedEdgeHandle {
+    pub fn connect_edge_to_edge(
+        &mut self,
+        prev_edge_handle: FixedEdgeHandle,
+        next_edge_handle: FixedEdgeHandle,
+    ) -> FixedEdgeHandle {
         let edge_index = self.edges.len();
         let twin_index = edge_index + 1;
         let next_edge = self.edges[next_edge_handle];
@@ -285,7 +312,7 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
             data: Default::default(),
         };
         self.edges.push(twin);
-        
+
         self.edges[next_edge_handle].prev = edge_index;
         self.edges[prev_edge_handle].next = edge_index;
         self.edges[next_edge.prev].next = twin_index;
@@ -294,13 +321,18 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         edge_index
     }
 
-    pub fn split_edge(&mut self, edge_handle: FixedEdgeHandle, 
-                      split_vertex: FixedVertexHandle) -> FixedEdgeHandle {
-        assert!(self.vertices[split_vertex].out_edge.is_none(),
-                "Given vertex must be isolated");
+    pub fn split_edge(
+        &mut self,
+        edge_handle: FixedEdgeHandle,
+        split_vertex: FixedVertexHandle,
+    ) -> FixedEdgeHandle {
+        assert!(
+            self.vertices[split_vertex].out_edge.is_none(),
+            "Given vertex must be isolated"
+        );
         let edge = self.edges[edge_handle];
         let twin = self.edges[edge.twin];
-        
+
         let is_isolated = edge.next == edge.twin;
         let new_edge_index = self.edges.len();
         let new_twin_index = new_edge_index + 1;
@@ -309,7 +341,7 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         } else {
             (edge.next, twin.prev)
         };
-            
+
         let new_edge = HalfEdgeEntry {
             next: new_edge_next,
             prev: edge_handle,
@@ -335,7 +367,6 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         self.edges[edge.twin].prev = new_twin_index;
         self.edges[edge_handle].next = new_edge_index;
 
-
         self.edges[edge.twin].origin = split_vertex;
         self.vertices[twin.origin].out_edge = Some(new_twin_index);
         self.vertices[split_vertex].out_edge = Some(new_edge_index);
@@ -345,8 +376,11 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         new_edge_index
     }
 
-    pub fn remove_edge(&mut self, edge_handle: FixedEdgeHandle, 
-                       remaining_face: Option<FixedFaceHandle>) {
+    pub fn remove_edge(
+        &mut self,
+        edge_handle: FixedEdgeHandle,
+        remaining_face: Option<FixedFaceHandle>,
+    ) {
         let edge = self.edges[edge_handle];
 
         let twin = self.edges[edge.twin];
@@ -361,7 +395,7 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         } else {
             (twin, edge)
         };
-        
+
         if edge.prev == edge.twin && edge.next == edge.twin {
             // We remove an isolated edge
             self.faces[to_keep.face].adjacent_edge = None;
@@ -386,7 +420,7 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         } else {
             self.vertices[twin.origin].out_edge = Some(edge.next);
         }
-        
+
         // We must remove the larger index first to prevent the other edge
         // from being updated
         if edge_handle > edge.twin {
@@ -397,7 +431,11 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
             self.swap_out_edge(edge_handle);
         }
         if edge.face != twin.face {
-            let neighs: Vec<_> = self.face(to_keep.face).adjacent_edges().map(|e| e.fix()).collect();
+            let neighs: Vec<_> = self
+                .face(to_keep.face)
+                .adjacent_edges()
+                .map(|e| e.fix())
+                .collect();
             for n in neighs {
                 self.edges[n].face = to_keep.face
             }
@@ -429,19 +467,20 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
                 self.vertices[edge.origin].out_edge = Some(edge_handle);
             }
             self.faces[edge.face].adjacent_edge = Some(edge_handle);
-
         }
     }
 
-    pub fn create_face(&mut self, 
-                       prev_edge_handle: FixedEdgeHandle, 
-                       next_edge_handle: FixedEdgeHandle) -> FixedEdgeHandle {
+    pub fn create_face(
+        &mut self,
+        prev_edge_handle: FixedEdgeHandle,
+        next_edge_handle: FixedEdgeHandle,
+    ) -> FixedEdgeHandle {
         let edge_index = self.connect_edge_to_edge(prev_edge_handle, next_edge_handle);
-        
+
         let new_face = self.num_faces();
 
         self.faces.push(FaceEntry {
-            adjacent_edge: Some(edge_index)
+            adjacent_edge: Some(edge_index),
         });
 
         // Set the face to the left of the new edge
@@ -472,7 +511,7 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
         self.edges[e].prev = en;
         self.edges[tp].next = en;
         self.edges[tp].prev = e;
-        
+
         self.edges[tn].next = t;
         self.edges[tn].prev = ep;
         self.edges[t].next = ep;
@@ -505,7 +544,7 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
                 assert_eq!(self.edges[out_edge].origin, index);
             }
         }
-        for handle in 0 .. self.num_edges() {
+        for handle in 0..self.num_edges() {
             let edge = self.edge(handle);
             assert_eq!(edge, edge.o_next().o_prev());
             assert_eq!(edge, edge.o_prev().o_next());
@@ -514,8 +553,10 @@ impl <V, E> DCEL<V, E> where E: Default + Copy {
     }
 }
 
-impl <V, E> DCEL<V, E> where E: ::std::fmt::Debug {
-
+impl<V, E> DCEL<V, E>
+where
+    E: ::std::fmt::Debug,
+{
     #[cfg(test)]
     fn print(&self) {
         for (index, edge) in self.edges.iter().enumerate() {
@@ -530,18 +571,25 @@ impl <V, E> DCEL<V, E> where E: ::std::fmt::Debug {
     }
 }
 
-
 /// An iterator that iterates over the edges adjacent to a face.
 ///
 /// The iterator will traverse the edges in oriented order.
 /// This order is counterclockwise for right handed coordinate systems
 /// or clockwise for left handed systems.
-pub struct ONextIterator<'a, V, E=()> where V: 'a, E: 'a {
+pub struct ONextIterator<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
-    cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>
+    cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>,
 }
 
-impl <'a, V, E> ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> ONextIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     fn new_empty(dcel: &'a DCEL<V, E>) -> Self {
         ONextIterator {
             dcel,
@@ -558,7 +606,11 @@ impl <'a, V, E> ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
     }
 }
 
-impl <'a, V, E> Iterator for ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> Iterator for ONextIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     type Item = EdgeHandle<'a, V, E>;
 
     fn next(&mut self) -> Option<EdgeHandle<'a, V, E>> {
@@ -577,7 +629,11 @@ impl <'a, V, E> Iterator for ONextIterator<'a, V, E> where V: 'a, E: Default + '
     }
 }
 
-impl <'a, V, E> DoubleEndedIterator for ONextIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> DoubleEndedIterator for ONextIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     fn next_back(&mut self) -> Option<EdgeHandle<'a, V, E>> {
         if let Some((cur, until)) = self.cur_until {
             let until_handle = self.dcel.edge(until);
@@ -599,22 +655,27 @@ impl <'a, V, E> DoubleEndedIterator for ONextIterator<'a, V, E> where V: 'a, E: 
 /// The edges will be iterated in counterclockwise order. Note that
 /// this assumes that you use a right handed coordinate system,
 /// otherwise the sense of orientation is inverted.
-pub struct CCWIterator<'a, V, E=()> where V: 'a, E: 'a {
+pub struct CCWIterator<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     cur_until: Option<(FixedEdgeHandle, FixedEdgeHandle)>,
 }
 
-impl <'a, V, E> CCWIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> CCWIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     fn new(dcel: &'a DCEL<V, E>, vertex: FixedVertexHandle) -> Self {
         let cur_until = if let Some(edge) = dcel.vertex(vertex).out_edge() {
             Some((edge.ccw().fix(), edge.fix()))
         } else {
             None
         };
-        CCWIterator {
-            dcel,
-            cur_until,
-        }
+        CCWIterator { dcel, cur_until }
     }
 
     fn from_edge(dcel: &'a DCEL<V, E>, edge: FixedEdgeHandle) -> Self {
@@ -626,7 +687,11 @@ impl <'a, V, E> CCWIterator<'a, V, E> where V: 'a, E: Default + 'a {
     }
 }
 
-impl <'a, V, E> Iterator for CCWIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> Iterator for CCWIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     type Item = EdgeHandle<'a, V, E>;
 
     fn next(&mut self) -> Option<EdgeHandle<'a, V, E>> {
@@ -645,7 +710,11 @@ impl <'a, V, E> Iterator for CCWIterator<'a, V, E> where V: 'a, E: Default + 'a 
     }
 }
 
-impl <'a, V, E> DoubleEndedIterator for CCWIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> DoubleEndedIterator for CCWIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     fn next_back(&mut self) -> Option<EdgeHandle<'a, V, E>> {
         if let Some((cur, until)) = self.cur_until {
             let until_handle = self.dcel.edge(until);
@@ -662,24 +731,32 @@ impl <'a, V, E> DoubleEndedIterator for CCWIterator<'a, V, E> where V: 'a, E: De
     }
 }
 
-
-pub struct FacesIterator<'a, V, E=()> where V: 'a, E: 'a {
+pub struct FacesIterator<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     current: FixedFaceHandle,
 }
 
-impl <'a, V, E> FacesIterator<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> FacesIterator<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn new(dcel: &'a DCEL<V, E>) -> Self {
-        FacesIterator {
-            dcel,
-            current: 0,
-        }
+        FacesIterator { dcel, current: 0 }
     }
 }
 
-impl <'a, V, E> Iterator for FacesIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> Iterator for FacesIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     type Item = FaceHandle<'a, V, E>;
-    
+
     fn next(&mut self) -> Option<FaceHandle<'a, V, E>> {
         if self.current < self.dcel.num_faces() {
             let result = FaceHandle::new(self.dcel, self.current);
@@ -693,23 +770,32 @@ impl <'a, V, E> Iterator for FacesIterator<'a, V, E> where V: 'a, E: Default + '
 
 type FixedVerticesIterator = ::std::ops::Range<usize>;
 
-pub struct VerticesIterator<'a, V, E=()> where V: 'a, E: 'a {
+pub struct VerticesIterator<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     current: FixedVertexHandle,
 }
 
-impl <'a, V, E> VerticesIterator<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> VerticesIterator<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn new(dcel: &'a DCEL<V, E>) -> Self {
-        VerticesIterator {
-            dcel,
-            current: 0,
-        }
+        VerticesIterator { dcel, current: 0 }
     }
 }
 
-impl <'a, V, E> Iterator for VerticesIterator<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> Iterator for VerticesIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     type Item = VertexHandle<'a, V, E>;
-    
+
     fn next(&mut self) -> Option<VertexHandle<'a, V, E>> {
         if self.current < self.dcel.num_vertices() {
             let result = VertexHandle::new(self.dcel, self.current);
@@ -721,21 +807,29 @@ impl <'a, V, E> Iterator for VerticesIterator<'a, V, E> where V: 'a, E: Default 
     }
 }
 
-pub struct EdgesIterator<'a, V, E=()> where V: 'a, E: 'a {
+pub struct EdgesIterator<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     current: FixedEdgeHandle,
 }
 
-impl <'a, V, E> EdgesIterator<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> EdgesIterator<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn new(dcel: &'a DCEL<V, E>) -> Self {
-        EdgesIterator {
-            dcel,
-            current: 0
-        }
+        EdgesIterator { dcel, current: 0 }
     }
 }
 
-impl <'a, V, E> Iterator for EdgesIterator<'a, V, E> where E: Default {
+impl<'a, V, E> Iterator for EdgesIterator<'a, V, E>
+where
+    E: Default,
+{
     type Item = EdgeHandle<'a, V, E>;
 
     fn next(&mut self) -> Option<EdgeHandle<'a, V, E>> {
@@ -756,7 +850,11 @@ impl <'a, V, E> Iterator for EdgesIterator<'a, V, E> where E: Default {
 /// A handle to a directed edge.
 ///
 /// Used to retrieve adjacent vertices and faces.
-pub struct EdgeHandle<'a, V, E=()> where V: 'a, E: 'a {
+pub struct EdgeHandle<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     handle: FixedEdgeHandle,
 }
@@ -764,7 +862,11 @@ pub struct EdgeHandle<'a, V, E=()> where V: 'a, E: 'a {
 /// A handle to a vertex.
 ///
 /// Used to retrieve its outgoing edges.
-pub struct VertexHandle<'a, V, E=()> where V: 'a, E: 'a {
+pub struct VertexHandle<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     handle: FixedVertexHandle,
 }
@@ -772,40 +874,57 @@ pub struct VertexHandle<'a, V, E=()> where V: 'a, E: 'a {
 /// A handle to a face.
 ///
 /// Used to retrieve its adjacent edges.
-pub struct FaceHandle<'a, V, E=()> where V: 'a, E: 'a {
+pub struct FaceHandle<'a, V, E = ()>
+where
+    V: 'a,
+    E: 'a,
+{
     dcel: &'a DCEL<V, E>,
     handle: FixedFaceHandle,
 }
 
-impl <'a, V, E> ::std::fmt::Debug for VertexHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> ::std::fmt::Debug for VertexHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "VertexHandle({:?})", self.handle)
     }
 }
 
-impl <'a, V, E> PartialEq for VertexHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> PartialEq for VertexHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn eq(&self, other: &Self) -> bool {
         self.handle == other.handle
     }
 }
 
-impl <'a, V, E> Copy for VertexHandle<'a, V, E> where V: 'a { }
+impl<'a, V, E> Copy for VertexHandle<'a, V, E> where V: 'a {}
 
-impl <'a, V, E> VertexHandle<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> VertexHandle<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn new(dcel: &'a DCEL<V, E>, handle: FixedVertexHandle) -> Self {
-        VertexHandle {
-            dcel,
-            handle,
-        }
+        VertexHandle { dcel, handle }
     }
 }
 
-impl <'a, V, E> VertexHandle<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> VertexHandle<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     /// Returns an outgoing edge.
     ///
     /// If the vertex has multiple outgoing edges, any of them is returned.
     pub fn out_edge(&self) -> Option<EdgeHandle<'a, V, E>> {
-        self.dcel.vertices[self.handle].out_edge.map(|e| self.dcel.edge(e))
+        self.dcel.vertices[self.handle]
+            .out_edge
+            .map(|e| self.dcel.edge(e))
     }
 
     /// Returns all outgoing edges in counter clockwise order.
@@ -822,50 +941,75 @@ impl <'a, V, E> VertexHandle<'a, V, E> where V: 'a, E: Default + 'a {
     }
 }
 
-impl <'a, V, E> Clone for VertexHandle<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> Clone for VertexHandle<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn clone(&self) -> Self {
         VertexHandle::new(self.dcel, self.handle)
     }
 }
 
-impl <'a, V, E> ::std::ops::Deref for VertexHandle<'a, V, E> {
+impl<'a, V, E> ::std::ops::Deref for VertexHandle<'a, V, E> {
     type Target = V;
-    
+
     fn deref(&self) -> &V {
         &self.dcel.vertices[self.handle].data
     }
 }
 
-impl <'a, V, E> Copy for EdgeHandle<'a, V, E> where V: 'a { }
+impl<'a, V, E> Copy for EdgeHandle<'a, V, E> where V: 'a {}
 
-impl <'a, V, E> Clone for EdgeHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> Clone for EdgeHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn clone(&self) -> Self {
         EdgeHandle::new(self.dcel, self.handle)
     }
 }
 
-impl <'a, V, E> PartialEq for EdgeHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> PartialEq for EdgeHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn eq(&self, other: &Self) -> bool {
         self.handle == other.handle
     }
 }
 
-impl <'a, V, E> ::std::fmt::Debug for EdgeHandle<'a, V, E> where V: 'a, E: Default {
+impl<'a, V, E> ::std::fmt::Debug for EdgeHandle<'a, V, E>
+where
+    V: 'a,
+    E: Default,
+{
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "EdgeHandle - id: {:?} ({:?} -> {:?})", self.handle, self.from().fix(), self.to().fix())
+        write!(
+            f,
+            "EdgeHandle - id: {:?} ({:?} -> {:?})",
+            self.handle,
+            self.from().fix(),
+            self.to().fix()
+        )
     }
 }
 
-impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> EdgeHandle<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn new(dcel: &'a DCEL<V, E>, handle: FixedEdgeHandle) -> Self {
-        EdgeHandle {
-            dcel,
-            handle,
-        }
+        EdgeHandle { dcel, handle }
     }
 }
 
-impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> EdgeHandle<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     /// Creates a fixed edge handle from this dynamic handle.
     pub fn fix(&self) -> FixedEdgeHandle {
         self.handle
@@ -882,7 +1026,7 @@ impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
     /// The oriented next edge shares the same face as this edge.
     /// When traversing the face's edges in oriented order,
     /// this edge is the predecessor of the oriented next edge.
-    /// "Oriented" means counterclockwise for right handed 
+    /// "Oriented" means counterclockwise for right handed
     /// coordinate systems.
     pub fn o_next(&self) -> EdgeHandle<'a, V, E> {
         EdgeHandle::new(self.dcel, self.dcel.edges[self.handle].next)
@@ -913,7 +1057,7 @@ impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
     pub fn to(&self) -> VertexHandle<'a, V, E> {
         self.sym().from()
     }
-    
+
     /// Returns the face located to the left of this edge.
     pub fn face(&self) -> FaceHandle<'a, V, E> {
         self.dcel.face(self.dcel.edges[self.handle].face)
@@ -947,7 +1091,8 @@ impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
         EdgeHandle {
             dcel: self.dcel,
             handle: self.dcel.edges[self.handle].prev,
-        }.sym()
+        }
+        .sym()
     }
 
     /// Returns an iterator over all edges in counter clockwise
@@ -960,36 +1105,50 @@ impl <'a, V, E> EdgeHandle<'a, V, E> where V: 'a, E: Default + 'a {
     }
 }
 
-impl <'a, V, E> Copy for FaceHandle<'a, V, E> where V: 'a { }
+impl<'a, V, E> Copy for FaceHandle<'a, V, E> where V: 'a {}
 
-impl <'a, V, E> Clone for FaceHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> Clone for FaceHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn clone(&self) -> Self {
         FaceHandle::new(self.dcel, self.handle)
     }
 }
 
-impl <'a, V, E> PartialEq for FaceHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> PartialEq for FaceHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn eq(&self, other: &Self) -> bool {
         self.handle == other.handle
     }
 }
 
-impl <'a, V, E> ::std::fmt::Debug for FaceHandle<'a, V, E> where V: 'a {
+impl<'a, V, E> ::std::fmt::Debug for FaceHandle<'a, V, E>
+where
+    V: 'a,
+{
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "FaceHandle({:?})", self.handle)
     }
 }
 
-impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: 'a {
+impl<'a, V, E> FaceHandle<'a, V, E>
+where
+    V: 'a,
+    E: 'a,
+{
     fn new(dcel: &'a DCEL<V, E>, handle: FixedFaceHandle) -> Self {
-        FaceHandle {
-            dcel,
-            handle,
-        }
+        FaceHandle { dcel, handle }
     }
 }
 
-impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: Default + 'a {
+impl<'a, V, E> FaceHandle<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
     /// Tries to interpret this face as a triangle, returning its 3 vertices.
     ///
     /// # Panic
@@ -997,12 +1156,15 @@ impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: Default + 'a {
     ///
     /// [infinite face]: struct.DelaunayTriangulation.html#method.infinite_face
     pub fn as_triangle(&self) -> [VertexHandle<'a, V, E>; 3] {
-        let adjacent = self.dcel.faces[self.handle].adjacent_edge
+        let adjacent = self.dcel.faces[self.handle]
+            .adjacent_edge
             .expect("Face has no adjacent edge");
         let edge = self.dcel.edge(adjacent);
         let prev = edge.o_prev();
-        debug_assert!(prev.o_prev() == edge.o_next(),
-                      "Face does not form a triangle");
+        debug_assert!(
+            prev.o_prev() == edge.o_next(),
+            "Face does not form a triangle"
+        );
         [prev.from(), edge.from(), edge.to()]
     }
 
@@ -1010,8 +1172,9 @@ impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: Default + 'a {
     ///
     /// If this face has multiple adjacent edges, any of them is returned.
     pub fn adjacent_edge(&self) -> Option<EdgeHandle<'a, V, E>> {
-        self.dcel.faces[self.handle].adjacent_edge.map(
-            |e| EdgeHandle::new(self.dcel, e))
+        self.dcel.faces[self.handle]
+            .adjacent_edge
+            .map(|e| EdgeHandle::new(self.dcel, e))
     }
 
     /// Returns an iterator that iterates over all adjacent edges.
@@ -1033,7 +1196,6 @@ impl <'a, V, E> FaceHandle<'a, V, E> where V: 'a, E: Default + 'a {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::{HalfEdgeEntry, DCEL};
@@ -1050,33 +1212,39 @@ mod test {
         let t01 = dcel.edges[e01].twin;
         let t12 = dcel.edges[e12].twin;
         let t20 = dcel.edges[e20].twin;
-        assert_eq!(dcel.edges[e01], 
-                   HalfEdgeEntry {
-                       next: e12,
-                       prev: e20,
-                       twin: t01,
-                       origin: 0,
-                       face: 1,
-                       data: (),
-                   });
-        assert_eq!(dcel.edges[e12], 
-                   HalfEdgeEntry {
-                       next: e20,
-                       prev: e01,
-                       twin: t12,
-                       origin: 1,
-                       face: 1,
-                       data: (),
-                   });
-        assert_eq!(dcel.edges[e20], 
-                   HalfEdgeEntry {
-                       next: e01,
-                       prev: e12,
-                       twin: t20,
-                       origin: 2,
-                       face: 1,
-                       data: (),
-                   });
+        assert_eq!(
+            dcel.edges[e01],
+            HalfEdgeEntry {
+                next: e12,
+                prev: e20,
+                twin: t01,
+                origin: 0,
+                face: 1,
+                data: (),
+            }
+        );
+        assert_eq!(
+            dcel.edges[e12],
+            HalfEdgeEntry {
+                next: e20,
+                prev: e01,
+                twin: t12,
+                origin: 1,
+                face: 1,
+                data: (),
+            }
+        );
+        assert_eq!(
+            dcel.edges[e20],
+            HalfEdgeEntry {
+                next: e01,
+                prev: e12,
+                twin: t20,
+                origin: 2,
+                face: 1,
+                data: (),
+            }
+        );
         assert_eq!(dcel.edges[t01].face, 0);
         assert_eq!(dcel.edges[t12].face, 0);
         assert_eq!(dcel.edges[t20].face, 0);
@@ -1095,35 +1263,41 @@ mod test {
         let e23 = dcel.connect_edge_to_isolated_vertex(e12, v3);
         let e30 = dcel.create_face(e23, e01);
         let e_flip = dcel.create_face(e30, e23);
-        assert_eq!(dcel.edges[e_flip], 
-                   HalfEdgeEntry {
-                       next: e23,
-                       prev: e30,
-                       twin: dcel.edges[e_flip].twin,
-                       origin: 0,
-                       face: 2,
-                       data: (),
-                   });
+        assert_eq!(
+            dcel.edges[e_flip],
+            HalfEdgeEntry {
+                next: e23,
+                prev: e30,
+                twin: dcel.edges[e_flip].twin,
+                origin: 0,
+                face: 2,
+                data: (),
+            }
+        );
         dcel.flip_cw(e_flip);
         let twin = dcel.edges[e_flip].twin;
-        assert_eq!(dcel.edges[e_flip],
-                   HalfEdgeEntry {
-                       next: e12,
-                       prev: e23,
-                       twin: twin,
-                       origin: 3,
-                       face: 2,
-                       data: (),
-                   });
-        assert_eq!(dcel.edges[twin],
-                   HalfEdgeEntry {
-                       next: e30,
-                       prev: e01,
-                       twin: e_flip,
-                       origin: 1,
-                       face: 1,
-                       data: (),
-                   });
+        assert_eq!(
+            dcel.edges[e_flip],
+            HalfEdgeEntry {
+                next: e12,
+                prev: e23,
+                twin: twin,
+                origin: 3,
+                face: 2,
+                data: (),
+            }
+        );
+        assert_eq!(
+            dcel.edges[twin],
+            HalfEdgeEntry {
+                next: e30,
+                prev: e01,
+                twin: e_flip,
+                origin: 1,
+                face: 1,
+                data: (),
+            }
+        );
     }
 
     #[test]
@@ -1154,48 +1328,57 @@ mod test {
 
         let e_split = dcel.split_edge(e20, v3);
         let t_split = dcel.edge(e_split).sym().fix();
-        assert_eq!(dcel.edges[e20], 
-                   HalfEdgeEntry {
-                       next: e_split,
-                       prev: e12,
-                       twin: t20,
-                       origin: v2,
-                       face: 1,
-                       data: (),
-                   });
-        assert_eq!(dcel.edges[e_split], 
-                   HalfEdgeEntry {
-                       next: e01,
-                       prev: e20,
-                       twin: t_split,
-                       origin: v3,
-                       face: 1,
-                       data: (),
-                   });
-        assert_eq!(dcel.edges[t_split],
-                   HalfEdgeEntry {
-                       next: t20,
-                       prev: t01,
-                       origin: v0,
-                       twin: e_split,
-                       face: 0,
-                       data: (),
-                   });
-        assert_eq!(dcel.edges[t20],
-                   HalfEdgeEntry {
-                       next: t12,
-                       prev: t_split,
-                       origin: v3,
-                       twin: e20,
-                       face: 0,
-                       data: (),
-                   });
+        assert_eq!(
+            dcel.edges[e20],
+            HalfEdgeEntry {
+                next: e_split,
+                prev: e12,
+                twin: t20,
+                origin: v2,
+                face: 1,
+                data: (),
+            }
+        );
+        assert_eq!(
+            dcel.edges[e_split],
+            HalfEdgeEntry {
+                next: e01,
+                prev: e20,
+                twin: t_split,
+                origin: v3,
+                face: 1,
+                data: (),
+            }
+        );
+        assert_eq!(
+            dcel.edges[t_split],
+            HalfEdgeEntry {
+                next: t20,
+                prev: t01,
+                origin: v0,
+                twin: e_split,
+                face: 0,
+                data: (),
+            }
+        );
+        assert_eq!(
+            dcel.edges[t20],
+            HalfEdgeEntry {
+                next: t12,
+                prev: t_split,
+                origin: v3,
+                twin: e20,
+                face: 0,
+                data: (),
+            }
+        );
         assert_eq!(dcel.edges[t01].next, t_split);
         assert_eq!(dcel.edges[e01].prev, e_split);
         assert_eq!(dcel.edges[t12].prev, t20);
         assert_eq!(dcel.edges[e12].next, e20);
-        assert!(dcel.vertices[v3].out_edge == Some(e_split)
-                || dcel.vertices[v3].out_edge == Some(t20));
+        assert!(
+            dcel.vertices[v3].out_edge == Some(e_split) || dcel.vertices[v3].out_edge == Some(t20)
+        );
         dcel.sanity_check();
     }
 
@@ -1235,7 +1418,7 @@ mod test {
     fn pentagon_test() {
         let mut dcel = DCEL::new();
         let mut v = Vec::new();
-        for _ in 0 .. 5 {
+        for _ in 0..5 {
             v.push(dcel.insert_vertex(()));
         }
 
@@ -1260,7 +1443,7 @@ mod test {
         let central = dcel.insert_vertex(());
         assert_eq!(dcel.vertex(central).ccw_out_edges().next(), None);
 
-        for _ in 0 .. 5 {
+        for _ in 0..5 {
             vs.push(dcel.insert_vertex(()));
         }
         let mut last_edge = dcel.connect_two_isolated_vertices(central, vs[0], 0);
@@ -1269,11 +1452,11 @@ mod test {
             last_edge = dcel.connect_edge_to_isolated_vertex(last_edge, *vertex);
             last_edge = dcel.edge(last_edge).sym().fix();
         }
-        
+
         let out_edge = dcel.vertex(central).out_edge().unwrap();
         let mut neighs: Vec<_> = out_edge.ccw_iter().map(|e| e.to().fix()).collect();
         assert_eq!(neighs.len(), 5);
-        for i in 0 .. 5 {
+        for i in 0..5 {
             let first = neighs[i];
             let second = neighs[(i + 1) % 5];
             assert_eq!(first - 1, second % 5);
@@ -1287,10 +1470,10 @@ mod test {
     fn test_o_next_iterator() {
         let mut dcel = DCEL::new();
         let mut vs = Vec::new();
-        for _ in 0 .. 5 {
+        for _ in 0..5 {
             vs.push(dcel.insert_vertex(()));
         }
-        
+
         let mut last_edge = dcel.connect_two_isolated_vertices(vs[0], vs[1], 0);
         let mut edges = vec![last_edge];
         for vertex in &vs[2..] {
@@ -1298,11 +1481,20 @@ mod test {
             edges.push(last_edge);
         }
         edges.push(dcel.connect_edge_to_edge(last_edge, vs[0]));
-        
-        let mut iterated: Vec<_> = dcel.edge(edges[0]).o_next_iterator().map(|e| e.fix()).collect();
+
+        let mut iterated: Vec<_> = dcel
+            .edge(edges[0])
+            .o_next_iterator()
+            .map(|e| e.fix())
+            .collect();
         assert_eq!(iterated, edges);
 
-        let rev: Vec<_> = dcel.edge(edges[0]).o_next_iterator().rev().map(|e| e.fix()).collect();
+        let rev: Vec<_> = dcel
+            .edge(edges[0])
+            .o_next_iterator()
+            .rev()
+            .map(|e| e.fix())
+            .collect();
         iterated.reverse();
         assert_eq!(iterated, rev);
     }

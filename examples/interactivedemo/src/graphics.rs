@@ -6,14 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::delaunay_example::{ExampleTriangulation};
 use crate::cdt_example::Cdt;
-use spade::{BoundingRect, HasPosition};
-use spade::rtree::{RTree, RTreeNode};
-use cgmath::{EuclideanSpace, Point2, Point3, Vector2, Vector3, Array};
+use crate::delaunay_example::ExampleTriangulation;
 use cgmath::conv::{array2, array3};
-use glium::{Surface, VertexBuffer, Program, Display, DrawParameters};
+use cgmath::{Array, EuclideanSpace, Point2, Point3, Vector2, Vector3};
 use glium;
+use glium::{Display, DrawParameters, Program, Surface, VertexBuffer};
+use spade::rtree::{RTree, RTreeNode};
+use spade::{BoundingRect, HasPosition};
 
 const VERTEX_SHADER_SRC: &'static str = r#"
     #version 140
@@ -46,8 +46,8 @@ pub struct RenderData {
 
 impl RenderData {
     pub fn new(display: &Display) -> RenderData {
-        let program = Program::from_source(display, VERTEX_SHADER_SRC,
-                                           FRAGMENT_SHADER_SRC, None).unwrap();
+        let program =
+            Program::from_source(display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
         let edges_buffer = VertexBuffer::new(display, &[]).unwrap();
         let vertices_buffer = VertexBuffer::new(display, &[]).unwrap();
         let selection_buffer = VertexBuffer::new(display, &[]).unwrap();
@@ -67,28 +67,55 @@ impl RenderData {
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::LinesList);
         let parameters = DrawParameters {
             line_width: Some(1.0),
-            .. Default::default()
+            ..Default::default()
         };
 
-
-        target.draw(&self.edges_buffer, &indices, &self.program, 
-                    &glium::uniforms::EmptyUniforms, &parameters).unwrap();
+        target
+            .draw(
+                &self.edges_buffer,
+                &indices,
+                &self.program,
+                &glium::uniforms::EmptyUniforms,
+                &parameters,
+            )
+            .unwrap();
 
         let parameters = DrawParameters {
             point_size: Some(3.0),
             line_width: Some(2.0),
-            .. Default::default()
+            ..Default::default()
         };
 
-        target.draw(&self.selection_buffer, &indices, &self.program,
-                    &glium::uniforms::EmptyUniforms, &parameters).unwrap();
+        target
+            .draw(
+                &self.selection_buffer,
+                &indices,
+                &self.program,
+                &glium::uniforms::EmptyUniforms,
+                &parameters,
+            )
+            .unwrap();
 
-        target.draw(&self.selection_lines_buffer, &indices, &self.program,
-                    &glium::uniforms::EmptyUniforms, &parameters).unwrap();
+        target
+            .draw(
+                &self.selection_lines_buffer,
+                &indices,
+                &self.program,
+                &glium::uniforms::EmptyUniforms,
+                &parameters,
+            )
+            .unwrap();
 
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::Points);
-        target.draw(&self.vertices_buffer, &indices, &self.program,
-                    &glium::uniforms::EmptyUniforms, &parameters).unwrap();
+        target
+            .draw(
+                &self.vertices_buffer,
+                &indices,
+                &self.program,
+                &glium::uniforms::EmptyUniforms,
+                &parameters,
+            )
+            .unwrap();
 
         target.finish().unwrap();
     }
@@ -106,7 +133,6 @@ impl RenderData {
     }
 
     pub fn update_rtree_buffers(&mut self, display: &Display, tree: &RTree<Point2<f64>>) {
-
         let mut edges = Vec::new();
         let vertices = get_tree_edges(&tree, &mut edges);
         self.edges_buffer = VertexBuffer::new(display, &edges).unwrap();
@@ -122,17 +148,14 @@ impl RenderData {
         self.selection_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }
 
-    pub fn update_selection_lines(&mut self, 
-                                  display: &Display,
-                                  points: &Vec<Point2<f64>>) {
+    pub fn update_selection_lines(&mut self, display: &Display, points: &Vec<Point2<f64>>) {
         let color = [1.0, 0.0, 0.0];
         let mut vertices = Vec::new();
         vertices.extend(points.iter().map(|p| Vertex {
             pos: array2(p.cast().unwrap()),
             color: color,
         }));
-        self.selection_lines_buffer = 
-            VertexBuffer::new(display, &vertices).unwrap();
+        self.selection_lines_buffer = VertexBuffer::new(display, &vertices).unwrap();
     }
 }
 
@@ -145,29 +168,39 @@ pub struct Vertex {
 implement_vertex!(Vertex, pos, color);
 impl Vertex {
     pub fn new(pos: [f32; 2], color: [f32; 3]) -> Vertex {
-        Vertex { pos: pos, color: color }
+        Vertex {
+            pos: pos,
+            color: color,
+        }
     }
 }
 
-pub fn push_rectangle(vec: &mut Vec<Vertex>, rect: &BoundingRect<Point2<f64>>, 
-                      color: [f32; 3]) {
+pub fn push_rectangle(vec: &mut Vec<Vertex>, rect: &BoundingRect<Point2<f64>>, color: [f32; 3]) {
     let v0: Point2<_> = rect.lower();
     let v2: Point2<_> = rect.upper();
     let v1 = Point2::new(v2.x, v0.y);
     let v3 = Point2::new(v0.x, v2.y);
-    vec.extend([v0, v1, v1, v2, v2, v3, v3, v0].iter().cloned().map(
-        |v| Vertex::new(array2(v.to_vec().cast().unwrap()), array3(color))));
+    vec.extend(
+        [v0, v1, v1, v2, v2, v3, v3, v0]
+            .iter()
+            .cloned()
+            .map(|v| Vertex::new(array2(v.to_vec().cast().unwrap()), array3(color))),
+    );
 }
 
 pub fn push_cross(vec: &mut Vec<Vertex>, pos: &Point2<f64>, color: [f32; 3]) {
-    let mut delta =  Vector2::from_value(0.015);
+    let mut delta = Vector2::from_value(0.015);
     let v0 = pos.to_vec() + delta;
     let v1 = pos.to_vec() - delta;
     delta.x *= -1.0;
     let v2 = pos.to_vec() + delta;
     let v3 = pos.to_vec() - delta;
-    vec.extend([v0, v1, v2, v3].iter().cloned().map(
-        |v| Vertex::new(array2(v.cast().unwrap()), color)));
+    vec.extend(
+        [v0, v1, v2, v3]
+            .iter()
+            .cloned()
+            .map(|v| Vertex::new(array2(v.cast().unwrap()), color)),
+    );
 }
 
 pub fn get_color_for_depth(depth: usize) -> [f32; 3] {
@@ -189,19 +222,20 @@ fn get_tree_edges(tree: &RTree<Point2<f64>>, buffer: &mut Vec<Vertex>) -> Vec<Ve
         for child in cur.children().iter() {
             match child {
                 &RTreeNode::Leaf(point) => vertices.push(Vertex::new(
-                    array2(point.to_vec().cast().unwrap()), array3(vertex_color.clone()))),
+                    array2(point.to_vec().cast().unwrap()),
+                    array3(vertex_color.clone()),
+                )),
                 &RTreeNode::DirectoryNode(ref data) => {
                     to_visit.push(data);
                     push_rectangle(buffer, &data.mbr(), get_color_for_depth(data.depth()));
-                }                
+                }
             }
         }
     }
     vertices
 }
 
-fn get_delaunay_edges(delaunay: &ExampleTriangulation,
-                      edges_buffer: &mut Vec<Vertex>) {
+fn get_delaunay_edges(delaunay: &ExampleTriangulation, edges_buffer: &mut Vec<Vertex>) {
     let color = [0.1, 0.1, 0.2];
     for edge in delaunay.edges() {
         let from = edge.from().position().to_vec();
@@ -211,8 +245,7 @@ fn get_delaunay_edges(delaunay: &ExampleTriangulation,
     }
 }
 
-fn get_cdt_edges(cdt: &Cdt,
-                 edges_buffer: &mut Vec<Vertex>) {
+fn get_cdt_edges(cdt: &Cdt, edges_buffer: &mut Vec<Vertex>) {
     let normal_color = [0.1, 0.1, 0.2];
     let constraint_color = [1.0, 0.0, 0.0];
     for edge in cdt.edges() {

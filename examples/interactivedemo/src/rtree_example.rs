@@ -11,10 +11,10 @@
  * triangulation and R-Tree. Press h for help.
  */
 
+use crate::graphics::RenderData;
 use cgmath::Point2;
 use glium::glutin;
 use glium::glutin::{ElementState, Event, MouseButton, VirtualKeyCode, WindowEvent};
-use crate::graphics::RenderData;
 use rand::distributions::Standard;
 use rand::Rng;
 use spade::rtree::RTree;

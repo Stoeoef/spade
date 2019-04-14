@@ -24,24 +24,21 @@
 //! # Supported point types
 //! Spade works well with points from the `nalgebra` and `cgmath` packages. Also, fixed size arrays of size 2, 3 and 4 are
 //! supported. Also own vector types can be defined.
-//! Please note that, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath 
+//! Please note that, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath
 //! or nalgebra: every time spade updates these libraries, the using code must be update too, even if spade would still work
-//!  with the older version. To avoid this, consider switching to fixed size arrays as points until 
+//!  with the older version. To avoid this, consider switching to fixed size arrays as points until
 //! [public / private dependencies make their way into cargo](https://github.com/rust-lang/rust/issues/44663).
-
-
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![allow(clippy::float_cmp)]
 
-
-extern crate num;
 extern crate cgmath;
-extern crate nalgebra;
 extern crate clamp;
-extern crate smallvec;
+extern crate nalgebra;
+extern crate num;
 extern crate pdqselect;
+extern crate smallvec;
 
 #[cfg(feature = "serde_serialize")]
 #[macro_use]
@@ -59,18 +56,18 @@ extern crate rand;
 #[cfg(test)]
 mod testutils;
 
-mod traits;
-mod point_traits;
-mod misc;
-mod boundingrect;
 mod bigvec;
+mod boundingrect;
 mod exactpred;
+mod misc;
+mod point_traits;
+mod traits;
 
 pub mod delaunay;
 pub mod kernels;
 pub mod primitives;
 pub mod rtree;
 
-pub use crate::traits::*;
 pub use crate::boundingrect::*;
-pub use crate::point_traits::{PointN, TwoDimensional, ThreeDimensional};
+pub use crate::point_traits::{PointN, ThreeDimensional, TwoDimensional};
+pub use crate::traits::*;

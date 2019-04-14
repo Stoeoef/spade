@@ -19,37 +19,37 @@
  * and nalgebra points for the rendering in kiss3d. Once kiss3d updates,
  * only nalgebra will be used.
  */
+extern crate cgmath;
 extern crate kiss3d;
 extern crate nalgebra;
-extern crate cgmath;
-extern crate rand;
 extern crate noise;
+extern crate rand;
 extern crate spade;
 
-mod interpolation;
 mod constants;
 mod delaunay_creation;
+mod interpolation;
 
 use nalgebra as na;
 
-use cgmath::EuclideanSpace;
 use cgmath as cg;
+use cgmath::EuclideanSpace;
 
-use kiss3d::window::Window;
-use kiss3d::event::{WindowEvent, Action, Key};
+use kiss3d::event::{Action, Key, WindowEvent};
 use kiss3d::light::Light;
-use kiss3d::scene::SceneNode;
 use kiss3d::resource::Mesh;
+use kiss3d::scene::SceneNode;
+use kiss3d::window::Window;
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-use crate::interpolation::{InterpolationMethod, Grid};
-use crate::interpolation::interpolation_methods::{BarycentricInterpolation,
-                                           NaturalNeighborInterpolation,
-                                           SibsonC1Interpolation,
-                                           FarinC1Interpolation};
 use crate::delaunay_creation::Delaunay;
+use crate::interpolation::interpolation_methods::{
+    BarycentricInterpolation, FarinC1Interpolation, NaturalNeighborInterpolation,
+    SibsonC1Interpolation,
+};
+use crate::interpolation::{Grid, InterpolationMethod};
 
 struct InterpolationRenderData {
     edges: Vec<(na::Point3<f32>, na::Point3<f32>)>,
@@ -73,7 +73,6 @@ impl InterpolationRenderData {
         }
     }
 }
-
 
 fn print_help() {
     println!("Interpolation Demo");
@@ -113,7 +112,7 @@ impl GridRenderType {
         use crate::GridRenderType::*;
         match self {
             &Lines => Polygons,
-            &Polygons => Lines
+            &Polygons => Lines,
         }
     }
 }
@@ -132,8 +131,7 @@ fn main() {
     let delaunay = crate::delaunay_creation::generate_random_triangulation();
     let delaunay_mesh = create_mesh_from_triangulation(&delaunay);
     let delaunay_mesh = Rc::new(RefCell::new(delaunay_mesh));
-    let mut delaunay_node = window.add_mesh(delaunay_mesh.clone(), 
-                                            na::Vector3::new(1.0, 1.0, 1.0));
+    let mut delaunay_node = window.add_mesh(delaunay_mesh.clone(), na::Vector3::new(1.0, 1.0, 1.0));
     delaunay_node.enable_backface_culling(false);
     let delaunay_lines = extract_edges(&delaunay);
 
@@ -162,25 +160,28 @@ fn main() {
                         cur_interpolation_mesh_index = 0;
                     }
                     if cur_interpolation_mesh_index < interpolation_meshes.len() {
-                        println!("Change interpolation method to {}", 
-                                 interpolation_meshes[cur_interpolation_mesh_index].title);
+                        println!(
+                            "Change interpolation method to {}",
+                            interpolation_meshes[cur_interpolation_mesh_index].title
+                        );
                     }
-                },
+                }
                 WindowEvent::Key(Key::T, Action::Press, _) => {
                     grid_render_type = grid_render_type.next();
                     update_interpolation_mesh = true;
-                },
+                }
                 WindowEvent::Key(Key::D, Action::Press, _) => {
                     delaunay_visibility = delaunay_visibility.next();
                     if delaunay_visibility == DelaunayVisibility::All {
-                        delaunay_node = window.scene_mut().add_mesh(delaunay_mesh.clone(), 
-                                                                    na::Vector3::new(1.0, 1.0, 1.));
+                        delaunay_node = window
+                            .scene_mut()
+                            .add_mesh(delaunay_mesh.clone(), na::Vector3::new(1.0, 1.0, 1.));
                         delaunay_node.enable_backface_culling(false);
                     } else {
                         delaunay_node.unlink();
                     }
                 }
-                _ => { },
+                _ => {}
             }
             if update_interpolation_mesh {
                 if let Some(mut mesh_node) = cur_interpolation_mesh_node {
@@ -188,17 +189,21 @@ fn main() {
                     cur_interpolation_mesh_node = None;
                 }
                 if cur_interpolation_mesh_index < interpolation_meshes.len()
-                    && grid_render_type == GridRenderType::Polygons {
+                    && grid_render_type == GridRenderType::Polygons
+                {
                     let mut new_node = window.scene_mut().add_mesh(
-                        interpolation_meshes[cur_interpolation_mesh_index].mesh.clone(),
-                        na::Vector3::new(1.0, 1.0, 1.0));
+                        interpolation_meshes[cur_interpolation_mesh_index]
+                            .mesh
+                            .clone(),
+                        na::Vector3::new(1.0, 1.0, 1.0),
+                    );
                     new_node.enable_backface_culling(false);
                     cur_interpolation_mesh_node = Some(new_node);
                 }
             }
         }
 
-        if delaunay_visibility == DelaunayVisibility::All 
+        if delaunay_visibility == DelaunayVisibility::All
             || delaunay_visibility == DelaunayVisibility::OnlyLines
         {
             let color = na::Point3::new(0.8, 0.5, 0.2);
@@ -230,8 +235,7 @@ fn get_normals(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)> {
     for v in delaunay.vertices() {
         let n = v.normal;
         let p = v.position_3d();
-        result.push((cg_vec_to_na(p.to_vec()),
-                    cg_vec_to_na(p.to_vec() - n * 0.3)));
+        result.push((cg_vec_to_na(p.to_vec()), cg_vec_to_na(p.to_vec() - n * 0.3)));
     }
     result
 }
@@ -246,7 +250,6 @@ fn extract_edges(delaunay: &Delaunay) -> Vec<(na::Point3<f32>, na::Point3<f32>)>
     }
     lines
 }
-
 
 fn create_mesh_from_triangulation(delaunay: &Delaunay) -> Mesh {
     let mut coords = Vec::new();

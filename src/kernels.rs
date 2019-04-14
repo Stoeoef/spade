@@ -11,15 +11,15 @@
 //! These kernels determine how precise geometric calculations are performed and how they
 //! deal with overflow issues.
 
-use crate::traits::{SpadeNum, SpadeFloat};
-use crate::point_traits::{TwoDimensional};
-use crate::primitives::{SimpleEdge, EdgeSideInfo};
-use crate::bigvec::{BigVec2, AdaptiveInt};
-use crate::exactpred::{orient2d, incircle};
+use crate::bigvec::{AdaptiveInt, BigVec2};
+use crate::exactpred::{incircle, orient2d};
+use crate::point_traits::TwoDimensional;
+use crate::primitives::{EdgeSideInfo, SimpleEdge};
+use crate::traits::{SpadeFloat, SpadeNum};
 use num::{FromPrimitive, ToPrimitive};
 
 /// Determines how a delaunay triangulation performs its basic geometry computations.
-/// 
+///
 /// Every delaunay triangulation is based on two basic geometry operations: orientation tests
 /// (on which side of a line lies a point?) and in-circle tests (is a point contained in the
 /// circumference of a triangle?). These questions can be answered approximately or precisely,
@@ -32,7 +32,12 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized + Clone {
     /// Returns true if pd is contained in the circumference of the triangle spanned by pa, pb, pc.
     ///
     /// pa, pb, pc have to be ordered clockwise, otherwise the result is inverted.
-    fn contained_in_circumference<V: TwoDimensional<Scalar=D>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
+    fn contained_in_circumference<V: TwoDimensional<Scalar = D>>(
+        pa: &V,
+        pb: &V,
+        pc: &V,
+        pd: &V,
+    ) -> bool {
         let pa = [pa.nth(0), pa.nth(1)];
         let pb = [pb.nth(0), pb.nth(1)];
         let pc = [pc.nth(0), pc.nth(1)];
@@ -52,53 +57,53 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized + Clone {
         let blift = bdx.clone() * bdx.clone() + bdy.clone() * bdy.clone();
         let clift = cdx.clone() * cdx.clone() + cdy.clone() * cdy.clone();
 
-        let det = alift.clone() * bcdet.clone() 
+        let det = alift.clone() * bcdet.clone()
             + blift.clone() * cadet.clone()
             + clift.clone() * abdet.clone();
         det.is_negative()
     }
 
     /// Returns an `EdgeSideInfo` yielding on which side of a line a point lies.
-    fn side_query<Ve: TwoDimensional<Scalar=D>>(edge: &SimpleEdge<Ve>, position: &Ve) -> EdgeSideInfo<D> {
+    fn side_query<Ve: TwoDimensional<Scalar = D>>(
+        edge: &SimpleEdge<Ve>,
+        position: &Ve,
+    ) -> EdgeSideInfo<D> {
         let (a, b) = (&edge.from, &edge.to);
         let q = position;
-        let signed_side = (b.nth(0).clone() - a.nth(0).clone()) 
-            * (q.nth(1).clone() - a.nth(1).clone()) 
-            - (b.nth(1).clone() - a.nth(1).clone())
-            * (q.nth(0).clone() - a.nth(0).clone());
+        let signed_side = (b.nth(0).clone() - a.nth(0).clone())
+            * (q.nth(1).clone() - a.nth(1).clone())
+            - (b.nth(1).clone() - a.nth(1).clone()) * (q.nth(0).clone() - a.nth(0).clone());
         EdgeSideInfo::from_determinant(signed_side)
     }
 
     /// Another formulation of `side_query`, will return `true` if `v0`, `v1` and `v2` are ordered
     /// counterclockwise.
-    fn is_ordered_ccw<V: TwoDimensional<Scalar=D>>(v0: &V, v1: &V, v2: &V) -> bool {
+    fn is_ordered_ccw<V: TwoDimensional<Scalar = D>>(v0: &V, v1: &V, v2: &V) -> bool {
         let edge = SimpleEdge::new(v0.clone(), v1.clone());
         Self::side_query(&edge, v2).is_on_left_side_or_on_line()
     }
 
     /// Returns `true` if a point lies on the infinite edge going through
     /// `edge.from` and `edge.to`.
-    fn point_on_edge<V: TwoDimensional<Scalar=D>>(
-        edge: &SimpleEdge<V>, position: &V) -> bool {
-        Self::side_query(edge, position).is_on_line()
-            && edge.is_projection_on_edge(position)
+    fn point_on_edge<V: TwoDimensional<Scalar = D>>(edge: &SimpleEdge<V>, position: &V) -> bool {
+        Self::side_query(edge, position).is_on_line() && edge.is_projection_on_edge(position)
     }
 }
 
 /// Offers fast and possibly inaccurate geometric calculations.
 ///
 /// Use this kernel if you are working with small integral coordinates (e.g. `Point2<i64>`
-/// in the range &#177;100000) as coordinate vector. Offers best performance. 
+/// in the range &#177;100000) as coordinate vector. Offers best performance.
 /// Run in debug mode to be notified if an overflow occurs.
 /// Using this kernel with `f32` or `f64` coordinates can lead to runtime panics, incorrect
 /// triangulations or infinite loops and is not recommended.
 ///
-/// If your application runs into over / underflow issues, consider 
+/// If your application runs into over / underflow issues, consider
 /// using `AdaptiveIntKernel`.
 #[derive(Clone)]
-pub enum TrivialKernel { }
+pub enum TrivialKernel {}
 
-impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
+impl<N: SpadeNum> DelaunayKernel<N> for TrivialKernel {}
 
 /// Delaunay kernel for integral coordinates with a larger value range.
 ///
@@ -107,12 +112,21 @@ impl <N: SpadeNum> DelaunayKernel<N> for TrivialKernel { }
 /// This kernel will heap allocate more bits if an under- or overflow is encountered. Since
 /// most calculations do not trigger an overflow, this still yields reasonable performance.
 #[derive(Clone)]
-pub enum AdaptiveIntKernel { }
+pub enum AdaptiveIntKernel {}
 
 impl DelaunayKernel<i64> for AdaptiveIntKernel {
-    fn contained_in_circumference<V: TwoDimensional<Scalar=i64>>(pa: &V, pb: &V, pc: &V, pd: &V) -> bool {
-        let to_bigvec = |v: &V| BigVec2::new(
-            AdaptiveInt::from_i64(*v.nth(0)), AdaptiveInt::from_i64(*v.nth(1)));
+    fn contained_in_circumference<V: TwoDimensional<Scalar = i64>>(
+        pa: &V,
+        pb: &V,
+        pc: &V,
+        pd: &V,
+    ) -> bool {
+        let to_bigvec = |v: &V| {
+            BigVec2::new(
+                AdaptiveInt::from_i64(*v.nth(0)),
+                AdaptiveInt::from_i64(*v.nth(1)),
+            )
+        };
         // Cast input to adaptive ints to prevent overflows
         let v1: BigVec2<_> = to_bigvec(pa);
         let v2: BigVec2<_> = to_bigvec(pb);
@@ -127,12 +141,12 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
 ///
 /// Performing a delaunay triangulation is often a tradeoff between accuracy and speed:
 /// a triangulation working on native floating point-operations will fail in some cases
-/// due to rounding errors, while switching to precise floats (like `BigRationals` 
+/// due to rounding errors, while switching to precise floats (like `BigRationals`
 /// from the `num` crate) reduces performance by several orders of magnitude.
 /// This kernel works with adaptive precision: if a calculation is inaccurate,
 /// it will increase its precision until the result is accurate enough. Since most calculations
 /// are accurate enough in their simplest form, only the overhead of checking the precision is
-/// usually encountered. For more information, refer to 
+/// usually encountered. For more information, refer to
 /// [this link](https://www.cs.cmu.edu/~quake/robust.html) describing the techniques behind
 /// the adaptive approach.
 ///
@@ -141,28 +155,38 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
 /// starts. Thus, the performance is the same for both `f64` and `f32`. Only the space
 /// requirements for storing the coordinates differ.
 #[derive(Clone)]
-pub enum FloatKernel { }
+pub enum FloatKernel {}
 
-fn to_f64_arr<V, S>(v: &V) -> [f64; 2] 
-    where V: TwoDimensional<Scalar=S>,
-          S: FromPrimitive + ToPrimitive + SpadeFloat,
+fn to_f64_arr<V, S>(v: &V) -> [f64; 2]
+where
+    V: TwoDimensional<Scalar = S>,
+    S: FromPrimitive + ToPrimitive + SpadeFloat,
 {
     [v.nth(0).to_f64().unwrap(), v.nth(1).to_f64().unwrap()]
 }
 
-impl <S> DelaunayKernel<S> for FloatKernel
-    where S: FromPrimitive + SpadeFloat {
-    fn contained_in_circumference<V: TwoDimensional<Scalar=S>>(
-        v1: &V, v2: &V, v3: &V, p: &V) -> bool {
+impl<S> DelaunayKernel<S> for FloatKernel
+where
+    S: FromPrimitive + SpadeFloat,
+{
+    fn contained_in_circumference<V: TwoDimensional<Scalar = S>>(
+        v1: &V,
+        v2: &V,
+        v3: &V,
+        p: &V,
+    ) -> bool {
         let v1 = to_f64_arr(v1);
-        let v2= to_f64_arr(v2);
+        let v2 = to_f64_arr(v2);
         let v3 = to_f64_arr(v3);
         let p = to_f64_arr(p);
-        
+
         incircle(&v1, &v2, &v3, &p) < 0.0
     }
 
-    fn side_query<V: TwoDimensional<Scalar=S>>(edge: &SimpleEdge<V>, position: &V) -> EdgeSideInfo<S> {
+    fn side_query<V: TwoDimensional<Scalar = S>>(
+        edge: &SimpleEdge<V>,
+        position: &V,
+    ) -> EdgeSideInfo<S> {
         let edge_from = to_f64_arr(&edge.from);
         let edge_to = to_f64_arr(&edge.to);
         let position = to_f64_arr(position);
@@ -173,7 +197,7 @@ impl <S> DelaunayKernel<S> for FloatKernel
 
 #[cfg(test)]
 mod test {
-    use super::{TrivialKernel, DelaunayKernel, FloatKernel};
+    use super::{DelaunayKernel, FloatKernel, TrivialKernel};
     use nalgebra as na;
 
     #[test]
@@ -184,23 +208,38 @@ mod test {
         let v1 = na::Point2::new(a1.sin(), a1.cos()) * 2. + offset;
         let v2 = na::Point2::new(a2.sin(), a2.cos()) * 2. + offset;
         let v3 = na::Point2::new(a3.sin(), a3.cos()) * 2. + offset;
-        assert!(TrivialKernel::contained_in_circumference(&v1, &v2, &v3, &p_offset));
-        let shrunk = (v1 - offset) * 0.9 + offset;
-        assert!(TrivialKernel::contained_in_circumference(&v1, &v2, &v3, &shrunk));
-        let expanded = (v1 - offset) * 1.1 + offset;
-        assert!(!TrivialKernel::contained_in_circumference(&v1, &v2, &v3, &expanded));
-        assert!(!TrivialKernel::contained_in_circumference(
-            &v1, &v2, &v3, &(na::Point2::new(2.0 + offset.x, 2.0 + offset.y))));
         assert!(TrivialKernel::contained_in_circumference(
-            &na::Point2::new(0f32, -1f32), &na::Point2::new(0f32, 0f32),
-            &na::Point2::new(-1f32, 0f32), &na::Point2::new(0f32, 1f32)));
+            &v1, &v2, &v3, &p_offset
+        ));
+        let shrunk = (v1 - offset) * 0.9 + offset;
+        assert!(TrivialKernel::contained_in_circumference(
+            &v1, &v2, &v3, &shrunk
+        ));
+        let expanded = (v1 - offset) * 1.1 + offset;
+        assert!(!TrivialKernel::contained_in_circumference(
+            &v1, &v2, &v3, &expanded
+        ));
+        assert!(!TrivialKernel::contained_in_circumference(
+            &v1,
+            &v2,
+            &v3,
+            &(na::Point2::new(2.0 + offset.x, 2.0 + offset.y))
+        ));
+        assert!(TrivialKernel::contained_in_circumference(
+            &na::Point2::new(0f32, -1f32),
+            &na::Point2::new(0f32, 0f32),
+            &na::Point2::new(-1f32, 0f32),
+            &na::Point2::new(0f32, 1f32)
+        ));
     }
 
     #[test]
     fn test_float_kernel_with_f32() {
         // This test passes if it compiles
-        FloatKernel::is_ordered_ccw(&na::Point2::new(0f32, 0f32),
-                                    &na::Point2::new(1f32, 1f32),
-                                    &na::Point2::new(0f32, 1f32));
+        FloatKernel::is_ordered_ccw(
+            &na::Point2::new(0f32, 0f32),
+            &na::Point2::new(1f32, 1f32),
+            &na::Point2::new(0f32, 1f32),
+        );
     }
 }
