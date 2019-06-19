@@ -95,7 +95,7 @@ where
     locate_structure: L,
     all_points_on_line: bool,
     num_constraints: usize,
-    __kernel: PhantomData<*const K>,
+    __kernel: PhantomData<fn() -> K>,
 }
 
 #[derive(Debug)]

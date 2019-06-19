@@ -141,7 +141,7 @@ where
     V::Point: TwoDimensional,
     L: DelaunayLocateStructure<V::Point>,
 {
-    __kernel: PhantomData<*const K>,
+    __kernel: PhantomData<fn() -> K>,
     s: DCEL<V>,
     all_points_on_line: bool,
     locate_structure: L,
@@ -939,7 +939,7 @@ where
     ///   // Estimate all gradients and store them:
     ///   delaunay.estimate_gradients(&(|v: &PointWithHeight| v.height),
     ///                               &(|v: &mut PointWithHeight, g| v.gradient = g));
-    ///   
+    ///
     ///   // Now we can use the gradients for interpolation, flatness is set to 2.0:
     ///   let interpolated = delaunay.nn_interpolation_c1_sibson(
     ///      &Point2::new(0.5, 0.2), 2.0, |v| v.height, |_, v| v.gradient);
@@ -1137,7 +1137,7 @@ where
     ///   # delaunay.insert(PointWithHeight { point: Point2::new(0.0, 0.0), height: 5., normal: Point3::new(0., 0., 0.)});
     ///   // Then, estimate all normals at once:
     ///   delaunay.estimate_normals(&(|v: &PointWithHeight| v.height), &(|v: &mut PointWithHeight, n| v.normal = n));
-    ///   
+    ///
     ///   // And print them
     ///   for vertex in delaunay.vertices() {
     ///      println!("vertex: {:?}, normal: {:?}", vertex.position(), vertex.normal);
@@ -1787,5 +1787,26 @@ mod test {
         let parsed: IntDelaunayTriangulation<[i32; 2], DelaunayTreeLocate<[i32; 2]>> =
             serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.num_vertices(), 1);
+    }
+
+    #[test]
+    fn test_send_sync_impl() {
+        fn send_sync_tester<T: Send+Sync>(_: &T) {}
+
+        let mut d = FloatDelaunayTriangulation::with_tree_locate();
+        d.insert([0f64, 0f64]);
+        send_sync_tester(&d);
+
+        let mut d = FloatDelaunayTriangulation::with_walk_locate();
+        d.insert([0f64, 0f64]);
+        send_sync_tester(&d);
+
+        let mut t1 = IntDelaunayTriangulation::with_tree_locate();
+        t1.insert([0i32, 12]);
+        send_sync_tester(&t1);
+
+        let mut t2 = IntDelaunayTriangulation::with_walk_locate();
+        send_sync_tester(&t2);
+        t2.insert([0i32, 22]);
     }
 }
