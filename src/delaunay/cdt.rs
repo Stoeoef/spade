@@ -1046,4 +1046,11 @@ mod test {
         let parsed: FloatCDT<[f32; 2], DelaunayWalkLocate> = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.num_vertices(), 1);
     }
+
+    #[test]
+    fn test_send_sync_impl() {
+        fn send_sync_tester<T: Send+Sync>(_: &T) {}
+        let cdt = CDT::new();
+        send_sync_tester(&cdt);
+    }
 }
