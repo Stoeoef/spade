@@ -94,7 +94,7 @@ fn main() {
         random_points_with_seed_range_and_origin::<f64>(20.0, Point2::new(1e10, -1e10), SIZE, seed);
     let vertices_i64_uniform = random_points_in_range::<i64>(10000, SIZE, seed);
 
-    let mut benches: Vec<Box<Benchmark>> = vec![
+    let mut benches: Vec<Box<dyn Benchmark>> = vec![
         // F64 Benchmarks
         Box::new(BenchSetup {
             title: "f64T - uniform - tree lookup",

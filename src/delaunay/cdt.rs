@@ -95,7 +95,7 @@ where
     locate_structure: L,
     all_points_on_line: bool,
     num_constraints: usize,
-    __kernel: PhantomData<*const K>,
+    __kernel: PhantomData<fn() -> K>,
 }
 
 #[derive(Debug)]
@@ -1045,5 +1045,12 @@ mod test {
         let json = serde_json::to_string(&cdt).unwrap();
         let parsed: FloatCDT<[f32; 2], DelaunayWalkLocate> = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.num_vertices(), 1);
+    }
+
+    #[test]
+    fn test_send_sync_impl() {
+        fn send_sync_tester<T: Send+Sync>(_: &T) {}
+        let cdt = CDT::new();
+        send_sync_tester(&cdt);
     }
 }
