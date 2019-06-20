@@ -1791,7 +1791,7 @@ mod test {
 
     #[test]
     fn test_send_sync_impl() {
-        fn send_sync_tester<T: Send+Sync>(_: &T) {}
+        fn send_sync_tester<T: Send + Sync>(_: &T) {}
 
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         d.insert([0f64, 0f64]);

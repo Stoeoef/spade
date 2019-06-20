@@ -1049,7 +1049,7 @@ mod test {
 
     #[test]
     fn test_send_sync_impl() {
-        fn send_sync_tester<T: Send+Sync>(_: &T) {}
+        fn send_sync_tester<T: Send + Sync>(_: &T) {}
         let cdt = CDT::new();
         send_sync_tester(&cdt);
     }
