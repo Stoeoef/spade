@@ -1,10 +1,6 @@
 use criterion::*;
-use spade::{
-    delaunay::*,
-    kernels::*,
-    rtree::*,
-};
 use rand::*;
+use spade::{delaunay::*, kernels::*, rtree::*};
 
 const SEED: &'static [u8; 16] = b"rand::thread_rng";
 
@@ -20,11 +16,13 @@ fn insertion_benchmarks(c: &mut Criterion) {
                 let data = ($data)(*param, &mut rng);
                 b.iter_with_large_drop(|| {
                     let mut t = $e;
-                    for d in &data { t.insert(*d); }
+                    for d in &data {
+                        t.insert(*d);
+                    }
                     t
                 })
             }
-        }
+        };
     }
     c.bench("insert", benchmark_kernels!(sizes, insert_block));
 }
@@ -43,24 +41,26 @@ fn locate_benchmarks(c: &mut Criterion) {
                 let t = {
                     let mut t = $e;
                     let data = ($data)(*param, &mut rng);
-                    for d in data { t.insert(d); }
+                    for d in data {
+                        t.insert(d);
+                    }
                     t
                 };
 
                 use cgmath::Point2;
                 b.iter_with_setup(
-                    || { Point2::new(rng.gen(), rng.gen()) },
-                    |pt| { t.locate(&pt); }
+                    || Point2::new(rng.gen(), rng.gen()),
+                    |pt| {
+                        t.locate(&pt);
+                    },
                 );
-
             }
-        }
+        };
     }
     c.bench("locate", benchmark_kernels!(sizes, locate_block));
-
 }
 
-criterion_group!{
+criterion_group! {
     name = benches;
     config = Criterion::default().sample_size(25);
     targets = insertion_benchmarks, locate_benchmarks
