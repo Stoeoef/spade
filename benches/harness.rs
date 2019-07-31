@@ -51,19 +51,12 @@ macro_rules! benchmark_kernels {
             "uniform_f64/trivial_kernel/walk_locate",
             $mac!(delaunay!(TrivialKernel, DelaunayWalkLocate), uniform_f64s),
         )
-        // .with_function(
-        //     "uniform_i64/adaptive_kernel/tree_locate",
-        //     $mac!(delaunay!(AdaptiveIntKernel, RTree<_>), uniform_i64s),
-        // ).with_function(
-        //     "uniform_i64/adaptive_kernel/walk_locate",
-        //     $mac!(delaunay!(AdaptiveIntKernel, DelaunayWalkLocate), uniform_i64s),
-        // ).with_function(
-        //     "uniform_i64/trivial_kernel/tree_locate",
-        //     $mac!(delaunay!(TrivialKernel, RTree<_>), uniform_i64s),
-        // ).with_function(
-        //     "uniform_i64/trivial_kernel/walk_locate",
-        //     $mac!(delaunay!(TrivialKernel, DelaunayWalkLocate), uniform_i64s),
-        // )
-
+        .with_function(
+            "uniform_i64/adaptive_kernel/tree_locate",
+            $mac!(delaunay!(AdaptiveIntKernel, RTree<_>), uniform_i64s),
+        ).with_function(
+            "uniform_i64/adaptive_kernel/walk_locate",
+            $mac!(delaunay!(AdaptiveIntKernel, DelaunayWalkLocate), uniform_i64s),
+        )
     }
 }

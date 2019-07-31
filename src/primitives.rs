@@ -36,7 +36,7 @@ pub struct SimpleEdge<V: PointN> {
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct EdgeSideInfo<S> {
-    signed_side: S,
+    pub(crate) signed_side: S,
 }
 
 impl<S> PartialEq for EdgeSideInfo<S>

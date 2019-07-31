@@ -135,6 +135,25 @@ impl DelaunayKernel<i64> for AdaptiveIntKernel {
 
         TrivialKernel::contained_in_circumference(&v1, &v2, &v3, &p)
     }
+
+    fn side_query<V: TwoDimensional<Scalar = i64>>(
+        edge: &SimpleEdge<V>,
+        position: &V,
+    ) -> EdgeSideInfo<i64> {
+        let to_bigvec = |v: &V| {
+            BigVec2::new(
+                AdaptiveInt::from_i64(*v.nth(0)),
+                AdaptiveInt::from_i64(*v.nth(1)),
+            )
+        };
+
+        let edge_from = to_bigvec(&edge.from);
+        let edge_to = to_bigvec(&edge.to);
+        let edge = SimpleEdge::new(edge_from, edge_to);
+        let position = to_bigvec(position);
+        let det = TrivialKernel::side_query(&edge, &position);
+        EdgeSideInfo::from_determinant(det.signed_side.sign())
+    }
 }
 
 /// Offers a fast, precise kernel working with `f64` or `f32` coordinates.

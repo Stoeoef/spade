@@ -133,6 +133,21 @@ impl AdaptiveInt {
         AdaptiveInt::HighRes(i.clone()).reduce()
     }
 
+    pub fn sign(&self) -> i64 {
+        match self {
+            AdaptiveInt::LowRes(i) => i.signum(),
+            AdaptiveInt::HighRes(big) => {
+                if big.is_positive() {
+                    1
+                } else if big.is_negative() {
+                    -1
+                } else {
+                    0
+                }
+            }
+        }
+    }
+
     pub fn reduce(self) -> AdaptiveInt {
         match self {
             AdaptiveInt::LowRes(i) => AdaptiveInt::LowRes(i),
