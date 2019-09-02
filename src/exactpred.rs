@@ -334,13 +334,13 @@ fn incircleadapt(pa: [f64; 2], pb: [f64; 2], pc: [f64; 2], pd: [f64; 2], permane
         aytbclen = scale_expansion_zeroelim(&bc, adytail, &mut aytbc);
         let temp16alen = scale_expansion_zeroelim(&aytbc[..aytbclen], 2.0 * ady, &mut temp16a);
 
-        let mut aytcc = [0f64; 8];
-        let aytcclen = scale_expansion_zeroelim(&cc, adytail, &mut aytcc);
-        let temp16blen = scale_expansion_zeroelim(&aytcc[..aytcclen], cdx, &mut temp16b);
-
         let mut aytbb = [0f64; 8];
         let aytbblen = scale_expansion_zeroelim(&bb, adytail, &mut aytbb);
-        let temp16clen = scale_expansion_zeroelim(&aytbb[..aytbblen], -bdx, &mut temp16c);
+        let temp16blen = scale_expansion_zeroelim(&aytbb[..aytbblen], cdx, &mut temp16b);
+
+        let mut aytcc = [0f64; 8];
+        let aytcclen = scale_expansion_zeroelim(&cc, adytail, &mut aytcc);
+        let temp16clen = scale_expansion_zeroelim(&aytcc[..aytcclen], -bdx, &mut temp16c);
 
         let temp32alen = fast_expansion_sum_zeroelim(
             &temp16a[..temp16alen],
@@ -1141,4 +1141,29 @@ mod test {
         assert!(incircle(&from, &p_left, &to, &p_query) > 0.0);
         assert!(incircle(&from, &to, &p_right, &p_query) > 0.0);
     }
+
+    #[test]
+    fn test_issue48_a() {
+        let pa = Point2::new(2.1045541600524288e-15, -1.0000000000000016);
+        let pb = Point2::new(1.000000000000005, -3.350874324301223e-16);
+        let pc = Point2::new(7.553997323229233e-15, 0.9999999999999958);
+        let pd = Point2::new(-0.9999999999999922, -7.073397829693697e-15);
+        // the (incorrect) result from the previous version of exactpred.rs
+        assert!(incircle(&pa, &pb, &pc, &pd) != 1.9217716744382023e-16f64);
+        // the result predicates.c gives
+        assert!(incircle(&pa, &pb, &pc, &pd) == -8.0140565430358e-30f64);
+    }
+
+    #[test]
+    fn test_issue48_b() {
+        let pa = Point2::new(9.128561612013288e-15, -1.0000000000000029);
+        let pb = Point2::new(1.0000000000000044, -5.451395142523081e-15);
+        let pc = Point2::new(3.851214418148064e-15, 0.9999999999999961);
+        let pd = Point2::new(-0.9999999999999946, -6.6797960341085084e-15);
+        // the (incorrect) result from the previous version of exactpred.rs
+        assert!(incircle(&pa, &pb, &pc, &pd) != -1.1074731814540733e-16);
+        // the result predicates.c gives
+        assert!(incircle(&pa, &pb, &pc, &pd) == 7.226864249343135e-30);
+    }
+
 }
