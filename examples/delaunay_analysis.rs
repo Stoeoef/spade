@@ -12,9 +12,9 @@ extern crate rand;
 extern crate spade;
 
 use cgmath::{BaseNum, EuclideanSpace, Point2};
-use rand::distributions::range::SampleRange;
-use rand::distributions::{Distribution, Range};
-use rand::{SeedableRng, XorShiftRng};
+use rand::distributions::uniform::SampleUniform;
+use rand::{Rng, SeedableRng};
+use rand_hc::Hc128Rng;
 use spade::delaunay::*;
 use spade::kernels::*;
 use spade::rtree::RTree;
@@ -87,7 +87,9 @@ fn main() {
     const SIZE: usize = 400000;
     const CHUNK_SIZE: usize = SIZE / 100;
 
-    let seed = b"Our universe its";
+    let seed = b"\x83\xcb\x1e\x14\x80\x64\x1b\x11\x8d\xc1\x9a\x3c\x90\xef\x3c\x64\
+            \x6c\xa1\x68\x59\x6e\xcf\xbc\x9d\x54\xea\x7d\xc5\x92\xfc\xb5\xee";
+
     let vertices_f64_walk = random_walk_with_seed_and_origin::<f64>(0.001, SIZE, seed);
     let vertices_i64_walk = random_walk_with_seed_and_origin::<i64>(3, SIZE, seed);
     let vertices_f64_uniform =
@@ -218,51 +220,48 @@ fn main() {
     println!("Done!");
 }
 
-pub fn random_points_in_range<S: SpadeNum + SampleRange + BaseNum>(
+pub fn random_points_in_range<S: SpadeNum + SampleUniform + BaseNum>(
     range: S,
     size: usize,
-    seed: &[u8; 16],
+    seed: &[u8; 32],
 ) -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed.clone());
-    let range = Range::new(-range.clone(), range.clone());
+    let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::with_capacity(size);
     for _ in 0..size {
-        let x = range.sample(&mut rng);
-        let y = range.sample(&mut rng);
+        let x = rng.gen_range(-range, range);
+        let y = rng.gen_range(-range, range);
         points.push(Point2::new(x, y));
     }
     points
 }
 
-pub fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + SampleRange>(
+pub fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + SampleUniform>(
     range: S,
     origin: Point2<S>,
     size: usize,
-    seed: &[u8; 16],
+    seed: &[u8; 32],
 ) -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed.clone());
-    let range = Range::new(-range, range);
+    let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::new();
     for _ in 0..size {
-        let x = range.sample(&mut rng) + origin.x;
-        let y = range.sample(&mut rng) + origin.y;
+        let x = rng.gen_range(-range, range) + origin.x;
+        let y = rng.gen_range(-range, range) + origin.y;
         points.push(Point2::new(x, y));
     }
     points
 }
 
-pub fn random_walk_with_seed_and_origin<S: SpadeNum + SampleRange + BaseNum>(
+pub fn random_walk_with_seed_and_origin<S: SpadeNum + SampleUniform + BaseNum>(
     step: S,
     size: usize,
-    seed: &[u8; 16],
+    seed: &[u8; 32],
 ) -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed.clone());
-    let rand_range = Range::new(-step, step);
+    let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::new();
     let mut last = Point2::origin();
     for _ in 0..size {
-        let x = rand_range.sample(&mut rng);
-        let y = rand_range.sample(&mut rng);
+        let x = rng.gen_range(-step, step);
+        let y = rng.gen_range(-step, step);
         last = Point2::new(last.x + x, last.y + y);
         points.push(last);
     }

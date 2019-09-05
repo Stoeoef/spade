@@ -3,9 +3,9 @@ extern crate rand;
 extern crate spade;
 
 use cgmath::{BaseNum, Point2};
-use rand::distributions::range::SampleRange;
-use rand::distributions::{Distribution, Range};
-use rand::{SeedableRng, XorShiftRng};
+use rand::distributions::uniform::SampleUniform;
+use rand::{Rng, SeedableRng};
+use rand_hc::Hc128Rng;
 use spade::rtree::{RTree, RTreeOptions};
 use spade::SpadeNum;
 use std::fs::File;
@@ -50,10 +50,15 @@ impl BenchSetup {
 }
 
 pub fn main() {
+    const SEED1: &[u8; 32] = b"\xc6\x97\xea\x72\x0e\xb0\x96\x80\xf5\x57\x7c\x17\x76\x6a\x58\xd9\
+        \x1e\x45\x22\x16\x77\x0d\x1c\x9d\x0d\x46\x16\x1e\x58\x7c\x9b\x47";
+
+    const SEED2: &[u8; 32] = b"\xf4\x8b\x02\xe6\x20\xd6\x98\x12\xaf\xdd\x85\x93\x9d\x56\x31\x31\
+        \x52\xd4\x7a\x4f\x0b\x1e\x89\x1b\x7d\x42\xde\x06\xec\x84\xfc\xc5";
+
     let insertion_points: Vec<Point2<f32>> =
-        random_points_with_seed(*CHUNK_SIZES.last().unwrap(), b"Back to where it".clone());
-    let query_points: Vec<Point2<f32>> =
-        random_points_with_seed(QUERY_SIZE, b"back to...began!".clone());
+        random_points_with_seed(*CHUNK_SIZES.last().unwrap(), *SEED1);
+    let query_points: Vec<Point2<f32>> = random_points_with_seed(QUERY_SIZE, *SEED2);
 
     let mut benchmarks = vec![
         BenchSetup::new(3, 6, "Default options (3-6)"),
@@ -173,16 +178,15 @@ fn duration_ns(duration: Duration) -> f32 {
     duration.as_secs() as f32 * 1_000_000_000. + duration.subsec_nanos() as f32
 }
 
-fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + SampleRange>(
+fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + SampleUniform>(
     size: usize,
-    seed: [u8; 16],
+    seed: [u8; 32],
 ) -> Vec<Point2<S>> {
-    let mut rng = XorShiftRng::from_seed(seed);
-    let range = Range::new(-S::one(), S::one());
+    let mut rng = Hc128Rng::from_seed(seed);
     let mut points = Vec::new();
     for _ in 0..size {
-        let x = range.sample(&mut rng);
-        let y = range.sample(&mut rng);
+        let x = rng.gen_range(-S::one(), S::one());
+        let y = rng.gen_range(-S::one(), S::one());
         points.push(Point2::new(x, y));
     }
     points

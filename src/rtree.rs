@@ -1432,6 +1432,12 @@ mod test {
     use cgmath::{InnerSpace, Point2};
     use num::Float;
 
+    const SEED: &[u8; 32] = b"\xde\x41\xe7\x21\x8d\x99\x85\xfd\x7f\xe1\x02\xdc\x52\x35\xba\x79\
+        \xad\x34\xc1\x4d\x8c\x6f\x8d\x36\x5f\x32\x3d\xb4\x12\x9d\xd7\xaa";
+
+    const SEED2: &[u8; 32] = b"\xa3\xc5\xc2\x01\xa5\x43\xb8\x03\x45\x56\xe0\x6c\x42\xaa\x51\xe6\
+        \xd5\xcf\x9a\x88\x18\x6c\xff\x23\x3c\x54\x00\x6e\x77\xcb\x7a\x14";
+
     #[test]
     fn test_tree_with_integral_points() {
         // This test should compile
@@ -1456,8 +1462,8 @@ mod test {
 
     #[test]
     fn test_nearest_neighbor() {
-        let (tree, points) = create_random_tree::<f32>(1000, b"nearest-neighbor");
-        let sample_points = random_points_with_seed(100, b"aoppllb,1 0 s0,p");
+        let (tree, points) = create_random_tree::<f32>(1000, SEED);
+        let sample_points = random_points_with_seed(100, SEED);
         for sample_point in &sample_points {
             let mut nearest = None;
             let mut closest_dist = Float::infinity();
@@ -1474,13 +1480,13 @@ mod test {
 
     #[test]
     fn test_nearest_neighbor_lines() {
-        let points = random_points_with_seed::<f32>(200, b"ThirstyChicken?=");
+        let points = random_points_with_seed::<f32>(200, SEED);
         let lines: Vec<_> = points
             .chunks(2)
             .map(|xs| SimpleEdge::new(xs[0], xs[1]))
             .collect();
         let tree = RTree::bulk_load(lines.clone());
-        let sample_points = random_points_with_seed(1000, b"S)nug( life .rat");
+        let sample_points = random_points_with_seed(1000, SEED2);
         for sample_point in &sample_points {
             let mut nearest = None;
             let mut closest_dist = Float::infinity();
@@ -1497,8 +1503,8 @@ mod test {
 
     #[test]
     fn test_nearest_neighbor_iterator() {
-        let (tree, mut points) = create_random_tree::<f32>(100, b"switzerlandchees");
-        let sample_points = random_points_with_seed(10, b"15yummydelicious");
+        let (tree, mut points) = create_random_tree::<f32>(100, SEED);
+        let sample_points = random_points_with_seed(10, SEED2);
         for sample_point in &sample_points {
             points.sort_by(|l, r| {
                 l.distance2(sample_point)
@@ -1521,8 +1527,8 @@ mod test {
 
     #[test]
     fn test_lookup_in_circle() {
-        let (tree, points) = create_random_tree::<f32>(1000, b"never turn your ");
-        let sample_points = random_points_with_seed(100, b"back on friends~");
+        let (tree, points) = create_random_tree::<f32>(1000, SEED);
+        let sample_points = random_points_with_seed(100, SEED2);
         const RADIUS: f32 = 20.;
         for sample_point in &sample_points {
             let mut expected = Vec::new();
@@ -1547,8 +1553,8 @@ mod test {
     fn test_lookup_in_rect() {
         use cgmath::{EuclideanSpace, Vector2};
 
-        let (tree, points) = create_random_tree::<f32>(1000, b"the heir of the ");
-        let sample_points = random_points_with_seed(100, b"highlord you bet");
+        let (tree, points) = create_random_tree::<f32>(1000, SEED);
+        let sample_points = random_points_with_seed(100, SEED2);
         const SIZE: f32 = 20.;
         for sample_point in &sample_points {
             let sample_rect = BoundingRect::from_corners(
@@ -1590,8 +1596,8 @@ mod test {
 
     #[test]
     fn test_lookup() {
-        let (mut tree, mut points) = create_random_tree::<f32>(10000, b"The enemy of min");
-        let sample_points = random_points_with_seed(1000, b"Isn't he of your");
+        let (mut tree, mut points) = create_random_tree::<f32>(10000, SEED);
+        let sample_points = random_points_with_seed(1000, SEED2);
         for sample_point in &sample_points {
             assert!(tree.lookup(sample_point).is_none());
             assert!(tree.lookup_mut(sample_point).is_none());
@@ -1604,8 +1610,8 @@ mod test {
 
     #[test]
     fn test_lookup_and_remove() {
-        let (mut tree, points) = create_random_tree::<f32>(10000, b"kind? And finall");
-        let sample_points = random_points_with_seed(1000, b"you may follow m");
+        let (mut tree, points) = create_random_tree::<f32>(10000, SEED);
+        let sample_points = random_points_with_seed(1000, SEED2);
         for sample_point in &sample_points {
             assert!(!tree.lookup_and_remove(sample_point).is_some());
         }
@@ -1624,7 +1630,7 @@ mod test {
 
     #[test]
     fn test_remove() {
-        let random_points = random_points_with_seed(300, b"Farewell, he sai");
+        let random_points = random_points_with_seed(300, SEED);
         let mut triangles = Vec::with_capacity(100);
         for ps in random_points.chunks(3) {
             triangles.push(SimpleTriangle::new(ps[0], ps[1], ps[2]));
@@ -1670,7 +1676,7 @@ mod test {
 
     #[test]
     fn test_iteration() {
-        let (tree, reference_points) = create_random_tree::<f32>(100, b"Nightfall~quietl");
+        let (tree, reference_points) = create_random_tree::<f32>(100, SEED);
         // Check if the set of reference points and the points given by
         // iteration are equal
         assert_eq!(tree.iter().count(), 100);
@@ -1687,10 +1693,11 @@ mod test {
     fn test_higher_dimensions() {
         use nalgebra::Point4;
         use rand::distributions::{Distribution, Standard};
-        use rand::{SeedableRng, XorShiftRng};
+        use rand::SeedableRng;
+        use rand_hc::Hc128Rng;
 
         let mut tree: RTree<Point4<f32>> = RTree::new();
-        let mut rng = XorShiftRng::from_seed(*b"crept in and cha");
+        let mut rng = Hc128Rng::from_seed(*SEED);
         let mut entries = Vec::new();
         for _ in 0..500 {
             let (x, y, z, w) = Standard.sample(&mut rng);
@@ -1708,7 +1715,7 @@ mod test {
     #[test]
     fn test_bulk_load() {
         const MAX_POINTS: usize = 200;
-        let points = random_points_with_seed::<f32>(MAX_POINTS, b"Immortal lands l");
+        let points = random_points_with_seed::<f32>(MAX_POINTS, SEED);
 
         // Check if no number of points crashes
         let mut tree = RTree::new();
@@ -1727,7 +1734,7 @@ mod test {
     fn test_serialization() {
         use serde_json;
         const SIZE: usize = 1000;
-        let points = random_points_with_seed::<f32>(SIZE, b"No sign of life ");
+        let points = random_points_with_seed::<f32>(SIZE, SEED);
         let tree = RTree::bulk_load(points.clone());
         let json = serde_json::to_string(&tree).expect("Serializing tree failed");
         let parsed: RTree<Point2<f32>> =

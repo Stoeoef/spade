@@ -298,7 +298,7 @@ dependencies = [
  "glfw 0.25.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "spade 1.8.0",
+ "spade 1.8.1",
 ]
 
 [[package]]
@@ -745,7 +745,7 @@ dependencies = [
 
 [[package]]
 name = "spade"
-version = "1.8.0"
+version = "1.8.1"
 dependencies = [
  "cgmath 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clamp 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",

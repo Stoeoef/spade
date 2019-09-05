@@ -695,8 +695,8 @@ mod test {
     use crate::testutils::*;
     use crate::traits::HasPosition;
     use cgmath::{EuclideanSpace, Point2, Vector2};
-    use rand::distributions::{Distribution, Range};
-    use rand::{Rng, SeedableRng, XorShiftRng};
+    use rand::{Rng, SeedableRng};
+    use rand_hc::Hc128Rng;
 
     type CDT = ConstrainedDelaunayTriangulation<Point2<f64>, FloatKernel>;
     type Delaunay = DelaunayTriangulation<Point2<f64>, FloatKernel, DelaunayWalkLocate>;
@@ -780,7 +780,10 @@ mod test {
 
     #[test]
     fn test_add_single_constraint() {
-        let points = random_points_with_seed::<f64>(1000, b"dqnlwe33k21n caa");
+        let seed = b"\x4d\x3c\x17\x39\x31\x4d\xc0\x76\xb7\xd2\xd0\xad\x10\xae\xbb\xa6\
+\xeb\x7d\xa8\x31\x0f\x1c\x67\x30\x91\x08\x38\xf4\x29\x89\x0d\xb6";
+
+        let points = random_points_with_seed::<f64>(1000, seed);
         let mut cdt = CDT::new();
         assert_eq!(cdt.num_constraints(), 0);
         for point in points {
@@ -793,7 +796,10 @@ mod test {
 
     #[test]
     fn test_add_border_constraint() {
-        let points = random_points_with_seed::<f64>(1000, b" ddpoo2jjb8ynbv2");
+        let seed = b"\xda\xf5\x4b\x6e\x91\x67\xd8\x31\xd0\x94\xf7\xb7\x35\xf8\xa8\xad\
+    \x3b\xcd\x8a\x7a\x5c\xea\x34\x69\xc0\x23\xbe\x4d\x39\x99\x95\x58";
+
+        let points = random_points_with_seed::<f64>(1000, seed);
         let mut cdt = CDT::new();
         let mut max_y = -::std::f64::MAX;
         for point in points {
@@ -818,22 +824,26 @@ mod test {
     }
 
     fn test_add_multiple_constraints(overlapping: bool) {
+        let seed1 = b"\x96\xb1\xdb\x10\x43\xac\xfe\x1f\x7c\x43\x84\x4d\x68\x34\x57\x5e\
+            \x34\xbc\xff\xdd\xa4\x14\x0b\xe2\x64\x0e\x30\x61\x40\x7c\xa8\xd4";
+
+        let seed2 = b"\x10\x9b\x3f\x57\xd8\xfb\x20\x8a\x11\x47\xca\x0a\x9e\xff\x1e\x03\
+            \x14\x5e\x1d\x88\x46\x15\x8c\x17\x8f\x39\x6b\xa3\x4d\x67\xe5\x3c";
+
+        let seed3 = b"\x14\x05\x63\x14\xa7\xf8\xde\xec\x08\x58\x4b\xa6\xe5\x34\xd1\x28\
+            \x8f\xf7\x5a\x95\x46\xe0\x89\x76\xab\x55\x06\x87\xb4\x67\x01\x5d";
+
+        let seed4 = b"\x28\x94\x6c\x71\xab\xe0\x5b\xe6\xd5\x9b\x31\x05\x96\x6f\xe1\x1c\
+            \xc6\xf3\xb1\x0d\x2e\x15\xaf\x24\xd4\xeb\x0d\x29\x95\xcf\x47\x04";
+
         const RANGE: f64 = 10.;
-        let seed = if overlapping {
-            b"sjjjqpppjnkrwwin"
-        } else {
-            b"iiuqbssdd1922brf"
-        };
+        let seed = if overlapping { seed1 } else { seed2 };
         let points = random_points_in_range::<f64>(RANGE, 1000, seed);
         let mut cdt = CDT::new();
         for point in points {
             cdt.insert(point);
         }
-        let seed = if overlapping {
-            b"veryrandomvalue "
-        } else {
-            b"whichisimportant"
-        };
+        let seed = if overlapping { seed3 } else { seed4 };
         let delaunay_points = random_points_in_range::<f64>(RANGE * 0.9, 80, seed);
         // Use a delaunay triangulation to "generate" non intersecting constraint edges
         let mut d = Delaunay::new();
@@ -949,9 +959,8 @@ mod test {
         R: Rng,
     {
         let mut result = Vec::with_capacity(num_points);
-        let range = Range::new(-range, range);
         for _ in 0..num_points {
-            let factor = range.sample(rng);
+            let factor = rng.gen_range(-range, range);
             result.push(Point2::from_vec(line_dir * factor));
         }
         result
@@ -961,10 +970,12 @@ mod test {
     fn fuzz_test_on_line() {
         // Generates points on a single line and randomly connects
         // them with constraints.
-        let seed = b"fuzztestonline__";
+        let seed = b"\xba\x1b\x12\xb4\x00\x20\x09\x13\x59\x0e\x4d\xde\x6e\x68\x3a\xa0\
+            \xe2\xec\x62\xb0\x71\xa7\x88\xbe\x3a\x9e\xde\x7f\x85\x7e\xb6\xa9";
+
         const RANGE: i64 = 10000;
         const NUM_POINTS: usize = 2000;
-        let mut rng = XorShiftRng::from_seed(*seed);
+        let mut rng = Hc128Rng::from_seed(*seed);
         let points = random_points_on_line(RANGE, NUM_POINTS, &mut rng, Vector2::new(1, 1));
         let mut cdt = ConstrainedDelaunayTriangulation::<_, AdaptiveIntKernel>::with_walk_locate();
         for ps in points.chunks(2) {
@@ -982,9 +993,13 @@ mod test {
 
     #[test]
     fn fuzz_test_on_grid() {
+        use rand::seq::SliceRandom;
+
         // Generates points on a grid and randomly connects
         // them with non intersecting constraints
-        let seed = b"__fuzztestongrid";
+        let seed = b"\x6d\x1d\x35\x61\xad\xe0\x07\x7f\x13\x9f\x6a\x99\xb2\xa0\xed\x34\
+            \xed\xec\x88\x9e\xe9\x94\xe1\xcb\x2f\x8a\x81\x4a\xff\xda\xac\x69";
+
         let mut points = Vec::with_capacity((RANGE * RANGE) as usize);
         const RANGE: i64 = 30;
         const NUM_CONSTRAINTS: usize = 2000;
@@ -993,22 +1008,21 @@ mod test {
                 points.push(Point2::new(x, y));
             }
         }
-        let mut rng = XorShiftRng::from_seed(*seed);
-        rng.shuffle(&mut points);
+        let mut rng = Hc128Rng::from_seed(*seed);
+        points.shuffle(&mut rng);
         let mut cdt = ConstrainedDelaunayTriangulation::<_, AdaptiveIntKernel>::with_walk_locate();
         for p in points {
             cdt.insert(p);
         }
-        let range = Range::new(-RANGE, RANGE);
         let directions_and_offset = [
             (Vector2::new(1, 0), Point2::new(0, 1)),
             (Vector2::new(0, 1), Point2::new(1, 0)),
             (Vector2::new(1, 1), Point2::new(0, 0)),
         ];
         for _ in 0..NUM_CONSTRAINTS {
-            let &(direction, offset) = rng.choose(&directions_and_offset).unwrap();
-            let factor1 = range.sample(&mut rng);
-            let factor2 = range.sample(&mut rng);
+            let &(direction, offset) = directions_and_offset.choose(&mut rng).unwrap();
+            let factor1 = rng.gen_range(-RANGE, RANGE);
+            let factor2 = rng.gen_range(-RANGE, RANGE);
             let p1 = offset + direction * factor1;
             let p2 = offset + direction * factor2;
             if p1 != p2 {

@@ -1,8 +1,11 @@
 use criterion::*;
 use rand::*;
+use rand_hc::Hc128Rng;
+
 use spade::{delaunay::*, kernels::*, rtree::*};
 
-const SEED: &'static [u8; 16] = b"rand::thread_rng";
+const SEED: &[u8; 32] = b"\xfb\xdc\x4e\xa0\x30\xde\x82\xba\x69\x97\x3c\x52\x49\x4d\x00\xca
+\x5c\x21\xa3\x8d\x5c\xf2\x34\x4e\x58\x7d\x80\x16\x66\x23\x30";
 
 fn insertion_benchmarks(c: &mut Criterion) {
     // Setup iteration parameters
@@ -12,7 +15,7 @@ fn insertion_benchmarks(c: &mut Criterion) {
     macro_rules! insert_block {
         ($e: expr, $data: expr) => {
             move |b, param| {
-                let mut rng = XorShiftRng::from_seed(*SEED);
+                let mut rng = Hc128Rng::from_seed(*SEED);
                 let data = ($data)(*param, &mut rng);
                 b.iter_with_large_drop(|| {
                     let mut t = $e;
@@ -35,7 +38,7 @@ fn locate_benchmarks(c: &mut Criterion) {
     macro_rules! locate_block {
         ($e: expr, $data: expr) => {
             move |b, param| {
-                let mut rng = XorShiftRng::from_seed(*SEED);
+                let mut rng = Hc128Rng::from_seed(*SEED);
 
                 // Create datastructure to test queries on
                 let t = {

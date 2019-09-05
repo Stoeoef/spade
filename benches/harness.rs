@@ -1,20 +1,17 @@
 //! Benchmark harness and related utilities
 
 use cgmath::*;
-use rand::distributions::range::SampleRange;
-use rand::distributions::{Distribution, Range};
+use rand::distributions::uniform::SampleUniform;
 use rand::*;
 use spade::*;
 
-pub fn uniform_points_in_range<S: SpadeNum + SampleRange + BaseNum, R: Rng>(
+pub fn uniform_points_in_range<S: SpadeNum + SampleUniform + BaseNum, R: Rng>(
     range: S,
     size: usize,
     rng: &mut R,
 ) -> Vec<Point2<S>> {
-    let range = Range::new(-range.clone(), range.clone());
-
     (0..size)
-        .map(|_| Point2::new(range.sample(rng), range.sample(rng)))
+        .map(|_| Point2::new(rng.gen_range(-range, range), rng.gen_range(-range, range)))
         .collect()
 }
 
