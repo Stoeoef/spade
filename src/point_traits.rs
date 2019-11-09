@@ -85,7 +85,7 @@ pub trait PointNExtensions: PointN {
         result
     }
 
-    /// Maps an unary operation to all compoenents.
+    /// Maps an unary operation to all components.
     fn map<F: Fn(Self::Scalar) -> O::Scalar, O: PointN>(&self, f: F) -> O {
         let mut result = O::new();
         for i in 0..Self::dimensions() {
