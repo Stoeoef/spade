@@ -904,6 +904,9 @@ where
             }
             if let Some(to_remove) = remove_index {
                 self.children.remove(to_remove);
+            }
+            if result {
+                // Update the mbr if we did remove an element
                 self.update_mbr();
             }
             result
@@ -1672,6 +1675,47 @@ mod test {
         tree.insert(SimpleEdge::new([-3., -4.], [0., 2.]));
         tree.remove(&edge);
         assert_eq!(tree.size(), 2);
+    }
+
+    #[test]
+    fn test_remove_extreme() {
+        // Add extreme points that determine the dimensions
+        // of the tree's MBR.
+        let extreme_points = vec![
+            Point2::new(-1.0, -1.0),
+            Point2::new(1.0, 1.0),
+        ];
+
+        // Fill in the inner bounds of the MBR with
+        // some random points so as to extend the depth
+        // of the tree.
+        let mut inner_points = random_points_with_seed(512, SEED);
+
+        // Create the tree and fill it in with all the points
+        // generated above.
+        inner_points.extend(extreme_points);
+        let mut tree = RTree::bulk_load(inner_points);
+
+        // Remove the lower extreme point, which should
+        // reduce the lower bound of the MBR.
+        let to_remove = Point2::new(-1.0, -1.0);
+        tree.remove(&to_remove);
+
+        // Verify that the MBR lower bound was actually reduced.
+        let mbr = tree.mbr().unwrap();
+        let l = mbr.lower();
+        assert_ne!(l.x, -1.0);
+        assert_ne!(l.y, -1.0);
+
+        // Repeat the above test, but this time for the upper extreme point.
+        let to_remove = Point2::new(1.0, 1.0);
+        tree.remove(&to_remove);
+
+        // Verify that the MBR lower bound was actually reduced.
+        let mbr = tree.mbr().unwrap();
+        let u = mbr.upper();
+        assert_ne!(u.x, 1.0);
+        assert_ne!(u.y, 1.0);
     }
 
     #[test]
