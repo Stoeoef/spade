@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.8.2] - 2020-04-01
+### Bugfixes
+ - Removing elements from an rtree could leave the tree in an inconsistent state (#55). This made some nearest neighbor queries return incorrect results.
+
 ## [1.8.0] - 2019-06-20
 ### Changed
  - Bumped compatible nalgebra version to 0.18
@@ -179,6 +183,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[1.8.2]: https://github.com/Stoeoef/spade/compare/v1.8.0...v1.8.2
 
 [1.8.0]: https://github.com/Stoeoef/spade/compare/v1.7.0...v1.8.0
 
