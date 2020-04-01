@@ -202,7 +202,7 @@ where
     }
 
     pub fn fixed_vertices(&self) -> FixedVerticesIterator {
-        (0..self.num_vertices())
+        0..self.num_vertices()
     }
 
     pub fn faces(&self) -> FacesIterator<V, E> {
