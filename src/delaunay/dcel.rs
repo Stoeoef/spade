@@ -936,6 +936,10 @@ where
     }
 
     /// Creates a fixed vertex handle from this dynamic handle.
+    ///
+    /// # Notes
+    ///
+    /// Calling `DelaunayTriangulation::insert()` will create vertices in increasing order.
     pub fn fix(&self) -> FixedVertexHandle {
         self.handle
     }
@@ -1150,6 +1154,10 @@ where
     E: Default + 'a,
 {
     /// Tries to interpret this face as a triangle, returning its 3 vertices.
+    ///
+    /// # Notes
+    ///
+    /// The retuned vertices are in clockwise order. The position of the first one is undefined.
     ///
     /// # Panic
     /// This method will panic if the face does not form a triangle, for example if it is called on the [infinite face].
