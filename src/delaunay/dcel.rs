@@ -1289,7 +1289,7 @@ mod test {
             HalfEdgeEntry {
                 next: e12,
                 prev: e23,
-                twin: twin,
+                twin,
                 origin: 3,
                 face: 2,
                 data: (),

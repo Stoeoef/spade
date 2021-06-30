@@ -22,8 +22,8 @@ pub fn random_points_in_range<S: SpadeNum + SampleUniform + BaseNum>(
     let mut rng = Hc128Rng::from_seed(*seed);
     let mut points = Vec::with_capacity(size);
     for _ in 0..size {
-        let x = rng.gen_range(-range, range);
-        let y = rng.gen_range(-range, range);
+        let x = rng.gen_range(-range..range);
+        let y = rng.gen_range(-range..range);
         points.push(Point2::new(x, y));
     }
     points

@@ -459,11 +459,11 @@ mod test {
     #[test]
     fn test_edge_distance() {
         let e = SimpleEdge::new(Point2::new(0f32, 0.), Point2::new(1., 1.));
-        relative_eq!(e.distance2(&Point2::new(1.0, 0.0)), 0.5);
+        assert_relative_eq!(e.distance2(&Point2::new(1.0, 0.0)), 0.5);
 
-        relative_eq!(e.distance2(&Point2::new(0.0, 1.)), 0.5);
-        relative_eq!(e.distance2(&Point2::new(-1.0, -1.0)), 2.0);
-        relative_eq!(e.distance2(&Point2::new(2.0, 2.0)), 2.0);
+        assert_relative_eq!(e.distance2(&Point2::new(0.0, 1.)), 0.5);
+        assert_relative_eq!(e.distance2(&Point2::new(-1.0, -1.0)), 2.0);
+        assert_relative_eq!(e.distance2(&Point2::new(2.0, 2.0)), 2.0);
     }
 
     #[test]
@@ -524,11 +524,11 @@ mod test {
         let v3 = Point2::new(0., 1.);
         let t = SimpleTriangle::new(v1, v2, v3);
         assert_eq!(t.distance2(&Point2::new(0.25, 0.25)), 0.);
-        relative_eq!(t.distance2(&Point2::new(-1., -1.)), 2.);
-        relative_eq!(t.distance2(&Point2::new(0., -1.)), 1.);
-        relative_eq!(t.distance2(&Point2::new(-1., 0.)), 1.);
-        relative_eq!(t.distance2(&Point2::new(1., 1.)), 0.5);
-        relative_eq!(t.distance2(&Point2::new(0.5, 0.5)), 0.0);
+        assert_relative_eq!(t.distance2(&Point2::new(-1., -1.)), 2.);
+        assert_relative_eq!(t.distance2(&Point2::new(0., -1.)), 1.);
+        assert_relative_eq!(t.distance2(&Point2::new(-1., 0.)), 1.);
+        assert_relative_eq!(t.distance2(&Point2::new(1., 1.)), 0.5);
+        assert_relative_eq!(t.distance2(&Point2::new(0.5, 0.5)), 0.0);
         assert!(t.distance2(&Point2::new(0.6, 0.6)) > 0.001);
     }
 
@@ -578,8 +578,8 @@ mod test {
         assert_eq!(c.distance2(&p2), 1.0);
         assert_eq!(c.distance2(&p3), 1.0);
 
-        assert_eq!(c.contains(&p1), false);
-        assert_eq!(c.contains(&p2), false);
-        assert_eq!(c.contains(&p3), false);
+        assert!(c.contains(&p1));
+        assert!(c.contains(&p2));
+        assert!(c.contains(&p3));
     }
 }

@@ -290,7 +290,7 @@ impl<S: SpadeNum + na::Scalar> PointN for na::Point2<S> {
     }
 
     fn from_value(value: Self::Scalar) -> Self {
-        na::Point2::new(value, value)
+        na::Point2::new(value.clone(), value)
     }
 }
 
@@ -309,7 +309,7 @@ impl<S: SpadeNum + na::Scalar> PointN for na::Point3<S> {
     }
 
     fn from_value(value: Self::Scalar) -> Self {
-        na::Point3::new(value, value, value)
+        na::Point3::new(value.clone(), value.clone(), value)
     }
 }
 
@@ -328,6 +328,6 @@ impl<S: SpadeNum + na::Scalar + na::Scalar> PointN for na::Point4<S> {
     }
 
     fn from_value(value: Self::Scalar) -> Self {
-        na::Point4::new(value, value, value, value)
+        na::Point4::new(value.clone(), value.clone(), value.clone(), value)
     }
 }

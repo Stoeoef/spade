@@ -58,7 +58,6 @@ fn run_compare_operations_bench() {
     const SEED2: &[u8; 32] = b"\x2c\x35\x6a\x07\x06\x30\x6a\x36\x88\x0a\x38\xa4\x35\xe5\xeb\xcb\
         \xbe\x40\x8a\x94\xfc\x84\xe7\x84\x2a\x54\x2c\xbf\x84\x5a\xc7\x2c";
 
-
     let vertices = random_points_with_seed::<f32>(MAX_VERTICES, SEED);
     let query_points = random_points_with_seed(ITERATIONS, SEED2);
     // let vertices = random_walk_with_seed::<f32>(1.0, MAX_VERTICES, [3, 1, 4, 1]);
@@ -120,8 +119,8 @@ pub fn random_points_with_seed<S: SpadeNum + BaseNum + Copy + SampleUniform>(
     let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::new();
     for _ in 0..size {
-        let x = rng.gen_range(-S::one(), S::one());
-        let y = rng.gen_range(-S::one(), S::one());
+        let x = rng.gen_range(-S::one()..S::one());
+        let y = rng.gen_range(-S::one()..S::one());
         points.push(Point2::new(x, y));
     }
     points
@@ -136,8 +135,8 @@ pub fn random_walk_with_seed<S: SpadeNum + SampleUniform + BaseNum>(
     let mut points = Vec::new();
     let mut last = Point2::new(zero(), zero());
     for _ in 0..size {
-        let x = rng.gen_range(-step, step);
-        let y = rng.gen_range(-step, step);
+        let x = rng.gen_range(-step..step);
+        let y = rng.gen_range(-step..step);
         last = Point2::new(last.x + x, last.y + y);
         points.push(last);
     }

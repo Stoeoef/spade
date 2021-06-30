@@ -11,7 +11,7 @@ pub fn uniform_points_in_range<S: SpadeNum + SampleUniform + BaseNum, R: Rng>(
     rng: &mut R,
 ) -> Vec<Point2<S>> {
     (0..size)
-        .map(|_| Point2::new(rng.gen_range(-range, range), rng.gen_range(-range, range)))
+        .map(|_| Point2::new(rng.gen_range(-range..range), rng.gen_range(-range..range)))
         .collect()
 }
 

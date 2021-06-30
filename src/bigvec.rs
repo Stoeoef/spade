@@ -44,7 +44,7 @@ impl<N: SpadeNum> PointN for BigVec2<N> {
     }
 
     fn from_value(val: N) -> Self {
-        BigVec2::new(val.clone(), val.clone())
+        BigVec2::new(val.clone(), val)
     }
 }
 
@@ -67,14 +67,14 @@ impl<N: SpadeNum> Sub for BigVec2<N> {
 impl<N: SpadeNum> Mul<N> for BigVec2<N> {
     type Output = Self;
     fn mul(self, rhs: N) -> Self {
-        BigVec2::new(self.x * rhs.clone(), self.y * rhs.clone())
+        BigVec2::new(self.x * rhs.clone(), self.y * rhs)
     }
 }
 
 impl<N: SpadeNum> Div<N> for BigVec2<N> {
     type Output = Self;
     fn div(self, rhs: N) -> Self {
-        BigVec2::new(self.x / rhs.clone(), self.y / rhs.clone())
+        BigVec2::new(self.x / rhs.clone(), self.y / rhs)
     }
 }
 
@@ -130,7 +130,7 @@ impl AdaptiveInt {
     }
 
     pub fn from_bigint(i: BigInt) -> AdaptiveInt {
-        AdaptiveInt::HighRes(i.clone()).reduce()
+        AdaptiveInt::HighRes(i).reduce()
     }
 
     pub fn sign(&self) -> i64 {
@@ -479,7 +479,7 @@ where
 
 impl<I> From<na::Point2<I>> for BigVec2<AdaptiveInt>
 where
-    I: ::std::convert::Into<i64> + na::Scalar,
+    I: ::std::convert::Into<i64> + na::Scalar + Copy,
 {
     fn from(v: na::Point2<I>) -> Self {
         BigVec2::new(

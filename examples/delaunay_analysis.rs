@@ -228,8 +228,8 @@ pub fn random_points_in_range<S: SpadeNum + SampleUniform + BaseNum>(
     let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::with_capacity(size);
     for _ in 0..size {
-        let x = rng.gen_range(-range, range);
-        let y = rng.gen_range(-range, range);
+        let x = rng.gen_range(-range..range);
+        let y = rng.gen_range(-range..range);
         points.push(Point2::new(x, y));
     }
     points
@@ -244,8 +244,8 @@ pub fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + S
     let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::new();
     for _ in 0..size {
-        let x = rng.gen_range(-range, range) + origin.x;
-        let y = rng.gen_range(-range, range) + origin.y;
+        let x = rng.gen_range(-range..range) + origin.x;
+        let y = rng.gen_range(-range..range) + origin.y;
         points.push(Point2::new(x, y));
     }
     points
@@ -260,8 +260,8 @@ pub fn random_walk_with_seed_and_origin<S: SpadeNum + SampleUniform + BaseNum>(
     let mut points = Vec::new();
     let mut last = Point2::origin();
     for _ in 0..size {
-        let x = rng.gen_range(-step, step);
-        let y = rng.gen_range(-step, step);
+        let x = rng.gen_range(-step..step);
+        let y = rng.gen_range(-step..step);
         last = Point2::new(last.x + x, last.y + y);
         points.push(last);
     }

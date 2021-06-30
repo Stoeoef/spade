@@ -1295,7 +1295,7 @@ mod test {
         let mut rng = Hc128Rng::from_seed(*SEED);
         let mut d = FloatDelaunayTriangulation::with_tree_locate();
         for _ in 0..NUM {
-            let ang = rng.gen_range(0., ::std::f64::consts::PI);
+            let ang = rng.gen_range(0.0..::std::f64::consts::PI);
             let vec = Point2::new(ang.sin(), ang.cos()) * 100.;
             d.insert(vec);
         }
@@ -1686,7 +1686,7 @@ mod test {
                 d.insert(Point2::new(x, y));
             } else {
                 // Remove random point
-                let handle = rng.gen_range(0, d.num_vertices());
+                let handle = rng.gen_range(0..d.num_vertices());
                 d.remove(handle);
             }
         }

@@ -1681,10 +1681,7 @@ mod test {
     fn test_remove_extreme() {
         // Add extreme points that determine the dimensions
         // of the tree's MBR.
-        let extreme_points = vec![
-            Point2::new(-1.0, -1.0),
-            Point2::new(1.0, 1.0),
-        ];
+        let extreme_points = vec![Point2::new(-1.0, -1.0), Point2::new(1.0, 1.0)];
 
         // Fill in the inner bounds of the MBR with
         // some random points so as to extend the depth

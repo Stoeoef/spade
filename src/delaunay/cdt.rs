@@ -960,7 +960,7 @@ mod test {
     {
         let mut result = Vec::with_capacity(num_points);
         for _ in 0..num_points {
-            let factor = rng.gen_range(-range, range);
+            let factor = rng.gen_range(-range..range);
             result.push(Point2::from_vec(line_dir * factor));
         }
         result
@@ -1021,8 +1021,8 @@ mod test {
         ];
         for _ in 0..NUM_CONSTRAINTS {
             let &(direction, offset) = directions_and_offset.choose(&mut rng).unwrap();
-            let factor1 = rng.gen_range(-RANGE, RANGE);
-            let factor2 = rng.gen_range(-RANGE, RANGE);
+            let factor1 = rng.gen_range(-RANGE..RANGE);
+            let factor2 = rng.gen_range(-RANGE..RANGE);
             let p1 = offset + direction * factor1;
             let p2 = offset + direction * factor2;
             if p1 != p2 {

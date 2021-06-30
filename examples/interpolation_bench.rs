@@ -119,8 +119,8 @@ fn random_points_with_seed_range_and_origin<S: SpadeNum + BaseNum + Copy + Sampl
     let mut rng = Hc128Rng::from_seed(seed.clone());
     let mut points = Vec::new();
     for _ in 0..size {
-        let x = rng.gen_range(-range, range) + origin.x;
-        let y = rng.gen_range(-range, range) + origin.y;
+        let x = rng.gen_range(-range..range) + origin.x;
+        let y = rng.gen_range(-range..range) + origin.y;
         points.push(Point2::new(x, y));
     }
     points

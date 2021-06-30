@@ -53,13 +53,11 @@ pub trait DelaunayKernel<D: SpadeNum>: ::std::marker::Sized + Clone {
         let abdet = adx.clone() * bdy.clone() - bdx.clone() * ady.clone();
         let bcdet = bdx.clone() * cdy.clone() - cdx.clone() * bdy.clone();
         let cadet = cdx.clone() * ady.clone() - adx.clone() * cdy.clone();
-        let alift = adx.clone() * adx.clone() + ady.clone() * ady.clone();
-        let blift = bdx.clone() * bdx.clone() + bdy.clone() * bdy.clone();
-        let clift = cdx.clone() * cdx.clone() + cdy.clone() * cdy.clone();
+        let alift = adx.clone() * adx + ady.clone() * ady;
+        let blift = bdx.clone() * bdx + bdy.clone() * bdy;
+        let clift = cdx.clone() * cdx + cdy.clone() * cdy;
 
-        let det = alift.clone() * bcdet.clone()
-            + blift.clone() * cadet.clone()
-            + clift.clone() * abdet.clone();
+        let det = alift * bcdet + blift * cadet + clift * abdet;
         det.is_negative()
     }
 
