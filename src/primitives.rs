@@ -578,8 +578,8 @@ mod test {
         assert_eq!(c.distance2(&p2), 1.0);
         assert_eq!(c.distance2(&p3), 1.0);
 
-        assert!(c.contains(&p1));
-        assert!(c.contains(&p2));
-        assert!(c.contains(&p3));
+        assert!(!c.contains(&p1));
+        assert!(!c.contains(&p2));
+        assert!(!c.contains(&p3));
     }
 }
