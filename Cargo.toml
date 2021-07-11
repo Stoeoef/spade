@@ -1,46 +1,39 @@
 [package]
 name = "spade"
-version = "1.8.2"
+version = "2.0.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
-description="Spatial datastructures like r-trees and delaunay triangulations for rust."
-documentation = "https://docs.rs/spade/"
-repository = "https://github.com/Stoeoef/spade"
-readme = "README.md"
-keywords = ["delaunay", "triangulation", "rtree", "geometry", "interpolation"]
-license = "MIT/Apache-2.0"
 edition = "2018"
-
-[features]
-serde_serialize = ["num/serde", "serde"]
+autobenches = false
 
 [dependencies]
-cgmath = ">=0.10.0, <=0.17.*"
-nalgebra = ">=0.11.0, <=0.18.*"
-num = ">= 0.1.0, <=0.2.*"
-clamp = "0.1"
-smallvec = "1.2"
-pdqselect = "0.1"
-serde_derive = { version = "1.0", optional=true }
-serde = { version = "1.0", optional=true, features=["rc", "serde_derive"] }
+doc-comment = "0.3"
+smallvec = "1.4"
+robust = "0.2.3"
+num-traits = "0.2"
+optional = "0.5.0"
+rstar = { version = "0.9.0", optional = true }
+
+[dependencies.serde_crate]
+package = "serde"
+optional = true
+version = "1.0"
+default_features = false
+
+[features]
+serde = ["rstar/serde", "optional/serde", "serde_crate"]
+rtree = []
 
 [dev-dependencies]
-rand = "0.7"
-rand_hc = "0.2"
-serde_json = "1.0"
-approx = "0.3"
-criterion = "0.3"
+approx = "0.5"
+rand = "0.8.3"
+rand_hc = "0.3"
+cgmath = "0.18.0"
+svg = "0.10.0"
+criterion = { version = "0.3.4", features = ["html_reports"] }
 
-[dev-dependencies.cgmath]
-version = "<=0.17.*"
-features = ["serde"]
-
-[profile.bench]
-opt-level = 3
-debug-assertions = false
-
-[badges]
-maintenance = { status = "passively-maintained" }
 
 [[bench]]
-name = "delaunay"
+name = "benchmarks"
 harness = false
+required-features = ["rtree"]
+debug = true
