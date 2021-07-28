@@ -23,9 +23,10 @@ pub use crate::cdt::{CdtEdge, ConstrainedDelaunayTriangulation};
 pub use crate::delaunay_triangulation::DelaunayTriangulation;
 pub use crate::point::{HasPosition, Point2, SpadeNum};
 
-#[cfg(feature = "rtree")]
-pub use delaunay_core::RTreeHintGenerator;
-pub use delaunay_core::{HintGenerator, LastUsedVertexHintGenerator};
+pub use delaunay_core::{
+    HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
+    LastUsedVertexHintGenerator,
+};
 
 pub use delaunay_core::{LineSideInfo, PositionInTriangulation};
 pub use triangulation::Triangulation;
@@ -103,7 +104,7 @@ mod test_utilities;
 /// local minimum. Due to the special properties of Delaunay triangulations, this is also the
 /// global nearest neighbor.
 ///
-/// _Note: Spade already implements this method, see [Triangulation::nearest_neighbor]_
+/// _Note: Spade already implements this method, see [DelaunayTriangulation::nearest_neighbor]_
 /// ```
 /// use spade::{Point2, DelaunayTriangulation, Triangulation};
 /// use spade::handles::VertexHandle;

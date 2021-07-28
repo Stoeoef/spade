@@ -21,6 +21,11 @@ pub enum InsertionResult {
     Updated(FixedVertexHandle),
 }
 
+pub struct RemovalResult<V> {
+    pub removed_vertex: V,
+    pub swapped_in_vertex: Option<FixedVertexHandle>,
+}
+
 /// Defines common operations on triangulations.
 ///
 /// These operations are both available for
@@ -369,7 +374,7 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) -> Option<Self::Vertex> {
         match self.locate_with_hint_option_core(point, None) {
-            PositionInTriangulation::OnVertex(handle) => Some(self.remove_core(handle)),
+            PositionInTriangulation::OnVertex(handle) => Some(self.remove_and_notify(handle)),
             _ => None,
         }
     }
@@ -382,7 +387,7 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles.
     fn remove(&mut self, vertex: FixedVertexHandle) -> Self::Vertex {
-        self.remove_core(vertex)
+        self.remove_and_notify(vertex)
     }
 
     /// Inserts a new vertex into the triangulation.
@@ -397,8 +402,7 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// Returns a handle to the new vertex. Use this handle with
     /// `ConstrainedDelaunayTriangulation::vertex(..)` to refer to it.
     fn insert(&mut self, vertex: Self::Vertex) -> FixedVertexHandle {
-        let position = vertex.position();
-        self.insert_with_hint_option(vertex, Some(self.hint_generator().get_hint(position)))
+        self.insert_with_hint_option(vertex, None)
     }
 
     /// An iterator visiting all undirected edges.
@@ -636,7 +640,7 @@ pub trait TriangulationExt: Triangulation {
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
         hint: Option<FixedVertexHandle>,
     ) -> PositionInTriangulation {
-        let start = hint.unwrap_or(self.hint_generator().get_hint(point));
+        let start = hint.unwrap_or_else(|| self.hint_generator().get_hint(point));
         self.locate_with_hint_fixed_core(point, start)
     }
 
@@ -807,7 +811,13 @@ pub trait TriangulationExt: Triangulation {
         start: FixedVertexHandle,
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) -> VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
-        let mut current_minimal_distance = self.vertex(start).position().distance2(position);
+        let start_position = self.vertex(start).position();
+
+        if start_position == position {
+            return self.vertex(start);
+        }
+
+        let mut current_minimal_distance = position.distance2(start_position);
         let mut current_minimum_vertex = self.vertex(start);
 
         while let Some((next_minimum_index, next_minimal_distance)) = current_minimum_vertex
@@ -826,6 +836,7 @@ pub trait TriangulationExt: Triangulation {
             current_minimal_distance = next_minimal_distance;
             current_minimum_vertex = next_minimum_index;
         }
+
         current_minimum_vertex
     }
 
@@ -846,7 +857,9 @@ pub trait TriangulationExt: Triangulation {
 
         let start = self.validate_vertex_handle(start);
 
-        let closest_vertex = self.walk_to_nearest_neighbor(start, target_position);
+        //let closest_vertex = self.walk_to_nearest_neighbor(start, target_position);
+        let closest_vertex = self.vertex(start);
+
         let out_edge = closest_vertex
             .out_edge()
             .expect("No out edge found. This is a bug.");
@@ -964,15 +977,27 @@ pub trait TriangulationExt: Triangulation {
         }
     }
 
-    fn remove_core(&mut self, vertex_to_remove: FixedVertexHandle) -> Self::Vertex {
+    fn remove_and_notify(&mut self, vertex_to_remove: FixedVertexHandle) -> Self::Vertex {
         let position = self.vertex(vertex_to_remove).position();
-        self.hint_generator_mut()
-            .notify_vertex_removed(vertex_to_remove, position);
+        let removal_result = self.remove_core(vertex_to_remove);
 
+        let swapped_in_point = removal_result
+            .swapped_in_vertex
+            .map(|_| self.vertex(vertex_to_remove).position());
+
+        self.hint_generator_mut().notify_vertex_removed(
+            swapped_in_point,
+            vertex_to_remove,
+            position,
+        );
+
+        return removal_result.removed_vertex;
+    }
+
+    fn remove_core(&mut self, vertex_to_remove: FixedVertexHandle) -> RemovalResult<Self::Vertex> {
         if self.num_all_faces() <= 1 {
             return dcel_operations::remove_when_degenerate(self.s_mut(), vertex_to_remove);
         }
-
         let vertex = self.vertex(vertex_to_remove);
 
         let mut border_loop = Vec::with_capacity(10);

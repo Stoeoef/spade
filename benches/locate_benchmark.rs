@@ -1,29 +1,33 @@
-use std::iter::FromIterator;
+use std::{iter::FromIterator, time::Duration};
 
 use criterion::{measurement::WallTime, BenchmarkGroup, Criterion};
 use rand::distributions::uniform::SampleUniform;
-use spade::{DelaunayTriangulation, LastUsedVertexHintGenerator, Point2, SpadeNum, Triangulation};
-
-use crate::benchmark_utilities::{
-    random_walk_distribution, uniform_distribution, uniform_f32, uniform_f64, SEED, SEED2,
+use spade::{
+    DelaunayTriangulation, HierarchyHintGeneratorWithBranchFactor, HintGenerator, Point2, SpadeNum,
+    Triangulation,
 };
+
+use crate::benchmark_utilities::{uniform_distribution, uniform_f64, SEED2};
 
 pub fn locate_benchmark(c: &mut Criterion) {
     const RANGE: f64 = 1.0e9;
     const NUM_ELEMENTS: usize = 100_000;
 
-    fn single_locate_benchmark<I: IntoIterator<Item = Point2<S>>, S: SpadeNum + SampleUniform>(
+    fn single_locate_benchmark<
+        H: HintGenerator<S>,
+        I: IntoIterator<Item = Point2<S>>,
+        S: SpadeNum + SampleUniform,
+    >(
         group: &mut BenchmarkGroup<WallTime>,
-        name: &'static str,
+        name: String,
         range: S,
         elements: I,
     ) where
         S::Sampler: Copy,
     {
-        let triangulation =
-            DelaunayTriangulation::<_, (), (), (), LastUsedVertexHintGenerator>::from_iter(
-                uniform_distribution(*SEED, range).take(NUM_ELEMENTS),
-            );
+        let triangulation = DelaunayTriangulation::<_, (), (), (), H>::from_iter(
+            uniform_distribution(*SEED2, range).take(NUM_ELEMENTS),
+        );
 
         let mut elements = elements.into_iter();
 
@@ -36,28 +40,36 @@ pub fn locate_benchmark(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("locate benchmark (uniform)");
+    group
+        .warm_up_time(Duration::from_secs(2))
+        .measurement_time(Duration::from_secs(4));
 
-    single_locate_benchmark(&mut group, "locate (f64)", RANGE, uniform_f64());
-    single_locate_benchmark(&mut group, "locate (f32)", RANGE as f32, uniform_f32());
+    fn single_hierarchy<const BRANCH_FACTOR: u32>(group: &mut BenchmarkGroup<WallTime>) {
+        single_locate_benchmark::<HierarchyHintGeneratorWithBranchFactor<f64, BRANCH_FACTOR>, _, _>(
+            group,
+            format!("locate (hierarchy<{:02}>), f64", BRANCH_FACTOR),
+            RANGE,
+            uniform_f64(),
+        );
+    }
 
-    group.finish();
-
-    let mut group = c.benchmark_group("locate benchmark (random walk)");
-
-    const STEP_SIZE: f64 = RANGE / (NUM_ELEMENTS as f64);
-
-    single_locate_benchmark(
-        &mut group,
-        "locate (f64)",
-        RANGE,
-        random_walk_distribution(STEP_SIZE, *SEED2),
-    );
-    single_locate_benchmark(
-        &mut group,
-        "locate (f32)",
-        RANGE as f32,
-        random_walk_distribution(STEP_SIZE as f32, *SEED2),
-    );
+    single_hierarchy::<2>(&mut group);
+    single_hierarchy::<3>(&mut group);
+    single_hierarchy::<4>(&mut group);
+    single_hierarchy::<5>(&mut group);
+    single_hierarchy::<8>(&mut group);
+    single_hierarchy::<10>(&mut group);
+    single_hierarchy::<14>(&mut group);
+    single_hierarchy::<16>(&mut group);
+    single_hierarchy::<18>(&mut group);
+    single_hierarchy::<20>(&mut group);
+    single_hierarchy::<32>(&mut group);
+    single_hierarchy::<40>(&mut group);
+    single_hierarchy::<50>(&mut group);
+    single_hierarchy::<64>(&mut group);
+    single_hierarchy::<70>(&mut group);
+    single_hierarchy::<80>(&mut group);
+    single_hierarchy::<90>(&mut group);
 
     group.finish();
 }

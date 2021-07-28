@@ -26,10 +26,6 @@ pub fn uniform_f64() -> impl Iterator<Item = Point2<f64>> {
     uniform_distribution(*SEED, RANGE)
 }
 
-pub fn uniform_f32() -> impl Iterator<Item = Point2<f32>> {
-    uniform_distribution(*SEED, RANGE as f32)
-}
-
 pub fn random_walk_distribution<S: SpadeNum + SampleUniform>(
     step_size: S,
     seed: [u8; 32],

@@ -1,5 +1,8 @@
 use std::fmt::Debug;
 
+use crate::triangulation::RemovalResult;
+use crate::HasPosition;
+
 use super::dcel::{EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry, DCEL};
 use super::handles::*;
 
@@ -1085,10 +1088,12 @@ fn fix_handle_swap<V, DE, UE, F>(
 pub fn swap_remove_vertex<V, DE, UE, F>(
     dcel: &mut DCEL<V, DE, UE, F>,
     vertex_handle: FixedVertexHandle,
-) -> V {
+) -> RemovalResult<V> {
     let data = dcel.vertices.swap_remove(vertex_handle.index()).data;
+    let mut swapped_in_vertex = None;
     if dcel.vertices.len() != vertex_handle.index() {
         // Update origin of all out edges of the swapped in vertex
+        swapped_in_vertex = Some(FixedVertexHandle::new(dcel.vertices.len()));
         let to_update: SmallVec<[_; 8]> = dcel
             .vertex(vertex_handle)
             .out_edges()
@@ -1098,7 +1103,11 @@ pub fn swap_remove_vertex<V, DE, UE, F>(
             dcel.half_edge_mut(e).origin = vertex_handle;
         }
     };
-    data
+
+    RemovalResult {
+        removed_vertex: data,
+        swapped_in_vertex,
+    }
 }
 
 /// Removes a face from the DCEL by swapping in another face.
@@ -1124,7 +1133,10 @@ fn swap_remove_face<V, DE, UE, F>(dcel: &mut DCEL<V, DE, UE, F>, face: FixedFace
 pub fn remove_when_degenerate<V, DE, UE, F>(
     dcel: &mut DCEL<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> V {
+) -> RemovalResult<V>
+where
+    V: HasPosition,
+{
     match dcel.num_vertices() {
         0 => panic!("Cannot remove vertex when triangulation is empty"),
         1 => remove_when_one_vertex_left(dcel, vertex_to_remove),
@@ -1136,34 +1148,56 @@ pub fn remove_when_degenerate<V, DE, UE, F>(
 fn remove_when_one_vertex_left<V, DE, UE, F>(
     dcel: &mut DCEL<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> V {
+) -> RemovalResult<V>
+where
+    V: HasPosition,
+{
     assert_eq!(
         vertex_to_remove.index(),
         0,
         "Attempting to remove invalid vertex"
     );
-    dcel.vertices.pop().unwrap().data
+
+    RemovalResult {
+        removed_vertex: dcel.vertices.pop().unwrap().data,
+        swapped_in_vertex: None,
+    }
 }
 
 fn remove_when_two_vertices_left<V, DE, UE, F>(
     dcel: &mut DCEL<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> V {
+) -> RemovalResult<V>
+where
+    V: HasPosition,
+{
     assert_eq!(dcel.num_faces(), 1);
     assert_eq!(dcel.num_vertices(), 2);
     assert_eq!(dcel.num_directed_edges(), 2);
+
+    let swapped_in_vertex = if vertex_to_remove.index() == 1 {
+        None
+    } else {
+        Some(FixedVertexHandle::new(1))
+    };
 
     let result = dcel.vertices.swap_remove(vertex_to_remove.index()).data;
     dcel.faces[OUTER_FACE_HANDLE.index()].adjacent_edge = optional::none();
     dcel.vertices[0].out_edge = optional::none();
     dcel.edges.clear();
-    result
+    RemovalResult {
+        removed_vertex: result,
+        swapped_in_vertex,
+    }
 }
 
 fn remove_when_all_vertices_on_line<V, DE, UE, F>(
     dcel: &mut DCEL<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> V {
+) -> RemovalResult<V>
+where
+    V: HasPosition,
+{
     let out_edges: Vec<_> = dcel.vertex(vertex_to_remove).out_edges().collect();
     match &*out_edges {
         [out_edge1] => {

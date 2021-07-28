@@ -248,7 +248,7 @@ where
             .filter(|b| *b)
             .count();
         self.num_constraints -= num_removed_constraints;
-        self.remove_core(vertex)
+        self.remove_and_notify(vertex)
     }
 
     /// Returns the number of constraint edges.

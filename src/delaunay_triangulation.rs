@@ -208,6 +208,26 @@ fn log_voronoi_diagram(triangulation: &DelaunayTriangulation<Point2<f64>>) {
     }
 }
 ```
+# Performance considerations
+
+The insertion and query speed of Delaunay triangulations heavily depends on the triangulations specific parameters and
+the nature of the underlying point set. For further illustration, this section uses insertion of new vertices as 
+an example. Lookup and nearest neighbor queries behave similarly.
+
+In general, inserting a new vertex consists of two stages:
+ - Finding the _site_ that a new vertex occupies. This is usually the face that contains the vertex.
+ - Modifying the site to contain the new vertex.
+
+The second step runs, on average and amortized, in constant time. For larger triangulations (a few hundred vertices 
+suffice), the first step will quickly take the majority of time.
+The naive approach for finding the site works by traversing the triangulation in the direction of the target position.
+For a uniformly distributed set of points, this approach takes `O(sqrt(n))` time for each lookup.
+
+The first step can be sped up significantly by providing a _hint_ - this is an arbitrary vertex of the triangulation
+that is used as the starting vertex when traversing the insertion site. This can be done either explicitly by 
+calling a method suffixed with `with_hint` (e.g. [Triangulation.insert_with_hint]) or by simply relying on the
+triangulations [HintGenerator].
+
 # See also
 Delaunay triangulations are closely related to [constrained Delaunay triangulations](crate::ConstrainedDelaunayTriangulation)
 "
@@ -226,7 +246,7 @@ where
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     dcel: DCEL<V, DE, UE, F>,
-    lookup: L,
+    hint_generator: L,
 }
 }
 
@@ -270,7 +290,7 @@ where
     fn default() -> Self {
         Self {
             dcel: Default::default(),
-            lookup: Default::default(),
+            hint_generator: Default::default(),
         }
     }
 }
@@ -298,11 +318,11 @@ where
     }
 
     fn hint_generator(&self) -> &Self::HintGenerator {
-        &self.lookup
+        &self.hint_generator
     }
 
     fn hint_generator_mut(&mut self) -> &mut Self::HintGenerator {
-        &mut self.lookup
+        &mut self.hint_generator
     }
 }
 
@@ -331,19 +351,19 @@ mod test {
     use crate::{DelaunayTriangulation, Point2, Triangulation};
 
     #[allow(unused)]
-    #[cfg(all(feature = "serde_crate", feature = "rtree"))]
+    #[cfg(all(feature = "serde_crate"))]
     // Just needs to compile
     fn check_serde<'a>() {
         use serde_crate::{Deserialize, Serialize};
 
-        use crate::{LastUsedVertexHintGenerator, Point2, RTreeHintGenerator};
+        use crate::{HierarchyHintGenerator, LastUsedVertexHintGenerator, Point2};
 
         fn requires_serde<'de, T: Serialize + Deserialize<'de>>() {}
 
         type DT<L> = super::DelaunayTriangulation<Point2<f64>, (), (), (), L>;
 
         requires_serde::<'a, DT<LastUsedVertexHintGenerator>>();
-        requires_serde::<'a, DT<RTreeHintGenerator<f64>>>();
+        requires_serde::<'a, DT<HierarchyHintGenerator<f64>>>();
     }
 
     #[test]

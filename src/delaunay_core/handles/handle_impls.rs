@@ -79,6 +79,7 @@ impl FixedDirectedEdgeHandle {
     /// is used to hook up a directed edge handle with it's correct half edge storage.
     #[inline]
     pub(in super::super) fn is_normalized(self) -> bool {
+        // Use the last bit to store if this edge is normalized
         self.index() & 0x1 == 0x0
     }
 
