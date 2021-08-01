@@ -5,7 +5,6 @@ use crate::{
 
 pub use super::handle_defs::*;
 
-use doc_comment::doc_comment;
 use num_traits::Float;
 
 #[cfg(feature = "serde")]
@@ -61,17 +60,6 @@ impl InnerOuterMarker for PossiblyOuterTag {
     }
 }
 
-macro_rules! generate_fixed_handle {
-    ($fixed_name:ident, $tag:ident, $doc:expr) => {
-        doc_comment! {
-        concat!(
-            "Fixed handle to a ", $doc,
-            ".\n\n*See also the [handles module](index.html).*"),
-            pub type $fixed_name<InnerOuter> = FixedHandleImpl<$tag, InnerOuter>;
-        }
-    };
-}
-
 /// Fixed handle to a vertex.
 ///
 /// *See also the [handles](crate::handles) module.*
@@ -87,35 +75,31 @@ pub type FixedDirectedEdgeHandle = FixedHandleImpl<DirectedEdgeTag, InnerTag>;
 /// *See also the [handles](crate::handles) module.*
 pub type FixedUndirectedEdgeHandle = FixedHandleImpl<UndirectedEdgeTag, InnerTag>;
 
-generate_fixed_handle!(FixedFaceHandle, FaceTag, "face");
+/// "Fixed handle to a face.
+///
+/// The type parameter is either [InnerTag] or [PossiblyOuterTag], depending on the face type.
+///
+/// "*See also the [handles module](index.html).*
+pub type FixedFaceHandle<InnerOuter> = FixedHandleImpl<FaceTag, InnerOuter>;
 
-doc_comment! {
-concat!("
-Handle to a directed edge of a triangulation.
-
-Use this handle to examine the edge's surroundings, e.g. its origin and destination
-vertices or the adjacent face.
-
-# Retrieving neighboring edges:
-
-TODO: Rename
-Use [next()](#method.next), [prev()](#method.prev), [rev()](#method.rev) to access
-any adjacent edge:\n
-",
-include_str!("../../../images/delaunay_directed_edge_details.svg"),
-"\n
-# Retrieving adjacent faces and vertices
-
-Use [face()](#method.face), [from()](#method.from()) and [to()] to access the adjacent face and
-vertices:\n
-",
-include_str!("../../../images/delaunay_directed_edge_face_and_vertex.svg"),
-"\n
- *See also the [handles module](crate::handles).*
-"),
+/// Handle to a directed edge of a triangulation.
+///
+/// Use this handle to examine the edge's surroundings, e.g. its origin and destination
+/// vertices or the adjacent face.
+///
+/// # Retrieving neighboring edges:
+///
+/// Use [next()](#method.next), [prev()](#method.prev), [rev()](#method.rev) to access
+/// any adjacent edge:
+#[doc = include_str!("../../../images/delaunay_directed_edge_details.svg")]
+/// # Retrieving adjacent faces and vertices
+///
+/// Use [face()](#method.face), [from()](#method.from()) and [to()](#method.to()) to access the adjacent face and
+/// vertices:
+#[doc = include_str!("../../../images/delaunay_directed_edge_face_and_vertex.svg")]
+/// *See also the [handles module](crate::handles).*
 pub type DirectedEdgeHandle<'a, V, DE, UE, F> =
     DynamicHandleImpl<'a, V, DE, UE, F, DirectedEdgeTag, InnerTag>;
-}
 
 /// Handle to an undirected edge of a triangulation.
 ///
@@ -165,14 +149,12 @@ pub type VertexHandle<'a, V, DE = (), UE = (), F = ()> =
 pub type FaceHandle<'a, InnerOuter, V, DE, UE, F> =
     DynamicHandleImpl<'a, V, DE, UE, F, FaceTag, InnerOuter>;
 
-doc_comment! {
-concat!("A handle to a directed edge of the Voronoi diagram.
-
-Several methods are defined to explore adjacent edges, faces and vertices:\n
-", include_str!("../../../images/voronoi_edge_details.svg")),
+/// A handle to a directed edge of the Voronoi diagram.
+///
+/// Several methods are defined to explore adjacent edges, faces and vertices:
+#[doc =  include_str!("../../../images/voronoi_edge_details.svg")]
 pub type DirectedVoronoiEdge<'a, V, DE, UE, F> =
     DynamicHandleImpl<'a, V, DE, UE, F, DirectedVoronoiEdgeTag, InnerTag>;
-}
 
 /// A handle to an undirected edge of the Voronoi diagram.
 pub type UndirectedVoronoiEdge<'a, V, DE, UE, F> =

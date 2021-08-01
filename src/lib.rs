@@ -1,5 +1,7 @@
 //! # Spade
 //!
+//! Delaunay triangulations for the rust eco system.
+//!
 //! # Features
 //! * A 2D Delaunay triangulation: [DelaunayTriangulation]
 //! * Uses exact geometric predicate evaluation, preventing construction errors due to precision loss.
@@ -106,35 +108,40 @@ mod test_utilities;
 ///
 /// _Note: Spade already implements this method, see [DelaunayTriangulation::nearest_neighbor]_
 /// ```
-/// use spade::{Point2, DelaunayTriangulation, Triangulation};
 /// use spade::handles::VertexHandle;
+/// use spade::{DelaunayTriangulation, Point2, Triangulation};
 ///
 /// fn nearest_neighbor(
 ///     triangulation: &DelaunayTriangulation<Point2<f64>>,
-///     target_point: Point2<f64>)
-///     -> VertexHandle<Point2<f64>> {
-///    let mut current = triangulation.vertices().next().unwrap();
-///    let mut best_distance = current.position().point_distance_2(target_point);
-///    loop {
-///        let mut closer = None;
-///        for neighbor in current.out_edges().map(|edge| edge.to()) {
-///            let neighbor_distance = neighbor.position().point_distance_2(target_point);
-///            if neighbor_distance < best_distance {
-///                best_distance = neighbor_distance;
-///                closer = Some(neighbor);
-///                break;
-///            }
-///        }
-///        
-///        if let Some(closer) = closer {
-///            current = closer;
-///        } else {
-///            return current
-///        }
-///    }
+///     target_point: Point2<f64>,
+/// ) -> VertexHandle<Point2<f64>> {
+///     let mut current = triangulation.vertices().next().unwrap();
+///     let mut best_distance = current.position().point_distance_2(target_point);
+///     loop {
+///         let mut closer = None;
+///         for neighbor in current.out_edges().map(|edge| edge.to()) {
+///             let neighbor_distance = neighbor.position().point_distance_2(target_point);
+///             if neighbor_distance < best_distance {
+///                 best_distance = neighbor_distance;
+///                 closer = Some(neighbor);
+///                 break;
+///             }
+///         }
+///
+///         if let Some(closer) = closer {
+///             current = closer;
+///         } else {
+///             return current;
+///         }
+///     }
 /// }
 ///
-/// let vertices = vec![Point2::new(0.0, 1.0), Point2::new(1.0, 1.0), Point2::new(0.0, 0.0), Point2::new(1.0, 0.0)];
+/// let vertices = vec![
+///     Point2::new(0.0, 1.0),
+///     Point2::new(1.0, 1.0),
+///     Point2::new(0.0, 0.0),
+///     Point2::new(1.0, 0.0),
+/// ];
 /// let triangulation: DelaunayTriangulation<Point2<f64>> = vertices.into_iter().collect();
 ///
 /// // Check that everything works!
@@ -156,7 +163,7 @@ pub mod handles {
 pub mod iterators {
     pub use crate::delaunay_core::iterators::{
         DirectedEdgeIterator, DirectedVoronoiEdgeIterator, FaceIterator, FixedDirectedEdgeIterator,
-        FixedFaceIterator, FixedInnerFacesIterator, FixedUndirectedEdgeIterator,
+        FixedFaceIterator, FixedInnerFaceIterator, FixedUndirectedEdgeIterator,
         FixedVertexIterator, InnerFaceIterator, UndirectedEdgeIterator,
         UndirectedVoronoiEdgeIterator, VertexIterator, VoronoiFaceIterator,
     };

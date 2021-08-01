@@ -1,5 +1,7 @@
 use std::iter::FromIterator;
 
+use smallvec::SmallVec;
+
 use crate::delaunay_core::iterators::HullIterator;
 use crate::delaunay_core::InnerOuterMarker;
 use crate::HintGenerator;
@@ -66,9 +68,9 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     #[doc(hidden)]
     fn hint_generator_mut(&mut self) -> &mut Self::HintGenerator;
 
-    /// Creates a new delaunay triangulation.
+    /// Creates a new triangulation.
     ///
-    /// A newly created Delaunay triangulation contains no vertices, no edges and the single
+    /// A newly created triangulation contains no vertices, no edges and the single
     /// outer face.
     ///
     /// # Example
@@ -432,8 +434,8 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// An iterator visiting all inner faces of the triangulation.
     ///
     /// The iterator type is [FixedFaceHandle<InnerTag, ...>](FixedFaceHandle).
-    fn fixed_inner_faces(&self) -> FixedInnerFacesIterator {
-        let mut result = FixedInnerFacesIterator::new(self.num_all_faces());
+    fn fixed_inner_faces(&self) -> FixedInnerFaceIterator {
+        let mut result = FixedInnerFaceIterator::new(self.num_all_faces());
         result.next();
         result
     }
@@ -657,7 +659,7 @@ pub trait TriangulationExt: Triangulation {
 
         let result =
             dcel_operations::connect_edge_strip(self.s_mut(), &edges_to_connect, new_vertex);
-        self.legalize_edges_after_insertion(edges_to_connect, position);
+        self.legalize_edges_after_insertion(&mut edges_to_connect.into(), position);
         result
     }
 
@@ -725,13 +727,13 @@ pub trait TriangulationExt: Triangulation {
 
     fn legalize_vertex(&mut self, new_handle: FixedVertexHandle) {
         let position = self.vertex(new_handle).position();
-        let edges = self
+        let mut edges = self
             .vertex(new_handle)
             .out_edges()
             .filter(|e| !e.is_outer_edge())
             .map(|edge| edge.next().fix())
             .collect();
-        self.legalize_edges_after_insertion(edges, position);
+        self.legalize_edges_after_insertion(&mut edges, position);
     }
 
     /// The Delaunay property refers to the property that no point lies inside
@@ -750,7 +752,7 @@ pub trait TriangulationExt: Triangulation {
     /// four sided polygon.
     fn legalize_edges_after_insertion(
         &mut self,
-        mut edges: Vec<FixedDirectedEdgeHandle>,
+        edges: &mut SmallVec<[FixedDirectedEdgeHandle; 16]>,
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) {
         while let Some(e) = edges.pop() {

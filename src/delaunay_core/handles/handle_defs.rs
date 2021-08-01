@@ -121,6 +121,7 @@ pub struct DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter: InnerOuterMarke
 impl<'a, V, DE, UE, F, Type: Default, InnerOuter: InnerOuterMarker>
     DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
 {
+    #[inline]
     pub(crate) fn new(
         dcel: &'a DCEL<V, DE, UE, F>,
         handle: FixedHandleImpl<Type, InnerOuter>,

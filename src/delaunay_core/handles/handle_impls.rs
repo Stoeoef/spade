@@ -5,7 +5,6 @@ use super::iterators::CircularIterator;
 use super::iterators::NextBackFn;
 use super::public_handles::*;
 use crate::{HasPosition, LineSideInfo, Point2};
-use doc_comment::doc_comment;
 use num_traits::{Float, One, Signed};
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -386,7 +385,7 @@ impl FixedUndirectedEdgeHandle {
     /// Any of the two directed edges may be returned.
     ///
     /// See also [FixedDirectedEdgeHandle::as_undirected()]()
-    ///
+    #[inline]
     pub fn as_directed(&self) -> FixedDirectedEdgeHandle {
         FixedDirectedEdgeHandle::new_normalized(self.index())
     }
@@ -437,6 +436,7 @@ impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 
     /// Converts this directed edge into an undirected edge handle.
+    #[inline]
     pub fn as_directed(&self) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
         DirectedEdgeHandle::new(self.dcel, self.handle.as_directed())
     }
@@ -649,17 +649,16 @@ impl NextBackFn for CCWEdgesNextBackFn {
 }
 
 impl<'a, V, DE, UE, F> VertexHandle<'a, V, DE, UE, F> {
-    doc_comment! {
-    concat!(
-"Returns all directed edges going out of this vertex.
-
-The edges are returned in counter clockwise order, beginning at an arbitrary
-edge.\n\n",
-    include_str!("../../../images/circular_iterator.svg"),
-"\n\n *A possible iteration order of `v.out_edges()`*\n
-
-*Note*: The returned iterator implements `DoubleEndedIterator`, allowing traversal in
-clockwise order."),
+    /// Returns all directed edges going out of this vertex.
+    ///
+    /// The edges are returned in counter clockwise order, beginning at an arbitrary
+    /// edge.
+    #[doc = include_str!("../../../images/circular_iterator.svg")]
+    ///
+    /// *A possible iteration order of `v.out_edges()`*
+    ///
+    /// *Note*: The returned iterator implements `DoubleEndedIterator`, allowing traversal in
+    /// clockwise order.
     pub fn out_edges(&self) -> CircularIterator<'a, V, DE, UE, F, CCWEdgesNextBackFn> {
         if let Some(edge) = self.out_edge() {
             CircularIterator::new(edge)
@@ -669,7 +668,6 @@ clockwise order."),
                 FixedDirectedEdgeHandle::new(0),
             ))
         }
-    }
     }
 
     /// Returns an outgoing edge of this vertex.

@@ -4,8 +4,6 @@ use crate::{
     HasPosition, HintGenerator, LastUsedVertexHintGenerator, Point2, Triangulation,
     TriangulationExt,
 };
-use doc_comment::doc_comment;
-
 #[cfg(feature = "serde")]
 use serde_crate::{Deserialize, Serialize};
 
@@ -67,17 +65,16 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
     }
 }
 
-doc_comment! {
-concat!("A two dimensional
-[constrained Delaunay triangulation](https://en.wikipedia.org/wiki/Constrained_Delaunay_triangulation).
-
-A constrained Delaunay triangulation (CDT) is a triangulation that
-can contain _constraint edges_. These edges will always be present
-in the resulting triangulation.\n\n",
-include_str!("../images/cdt.svg"),
-"<i>Left: A CDT with 4 constraint edges. Right: The same triangulation
- without constraint edges</i></br></br>
-"),
+/// A two dimensional
+/// [constrained Delaunay triangulation](https://en.wikipedia.org/wiki/Constrained_Delaunay_triangulation).
+///
+/// A constrained Delaunay triangulation (CDT) is a triangulation that
+/// can contain _constraint edges_. These edges will always be present
+/// in the resulting triangulation.
+#[doc = include_str!("../images/cdt.svg")]
+///
+/// *Left: A CDT with 4 constraint edges. Right: The same triangulation
+/// without constraint edges*
 ///
 ///
 /// The resulting triangulation
@@ -97,7 +94,7 @@ include_str!("../images/cdt.svg"),
 /// # Example
 ///
 /// ```
-/// use spade::{ConstrainedDelaunayTriangulation, Triangulation, Point2};
+/// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
 /// let mut cdt = ConstrainedDelaunayTriangulation::<Point2<_>>::new();
 /// let v0 = cdt.insert(Point2::new(0.0, 0.0));
 /// let v1 = cdt.insert(Point2::new(1.0, 0.0));
@@ -113,8 +110,8 @@ include_str!("../images/cdt.svg"),
 /// let from = Point2::new(1.0, -2.0);
 /// let to = Point2::new(1.0, 0.0);
 /// if !cdt.intersects_constraint(from, to) {
-///   // No intersections, the edge can be added
-///   cdt.add_constraint_edge(from, to);
+///     // No intersections, the edge can be added
+///     cdt.add_constraint_edge(from, to);
 /// }
 /// ```
 ///
@@ -129,8 +126,13 @@ include_str!("../images/cdt.svg"),
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-pub struct ConstrainedDelaunayTriangulation<V, DE = (), UE = (), F = (), L = LastUsedVertexHintGenerator>
-where
+pub struct ConstrainedDelaunayTriangulation<
+    V,
+    DE = (),
+    UE = (),
+    F = (),
+    L = LastUsedVertexHintGenerator,
+> where
     V: HasPosition,
     DE: Default,
     UE: Default,
@@ -139,8 +141,7 @@ where
 {
     s: DCEL<V, DE, CdtEdge<UE>, F>,
     num_constraints: usize,
-    lookup: L
-}
+    lookup: L,
 }
 
 impl<V, DE, UE, F, L> Default for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>

@@ -25,7 +25,6 @@ use serde_crate::{Deserialize, Serialize};
 ///  - A heuristic that uses the last inserted vertex as hint ([LastUsedVertexHintGenerator])
 ///  - A hint generator based on a hierarchy of triangulations that improves walk time to `O(log(n))`
 ///     ([HierarchyHintGenerator])
-///
 pub trait HintGenerator<S: SpadeNum>: Default {
     /// Returns a vertex handle that should be close to a given position.
     ///

@@ -4,9 +4,8 @@ mod scenario_list;
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
-/// Used for rendering SVGs for documentation. These are inlined (via doc_comment and
-/// `include_str`) into the doc comment of a few items. That makes sure they will be visible
-/// even for offline users.
+/// Used for rendering SVGs for documentation. These are inlined (via #[doc = include_str!(...)])
+/// into the doc comment of a few items. That makes sure they will be visible even for offline users.
 fn main() -> Result {
     scenario_list::circumcircle_scenario()
         .save_to_svg("circumcircle", "images/circumcircle.svg")?;

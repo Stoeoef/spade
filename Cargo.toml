@@ -5,8 +5,10 @@ authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 edition = "2018"
 autobenches = false
 
+[lib]
+bench = false
+
 [dependencies]
-doc-comment = "0.3"
 smallvec = "1.4"
 robust = "0.2.3"
 num-traits = "0.2"
