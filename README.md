@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/Stoeoef/spade.svg?branch=master)](https://travis-ci.org/Stoeoef/spade)
 [![Docs](https://docs.rs/spade/badge.svg)](https://docs.rs/spade/)
 [![Crates.io](https://img.shields.io/crates/v/spade.svg)](https://crates.io/crates/spade)
+
 # spade
 
  * [Documentation](https://docs.rs/spade/)
@@ -10,30 +10,28 @@
  * [Performance](#performance)
  * [License](#license)
 
-Spade (SPAtial DatastructurEs, obviously!) implements a few nifty data structures for spatial access operations:
+Delaunay triangulations for the rust ecosystem.
 
-- An n-dimensional [r*-tree](https://en.wikipedia.org/wiki/R*_tree) for efficient nearest-neighbor and point lookup queries. Note that a faster successor is available with the [rstar crate](https://crates.io/crates/rstar).
-- 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by an r-tree for faster insertion and nearest neighbor lookup
+- 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by a hierarchy
+ structure for improved nearest neighbor and insertion performance.
 - 2D constrained Delaunay triangulation (CDT)
+- Precise calculation kernel out of the box to prevent incorrect geometries due to rounding issues
+- Supports extracting the Voronoi diagram
 
-Some other noteworthy features:
-- [natural neighbor interpolation](https://en.wikipedia.org/wiki/Natural_neighbor) on this triangulation
-- Precise and adaptive calculation methods to avoid rounding issues
-- supports [serde](https://crates.io/crates/serde) with the `serde_serialize` feature
+# Project goals
 
-All structures are purely written in rust, the package currently supports vectors from the [nalgebra](http://nalgebra.org/) and [cgmath](https://github.com/brendanzab/cgmath) packages. However, using these
-packages is not required.
+Project goals, in the order of their importance:
 
-# Compatibility note
-Spade complies with semantic versioning, and since it is past its 1.0 version, current minor version changes will be backward compatible. However, due to the way cargo resolves dependencies, there might be issues when using spade combined with cgmath or nalgebra: every time spade updates these libraries, the using code must be update too, even if spade would still work happily with an older version. To avoid this, consider switching to fixed size arrays as points, implementing your own point type or do some creative hacking into your cargo.lock to force cargo into using the correct cgmath / nalgebra version.
+ 1. Robustness - all data structures should behave correctly. An incorrect result, even if triggered only under rare circumstances, is not acceptable. This is why Spade uses a precise calculation kernel by default.
+ 2. Easy to use - favor an easy to use API over an API that exposes all bells and whistles.
+ 3. Performance - Delaunay triangulations are often a low level component of an application. Optimization in this area pays off greatly.
+ 4. Small footprint - Spade should be a sensible library to include in your project that doesn't require too many dependencies. Bigger dependencies will be feature gated.
 
-# Documentation
-The documentation can be found on [docs.rs](https://docs.rs/spade/).
-There is also a [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/) available.
+# Project state and contributing
+Looking for co-maintainers! I don't have the best track record when it comes to being an open-source maintainer and would love to see this burden being distributed on more shoulders! If you are interested in seeing a project like this being around for a long while, please get in touch.
 
-# Project state
-Spade is being passively maintained, please file all bugs that you can find! However, I don't plan any major release at the moment.
-Spade's r-tree has been split off into the smaller [rstar crate](https://crates.io/crates/rstar) which is the recommended replacement. rstar compiles faster, runs faster and is more actively developed. 
+If you want to contribute, please consider opening an issue first. I'm happy to help out with any questions!
+
 
 # Examples
 ## R-Tree

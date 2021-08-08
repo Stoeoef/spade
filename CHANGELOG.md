@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.0] - 2021-08
+ This release is focussed on API refinement, performance improvements and usability improvements.
+  
+ ## General API refinement
+ Many features of Spade 1 showed too little benefit to legitimize to keep them. Spade 2.0 attempts to slim down the API surface to a few important functions and types and leaves out the more complicated bits to make it more simple to use.
+
+### Removed features (may be re-introduced in an upcoming release)
+ - Removed interpolation functions
+
+### Removed features (not planned to re-introduced)
+ - Removed support for integer coordinates. Only `f64` and `f32` can be used as scalar types.
+ - Removed support for `cgmath` and `nalgebra` crate to slim down the crate dependencies.
+ - Removed `PointN`. Using Spade now requires to convert any position into `Spade::Point2`.
+ - Removed r-tree data structure (it has been moved into the `rstar` crate)
+ - Removed geometric primitives (`SimpleCircle`, `SimpleEdge`, `SimpleTriangle`)
+ - Removed support for custom calculation kernels. `spade` now uses the precise calculation kernel by default (previously called `FloatKernel`).
+ - Removed support for Delaunay triangulations backed by r-trees. Use the newly introduced `HierarchyHintGenerator` instead.
+
+### Added features
+ - Added basic support for Voronoi diagrams (refer to the documentation of struct `DelaunayTriangulation`)
+ - Added struct `HierarchyHintGenerator`, a hint generator with small performance and memory overhead which is optimized for uniformly distributed data.
+ - Improved conciseness of handle types (refer to the `handles` module for more information):
+   - Introduced `UndirectedEdgeHandle` to refer to undirected edges of the triangulation
+   - `FaceHandle` is now parameterized to denote if it refers to an inner face or to the single outer face
+   - Added some methods on the individual handle types
+   - Added iterators for all handle types (see `handles` module)
+   - Fixed directed edge handles can now be `rev`ersed
+ - Both `DelaunayTriangulation` and `CDT` now allow to also annotate undirected edges with arbitrary data
+ - Added `Triangulation::convex_hull` which allows to directly iterate over the triangulation's convex hull
+
+### Changed
+ - Performance improvements
+  - The newly introduced `HierarchyHintGenerator` should outperform the r-tree based hint generator consistently for uniformly distributed data sets (2x - 3x times faster)
+  - `LastUsedVertexHintGenerator` and its predecessor `DelaunayWalkLocate` are still comparable.
+ - Cleaned up crate dependencies: Spade 2.0 depends only on 4 other crates without any transitive dependencies. This should make it more viable to include Spade into other projects.
+ - Renamed any `o_next` / `o_prev` function to `next` / `prev`.
+ - Renamed `sym` to `rev`
+ - Many other smaller changes - they are omitted from this changelog.
+
+ ### Migration notes
+ Keep in mind that not all features have been preserved before attempting to upgrade. Other than that, upgrading should be mostly consist of renaming:
+
+  - `FloatDelaunayTriangulation` and `FloatCdt` have been replaced by `DelaunayTriangulation` and `ConstrainedDelaunayTriangulation`
+  - `IntDelaunayTriangulation` is not supported anymore. Use `f64` as scalar type instead if possible.
+  - `DelaunayWalkLocate` has been renamed to `LastUsedVertexHintGenerator`
+  - `DelaunayTreeLocate` has been replaced by `HierarchyHintGenerator`
+
 ## [1.8.2] - 2020-04-01
 ### Bugfixes
  - Removing elements from an rtree could leave the tree in an inconsistent state (#55). This made some nearest neighbor queries return incorrect results.
@@ -56,7 +103,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - `BoundingRect` now implements `SpatialObject`
 
 ## [1.3.0] - 2018-01-06
-### Depcrecated
+### Deprecated
  - `spade::delaunay::DelaunayTriangulation::lookup` is deprecated, use `locate_vertex` instead
  - `spade::delaunay::DelaunayTriangulation::lookup_and_remove` is deprecated, use `locate_and_remove` instead
 ### Changed
@@ -183,6 +230,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.0.0]: https://github.com/Stoeoef/spade/compare/v1.8.2...v2.0.0
 
 [1.8.2]: https://github.com/Stoeoef/spade/compare/v1.8.0...v1.8.2
 

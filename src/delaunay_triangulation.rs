@@ -126,7 +126,7 @@ use serde_crate::{Deserialize, Serialize};
 ///     assert!(length > 0.0);
 ///  }
 /// ```
-/// 
+///
 /// # Outer face
 /// Every triangulation contains an *outer face* that is adjacent to all edges of the
 /// triangulation's convex hull. The outer face is even present for a triangulation without
@@ -204,25 +204,28 @@ use serde_crate::{Deserialize, Serialize};
 ///     }
 /// }
 /// ```
-/// # Performance considerations
 ///
-/// The insertion and query speed of Delaunay triangulations heavily depends on the triangulations specific parameters and
-/// the nature of the underlying point set. For further illustration, this section uses insertion of new vertices as
-/// an example. Lookup and nearest neighbor queries behave similarly.
+/// # Performance tuning
 ///
-/// In general, inserting a new vertex consists of two stages:
-///  - Finding the _site_ that a new vertex occupies. This is usually the face that contains the vertex.
-///  - Modifying the site to contain the new vertex.
+/// Fine-tuning a Delaunay triangulation can be more tricky from time to time. However, some will *nearly always* be
+/// the right thing to do:
 ///
-/// The second step runs, on average and amortized, in constant time. For larger triangulations (a few hundred vertices
-/// suffice), the first step will quickly take the majority of time.
-/// The naive approach for finding the site works by traversing the triangulation in the direction of the target position.
-/// For a uniformly distributed set of points, this approach takes `O(sqrt(n))` time for each lookup.
+/// - Measure, don't guess
+/// - For data sets with uniformly distributed vertices: Use [HierarchyHintGenerator]
+/// - For data sets where vertices are inserted in close local proximity (each vertex is not too far away from the
+///   previously inserted vertex): Use [LastHintVertexGenerator]
+/// - Try to avoid large custom data types for edges, vertices and faces.
+/// - Using `f64` and `f32` as scalar type will usually end up roughly having the same run time performance.
+/// - The run time of all vertex operations (insertion, removal and lookup) is roughly the same for larger triangulations.
+///   
+/// ## Complexity classes
 ///
-/// The first step can be sped up significantly by providing a _hint_ - this is an arbitrary vertex of the triangulation
-/// that is used as the starting vertex when traversing the insertion site. This can be done either explicitly by
-/// calling a method suffixed with `with_hint` (e.g. [Triangulation.insert_with_hint]) or by simply relying on the
-/// triangulations [HintGenerator].
+/// This table display the average and amortized cost for inserting a vertex into a triangulation with `n` vertices.
+///
+/// |                             | Uniformly distributed vertices | Insertion of vertices with local proximity |
+/// |-----------------------------|--------------------------------|--------------------------------------------|
+/// | LastUsedVertexHintGenerator |        O(sqrt(n)) (worst case) |                  O(1) (best case), fastest |
+/// | HierarchyHintGenerator      |       O(log(n)) (Average case) |                           O(1) (best case) |
 ///
 /// # See also
 /// Delaunay triangulations are closely related to [constrained Delaunay triangulations](crate::ConstrainedDelaunayTriangulation)

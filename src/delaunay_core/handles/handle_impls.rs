@@ -332,6 +332,7 @@ where
         self.as_undirected().length_2()
     }
 
+    #[inline]
     /// Identifies on which side of this edge a point lies.
     pub fn side_query(&self, query_point: Point2<V::Scalar>) -> LineSideInfo {
         let (p1, p2) = (self.from().position(), self.to().position());

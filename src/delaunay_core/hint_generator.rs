@@ -49,8 +49,19 @@ pub trait HintGenerator<S: SpadeNum>: Default {
 /// This is useful if multiple insertion or locate queries are spatially close instead of randomly distributed.
 /// The run time of insertion and locate queries will be bounded by a constant in this case.
 ///
-/// This heuristic takes only a constant additional amount of memory.
-/// Since this is a very good out of the box heuristic without any strong disadvantage it is being used by Spade by default.
+/// This heuristic requires only a constant additional amount of memory.
+///
+/// # Example
+/// ```
+/// use spade::{DelaunayTriangulation, LastUsedVertexHintGenerator, Point2, Triangulation};
+///
+/// pub type LastUsedVertexTriangulation =
+///     DelaunayTriangulation<Point2<f64>, (), (), (), LastUsedVertexHintGenerator<f64>>;
+///
+/// let mut triangulation = LastUsedVertexHintGenerator::new();
+/// // Start using the triangulation, e.g. by inserting vertices
+/// triangulation.insert(Point2::new(0.0, 0.0));
+/// ```
 #[derive(Default, Debug)]
 #[cfg_attr(
     feature = "serde",
@@ -104,6 +115,17 @@ impl<S: SpadeNum> HintGenerator<S> for LastUsedVertexHintGenerator {
 ///
 /// # Type parameters
 ///  - `S`: The scalar type used by the triangulation
+///
+/// # Example
+/// ```
+/// use spade::{Point2, Triangulation, DelaunayTriangulation, HierarchyHintGenerator};
+///
+/// pub type HierarchyTriangulation = DelaunayTriangulation<Point2<f64>, (), (), (), HierarchyHintGenerator<f64>>;
+///
+/// let mut triangulation = HierarchyTriangulation::new();
+/// // Start using the triangulation, e.g. by inserting vertices
+/// triangulation.insert(Point2::new(0.0, 0.0));
+/// ```
 pub type HierarchyHintGenerator<S> = HierarchyHintGeneratorWithBranchFactor<S, 16>;
 
 #[derive(Debug)]

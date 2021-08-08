@@ -1,5 +1,4 @@
 use rand::{distributions::uniform::SampleUniform, Rng, SeedableRng};
-use rand_hc::Hc128Rng;
 use spade::{Point2, SpadeNum};
 
 pub const SEED: &[u8; 32] = b"\xfb\xdc\x4e\xa0\x30\xde\x82\xba\x69\x97\x3c\x52\x49\x4d\x00\xca
@@ -18,7 +17,7 @@ where
     S::Sampler: Copy,
 {
     let range = rand::distributions::Uniform::new_inclusive(-range, range);
-    let mut rng = Hc128Rng::from_seed(seed);
+    let mut rng = rand::rngs::StdRng::from_seed(seed);
     std::iter::from_fn(move || Some(Point2::new(rng.sample(range), rng.sample(range))))
 }
 
@@ -37,7 +36,7 @@ where
     let mut last_x = S::zero();
     let mut last_y = S::one();
 
-    let mut rng = Hc128Rng::from_seed(seed);
+    let mut rng = rand::rngs::StdRng::from_seed(seed);
     let step_fn = move || {
         last_x = last_x + rng.sample(range);
         last_y = last_y + rng.sample(range);
