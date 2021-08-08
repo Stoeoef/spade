@@ -207,11 +207,6 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
         vertex: FixedVertexHandle,
         _vertex_position: Point2<S>,
     ) {
-        // Identify which layers need to be touched
-        // Perform "Replace" operation for each layer that needs to be touched
-
-        // Insert last element into layers that need swap removal
-        // Check if the last layer is orphaned
         let index = vertex.index() as u32;
 
         let mut current_divisor = BRANCH_FACTOR;
@@ -223,8 +218,9 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
             let index_to_remove = index / current_divisor;
             current_divisor *= BRANCH_FACTOR;
 
-            if let Some(swapped_point) = swapped_in_point.as_mut() {
-                if remainder == 0 {
+            if remainder == 0 {
+                // The current handle is part of this layer and must be removed.
+                if let Some(swapped_point) = swapped_in_point.as_ref() {
                     if (triangulation.num_vertices() - 1) * (BRANCH_FACTOR as usize)
                         != last_layer_size
                     {
@@ -232,19 +228,15 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
                         // in the layer
                         triangulation.insert(*swapped_point);
                     }
-
-                    triangulation.remove(FixedVertexHandle::new(index_to_remove as usize));
                 }
-            } else {
-                if remainder == 0 {
-                    triangulation.remove(FixedVertexHandle::new(index_to_remove as usize));
-                }
+                triangulation.remove(FixedVertexHandle::new(index_to_remove as usize));
             }
+
             let prev_num_vertices = last_layer_size as u32;
-            // divide by BRANCH_FACTOR and round up
+            // Divide by BRANCH_FACTOR and round up
             let max_num_vertices = (prev_num_vertices + BRANCH_FACTOR - 1) / BRANCH_FACTOR;
             if triangulation.num_vertices() as u32 > max_num_vertices {
-                // The layer contains too many elements. Remove the last
+                // The layer contains too many elements. Remove the last.
                 let vertex_to_pop = FixedVertexHandle::new(triangulation.num_vertices() - 1);
                 swapped_in_point = None;
                 triangulation.remove(vertex_to_pop);
