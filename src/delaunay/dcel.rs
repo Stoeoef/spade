@@ -766,6 +766,18 @@ where
             None
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.dcel.num_faces(), Some(self.dcel.num_faces()))
+    }
+
+}
+
+impl<'a, V, E> ExactSizeIterator for FacesIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
 }
 
 type FixedVerticesIterator = ::std::ops::Range<usize>;
@@ -805,6 +817,17 @@ where
             None
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.dcel.num_vertices(), Some(self.dcel.num_vertices()))
+    }
+}
+
+impl<'a, V, E> ExactSizeIterator for VerticesIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
 }
 
 pub struct EdgesIterator<'a, V, E = ()>
@@ -845,6 +868,17 @@ where
             None
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.dcel.num_edges(), Some(self.dcel.num_edges()))
+    }
+}
+
+impl<'a, V, E> ExactSizeIterator for EdgesIterator<'a, V, E>
+where
+    V: 'a,
+    E: Default + 'a,
+{
 }
 
 /// A handle to a directed edge.
