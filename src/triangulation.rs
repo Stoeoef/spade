@@ -98,6 +98,13 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
         Self::default()
     }
 
+    /// Creates a new triangulation populated with some vertices.
+    ///
+    /// This will usually be more efficient than inserting the elements sequentially by calling [insert].
+    fn bulk_load(elements: Vec<Self::Vertex>) -> Self {
+        crate::delaunay_core::bulk_load(elements)
+    }
+
     /// Converts a fixed vertex handle to a reference vertex handle.
     ///
     /// *See also the [handles](crate::handles) module for more information.*

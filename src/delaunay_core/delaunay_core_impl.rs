@@ -39,7 +39,6 @@ mod test {
     use crate::{handles::FixedVertexHandle, Point2};
     use rand::distributions::{Distribution, Uniform};
     use rand::{seq::SliceRandom, Rng, SeedableRng};
-    use rand_hc::Hc128Rng;
 
     #[test]
     fn test_empty() {
@@ -144,7 +143,7 @@ mod test {
     #[test]
     fn test_insert_outside_convex_hull() {
         const NUM: usize = 100;
-        let mut rng = Hc128Rng::from_seed(*SEED);
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         let range = Uniform::new(0., 2.0 * ::std::f64::consts::PI);
 
         let mut d = DelaunayTriangulation::<_>::default();
@@ -437,7 +436,7 @@ mod test {
 
     #[test]
     fn test_remove_star_shaped() {
-        let mut rng = Hc128Rng::from_seed(*SEED);
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         let mut points = vec![
             Point2::new(0.0, 0.0),
             Point2::new(1.0, 1.0),
@@ -477,7 +476,7 @@ mod test {
         d.insert(Point2::new(2.0, -2.0));
         d.insert(Point2::new(2.0, 2.0));
         // Now remove all inner points
-        let mut rng = Hc128Rng::from_seed(*SEED);
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         points.shuffle(&mut rng);
         assert_eq!(d.num_vertices(), 1004);
         for point in points {
@@ -520,7 +519,7 @@ mod test {
         let points = random_points_with_seed(1000, SEED);
         let mut d = DelaunayTriangulation::<_>::from_iter(points);
 
-        let mut rng = Hc128Rng::from_seed(*SEED);
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         for _ in 0..1000 {
             if rng.gen() {
                 // Insert new random point
@@ -624,7 +623,7 @@ mod test {
         for x in 2..100 {
             triangulation.insert(Point2::new(f64::from(x), 0.0));
         }
-        let mut rng = Hc128Rng::from_seed(*SEED);
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         while triangulation.num_vertices() > 3 {
             if rng.gen() {
                 triangulation.remove(FixedVertexHandle::new(1));

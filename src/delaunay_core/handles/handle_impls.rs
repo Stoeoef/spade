@@ -391,10 +391,12 @@ impl FixedUndirectedEdgeHandle {
         FixedDirectedEdgeHandle::new_normalized(self.index())
     }
 
+    #[inline]
     pub(in super::super) fn normalized(&self) -> FixedDirectedEdgeHandle {
         self.as_directed()
     }
 
+    #[inline]
     pub(in super::super) fn not_normalized(&self) -> FixedDirectedEdgeHandle {
         self.as_directed().rev()
     }

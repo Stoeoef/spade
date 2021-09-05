@@ -9,9 +9,15 @@ use serde_crate::{Deserialize, Serialize};
 /// However, changing this to `f32` will reduce the required storage space.
 ///
 /// This type should usually be either `f32` or `f64`.
-pub trait SpadeNum: Num + PartialOrd + Into<f64> + Copy + Signed + std::fmt::Debug {}
+pub trait SpadeNum:
+    Num + PartialOrd + Into<f64> + From<f32> + Copy + Signed + std::fmt::Debug
+{
+}
 
-impl<T> SpadeNum for T where T: Num + PartialOrd + Into<f64> + Copy + Signed + std::fmt::Debug {}
+impl<T> SpadeNum for T where
+    T: Num + PartialOrd + Into<f64> + From<f32> + Copy + Signed + std::fmt::Debug
+{
+}
 
 /// A two dimensional point.
 ///
@@ -78,6 +84,24 @@ impl<S: SpadeNum> Point2<S> {
     pub(crate) fn dot(&self, other: Self) -> S {
         self.x * other.x + self.y * other.y
     }
+
+    pub(crate) fn min(&self, other: Self) -> Self {
+        let partial_min = |s1, s2| if s1 < s2 { s1 } else { s2 };
+
+        Point2 {
+            x: partial_min(self.x, other.x),
+            y: partial_min(self.y, other.y),
+        }
+    }
+
+    pub(crate) fn max(&self, other: Self) -> Self {
+        let partial_max = |s1, s2| if s1 > s2 { s1 } else { s2 };
+
+        Point2 {
+            x: partial_max(self.x, other.x),
+            y: partial_max(self.y, other.y),
+        }
+    }
 }
 
 impl<S: SpadeNum> From<Point2<S>> for [S; 2] {
@@ -131,75 +155,3 @@ impl<S: SpadeNum> HasPosition for Point2<S> {
         *self
     }
 }
-
-/*
-TODO
-#[derive(Debug, Default, PartialEq, PartialOrd, Clone, Copy)]
-struct Normal {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-impl Normal {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
-        Normal { x, y, z }
-    }
-
-    pub(crate) fn sub(&self, other: Self) -> Self {
-        Normal {
-            x: self.x - other.x,
-            y: self.y - other.y,
-            z: self.z - other.z,
-        }
-    }
-
-    pub(crate) fn add(&self, other: Self) -> Self {
-        Normal {
-            x: self.x + other.x,
-            y: self.y + other.y,
-            z: self.z + other.z,
-        }
-    }
-
-    pub(crate) fn mul(&self, factor: f64) -> Self {
-        Normal {
-            x: self.x * factor,
-            y: self.y * factor,
-            z: self.z * factor,
-        }
-    }
-
-    pub(crate) fn length2(&self) -> f64 {
-        self.x * self.x + self.y * self.y + self.z + self.z
-    }
-
-    pub(crate) fn cross(&self, other: Self) -> Self {
-        Normal {
-            x: self.y * other.z - self.z * other.y,
-            y: self.z * other.x - self.x * other.z,
-            z: self.x * other.y - self.y * other.x,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Gradient {
-    pub x: f64,
-    pub y: f64,
-}
-
-impl Gradient {
-    pub fn new(x: f64, y: f64) -> Self {
-        Gradient { x, y }
-    }
-}
-
-trait HasGradient {
-    fn gradient(&self) -> Gradient;
-}
-
-trait HasGradientMut {
-    fn set_gradient(&mut self, gradient: Gradient);
-}
-*/

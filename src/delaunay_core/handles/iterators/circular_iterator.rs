@@ -13,7 +13,7 @@ pub trait NextBackFn {
 }
 
 pub struct CircularIterator<'a, V, DE, UE, F, NB> {
-    current_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
+    pub(super) current_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
     final_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
     iteration_finished: bool,
     next_back_fn: PhantomData<NB>,

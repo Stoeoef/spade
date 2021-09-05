@@ -26,7 +26,6 @@ serde = ["optional/serde", "serde_crate"]
 [dev-dependencies]
 approx = "0.5"
 rand = "0.8.3"
-rand_hc = "0.3"
 cgmath = "0.18.0"
 svg = "0.10.0"
 criterion = { version = "0.3.4", features = ["html_reports"] }

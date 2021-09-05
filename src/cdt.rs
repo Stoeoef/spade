@@ -546,7 +546,6 @@ mod test {
     use crate::{DelaunayTriangulation, Point2, Triangulation};
     use rand::distributions::{Distribution, Uniform};
     use rand::{Rng, SeedableRng};
-    use rand_hc::Hc128Rng;
 
     type CDT = ConstrainedDelaunayTriangulation<Point2<f64>>;
     type Delaunay = DelaunayTriangulation<Point2<f64>>;
@@ -855,7 +854,7 @@ mod test {
         let seed = SEED;
         const RANGE: i64 = 10000;
         const NUM_POINTS: usize = 1000;
-        let mut rng = Hc128Rng::from_seed(*seed);
+        let mut rng = rand::rngs::StdRng::from_seed(*seed);
         let points = random_points_on_line(RANGE, NUM_POINTS, &mut rng, Point2::new(1.0, 0.0));
         let mut cdt = ConstrainedDelaunayTriangulation::<_>::new();
         for ps in points.chunks(2) {
@@ -886,7 +885,7 @@ mod test {
                 points.push(Point2::new(x as f64, y as f64));
             }
         }
-        let mut rng = Hc128Rng::from_seed(*seed);
+        let mut rng = rand::rngs::StdRng::from_seed(*seed);
         points.shuffle(&mut rng);
         let mut cdt = CDT::new();
         for p in points {

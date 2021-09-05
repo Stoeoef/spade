@@ -1,3 +1,4 @@
+mod bulk_load;
 mod dcel;
 pub mod dcel_operations;
 mod delaunay_core_impl;
@@ -6,6 +7,8 @@ mod hint_generator;
 mod line_side_info;
 
 pub(crate) mod math;
+
+pub(crate) use bulk_load::bulk_load;
 
 pub use dcel::DCEL;
 pub use hint_generator::{

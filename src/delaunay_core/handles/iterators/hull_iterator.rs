@@ -41,6 +41,7 @@ impl<'a, V, DE, UE, F> HullIterator<'a, V, DE, UE, F> {
     }
 }
 
+// TODO: Implement ExactSizeIterator
 impl<'a, V, DE, UE, F> Iterator for HullIterator<'a, V, DE, UE, F> {
     type Item = DirectedEdgeHandle<'a, V, DE, UE, F>;
 

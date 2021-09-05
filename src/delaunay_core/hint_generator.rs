@@ -259,7 +259,6 @@ mod test {
     use std::iter::FromIterator;
 
     use rand::{prelude::SliceRandom, SeedableRng};
-    use rand_hc::Hc128Rng;
 
     use crate::{
         handles::FixedVertexHandle, test_utilities, DelaunayTriangulation, Point2, Triangulation,
@@ -307,7 +306,7 @@ mod test {
         let vertices = test_utilities::random_points_with_seed(300, test_utilities::SEED);
         let mut triangulation = HierarchyTriangulation::from_iter(vertices);
 
-        let mut rng = Hc128Rng::from_seed(*test_utilities::SEED2);
+        let mut rng = rand::rngs::StdRng::from_seed(*test_utilities::SEED2);
         while let Some(to_remove) = triangulation
             .fixed_vertices()
             .collect::<Vec<_>>()
