@@ -98,6 +98,15 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
         Self::default()
     }
 
+    /// Creates a new triangulation and pre-allocates some space for vertices, edges and faces
+    fn with_capacity(num_vertices: usize, num_undirected_edges: usize, num_faces: usize) -> Self {
+        let mut result = Self::new();
+        result
+            .s_mut()
+            .reserve_capacity(num_vertices, num_undirected_edges, num_faces);
+        result
+    }
+
     /// Creates a new triangulation populated with some vertices.
     ///
     /// This will usually be more efficient than inserting the elements sequentially by calling [insert].
@@ -660,8 +669,11 @@ pub trait TriangulationExt: Triangulation {
     ) -> FixedVertexHandle {
         let position = new_vertex.position();
 
+        let predicate =
+            |edge: DirectedEdgeHandle<_, _, _, _>| edge.side_query(position).is_on_left_side();
+
         let edges_to_connect: Vec<_> = self
-            .get_vertex_facing_edges(convex_hull_edge, new_vertex.position())
+            .get_vertex_facing_edges(convex_hull_edge, position, predicate, predicate)
             .into();
 
         let result =
@@ -670,11 +682,21 @@ pub trait TriangulationExt: Triangulation {
         result
     }
 
-    fn get_vertex_facing_edges(
+    fn get_vertex_facing_edges<ForwardPredicate, BackwardPredicate>(
         &self,
         start_edge: FixedDirectedEdgeHandle,
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) -> std::collections::VecDeque<FixedDirectedEdgeHandle> {
+        forward_predicate: ForwardPredicate,
+        backward_predicate: BackwardPredicate,
+    ) -> std::collections::VecDeque<FixedDirectedEdgeHandle>
+    where
+        ForwardPredicate: Fn(
+            DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        ) -> bool,
+        BackwardPredicate: Fn(
+            DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        ) -> bool,
+    {
         let mut result = std::collections::VecDeque::with_capacity(8);
         let mut current_edge_forward = self.directed_edge(start_edge);
 
@@ -684,8 +706,8 @@ pub trait TriangulationExt: Triangulation {
 
         loop {
             current_edge_forward = current_edge_forward.next();
-            let cur_query = current_edge_forward.side_query(position);
-            if cur_query.is_on_left_side() {
+
+            if forward_predicate(current_edge_forward) {
                 result.push_back(current_edge_forward.fix());
             } else {
                 break;
@@ -695,8 +717,8 @@ pub trait TriangulationExt: Triangulation {
         let mut current_edge_backward = self.directed_edge(start_edge);
         loop {
             current_edge_backward = current_edge_backward.prev();
-            let cur_query = current_edge_backward.side_query(position);
-            if cur_query.is_on_left_side() {
+
+            if backward_predicate(current_edge_backward) {
                 result.push_front(current_edge_backward.fix());
             } else {
                 break;
@@ -866,8 +888,7 @@ pub trait TriangulationExt: Triangulation {
 
         let start = self.validate_vertex_handle(start);
 
-        //let closest_vertex = self.walk_to_nearest_neighbor(start, target_position);
-        let closest_vertex = self.vertex(start);
+        let closest_vertex = self.walk_to_nearest_neighbor(start, target_position);
 
         let out_edge = closest_vertex
             .out_edge()
@@ -1032,8 +1053,8 @@ pub trait TriangulationExt: Triangulation {
                 vertex_to_remove,
             );
             // Not exactly elegant. IsolateVertexResult should maybe be split into two parts
-            let new_edges = std::mem::replace(&mut isolation_result.new_edges, Vec::new());
-            self.legalize_edges_after_removal(new_edges, |edge| {
+            let mut new_edges = std::mem::replace(&mut isolation_result.new_edges, Vec::new());
+            self.legalize_edges_after_removal(&mut new_edges, |edge| {
                 !isolation_result.is_new_edge(edge)
             });
             dcel_operations::cleanup_isolated_vertex(self.s_mut(), &mut isolation_result);
@@ -1066,8 +1087,8 @@ pub trait TriangulationExt: Triangulation {
                     let edge2 = self.directed_edge(edge2);
 
                     let target_position = edge2.to().position();
-                    // Check if the new edge would violate the convex hull property by going
-                    // "to the left". The convex hull must only contain curves to the left
+                    // Check if the new edge would violate the convex hull property by turning left
+                    // The convex hull must only contain curves turning right
                     if edge1.side_query(target_position).is_on_left_side() {
                         // Violation detected. It is resolved by flipping the edge that connects
                         // the most recently added edge (edge2) with the point that was removed
@@ -1092,7 +1113,7 @@ pub trait TriangulationExt: Triangulation {
 
         convex_edges.push(loop_end_next);
         let result = dcel_operations::disconnect_edge_strip(self.s_mut(), convex_edges);
-        self.legalize_edges_after_removal(edges_to_validate, |_| false);
+        self.legalize_edges_after_removal(&mut edges_to_validate, |_| false);
         result
     }
 
@@ -1120,7 +1141,7 @@ pub trait TriangulationExt: Triangulation {
     /// Note that the described low degrees optimization is not yet part of this library.
     fn legalize_edges_after_removal<F>(
         &mut self,
-        mut edges_to_validate: Vec<FixedUndirectedEdgeHandle>,
+        edges_to_validate: &mut Vec<FixedUndirectedEdgeHandle>,
         edge_must_not_be_flipped_predicate: F,
     ) where
         F: Fn(FixedUndirectedEdgeHandle) -> bool,

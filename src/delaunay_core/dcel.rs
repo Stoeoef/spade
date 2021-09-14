@@ -115,6 +115,17 @@ where
 }
 
 impl<V, DE, UE, F> DCEL<V, DE, UE, F> {
+    pub fn reserve_capacity(
+        &mut self,
+        num_vertices: usize,
+        num_undirected_edges: usize,
+        num_faces: usize,
+    ) {
+        self.vertices.reserve(num_vertices);
+        self.edges.reserve(num_undirected_edges);
+        self.faces.reserve(num_faces);
+    }
+
     pub fn num_vertices(&self) -> usize {
         self.vertices.len()
     }

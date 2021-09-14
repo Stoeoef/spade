@@ -1,6 +1,8 @@
 use std::convert::TryInto;
 
-use crate::{handles::FixedVertexHandle, HasPosition, Point2, SpadeNum, Triangulation};
+use crate::{triangulation::TriangulationExt, HasPosition, Point2, SpadeNum, Triangulation};
+
+use super::{dcel_operations, DirectedEdgeHandle, FixedDirectedEdgeHandle};
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 struct FloatOrd(f64);
@@ -42,7 +44,7 @@ where
             .unwrap()
     });
 
-    let mut result = T::new();
+    let mut result = T::with_capacity(elements.len(), elements.len() * 3, elements.len() * 2);
     while let Some(next) = elements.pop() {
         result.insert(next);
         if !result.all_vertices_on_line() {
@@ -53,34 +55,134 @@ where
     let mut angles = Hull::from_triangulation(&result, center);
 
     while let Some(next) = elements.pop() {
-        let next_position = next.position();
-        let current_angle = pseudo_angle(next_position, center);
-        let hint = angles.get(current_angle);
-        let handle = result.insert_with_hint(next, hint);
-
-        let vertex = result.vertex(handle);
-
-        let outgoing_ch_edge = vertex.out_edges().find(|edge| edge.is_outer_edge());
-        if let Some(second_edge) = outgoing_ch_edge {
-            let first_edge = second_edge.prev();
-
-            let first_angle = pseudo_angle(first_edge.from().position(), center);
-            let second_angle = pseudo_angle(second_edge.to().position(), center);
-
-            angles.insert(
-                first_angle,
-                current_angle,
-                second_angle,
-                first_edge.from().fix(),
-            );
-        } else {
-            // Vertex is not part of the convex hull and was inserted into the inside of the triangulation.
-            // Nothing to update since the convex  hull stayed the same
-            continue;
-        }
+        single_bulk_insertion_step(&mut result, center, &mut angles, next);
     }
 
+    fix_convexity(&mut result);
+
     result
+}
+
+fn single_bulk_insertion_step<TR, T>(
+    result: &mut TR,
+    center: Point2<<T as HasPosition>::Scalar>,
+    hull: &mut Hull,
+    element: T,
+) where
+    T: HasPosition,
+    TR: Triangulation<Vertex = T>,
+{
+    let next_position = element.position();
+    let current_angle = pseudo_angle(next_position, center);
+    let edge_hint = hull.get(current_angle);
+
+    let edge = result.directed_edge(edge_hint);
+
+    let new_vertex = if edge.side_query(next_position).is_on_left_side() {
+        let edge = edge.fix();
+
+        let forward_predicate = |edge: DirectedEdgeHandle<_, _, _, _>| {
+            let point_projection = super::math::project_point(
+                next_position,
+                edge.from().position(),
+                edge.to().position(),
+            );
+            !point_projection.is_after_edge() && edge.side_query(next_position).is_on_left_side()
+        };
+
+        let backward_predicate = |edge: DirectedEdgeHandle<_, _, _, _>| {
+            let point_projection = super::math::project_point(
+                next_position,
+                edge.to().position(),
+                edge.from().position(),
+            );
+            !point_projection.is_after_edge() && edge.side_query(next_position).is_on_left_side()
+        };
+
+        let edges_to_connect: Vec<_> = result
+            .get_vertex_facing_edges(edge, next_position, forward_predicate, backward_predicate)
+            .into();
+
+        let new_vertex =
+            super::dcel_operations::connect_edge_strip(result.s_mut(), &edges_to_connect, element);
+        result.legalize_edges_after_insertion(&mut edges_to_connect.into(), next_position);
+        new_vertex
+    } else {
+        // The point doesn't lie on to outer face for some reason. We will simply call the regular
+        // insertion procedure which handles all the details of an inner vertex insertion.
+        let hint = edge.from().fix();
+        result.insert_with_hint(element, hint)
+    };
+
+    let new_vertex = result.vertex(new_vertex);
+    let outgoing_ch_edge = new_vertex.out_edges().find(|edge| edge.is_outer_edge());
+
+    // Fix hull
+    if let Some(second_edge) = outgoing_ch_edge {
+        let first_edge = second_edge.prev();
+
+        let first_angle = pseudo_angle(first_edge.from().position(), center);
+        let second_angle = pseudo_angle(second_edge.to().position(), center);
+
+        hull.insert(
+            first_angle,
+            current_angle,
+            second_angle,
+            first_edge.fix(),
+            second_edge.fix(),
+        );
+    }
+}
+
+fn fix_convexity<TR>(triangulation: &mut TR)
+where
+    TR: Triangulation,
+{
+    let mut edges_to_validate = Vec::with_capacity(2);
+    let mut convex_edges: Vec<FixedDirectedEdgeHandle> = Vec::with_capacity(64);
+
+    let mut current_fixed = triangulation.outer_face().adjacent_edge().unwrap().fix();
+
+    loop {
+        let current_handle = triangulation.directed_edge(current_fixed);
+        let next_handle = current_handle.next().fix();
+        convex_edges.push(current_fixed);
+        current_fixed = next_handle;
+        loop {
+            if let &[.., edge1_fixed, edge2_fixed] = &*convex_edges {
+                let edge1 = triangulation.directed_edge(edge1_fixed);
+                let edge2 = triangulation.directed_edge(edge2_fixed);
+
+                let target_position = edge2.to().position();
+                // Check if the new edge would violate the convex hull property by turning left
+                // The convex hull must only contain right turns
+                if edge1.side_query(target_position).is_on_left_side() {
+                    // Violation detected. It is resolved by inserting a new edge
+                    edges_to_validate.push(edge1.fix().as_undirected());
+                    edges_to_validate.push(edge2.fix().as_undirected());
+
+                    let new_edge = dcel_operations::create_single_face_between_edge_and_next(
+                        triangulation.s_mut(),
+                        edge1_fixed,
+                    );
+
+                    convex_edges.pop();
+                    convex_edges.pop();
+                    convex_edges.push(new_edge);
+
+                    triangulation.legalize_edges_after_removal(&mut edges_to_validate, |_| false);
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        if Some(&current_fixed) == convex_edges.get(1) {
+            break;
+        }
+    }
 }
 
 type Index = u32;
@@ -221,7 +323,7 @@ struct Node {
     /// `EdgeIndex` of the edge to the right of this point, i.e. having this
     /// point as its `dst` (since the hull is on top of the shape and triangle
     /// are wound counter-clockwise).
-    vertex: FixedVertexHandle,
+    edge: FixedDirectedEdgeHandle,
 
     /// Neighbors, or `EMPTY_HULL`
     left: HullIndex,
@@ -270,7 +372,7 @@ impl Hull {
 
             data.push(Node {
                 angle: angle_from,
-                vertex: edge.from().fix(),
+                edge: edge.fix(),
                 left: prev_index,
                 right: next_index,
             });
@@ -334,7 +436,8 @@ impl Hull {
         left_angle: FloatOrd,
         middle_angle: FloatOrd,
         right_angle: FloatOrd,
-        vertex: FixedVertexHandle,
+        left_edge: FixedDirectedEdgeHandle,
+        right_edge: FixedDirectedEdgeHandle,
     ) {
         let left_bucket = self.floored_bucket(left_angle);
 
@@ -368,12 +471,15 @@ impl Hull {
         self.data[left_index].right = new_index;
         self.data[right_index].left = new_index;
 
+        self.data[left_index].edge = left_edge;
+
         let new_node = Node {
             angle: middle_angle,
-            vertex,
+            edge: right_edge,
             left: left_index,
             right: right_index,
         };
+
         self.push_or_update_node(new_node, new_index);
 
         // Update bucket entries appropriately
@@ -421,7 +527,7 @@ impl Hull {
         }
     }
 
-    fn get(&self, angle: FloatOrd) -> FixedVertexHandle {
+    fn get(&self, angle: FloatOrd) -> FixedDirectedEdgeHandle {
         let mut current_handle = self.buckets[self.floored_bucket(angle)];
         loop {
             let current_node = self.data[current_handle];
@@ -429,7 +535,7 @@ impl Hull {
             let next_angle = self.data[current_node.right].angle;
 
             if Segment::new(left_angle, next_angle).contains_angle(angle) {
-                return current_node.vertex;
+                return current_node.edge;
             }
 
             current_handle = current_node.right;
@@ -494,8 +600,8 @@ fn pseudo_angle<S: SpadeNum>(a: Point2<S>, center: Point2<S>) -> FloatOrd {
 #[cfg(test)]
 mod test {
     use crate::{
-        handles::FixedVertexHandle, triangulation::TriangulationExt, DelaunayTriangulation,
-        LastUsedVertexHintGenerator, Point2, Triangulation,
+        triangulation::TriangulationExt, DelaunayTriangulation, LastUsedVertexHintGenerator,
+        Point2, Triangulation,
     };
 
     use super::{FloatOrd, Hull, HullIndex};
@@ -531,8 +637,6 @@ mod test {
 
     #[test]
     fn test_hull() {
-        use super::FloatOrd;
-
         let mut triangulation =
             DelaunayTriangulation::<_, (), (), (), LastUsedVertexHintGenerator>::new();
         triangulation.insert(Point2::new(1.0, 1.0)); // Angle: 0.375
@@ -541,26 +645,25 @@ mod test {
         triangulation.insert(Point2::new(-1.0, -1.0)); // Angle: 0.875
 
         let mut hull = Hull::from_triangulation(&triangulation, Point2::new(0.0, 0.0));
-        sanity_check(&hull);
+        sanity_check(&triangulation, &hull);
 
-        let v4 = FixedVertexHandle::new(4);
-        hull.insert(FloatOrd(0.375), FloatOrd(0.4), FloatOrd(0.625), v4);
-        sanity_check(&hull);
+        let center = Point2::new(0.0, 0.0);
+        let additional_elements = [
+            Point2::new(0.4, 2.0),
+            Point2::new(-0.4, 3.0),
+            Point2::new(-0.4, -4.0),
+            Point2::new(3.0, 5.0),
+        ];
 
-        let v5 = FixedVertexHandle::new(5);
-        hull.insert(FloatOrd(0.375), FloatOrd(0.6), FloatOrd(0.125), v5);
-        sanity_check(&hull);
-
-        let v6 = FixedVertexHandle::new(6);
-        hull.insert(FloatOrd(0.375), FloatOrd(0.4), FloatOrd(0.6), v6);
-        sanity_check(&hull);
-
-        let v7 = FixedVertexHandle::new(7);
-        hull.insert(FloatOrd(0.4), FloatOrd(0.5), FloatOrd(0.6), v7);
-        sanity_check(&hull);
+        for (index, element) in additional_elements.iter().enumerate() {
+            super::single_bulk_insertion_step(&mut triangulation, center, &mut hull, *element);
+            if index != 0 {
+                sanity_check(&triangulation, &hull)
+            }
+        }
     }
 
-    fn sanity_check(hull: &Hull) {
+    fn sanity_check(triangulation: &DelaunayTriangulation<Point2<f64>>, hull: &Hull) {
         let non_empty_nodes: Vec<_> = hull
             .data
             .iter()
@@ -571,6 +674,13 @@ mod test {
         for (index, node) in &non_empty_nodes {
             let left_node = hull.data[node.left];
             let right_node = hull.data[node.right];
+
+            let left_edge = triangulation.directed_edge(left_node.edge);
+            let middle_edge = triangulation.directed_edge(node.edge);
+            let right_edge = triangulation.directed_edge(right_node.edge);
+
+            assert_eq!(left_edge.next(), middle_edge);
+            assert_eq!(middle_edge.next(), right_edge);
 
             assert!(!hull.empty.contains(&node.left));
             assert!(!hull.empty.contains(&node.right));
@@ -591,5 +701,7 @@ mod test {
                 }
             }
         }
+
+        triangulation.sanity_check();
     }
 }

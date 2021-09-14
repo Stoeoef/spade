@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::triangulation::RemovalResult;
 use crate::HasPosition;
 
@@ -211,6 +209,88 @@ where
         edges_to_remove,
         faces_to_remove,
     }
+}
+
+pub fn create_single_face_between_edge_and_next<V, DE, UE, F>(
+    dcel: &mut DCEL<V, DE, UE, F>,
+    edge: FixedDirectedEdgeHandle,
+) -> FixedDirectedEdgeHandle
+where
+    DE: Default,
+    UE: Default,
+    F: Default,
+{
+    // Before:
+    //
+    //
+    //       ^
+    //         \
+    //  outer   \
+    //  face     \
+    //            \
+    // --- edge -> \
+    //
+    // After:
+    // Added a new edge between edge.next().to() and edge.from()
+    //
+    // new edge
+    //   |
+    //   |   ^
+    //   | /   \
+    //   v/ new \
+    //   / face  \
+    //  /         \
+    // /-- edge -> \
+
+    let edge_entry = *dcel.half_edge(edge);
+    let next_entry = *dcel.half_edge(edge_entry.next);
+    let next_to = dcel.directed_edge(edge_entry.next).to().fix();
+
+    let new_face_handle = FixedFaceHandle::<PossiblyOuterTag>::new(dcel.num_faces());
+
+    let inner_edge_entry = HalfEdgeEntry {
+        next: edge,
+        prev: edge_entry.next,
+        face: new_face_handle,
+        origin: next_to,
+    };
+
+    let outer_edge_entry = HalfEdgeEntry {
+        next: next_entry.next,
+        prev: edge_entry.prev,
+        face: OUTER_FACE_HANDLE,
+        origin: edge_entry.origin,
+    };
+
+    let new_edge_entry = EdgeEntry {
+        entries: [inner_edge_entry, outer_edge_entry],
+        directed_data: [DE::default(), DE::default()],
+        undirected_data: UE::default(),
+    };
+
+    let new_edge_handle = FixedUndirectedEdgeHandle::new(dcel.num_undirected_edges());
+
+    let new_inner_handle = FixedDirectedEdgeHandle::new_normalized(new_edge_handle.index());
+    let new_outer_handle = new_inner_handle.rev();
+
+    dcel.half_edge_mut(edge_entry.prev).next = new_outer_handle;
+    dcel.half_edge_mut(edge).prev = new_inner_handle;
+
+    dcel.half_edge_mut(edge_entry.next).next = new_inner_handle;
+    dcel.half_edge_mut(next_entry.next).prev = new_outer_handle;
+
+    dcel.half_edge_mut(edge).face = new_face_handle;
+    dcel.half_edge_mut(edge_entry.next).face = new_face_handle;
+
+    dcel.faces[OUTER_FACE_HANDLE.index()].adjacent_edge = optional::some(new_outer_handle);
+
+    dcel.edges.push(new_edge_entry);
+    dcel.faces.push(FaceEntry {
+        adjacent_edge: optional::some(new_inner_handle),
+        data: F::default(),
+    });
+
+    new_outer_handle
 }
 
 pub fn connect_edge_strip<V, DE, UE, F>(
@@ -976,41 +1056,42 @@ where
 /// Flip an edge in cw direction
 pub fn flip_cw<V, DE, UE, F>(dcel: &mut DCEL<V, DE, UE, F>, e: FixedUndirectedEdgeHandle) {
     let e = e.as_directed();
-    let en = dcel.half_edge(e).next;
-    let ep = dcel.half_edge(e).prev;
+    let e_entry = *dcel.half_edge(e);
+    let en = e_entry.next;
+    let ep = e_entry.prev;
+    let e_face = e_entry.face;
+    let e_origin = e_entry.origin;
+
     let t = e.rev();
-    let tn = dcel.half_edge(t).next;
-    let tp = dcel.half_edge(t).prev;
+    let t_entry = *dcel.half_edge(t);
+    let tn = t_entry.next;
+    let tp = t_entry.prev;
+    let t_face = t_entry.face;
+    let t_origin = t_entry.origin;
 
     dcel.half_edge_mut(en).next = e;
     dcel.half_edge_mut(en).prev = tp;
     dcel.half_edge_mut(e).next = tp;
     dcel.half_edge_mut(e).prev = en;
+    dcel.half_edge_mut(e).origin = dcel.half_edge(ep).origin;
     dcel.half_edge_mut(tp).next = en;
     dcel.half_edge_mut(tp).prev = e;
+    dcel.half_edge_mut(tp).face = e_face;
 
     dcel.half_edge_mut(tn).next = t;
     dcel.half_edge_mut(tn).prev = ep;
     dcel.half_edge_mut(t).next = ep;
     dcel.half_edge_mut(t).prev = tn;
+    dcel.half_edge_mut(t).origin = dcel.half_edge(tp).origin;
     dcel.half_edge_mut(ep).next = tn;
     dcel.half_edge_mut(ep).prev = t;
+    dcel.half_edge_mut(ep).face = t_face;
 
-    let e_origin = dcel.half_edge(e).origin;
-    let t_origin = dcel.half_edge(t).origin;
     dcel.vertices[e_origin.index()].out_edge = optional::some(tn);
     dcel.vertices[t_origin.index()].out_edge = optional::some(en);
 
-    dcel.half_edge_mut(e).origin = dcel.half_edge(ep).origin;
-    dcel.half_edge_mut(t).origin = dcel.half_edge(tp).origin;
-
-    let e_face = dcel.half_edge(e).face;
-    let t_face = dcel.half_edge(t).face;
     dcel.faces[e_face.index()].adjacent_edge = optional::some(e);
     dcel.faces[t_face.index()].adjacent_edge = optional::some(t);
-
-    dcel.half_edge_mut(tp).face = dcel.half_edge(e).face;
-    dcel.half_edge_mut(ep).face = dcel.half_edge(t).face;
 }
 
 /// Vertex removal has two stages: First, the vertex is disconnected from its surroundings (isolated).
@@ -1586,6 +1667,18 @@ mod test {
         assert_eq!(dcel.num_faces(), 4);
         assert_eq!(dcel.num_vertices(), 5);
         assert_eq!(dcel.num_undirected_edges(), 7);
+        dcel.sanity_check();
+    }
+
+    #[test]
+    fn test_create_single_face_between_edge_and_next() {
+        let mut dcel = DCEL::<_, (), (), ()>::default();
+        super::insert_first_vertex(&mut dcel, 0);
+        super::insert_second_vertex(&mut dcel, 1);
+        super::split_edge_when_all_vertices_on_line(&mut dcel, FixedDirectedEdgeHandle::new(0), 2);
+
+        super::create_single_face_between_edge_and_next(&mut dcel, FixedDirectedEdgeHandle::new(0));
+
         dcel.sanity_check();
     }
 }

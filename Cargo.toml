@@ -34,4 +34,3 @@ criterion = { version = "0.3.4", features = ["html_reports"] }
 [[bench]]
 name = "benchmarks"
 harness = false
-features = ["test"]

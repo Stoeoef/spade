@@ -55,10 +55,10 @@ pub trait HintGenerator<S: SpadeNum>: Default {
 /// ```
 /// use spade::{DelaunayTriangulation, LastUsedVertexHintGenerator, Point2, Triangulation};
 ///
-/// pub type LastUsedVertexTriangulation =
-///     DelaunayTriangulation<Point2<f64>, (), (), (), LastUsedVertexHintGenerator<f64>>;
+/// type LastUsedVertexTriangulation =
+///     DelaunayTriangulation<Point2<f64>, (), (), (), LastUsedVertexHintGenerator>;
 ///
-/// let mut triangulation = LastUsedVertexHintGenerator::new();
+/// let mut triangulation = LastUsedVertexTriangulation::new();
 /// // Start using the triangulation, e.g. by inserting vertices
 /// triangulation.insert(Point2::new(0.0, 0.0));
 /// ```
