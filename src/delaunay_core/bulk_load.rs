@@ -243,65 +243,6 @@ impl<P> std::cmp::PartialEq<usize> for TypedIndex<P> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-/// This represents a strongly-typed `Vec<T>` which can only be accessed by
-/// a [`TypedIndex`] parameterized with the same `PhantomData`, at zero
-/// run-time cost.
-#[derive(Debug)]
-pub struct TypedVec<T, P>(Vec<T>, std::marker::PhantomData<*const P>);
-
-impl<T, P> std::ops::Index<TypedIndex<P>> for TypedVec<T, P> {
-    type Output = T;
-    fn index(&self, index: TypedIndex<P>) -> &Self::Output {
-        self.0.index(index.0 as usize)
-    }
-}
-
-impl<T, P> std::ops::IndexMut<TypedIndex<P>> for TypedVec<T, P> {
-    fn index_mut(&mut self, index: TypedIndex<P>) -> &mut Self::Output {
-        self.0.index_mut(index.0 as usize)
-    }
-}
-
-impl<T, P> std::ops::Deref for TypedVec<T, P> {
-    type Target = Vec<T>;
-    fn deref(&self) -> &Vec<T> {
-        &self.0
-    }
-}
-
-impl<T, P> std::ops::DerefMut for TypedVec<T, P> {
-    fn deref_mut(&mut self) -> &mut Vec<T> {
-        &mut self.0
-    }
-}
-
-impl<T, P> TypedVec<T, P> {
-    pub fn with_capacity(s: usize) -> Self {
-        Self::of(Vec::with_capacity(s))
-    }
-    pub fn of(v: Vec<T>) -> Self {
-        Self(v, std::marker::PhantomData)
-    }
-    pub fn push(&mut self, t: T) -> TypedIndex<P> {
-        let i = self.next_index();
-        self.0.push(t);
-        i
-    }
-    pub fn next_index(&self) -> TypedIndex<P> {
-        TypedIndex::new(self.0.len())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd)]
-pub struct HullTag {}
-pub type HullIndex = TypedIndex<HullTag>;
-pub type HullVec<T> = TypedVec<T, HullTag>;
-
-#[derive(Clone, Copy, Debug)]
 struct Segment {
     from: FloatOrd,
     to: FloatOrd,
@@ -345,9 +286,9 @@ struct Node {
     /// are wound counter-clockwise).
     edge: FixedDirectedEdgeHandle,
 
-    /// Neighbors, or `EMPTY_HULL`
-    left: HullIndex,
-    right: HullIndex,
+    /// Neighbors (indexes into the hull)
+    left: usize,
+    right: usize,
 }
 
 /// The Hull stores a set of points which form a left-to-right order
@@ -357,18 +298,18 @@ struct Node {
 ///
 /// The Hull supports one kind of lookup: for a point P, find the point Q with
 /// the highest X value that is below P.  When projecting P towards the
-/// sweepline, it will intersect the edge beginning at Q; this edge is the one
+/// sweep line, it will intersect the edge beginning at Q; this edge is the one
 /// which should be split.
 ///
 /// In addition, the Hull stores a random-access map from PointIndex to
 /// HullIndex (if present), for fast lookups without hash traversal.
 #[derive(Debug)]
 pub struct Hull {
-    buckets: Vec<HullIndex>,
-    data: HullVec<Node>,
+    buckets: Vec<usize>,
+    data: Vec<Node>,
 
     /// Spare slots in the [`Hull::data`] array, to keep it small
-    empty: Vec<HullIndex>,
+    empty: Vec<usize>,
 }
 
 impl Hull {
@@ -376,16 +317,16 @@ impl Hull {
     where
         T: Triangulation,
     {
-        let hull_size = triangulation.convex_hull_size();
-        let mut data = HullVec::with_capacity(hull_size);
-
         assert!(!triangulation.all_vertices_on_line());
 
-        let mut prev_index = HullIndex::new(hull_size - 1);
+        let hull_size = triangulation.convex_hull_size();
+        let mut data = Vec::with_capacity(hull_size);
+
+        let mut prev_index = hull_size - 1;
 
         for (current_index, edge) in triangulation.convex_hull().enumerate() {
             let angle_from = pseudo_angle(edge.from().position().to_f64(), center);
-            let next_index = HullIndex::new((current_index + 1) % hull_size);
+            let next_index = (current_index + 1) % hull_size;
 
             data.push(Node {
                 angle: angle_from,
@@ -393,7 +334,7 @@ impl Hull {
                 left: prev_index,
                 right: next_index,
             });
-            prev_index = HullIndex::new(current_index);
+            prev_index = current_index;
         }
         let mut result = Self {
             buckets: Vec::new(),
@@ -411,7 +352,7 @@ impl Hull {
         self.buckets.clear();
         self.buckets.reserve(target_size);
 
-        const INVALID: HullIndex = HullIndex::const_new(u32::MAX);
+        const INVALID: usize = usize::MAX;
         self.buckets
             .extend(std::iter::repeat(INVALID).take(target_size));
 
@@ -419,10 +360,10 @@ impl Hull {
             .data
             .iter()
             .enumerate()
-            .find(|(index, _)| !self.empty.contains(&HullIndex::new(*index)))
+            .find(|(index, _)| !self.empty.contains(&*index))
             .unwrap();
 
-        let first_index = HullIndex::new(first_index);
+        let first_index = first_index;
         let mut current_index = first_index;
         let first_bucket = self.ceiled_bucket(current_node.angle);
         self.buckets[first_bucket] = current_index;
@@ -510,16 +451,11 @@ impl Hull {
         self.adjust_bucket_size_if_necessary();
     }
 
-    fn get_next_index(&mut self) -> HullIndex {
-        self.empty.pop().unwrap_or(HullIndex::new(self.data.len()))
+    fn get_next_index(&mut self) -> usize {
+        self.empty.pop().unwrap_or(self.data.len())
     }
 
-    fn update_bucket_segment(
-        &mut self,
-        left_bucket: usize,
-        right_bucket: usize,
-        new_value: HullIndex,
-    ) {
+    fn update_bucket_segment(&mut self, left_bucket: usize, right_bucket: usize, new_value: usize) {
         if left_bucket <= right_bucket {
             for current_bucket in &mut self.buckets[left_bucket..right_bucket] {
                 *current_bucket = new_value;
@@ -535,11 +471,11 @@ impl Hull {
         }
     }
 
-    fn push_or_update_node(&mut self, node: Node, index: HullIndex) {
-        if let Some(existing_node) = self.data.get_mut(index.0 as usize) {
+    fn push_or_update_node(&mut self, node: Node, index: usize) {
+        if let Some(existing_node) = self.data.get_mut(index) {
             *existing_node = node;
         } else {
-            assert_eq!(self.data.len(), index.0 as usize);
+            assert_eq!(self.data.len(), index);
             self.data.push(node);
         }
     }
@@ -623,7 +559,7 @@ mod test {
 
     use crate::{triangulation::TriangulationExt, DelaunayTriangulation, Point2, Triangulation};
 
-    use super::{FloatOrd, Hull, HullIndex};
+    use super::{FloatOrd, Hull};
 
     #[test]
     fn test_bulk_load_with_small_number_of_vertices() {
@@ -748,7 +684,7 @@ mod test {
             .data
             .iter()
             .enumerate()
-            .filter(|(index, _)| !hull.empty.contains(&HullIndex::new(*index)))
+            .filter(|(index, _)| !hull.empty.contains(index))
             .collect();
 
         for (index, node) in &non_empty_nodes {
@@ -777,7 +713,7 @@ mod test {
 
                 if segment.contains_angle(bucket_start_angle) {
                     // Make sure the bucket refers to the node with the smallest angle in the same bucket
-                    assert_eq!(*node_index, bucket_node.0 as usize);
+                    assert_eq!(node_index, bucket_node);
                 }
             }
         }
