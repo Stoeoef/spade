@@ -1,6 +1,6 @@
-use std::convert::TryInto;
+use std::{cmp::Ordering, convert::TryInto};
 
-use crate::{triangulation::TriangulationExt, HasPosition, Point2, SpadeNum, Triangulation};
+use crate::{triangulation::TriangulationExt, HasPosition, Point2, Triangulation};
 
 use super::{dcel_operations, DirectedEdgeHandle, FixedDirectedEdgeHandle};
 
@@ -16,7 +16,7 @@ impl Ord for FloatOrd {
     }
 }
 
-pub(crate) fn bulk_load<V, T>(mut elements: Vec<V>) -> T
+pub(crate) fn bulk_load<V, T>(elements: Vec<V>) -> T
 where
     V: HasPosition,
     T: Triangulation<Vertex = V>,
@@ -34,23 +34,43 @@ where
         max = max.max(position);
     }
 
-    let center = min.add(max).mul(0.5f32.into());
+    let center = min.add(max).mul(0.5f32.into()).to_f64();
 
-    // Sort by distance, smallest values last. This allows to pop values depending on their distance.
-    elements.sort_unstable_by(|a, b| {
+    let sorting_fn = |a: &V, b: &V| -> Ordering {
+        let (a, b) = (a.position().to_f64(), b.position().to_f64());
         center
-            .distance2(b.position())
+            .distance2(b)
             .partial_cmp(&center.distance2(a.position()))
-            .unwrap()
-    });
+            .expect("Invalid point position - possible NAN detected")
+    };
 
     let mut result = T::with_capacity(elements.len(), elements.len() * 3, elements.len() * 2);
-    while let Some(next) = elements.pop() {
+
+    // Sort by distance, smallest values last. This allows to pop values depending on their distance.
+    let mut heap = binary_heap_plus::BinaryHeap::from_vec_cmp(elements, sorting_fn);
+    while let Some(next) = heap.pop() {
         result.insert(next);
         if !result.all_vertices_on_line() {
             break;
         }
     }
+
+    if heap.is_empty() {
+        return result;
+    }
+
+    // Get new center that is guaranteed to be within the convex hull
+    let [v0, v1, v2] = result
+        .inner_faces()
+        .next()
+        .expect("Expected face - this is a bug in spade.")
+        .positions();
+
+    let center = v0.to_f64().add(v1.to_f64().add(v2.to_f64())).mul(1.0 / 3.0);
+
+    // Sort new elements in increasing distance compared to the new center
+    let mut elements = heap.into_vec();
+    elements.sort_unstable_by(sorting_fn);
 
     let mut angles = Hull::from_triangulation(&result, center);
 
@@ -65,7 +85,7 @@ where
 
 fn single_bulk_insertion_step<TR, T>(
     result: &mut TR,
-    center: Point2<<T as HasPosition>::Scalar>,
+    center: Point2<f64>,
     hull: &mut Hull,
     element: T,
 ) where
@@ -73,7 +93,7 @@ fn single_bulk_insertion_step<TR, T>(
     TR: Triangulation<Vertex = T>,
 {
     let next_position = element.position();
-    let current_angle = pseudo_angle(next_position, center);
+    let current_angle = pseudo_angle(next_position.to_f64(), center);
     let edge_hint = hull.get(current_angle);
 
     let edge = result.directed_edge(edge_hint);
@@ -121,8 +141,8 @@ fn single_bulk_insertion_step<TR, T>(
     if let Some(second_edge) = outgoing_ch_edge {
         let first_edge = second_edge.prev();
 
-        let first_angle = pseudo_angle(first_edge.from().position(), center);
-        let second_angle = pseudo_angle(second_edge.to().position(), center);
+        let first_angle = pseudo_angle(first_edge.from().position().to_f64(), center);
+        let second_angle = pseudo_angle(second_edge.to().position().to_f64(), center);
 
         hull.insert(
             first_angle,
@@ -352,10 +372,7 @@ pub struct Hull {
 }
 
 impl Hull {
-    pub fn from_triangulation<T>(
-        triangulation: &T,
-        center: Point2<<T::Vertex as HasPosition>::Scalar>,
-    ) -> Self
+    pub fn from_triangulation<T>(triangulation: &T, center: Point2<f64>) -> Self
     where
         T: Triangulation,
     {
@@ -367,7 +384,7 @@ impl Hull {
         let mut prev_index = HullIndex::new(hull_size - 1);
 
         for (current_index, edge) in triangulation.convex_hull().enumerate() {
-            let angle_from = pseudo_angle(edge.from().position(), center);
+            let angle_from = pseudo_angle(edge.from().position().to_f64(), center);
             let next_index = HullIndex::new((current_index + 1) % hull_size);
 
             data.push(Node {
@@ -589,9 +606,9 @@ impl Hull {
 ///               v
 ///              0.75
 /// ```
-fn pseudo_angle<S: SpadeNum>(a: Point2<S>, center: Point2<S>) -> FloatOrd {
+#[inline]
+fn pseudo_angle(a: Point2<f64>, center: Point2<f64>) -> FloatOrd {
     let a = a.sub(center);
-    let a = Point2::<f64>::new(a.x.into(), a.y.into());
 
     let p = a.x / (a.x.abs() + a.y.abs());
     FloatOrd(1.0 - (if a.y > 0.0 { 3.0 - p } else { 1.0 + p }) / 4.0)
@@ -599,17 +616,81 @@ fn pseudo_angle<S: SpadeNum>(a: Point2<S>, center: Point2<S>) -> FloatOrd {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        triangulation::TriangulationExt, DelaunayTriangulation, LastUsedVertexHintGenerator,
-        Point2, Triangulation,
-    };
+    use float_next_after::NextAfter;
+    use rand::{seq::SliceRandom, SeedableRng};
+
+    use crate::test_utilities::{random_points_with_seed, SEED2};
+
+    use crate::{triangulation::TriangulationExt, DelaunayTriangulation, Point2, Triangulation};
 
     use super::{FloatOrd, Hull, HullIndex};
 
     #[test]
-    fn test_bulk_load() {
-        use crate::test_utilities::{random_points_with_seed, SEED2};
+    fn test_bulk_load_with_small_number_of_vertices() {
+        for size in 0..10 {
+            let triangulation =
+                DelaunayTriangulation::<_>::bulk_load(random_points_with_seed(size, SEED2));
 
+            assert_eq!(triangulation.num_vertices(), size);
+            triangulation.sanity_check();
+        }
+    }
+
+    #[test]
+    fn test_bulk_load_on_grid() {
+        // Inserts vertices on whole integer coordinates. This tends provokes special situations,
+        // e.g. points being inserted exactly on a line.
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED2);
+        const TEST_REPETITIONS: usize = 30;
+        const GRID_SIZE: usize = 30;
+
+        for _ in 0..TEST_REPETITIONS {
+            let mut vertices = Vec::with_capacity(GRID_SIZE * GRID_SIZE);
+            for x in 0..GRID_SIZE {
+                for y in 0..GRID_SIZE {
+                    vertices.push(Point2::new(x as f64, y as f64));
+                }
+            }
+
+            vertices.shuffle(&mut rng);
+            let triangulation = DelaunayTriangulation::<_>::bulk_load(vertices);
+            assert_eq!(triangulation.num_vertices(), GRID_SIZE * GRID_SIZE);
+            triangulation.sanity_check();
+        }
+    }
+
+    #[test]
+    fn test_bulk_load_on_epsilon_grid() {
+        // Inserts vertices on a grid spaced a part by the smallest possible f64 step
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED2);
+        const TEST_REPETITIONS: usize = 30;
+        const GRID_SIZE: usize = 30;
+
+        // Contains The first GRID_SIZE f64 values that are >= 0.0
+        let mut possible_f64: Vec<_> = Vec::with_capacity(GRID_SIZE);
+        let mut current_float = 0.0;
+        for _ in 0..GRID_SIZE {
+            possible_f64.push(current_float);
+            current_float = current_float.next_after(f64::INFINITY);
+        }
+
+        for _ in 0..TEST_REPETITIONS {
+            let mut vertices = Vec::with_capacity(GRID_SIZE * GRID_SIZE);
+            for x in 0..GRID_SIZE {
+                for y in 0..GRID_SIZE {
+                    vertices.push(Point2::new(possible_f64[x], possible_f64[y]));
+                }
+            }
+
+            vertices.shuffle(&mut rng);
+            let triangulation = DelaunayTriangulation::<_>::bulk_load(vertices);
+            assert_eq!(triangulation.num_vertices(), GRID_SIZE * GRID_SIZE);
+            triangulation.sanity_check();
+        }
+    }
+
+    #[test]
+    fn test_bulk_load() {
         const SIZE: usize = 9000;
         let mut vertices = random_points_with_seed(SIZE, SEED2);
 
@@ -637,8 +718,7 @@ mod test {
 
     #[test]
     fn test_hull() {
-        let mut triangulation =
-            DelaunayTriangulation::<_, (), (), (), LastUsedVertexHintGenerator>::new();
+        let mut triangulation = DelaunayTriangulation::<_>::new();
         triangulation.insert(Point2::new(1.0, 1.0)); // Angle: 0.375
         triangulation.insert(Point2::new(1.0, -1.0)); // Angle: 0.125
         triangulation.insert(Point2::new(-1.0, 1.0)); // Angle: 0.625

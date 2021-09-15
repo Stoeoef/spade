@@ -574,6 +574,7 @@ where
         let three = one + one + one;
         v0.add(v1.add(v2)).mul(one / three)
     }
+
     /// Returns the face's circumcircle center and the **squared** radius of the circumcircle.
     ///
     /// The circumcircle is the unique circle that intersects all three vertices of the face.

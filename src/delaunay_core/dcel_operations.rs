@@ -1574,7 +1574,7 @@ mod test {
 
     #[test]
     fn test_insert_first_and_second() {
-        let mut dcel = DCEL::<_, (), (), ()>::default();
+        let mut dcel = DCEL::<_>::default();
         super::insert_first_vertex(&mut dcel, 0);
         super::insert_second_vertex(&mut dcel, 1);
 
@@ -1583,7 +1583,7 @@ mod test {
 
     #[test]
     fn test_split_non_triangle_edge() {
-        let mut dcel = DCEL::<_, (), (), ()>::default();
+        let mut dcel = DCEL::<_>::default();
         let v0 = super::insert_first_vertex(&mut dcel, 0);
         let v1 = super::insert_second_vertex(&mut dcel, 1);
 
@@ -1611,7 +1611,7 @@ mod test {
 
     #[test]
     fn test_extend_line() {
-        let mut dcel = DCEL::<_, (), (), ()>::default();
+        let mut dcel = DCEL::<_>::default();
 
         let v0 = super::insert_first_vertex(&mut dcel, 0);
         let v1 = super::insert_second_vertex(&mut dcel, 1);
@@ -1629,7 +1629,7 @@ mod test {
 
     #[test]
     fn test_connect_edge_strip_small() {
-        let mut dcel = DCEL::<_, (), (), ()>::default();
+        let mut dcel = DCEL::<_>::default();
 
         let v0 = super::insert_first_vertex(&mut dcel, 0);
         let v1 = super::insert_second_vertex(&mut dcel, 1);
@@ -1672,7 +1672,7 @@ mod test {
 
     #[test]
     fn test_create_single_face_between_edge_and_next() {
-        let mut dcel = DCEL::<_, (), (), ()>::default();
+        let mut dcel = DCEL::<_>::default();
         super::insert_first_vertex(&mut dcel, 0);
         super::insert_second_vertex(&mut dcel, 1);
         super::split_edge_when_all_vertices_on_line(&mut dcel, FixedDirectedEdgeHandle::new(0), 2);
