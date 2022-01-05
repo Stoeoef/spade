@@ -1,4 +1,4 @@
-use std::{iter::FromIterator, time::Duration};
+use std::time::Duration;
 
 use criterion::{measurement::WallTime, BenchmarkGroup, Criterion};
 use rand::distributions::uniform::SampleUniform;
@@ -25,9 +25,12 @@ pub fn locate_benchmark(c: &mut Criterion) {
     ) where
         S::Sampler: Copy,
     {
-        let triangulation = DelaunayTriangulation::<_, (), (), (), H>::from_iter(
-            uniform_distribution(*SEED2, range).take(NUM_ELEMENTS),
-        );
+        let triangulation = DelaunayTriangulation::<_, (), (), (), H>::bulk_load(
+            uniform_distribution(*SEED2, range)
+                .take(NUM_ELEMENTS)
+                .collect(),
+        )
+        .unwrap();
 
         let mut elements = elements.into_iter();
 

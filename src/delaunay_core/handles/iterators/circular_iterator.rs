@@ -3,13 +3,13 @@ use std::marker::PhantomData;
 use super::super::DirectedEdgeHandle;
 
 pub trait NextBackFn {
-    fn next<'a, V, DE, UE, F>(
-        edge_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
-    ) -> DirectedEdgeHandle<'a, V, DE, UE, F>;
+    fn next<V, DE, UE, F>(
+        edge_handle: DirectedEdgeHandle<V, DE, UE, F>,
+    ) -> DirectedEdgeHandle<V, DE, UE, F>;
 
-    fn next_back<'a, V, DE, UE, F>(
-        edge_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
-    ) -> DirectedEdgeHandle<'a, V, DE, UE, F>;
+    fn next_back<V, DE, UE, F>(
+        edge_handle: DirectedEdgeHandle<V, DE, UE, F>,
+    ) -> DirectedEdgeHandle<V, DE, UE, F>;
 }
 
 pub struct CircularIterator<'a, V, DE, UE, F, NB> {

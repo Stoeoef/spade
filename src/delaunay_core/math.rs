@@ -1,9 +1,94 @@
-use crate::{LineSideInfo, Point2, SpadeNum};
+use std::{error::Error, fmt::Display};
+
+use crate::{HasPosition, LineSideInfo, Point2, SpadeNum};
 use num_traits::Float;
 
 pub struct PointProjection<S> {
     factor: S,
     length_2: S,
+}
+
+/// The error type used for inserting elements into a triangulation.
+///
+/// Errors during insertion can only originate from an invalid vertex position. Vertices can
+/// be checked for validity by using [crate::validate_vertex].
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
+pub enum InsertionError {
+    /// A coordinate value was too small.
+    ///
+    /// The absolute value of any inserted vertex coordinate must either be zero or greater
+    /// greater than or equal to [crate::MIN_ALLOWED_VALUE].
+    TooSmall,
+
+    /// A coordinate value was too big.
+    ///
+    /// The absolute value of any inserted vertex coordinate must be less than or equal to
+    /// [crate::MAX_ALLOWED_VALUE].
+    TooBig,
+
+    /// A coordinate value was NaN.
+    NaN,
+}
+
+impl Display for InsertionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, f)
+    }
+}
+
+impl Error for InsertionError {}
+
+/// The smallest allowed coordinate value greater than zero that can be inserted into Delaunay
+/// triangulations.
+///
+/// The *absolute value* of any inserted vertex coordinate must be either zero or greater
+/// than or equal to this value.
+/// This is a requirement for preventing floating point underflow when calculating exact
+/// geometric predicates.
+///
+/// *See also [validate_coordinate], [validate_point], [validate_vertex], [MAX_ALLOWED_VALUE],
+/// [crate::Triangulation::insert]*
+pub const MIN_ALLOWED_VALUE: f64 = 1.793662034335766e-43; // 1.0 * 2^-142
+
+/// The biggest allowed coordinate value that can be inserted into Delaunay triangulations.
+///
+/// The *absolute value* of any inserted vertex coordinate must be either smaller than or
+/// equal to this value.
+/// This is a requirement for preventing floating point overflow when calculating exact
+/// geometric predicates.
+///
+/// *See also [validate_coordinate], [validate_vertex], [MIN_ALLOWED_VALUE],
+/// [crate::Triangulation::insert]*
+pub const MAX_ALLOWED_VALUE: f64 = 3.2138760885179806e60; // 1.0 * 2^201
+
+/// Checks if a coordinate value is suitable for insertion into a Delaunay triangulation.
+///
+/// Will return an error if and only if
+///  - The absolute value of the coordinate is too small (See [MIN_ALLOWED_VALUE])
+///  - The absolute value of the coordinate is too large (See [MAX_ALLOWED_VALUE])
+///  - The coordinate is NaN (not a number)
+pub fn validate_coordinate<S: SpadeNum>(value: S) -> Result<(), InsertionError> {
+    let as_f64: f64 = value.into();
+    if as_f64.is_nan() {
+        Err(InsertionError::NaN)
+    } else if as_f64.abs() < MIN_ALLOWED_VALUE && as_f64 != 0.0 {
+        Err(InsertionError::TooSmall)
+    } else if as_f64.abs() > MAX_ALLOWED_VALUE {
+        Err(InsertionError::TooBig)
+    } else {
+        Ok(())
+    }
+}
+
+/// Checks if a vertex is suitable for insertion into a Delaunay triangulation.
+///
+/// A vertex is considered suitable if all of its coordinates are valid. See [validate_coordinate]
+/// for more information.
+pub fn validate_vertex<V: HasPosition>(vertex: &V) -> Result<(), InsertionError> {
+    let position = vertex.position();
+    validate_coordinate(position.x)?;
+    validate_coordinate(position.y)?;
+    Ok(())
 }
 
 impl<S: SpadeNum> PointProjection<S> {
@@ -25,8 +110,8 @@ impl<S: SpadeNum> PointProjection<S> {
 
     pub fn reversed(&self) -> Self {
         Self {
-            factor: self.length_2 - self.factor,
-            length_2: self.length_2,
+            factor: -self.factor,
+            length_2: -self.length_2,
         }
     }
 }
@@ -168,6 +253,26 @@ where
 mod test {
     use crate::Point2;
     use approx::assert_relative_eq;
+
+    #[test]
+    fn check_min_value() {
+        let mut expected = 1.0f64;
+        for _ in 0..142 {
+            expected *= 0.5;
+        }
+
+        assert_eq!(super::MIN_ALLOWED_VALUE, expected);
+    }
+
+    #[test]
+    fn check_max_value() {
+        let mut expected = 1.0f64;
+        for _ in 0..201 {
+            expected *= 2.0;
+        }
+
+        assert_eq!(super::MAX_ALLOWED_VALUE, expected);
+    }
 
     #[test]
     fn test_edge_distance() {

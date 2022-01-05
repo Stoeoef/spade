@@ -15,6 +15,7 @@ where
     line_to: Point2<V::Scalar>,
 }
 
+#[allow(clippy::enum_variant_names)]
 pub enum Intersection<'a, V, DE, UE, F>
 where
     V: HasPosition,
@@ -211,7 +212,7 @@ where
                         }
                     }
                 }
-                return None;
+                None
             }
         }
     }
@@ -221,7 +222,7 @@ where
         match self.cur_intersection {
             Some(EdgeIntersection(cur_edge)) => {
                 match trace_direction_out_of_edge(cur_edge, self.line_from, self.line_to) {
-                    EdgeOutDirection::ConvexHull => return None,
+                    EdgeOutDirection::ConvexHull => None,
                     EdgeOutDirection::VertexIntersection(vertex) => {
                         Some(VertexIntersection(vertex))
                     }
@@ -310,10 +311,10 @@ pub(super) enum VertexOutDirection<'a, V, DE, UE, F> {
     EdgeIntersection(DirectedEdgeHandle<'a, V, DE, UE, F>),
 }
 
-pub(super) fn trace_direction_out_of_vertex<'a, V, DE, UE, F>(
-    vertex: VertexHandle<'a, V, DE, UE, F>,
+pub(super) fn trace_direction_out_of_vertex<V, DE, UE, F>(
+    vertex: VertexHandle<V, DE, UE, F>,
     line_to: Point2<V::Scalar>,
-) -> VertexOutDirection<'a, V, DE, UE, F>
+) -> VertexOutDirection<V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -372,11 +373,11 @@ pub(super) enum EdgeOutDirection<'a, V, DE, UE, F> {
     NoIntersection,
 }
 
-pub(super) fn trace_direction_out_of_edge<'a, V, DE, UE, F>(
-    edge: DirectedEdgeHandle<'a, V, DE, UE, F>,
+pub(super) fn trace_direction_out_of_edge<V, DE, UE, F>(
+    edge: DirectedEdgeHandle<V, DE, UE, F>,
     line_from: Point2<V::Scalar>,
     line_to: Point2<V::Scalar>,
-) -> EdgeOutDirection<'a, V, DE, UE, F>
+) -> EdgeOutDirection<V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -414,7 +415,7 @@ where
 mod test {
     use self::Intersection::*;
     use super::*;
-    use crate::{Point2, Triangulation as _};
+    use crate::{InsertionError, Point2, Triangulation as _};
 
     type Triangulation = crate::DelaunayTriangulation<Point2<f64>>;
 
@@ -448,49 +449,54 @@ mod test {
         assert_eq!(reversed, expected);
     }
 
-    fn create_test_triangulation() -> (
-        Triangulation,
-        FixedVertexHandle,
-        FixedVertexHandle,
-        FixedVertexHandle,
-        FixedVertexHandle,
-    ) {
+    fn create_test_triangulation() -> Result<
+        (
+            Triangulation,
+            FixedVertexHandle,
+            FixedVertexHandle,
+            FixedVertexHandle,
+            FixedVertexHandle,
+        ),
+        InsertionError,
+    > {
         let v0 = Point2::new(-2.0, -2.0);
         let v1 = Point2::new(2.0, 2.0);
         let v2 = Point2::new(1.0, -1.0);
         let v3 = Point2::new(-1.0, 1.0);
 
         let mut delaunay = Triangulation::new();
-        let v0 = delaunay.insert(v0);
-        let v1 = delaunay.insert(v1);
-        let v2 = delaunay.insert(v2);
-        let v3 = delaunay.insert(v3);
+        let v0 = delaunay.insert(v0)?;
+        let v1 = delaunay.insert(v1)?;
+        let v2 = delaunay.insert(v2)?;
+        let v3 = delaunay.insert(v3)?;
 
-        (delaunay, v0, v1, v2, v3)
+        Ok((delaunay, v0, v1, v2, v3))
     }
 
     #[test]
-    fn test_single_line_intersection() {
-        let (delaunay, _, _, v2, v3) = create_test_triangulation();
+    fn test_single_line_intersection() -> Result<(), InsertionError> {
+        let (delaunay, _, _, v2, v3) = create_test_triangulation()?;
         let from = Point2::new(-0.5, -0.5);
         let to = Point2::new(0.5, 0.5);
         let edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
         check(&delaunay, from, to, vec![EdgeIntersection(edge)]);
+        Ok(())
     }
 
     #[test]
-    fn test_empty_inner_intersection() {
-        let (delaunay, _, _, _, _) = create_test_triangulation();
+    fn test_empty_inner_intersection() -> Result<(), InsertionError> {
+        let (delaunay, _, _, _, _) = create_test_triangulation()?;
         let from = Point2::new(-0.5, -0.5);
         let to = Point2::new(-0.25, -0.25);
         assert!(LineIntersectionIterator::new(&delaunay, from, to)
             .next()
             .is_none());
+        Ok(())
     }
 
     #[test]
-    fn test_between_vertices_intersection() {
-        let (delaunay, v0, v1, v2, v3) = create_test_triangulation();
+    fn test_between_vertices_intersection() -> Result<(), InsertionError> {
+        let (delaunay, v0, v1, v2, v3) = create_test_triangulation()?;
         let from = Point2::new(-2.0, -2.0);
         let to = Point2::new(2.0, 2.0);
         let edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
@@ -498,12 +504,13 @@ mod test {
         let last = VertexIntersection(delaunay.vertex(v1));
         let edges: Vec<_> = LineIntersectionIterator::new(&delaunay, from, to).collect();
         assert_eq!(edges, vec![first, EdgeIntersection(edge), last]);
+        Ok(())
     }
 
     #[test]
-    fn test_mixed_intersections() {
-        let (mut delaunay, _, v1, v2, v3) = create_test_triangulation();
-        let v4 = delaunay.insert(Point2::new(1.0, 1.0));
+    fn test_mixed_intersections() -> Result<(), InsertionError> {
+        let (mut delaunay, _, v1, v2, v3) = create_test_triangulation()?;
+        let v4 = delaunay.insert(Point2::new(1.0, 1.0))?;
         let from = Point2::new(-1.0, -1.0);
         let to = Point2::new(2.0, 2.0);
         let intersection_edge = delaunay.get_edge_from_neighbors(v3, v2).unwrap();
@@ -519,11 +526,12 @@ mod test {
                 VertexIntersection(delaunay.vertex(v1)),
             ],
         );
+        Ok(())
     }
 
     #[test]
-    fn test_out_of_hull_intersections() {
-        let (ref d, v0, v1, v2, v3) = create_test_triangulation();
+    fn test_out_of_hull_intersections() -> Result<(), InsertionError> {
+        let (ref d, v0, v1, v2, v3) = create_test_triangulation()?;
 
         let edge20 = d.get_edge_from_neighbors(v2, v0).unwrap();
         let edge20 = EdgeIntersection(edge20);
@@ -560,11 +568,12 @@ mod test {
         let from = Point2::new(-2.0, 0.0);
         let to = Point2::new(2., -1.);
         check(d, from, to, vec![edge30, edge32, edge12]);
+        Ok(())
     }
 
     #[test]
-    fn test_on_line_intersection() {
-        let (d, _, v1, v2, v3) = create_test_triangulation();
+    fn test_on_line_intersection() -> Result<(), InsertionError> {
+        let (d, _, v1, v2, v3) = create_test_triangulation()?;
 
         let edge = d.get_edge_from_neighbors(v2, v3).unwrap();
         let e32 = EdgeIntersection(edge.rev());
@@ -589,6 +598,7 @@ mod test {
         check(&d, from, to, vec![o32, v2]);
         let from = Point2::new(-30.0, 30.0);
         check(&d, from, to, vec![v3, o32, v2]);
+        Ok(())
     }
 
     #[test]
@@ -597,14 +607,14 @@ mod test {
         let mut iterator = LineIntersectionIterator::new(
             &delaunay,
             Point2::new(0.5, 1.234),
-            Point2::new(3.141, 42.0),
+            Point2::new(3.223, 42.0),
         );
         assert!(iterator.next().is_none());
     }
 
     #[test]
-    fn test_intersection_when_passing_equal_line_from_and_line_to() {
-        let (delaunay, v1, _, v3, v4) = create_test_triangulation();
+    fn test_intersection_when_passing_equal_line_from_and_line_to() -> Result<(), InsertionError> {
+        let (delaunay, v1, _, v3, v4) = create_test_triangulation()?;
         let v1_position = delaunay.s().vertex(v1).position();
         let edge = delaunay.get_edge_from_neighbors(v3, v4).unwrap();
         let v1 = delaunay.s().vertex(v1);
@@ -623,28 +633,30 @@ mod test {
         assert!(
             intersections[0] == EdgeOverlap(edge) || intersections[0] == EdgeOverlap(edge.rev())
         );
+        Ok(())
     }
 
     #[test]
-    fn test_intersecting_single_vertex() {
+    fn test_intersecting_single_vertex() -> Result<(), InsertionError> {
         let mut delaunay = Triangulation::new();
-        let v0 = delaunay.insert(Point2::new(0.5, 0.5));
+        let v0 = delaunay.insert(Point2::new(0.5, 0.5))?;
         let v0 = delaunay.vertex(v0);
         let from = Point2::new(1.0, 0.0);
         let to = Point2::new(0.0, 1.0);
         check(&delaunay, from, to, vec![VertexIntersection(v0)]);
         let to = Point2::new(1.234, 42.0);
         check(&delaunay, from, to, vec![]);
+        Ok(())
     }
 
     #[test]
-    fn test_intersecting_degenerate_triangulation() {
+    fn test_intersecting_degenerate_triangulation() -> Result<(), InsertionError> {
         let mut d = Triangulation::new();
 
-        let v2 = d.insert(Point2::new(0.0, 0.0));
-        let v3 = d.insert(Point2::new(1.0, 1.0));
-        let v1 = d.insert(Point2::new(-2.0, -2.0));
-        let v0 = d.insert(Point2::new(-3.0, -3.0));
+        let v2 = d.insert(Point2::new(0.0, 0.0))?;
+        let v3 = d.insert(Point2::new(1.0, 1.0))?;
+        let v1 = d.insert(Point2::new(-2.0, -2.0))?;
+        let v0 = d.insert(Point2::new(-3.0, -3.0))?;
 
         let e01 = d.get_edge_from_neighbors(v0, v1).unwrap();
         let e12 = d.get_edge_from_neighbors(v1, v2).unwrap();
@@ -677,5 +689,6 @@ mod test {
         let from = Point2::new(0.5, -0.5);
         let to = Point2::new(-0.5, 0.5);
         check(&d, from, to, vec![v2]);
+        Ok(())
     }
 }

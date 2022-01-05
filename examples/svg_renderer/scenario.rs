@@ -96,7 +96,7 @@ impl Default for ConversionOptions {
     }
 }
 
-pub fn convert_triangulation<'a, T>(triangulation: &'a T, options: &ConversionOptions) -> Sketch
+pub fn convert_triangulation<T>(triangulation: &T, options: &ConversionOptions) -> Sketch
 where
     T: spade::Triangulation<Vertex = VertexType, Face = FaceType>,
     T::UndirectedEdge: AsRef<UndirectedEdgeType>,

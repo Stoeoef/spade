@@ -281,15 +281,15 @@ impl<V, DE, UE, F> DCEL<V, DE, UE, F> {
     }
 
     pub fn directed_edges(&self) -> DirectedEdgeIterator<V, DE, UE, F> {
-        DirectedEdgeIterator::new(&self)
+        DirectedEdgeIterator::new(self)
     }
 
     pub fn undirected_edges(&self) -> UndirectedEdgeIterator<V, DE, UE, F> {
-        UndirectedEdgeIterator::new(&self)
+        UndirectedEdgeIterator::new(self)
     }
 
     pub fn vertices(&self) -> VertexIterator<V, DE, UE, F> {
-        VertexIterator::new(&self)
+        VertexIterator::new(self)
     }
 
     pub fn fixed_vertices(&self) -> FixedVertexIterator {
@@ -297,11 +297,11 @@ impl<V, DE, UE, F> DCEL<V, DE, UE, F> {
     }
 
     pub fn faces(&self) -> FaceIterator<V, DE, UE, F> {
-        FaceIterator::new(&self)
+        FaceIterator::new(self)
     }
 
     pub fn inner_faces(&self) -> InnerFaceIterator<V, DE, UE, F> {
-        let mut iterator = InnerFaceIterator::new(&self);
+        let mut iterator = InnerFaceIterator::new(self);
         iterator.next(); // Skip the outer face
         iterator
     }
@@ -310,7 +310,7 @@ impl<V, DE, UE, F> DCEL<V, DE, UE, F> {
         FixedFaceIterator::new(self.num_faces())
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, fuzzing))]
     pub fn sanity_check(&self) {
         if self.num_vertices() <= 1 {
             assert_eq!(self.num_faces(), 1);

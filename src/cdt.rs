@@ -1,7 +1,7 @@
 use crate::{delaunay_core::DCEL, intersection_iterator::LineIntersectionIterator};
 use crate::{handles::*, intersection_iterator::Intersection};
 use crate::{
-    HasPosition, HintGenerator, LastUsedVertexHintGenerator, Point2, Triangulation,
+    HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator, Point2, Triangulation,
     TriangulationExt,
 };
 #[cfg(feature = "serde")]
@@ -71,6 +71,7 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 /// A constrained Delaunay triangulation (CDT) is a triangulation that
 /// can contain _constraint edges_. These edges will always be present
 /// in the resulting triangulation.
+///
 #[doc = include_str!("../images/cdt.svg")]
 ///
 /// *Left: A CDT with 4 constraint edges. Right: The same triangulation
@@ -95,14 +96,14 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 ///
 /// ```
 /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
+/// # fn try_main() -> Result<(), spade::InsertionError> {
 /// let mut cdt = ConstrainedDelaunayTriangulation::<Point2<_>>::new();
-/// let v0 = cdt.insert(Point2::new(0.0, 0.0));
-/// let v1 = cdt.insert(Point2::new(1.0, 0.0));
+/// let v0 = cdt.insert(Point2::new(0f64, 0.0))?;
+/// let v1 = cdt.insert(Point2::new(1.0, 0.0))?;
 /// cdt.add_constraint(v0, v1);
 /// // Alternatively, consider using this shorthand
-/// cdt.add_constraint_edge(Point2::new(1.0, 1.0), Point2::new(1.0, 0.0));
-/// // This should print "2"
-/// println!("Number of constraints: {}", cdt.num_constraints());
+/// cdt.add_constraint_edge(Point2::new(1.0, 1.0), Point2::new(1.0, 0.0))?;
+/// println!("Number of constraints: {}", cdt.num_constraints()); // 2 constraints
 /// // Constraints are bidirectional!
 /// assert!(cdt.exists_constraint(v1, v0));
 /// assert!(cdt.exists_constraint(v0, v1));
@@ -111,8 +112,10 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 /// let to = Point2::new(1.0, 0.0);
 /// if !cdt.intersects_constraint(from, to) {
 ///     // No intersections, the edge can be added
-///     cdt.add_constraint_edge(from, to);
+///     cdt.add_constraint_edge(from, to)?;
 /// }
+/// # Ok(()) }
+/// # fn main() { try_main().unwrap() }
 /// ```
 ///
 /// # See also
@@ -158,24 +161,6 @@ where
             num_constraints: 0,
             lookup: Default::default(),
         }
-    }
-}
-
-impl<V, DE, UE, F, L> std::iter::FromIterator<V>
-    for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
-where
-    V: HasPosition,
-    DE: Default,
-    UE: Default,
-    F: Default,
-    L: HintGenerator<<V as HasPosition>::Scalar>,
-{
-    fn from_iter<I: IntoIterator<Item = V>>(iterator: I) -> Self {
-        let mut triangulation = Self::new();
-        for vertex in iterator {
-            triangulation.insert(vertex);
-        }
-        triangulation
     }
 }
 
@@ -310,10 +295,10 @@ where
     /// # Panics
     /// Panics if the new constraint edge intersects with an existing
     /// constraint edge. Use [can_add_constraint](Self::can_add_constraint) to check.
-    pub fn add_constraint_edge(&mut self, from: V, to: V) -> bool {
-        let from_handle = self.insert(from);
-        let to_handle = self.insert(to);
-        self.add_constraint(from_handle, to_handle)
+    pub fn add_constraint_edge(&mut self, from: V, to: V) -> Result<bool, InsertionError> {
+        let from_handle = self.insert(from)?;
+        let to_handle = self.insert(to)?;
+        Ok(self.add_constraint(from_handle, to_handle))
     }
 
     /// Adds a constraint edge between to vertices.
@@ -535,7 +520,7 @@ where
             .count();
 
         assert_eq!(num_undirected_edges, self.num_constraints());
-        self.sanity_check();
+        self.basic_sanity_check();
     }
 }
 
@@ -543,20 +528,20 @@ where
 mod test {
     use super::ConstrainedDelaunayTriangulation;
     use crate::test_utilities::*;
-    use crate::{DelaunayTriangulation, Point2, Triangulation};
+    use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
     use rand::distributions::{Distribution, Uniform};
     use rand::{Rng, SeedableRng};
 
-    type CDT = ConstrainedDelaunayTriangulation<Point2<f64>>;
+    type Cdt = ConstrainedDelaunayTriangulation<Point2<f64>>;
     type Delaunay = DelaunayTriangulation<Point2<f64>>;
 
     #[test]
-    fn test_add_single_simple_constraint() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(2.0, 2.0));
-        let v2 = cdt.insert(Point2::new(1.0, 0.5));
-        let v3 = cdt.insert(Point2::new(0.5, 1.0));
+    fn test_add_single_simple_constraint() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(2.0, 2.0))?;
+        let v2 = cdt.insert(Point2::new(1.0, 0.5))?;
+        let v3 = cdt.insert(Point2::new(0.5, 1.0))?;
         assert!(cdt.get_edge_from_neighbors(v0, v1).is_none());
         assert!(cdt.get_edge_from_neighbors(v2, v3).is_some());
 
@@ -570,14 +555,15 @@ mod test {
         assert!(cdt.get_edge_from_neighbors(v2, v3).is_none());
         assert!(cdt.is_constraint_edge(edge));
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_existing_edge_constraint() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(2.0, 2.0));
-        let v2 = cdt.insert(Point2::new(1.0, 0.0));
+    fn test_existing_edge_constraint() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(2.0, 2.0))?;
+        let v2 = cdt.insert(Point2::new(1.0, 0.0))?;
         assert!(cdt.add_constraint(v0, v1));
         assert!(cdt.add_constraint(v0, v2));
         assert!(cdt.add_constraint(v1, v2));
@@ -587,19 +573,20 @@ mod test {
         assert!(!cdt.add_constraint(v1, v0));
         assert!(!cdt.add_constraint(v1, v2));
         assert_eq!(cdt.num_constraints, 3);
+        Ok(())
     }
 
     #[test]
-    fn test_mid_overlapping_constraint() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.5));
-        let v1 = cdt.insert(Point2::new(2.0, 0.5));
-        let v2 = cdt.insert(Point2::new(3.0, 0.5));
-        let v3 = cdt.insert(Point2::new(5.0, 0.5));
-        cdt.insert(Point2::new(1.0, 1.0));
-        cdt.insert(Point2::new(1.0, 0.0));
-        cdt.insert(Point2::new(3.0, 1.0));
-        cdt.insert(Point2::new(3.0, 0.0));
+    fn test_mid_overlapping_constraint() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.5))?;
+        let v1 = cdt.insert(Point2::new(2.0, 0.5))?;
+        let v2 = cdt.insert(Point2::new(3.0, 0.5))?;
+        let v3 = cdt.insert(Point2::new(5.0, 0.5))?;
+        cdt.insert(Point2::new(1.0, 1.0))?;
+        cdt.insert(Point2::new(1.0, 0.0))?;
+        cdt.insert(Point2::new(3.0, 1.0))?;
+        cdt.insert(Point2::new(3.0, 0.0))?;
         assert!(cdt.get_edge_from_neighbors(v1, v2).is_some());
         let mut copy = cdt.clone();
         assert!(cdt.add_constraint(v0, v3));
@@ -609,19 +596,18 @@ mod test {
         assert_eq!(copy.num_constraints(), 1);
         copy.add_constraint(v0, v3);
         assert_eq!(copy.num_constraints(), 3);
+        Ok(())
     }
 
     #[test]
-    fn test_add_single_complex_constraint() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        cdt.insert(Point2::new(1.0, 0.0));
-        cdt.insert(Point2::new(0.0, 1.0));
-        cdt.insert(Point2::new(2.0, 1.0));
+    fn test_add_single_complex_constraint() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        cdt.insert(Point2::new(1.0, 0.0))?;
+        cdt.insert(Point2::new(0.0, 1.0))?;
+        cdt.insert(Point2::new(2.0, 1.0))?;
 
-        // cdt.insert(Point2::new(1.0, 2.0));
-
-        let v1 = cdt.insert(Point2::new(2.0, 2.0));
+        let v1 = cdt.insert(Point2::new(2.0, 2.0))?;
         assert!(cdt.get_edge_from_neighbors(v0, v1).is_none());
         cdt.add_constraint(v0, v1);
         cdt.cdt_sanity_check();
@@ -631,63 +617,66 @@ mod test {
             .fix()
             .as_undirected();
         assert!(cdt.is_constraint_edge(edge));
+        Ok(())
     }
 
     #[test]
-    fn test_add_single_constraint() {
+    fn test_add_single_constraint() -> Result<(), InsertionError> {
         let points = random_points_with_seed(1000, SEED);
-        let mut cdt = CDT::new();
+        let mut cdt = Cdt::new();
         assert_eq!(cdt.num_constraints(), 0);
         let mut handles = Vec::new();
         cdt.cdt_sanity_check();
-        for point in points {
-            handles.push(cdt.insert(point));
+        for point in points.into_iter() {
+            handles.push(cdt.insert(point)?);
         }
         cdt.add_constraint(handles[40], handles[200]);
         assert_eq!(cdt.num_constraints(), 1);
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_add_border_constraint() {
+    fn test_add_border_constraint() -> Result<(), InsertionError> {
         let points = random_points_with_seed(1000, SEED);
-        let mut cdt = CDT::new();
+        let mut cdt = Cdt::new();
         let mut max_y = -::std::f64::MAX;
         for point in points {
             max_y = max_y.max(point.y);
-            cdt.insert(point);
+            cdt.insert(point)?;
         }
-        let v0 = cdt.insert(Point2::new(-20., max_y + 10.));
-        let v1 = cdt.insert(Point2::new(20., max_y + 10.));
+        let v0 = cdt.insert(Point2::new(-20., max_y + 10.))?;
+        let v1 = cdt.insert(Point2::new(20., max_y + 10.))?;
         cdt.add_constraint(v0, v1);
         assert_eq!(cdt.num_constraints(), 1);
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_add_multiple_constraints_overlapping() {
-        test_add_multiple_constraints(true);
+    fn test_add_multiple_constraints_overlapping() -> Result<(), InsertionError> {
+        test_add_multiple_constraints(true)
     }
 
     #[test]
-    fn test_add_multiple_constraints_non_overlapping() {
-        test_add_multiple_constraints(false);
+    fn test_add_multiple_constraints_non_overlapping() -> Result<(), InsertionError> {
+        test_add_multiple_constraints(false)
     }
 
-    fn test_add_multiple_constraints(overlapping: bool) {
+    fn test_add_multiple_constraints(overlapping: bool) -> Result<(), InsertionError> {
         const RANGE: f64 = 10.;
         let seed = if overlapping { SEED } else { SEED2 };
         let points = random_points_in_range(RANGE, 1000, seed);
-        let mut cdt = CDT::new();
+        let mut cdt = Cdt::new();
         for point in points {
-            cdt.insert(point);
+            cdt.insert(point)?;
         }
         let seed = if overlapping { SEED } else { SEED2 };
         let delaunay_points = random_points_in_range(RANGE * 0.9, 80, seed);
         // Use a delaunay triangulation to "generate" non intersecting constraint edges
         let mut d = Delaunay::new();
         for p in delaunay_points {
-            d.insert(p);
+            d.insert(p)?;
         }
         let mut used_vertices = ::std::collections::HashSet::new();
         let mut inserted_constraints = Vec::new();
@@ -700,8 +689,8 @@ mod test {
 
                 used_vertices.insert(to.fix());
 
-                let h0 = cdt.insert(v.position());
-                let h1 = cdt.insert(to.position());
+                let h0 = cdt.insert(v.position())?;
+                let h1 = cdt.insert(to.position())?;
 
                 if cdt.add_constraint(h0, h1) {
                     inserted_constraints.push((h0, h1));
@@ -716,92 +705,97 @@ mod test {
             assert!(cdt.exists_constraint(from, to));
         }
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn crash_case() {
-        let mut cdt = CDT::new();
-        cdt.insert(Point2::new(-8.403036273981348, -0.2248814041797189));
-        cdt.insert(Point2::new(-8.353215494321136, 0.6088667888877364));
-        cdt.insert(Point2::new(-7.811923439447166, -0.20003314976217013));
-        cdt.insert(Point2::new(-7.710431174668773, 0.40691184742787456));
+    fn crash_case() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        cdt.insert(Point2::new(-8.403036273981348, -0.2248814041797189))?;
+        cdt.insert(Point2::new(-8.353215494321136, 0.6088667888877364))?;
+        cdt.insert(Point2::new(-7.811923439447166, -0.20003314976217013))?;
+        cdt.insert(Point2::new(-7.710431174668773, 0.40691184742787456))?;
 
-        let v0 = cdt.insert(Point2::new(-8.907731924022768, 1.7433952434737847));
-        let v1 = cdt.insert(Point2::new(-7.899415172394501, -1.4867902598716558));
+        let v0 = cdt.insert(Point2::new(-8.907731924022768, 1.7433952434737847))?;
+        let v1 = cdt.insert(Point2::new(-7.899415172394501, -1.4867902598716558))?;
         cdt.cdt_sanity_check();
         cdt.add_constraint(v0, v1);
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_split_constraint() {
-        let mut cdt = CDT::new();
-        cdt.insert(Point2::new(0.0, 0.0));
-        cdt.insert(Point2::new(1.0, 0.0));
-        cdt.insert(Point2::new(0.0, 1.0));
-        let v0 = cdt.insert(Point2::new(0.0, 0.5));
-        let v_last = cdt.insert(Point2::new(1.0, 0.5));
+    fn test_split_constraint() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        cdt.insert(Point2::new(0.0, 0.0))?;
+        cdt.insert(Point2::new(1.0, 0.0))?;
+        cdt.insert(Point2::new(0.0, 1.0))?;
+        let v0 = cdt.insert(Point2::new(0.0, 0.5))?;
+        let v_last = cdt.insert(Point2::new(1.0, 0.5))?;
         cdt.add_constraint(v0, v_last);
         assert_eq!(cdt.num_constraints(), 1);
         // These points split an existing constraint
-        let v1 = cdt.insert(Point2::new(0.25, 0.5));
+        let v1 = cdt.insert(Point2::new(0.25, 0.5))?;
         assert_eq!(cdt.num_constraints(), 2);
-        let v2 = cdt.insert(Point2::new(0.75, 0.5));
+        let v2 = cdt.insert(Point2::new(0.75, 0.5))?;
         assert_eq!(cdt.num_constraints(), 3);
         assert!(cdt.exists_constraint(v0, v1));
         assert!(cdt.exists_constraint(v1, v2));
         assert!(cdt.exists_constraint(v2, v_last));
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_simple_retriangulation() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        cdt.insert(Point2::new(1.0, 0.25));
-        cdt.insert(Point2::new(1.0, -0.25));
-        let v3 = cdt.insert(Point2::new(2.0, 0.75));
-        let v4 = cdt.insert(Point2::new(2.5, -0.3));
-        cdt.insert(Point2::new(2.75, 0.75));
-        cdt.insert(Point2::new(3.0, 0.75));
-        cdt.insert(Point2::new(4.0, 0.25));
-        cdt.insert(Point2::new(4.0, -0.25));
-        let v7 = cdt.insert(Point2::new(5.0, 0.0));
+    fn test_simple_retriangulation() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        cdt.insert(Point2::new(1.0, 0.25))?;
+        cdt.insert(Point2::new(1.0, -0.25))?;
+        let v3 = cdt.insert(Point2::new(2.0, 0.75))?;
+        let v4 = cdt.insert(Point2::new(2.5, -0.3))?;
+        cdt.insert(Point2::new(2.75, 0.75))?;
+        cdt.insert(Point2::new(3.0, 0.75))?;
+        cdt.insert(Point2::new(4.0, 0.25))?;
+        cdt.insert(Point2::new(4.0, -0.25))?;
+        let v7 = cdt.insert(Point2::new(5.0, 0.0))?;
         assert!(cdt.get_edge_from_neighbors(v3, v4).is_some());
         cdt.add_constraint(v0, v7);
         assert!(cdt.get_edge_from_neighbors(v0, v7).is_some());
         assert!(cdt.get_edge_from_neighbors(v3, v4).is_none());
 
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_add_constraint_over_point() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(1.0, 0.0));
-        let v2 = cdt.insert(Point2::new(2.0, 0.0));
-        cdt.insert(Point2::new(0.0, 1.0));
+    fn test_add_constraint_over_point() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(1.0, 0.0))?;
+        let v2 = cdt.insert(Point2::new(2.0, 0.0))?;
+        cdt.insert(Point2::new(0.0, 1.0))?;
         cdt.add_constraint(v0, v2);
         assert_eq!(cdt.num_constraints(), 2);
         assert!(cdt.exists_constraint(v0, v1));
         assert!(cdt.exists_constraint(v1, v2));
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
-    fn test_cdt() -> CDT {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(1.0, 0.0));
-        let v1 = cdt.insert(Point2::new(0.0, 1.0));
-        cdt.insert(Point2::new(0.0, 0.0));
-        cdt.insert(Point2::new(1.0, 1.0));
+    fn test_cdt() -> Result<Cdt, InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(1.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(0.0, 1.0))?;
+        cdt.insert(Point2::new(0.0, 0.0))?;
+        cdt.insert(Point2::new(1.0, 1.0))?;
         cdt.add_constraint(v0, v1);
-        cdt
+        Ok(cdt)
     }
 
     #[test]
-    fn test_check_intersects_constraint_edge() {
-        let cdt = test_cdt();
+    fn test_check_intersects_constraint_edge() -> Result<(), InsertionError> {
+        let cdt = test_cdt()?;
         let from = Point2::new(0.2, 0.2);
         let to = Point2::new(0.6, 0.7);
         assert!(cdt.intersects_constraint(from, to));
@@ -811,22 +805,24 @@ mod test {
         let from = Point2::new(0.5, 0.5);
         assert!(cdt.intersects_constraint(from, to));
         assert!(cdt.intersects_constraint(to, from));
+        Ok(())
     }
 
     #[test]
-    fn test_add_constraint_degenerate() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(0.0, 1.0));
+    fn test_add_constraint_degenerate() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(0.0, 1.0))?;
         assert!(cdt.add_constraint(v0, v1));
         assert!(!cdt.add_constraint(v1, v0));
         assert_eq!(cdt.num_constraints(), 1);
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(0.0, 2.0));
-        cdt.insert(Point2::new(0.0, 1.0));
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(0.0, 2.0))?;
+        cdt.insert(Point2::new(0.0, 1.0))?;
         assert!(cdt.add_constraint(v0, v1));
         assert_eq!(cdt.num_constraints(), 2);
+        Ok(())
     }
 
     fn random_points_on_line<R>(
@@ -848,7 +844,7 @@ mod test {
     }
 
     #[test]
-    fn fuzz_test_on_line() {
+    fn fuzz_test_on_line() -> Result<(), InsertionError> {
         // Generates points on a single line and randomly connects
         // them with constraints.
         let seed = SEED;
@@ -860,8 +856,8 @@ mod test {
         for ps in points.chunks(2) {
             let from = ps[0];
             let to = ps[1];
-            let from = cdt.insert(from);
-            let to = cdt.insert(to);
+            let from = cdt.insert(from)?;
+            let to = cdt.insert(to)?;
             let should_add_constraint: bool = rng.gen();
             if from != to && should_add_constraint {
                 cdt.add_constraint(from, to);
@@ -869,10 +865,11 @@ mod test {
 
             cdt.cdt_sanity_check();
         }
+        Ok(())
     }
 
     #[test]
-    fn fuzz_test_on_grid() {
+    fn fuzz_test_on_grid() -> Result<(), InsertionError> {
         use rand::seq::SliceRandom;
         // Generates points on a grid and randomly connects
         // them with non intersecting constraints
@@ -887,9 +884,9 @@ mod test {
         }
         let mut rng = rand::rngs::StdRng::from_seed(*seed);
         points.shuffle(&mut rng);
-        let mut cdt = CDT::new();
+        let mut cdt = Cdt::new();
         for p in points {
-            cdt.insert(p);
+            cdt.insert(p)?;
         }
         let range = Uniform::new(-RANGE, RANGE);
         let directions_and_offset = [
@@ -904,43 +901,47 @@ mod test {
             let p1 = offset.add(direction.mul(factor1 as f64));
             let p2 = offset.add(direction.mul(factor2 as f64));
             if p1 != p2 {
-                cdt.add_constraint_edge(p1, p2);
+                cdt.add_constraint_edge(p1, p2)?;
             }
         }
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
     #[should_panic]
     fn test_panic_when_intersecting_a_constraint_edge() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(1.0, 0.0));
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0)).unwrap();
+        let v1 = cdt.insert(Point2::new(1.0, 0.0)).unwrap();
         cdt.add_constraint(v0, v1);
         cdt.add_constraint(v0, v1);
-        cdt.add_constraint_edge(Point2::new(0.0, 0.0), Point2::new(1.0, 0.0));
-        cdt.add_constraint_edge(Point2::new(0.5, 0.5), Point2::new(0.5, -0.5));
+        cdt.add_constraint_edge(Point2::new(0.0, 0.0), Point2::new(1.0, 0.0))
+            .unwrap();
+        cdt.add_constraint_edge(Point2::new(0.5, 0.5), Point2::new(0.5, -0.5))
+            .unwrap();
     }
 
     #[test]
     #[should_panic]
     fn test_panic_when_intersecting_a_complex_constraint_edge() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.5, 2.0));
-        cdt.insert(Point2::new(0.0, 1.5));
-        cdt.insert(Point2::new(1.0, 1.5));
-        cdt.add_constraint_edge(Point2::new(0.0, 0.5), Point2::new(1.0, 0.5));
-        let v1 = cdt.insert(Point2::new(0.5, 0.0));
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.5, 2.0)).unwrap();
+        cdt.insert(Point2::new(0.0, 1.5)).unwrap();
+        cdt.insert(Point2::new(1.0, 1.5)).unwrap();
+        cdt.add_constraint_edge(Point2::new(0.0, 0.5), Point2::new(1.0, 0.5))
+            .unwrap();
+        let v1 = cdt.insert(Point2::new(0.5, 0.0)).unwrap();
 
         cdt.add_constraint(v0, v1);
     }
 
     #[test]
-    fn test_cdt_remove_degenerate() {
-        let mut cdt = CDT::new();
-        let v0 = cdt.insert(Point2::new(0.0, 0.0));
-        let v1 = cdt.insert(Point2::new(1.0, 0.0));
-        let v2 = cdt.insert(Point2::new(0.0, 1.0));
+    fn test_cdt_remove_degenerate() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        let v0 = cdt.insert(Point2::new(0.0, 0.0))?;
+        let v1 = cdt.insert(Point2::new(1.0, 0.0))?;
+        let v2 = cdt.insert(Point2::new(0.0, 1.0))?;
         cdt.add_constraint(v0, v1);
         cdt.add_constraint(v1, v2);
         cdt.add_constraint(v2, v0);
@@ -948,22 +949,24 @@ mod test {
         cdt.remove(v1);
         assert_eq!(cdt.num_constraints(), 1);
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     #[test]
-    fn test_crash_scenario() {
-        let mut cdt = CDT::new();
+    fn test_crash_scenario() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
         for point in get_points().iter().cloned() {
-            cdt.insert(point);
+            cdt.insert(point)?;
         }
 
-        let from = cdt.insert(Point2::new(3.2348222581121586, -8.136734693290444));
+        let from = cdt.insert(Point2::new(3.2348222581121586, -8.136734693290444))?;
         cdt.cdt_sanity_check();
-        let to = cdt.insert(Point2::new(-8.839844309691154, -8.930685085211245));
+        let to = cdt.insert(Point2::new(-8.839844309691154, -8.930685085211245))?;
         cdt.cdt_sanity_check();
 
         cdt.add_constraint(from, to);
         cdt.cdt_sanity_check();
+        Ok(())
     }
 
     fn get_points() -> Vec<Point2<f64>> {

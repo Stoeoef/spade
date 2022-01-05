@@ -50,7 +50,7 @@ impl<S: SpadeNum> Point2<S> {
         self.sub(other).length2()
     }
 
-    pub(crate) fn to_f64(&self) -> Point2<f64> {
+    pub(crate) fn to_f64(self) -> Point2<f64> {
         Point2::new(self.x.into(), self.y.into())
     }
 

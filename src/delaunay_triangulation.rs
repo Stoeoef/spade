@@ -15,6 +15,7 @@ use serde_crate::{Deserialize, Serialize};
 /// As a consequence, Delaunay triangulations are well suited to support interpolation
 /// algorithms and nearest neighbor searches. It is often constructed in order to retrieve its dual
 /// graph, the [Voronoi diagram](#voronoi-diagram).
+///
 #[doc = include_str!("../images/circumcircle.svg")]
 ///
 /// *An example triangulation with a few circumcircles drawn. No circumcircle contains more than three vertices.*
@@ -132,7 +133,9 @@ use serde_crate::{Deserialize, Serialize};
 /// triangulation's convex hull. The outer face is even present for a triangulation without
 /// vertices. It is either referenced by calling [Triangulation::outer_face()] or
 /// [handles::OUTER_FACE](crate::handles::OUTER_FACE)
+///
 #[doc = include_str!("../images/outer_faces.svg")]
+///
 /// # Voronoi Diagram
 ///
 /// the dual graph of the Delaunay triangulation is the *Voronoi diagram*. The Voronoi diagram
@@ -143,6 +146,7 @@ use serde_crate::{Deserialize, Serialize};
 /// corresponds to a single Delaunay *face*.
 /// The position of an inner voronoi vertex is the *circumcenter* of its corresponding Delaunay
 /// face.
+///
 #[doc = include_str!("../images/basic_voronoi.svg")]
 ///
 /// *A Delaunay triangulation (black lines) and its dual graph, the Voronoi diagram (blue lines)*
@@ -326,34 +330,16 @@ where
     }
 }
 
-impl<V, DE, UE, F, L> std::iter::FromIterator<V> for DelaunayTriangulation<V, DE, UE, F, L>
-where
-    V: HasPosition,
-    DE: Default,
-    UE: Default,
-    F: Default,
-    L: HintGenerator<<V as HasPosition>::Scalar>,
-{
-    fn from_iter<I: IntoIterator<Item = V>>(iterator: I) -> Self {
-        let mut triangulation = Self::new();
-        for vertex in iterator {
-            triangulation.insert(vertex);
-        }
-        triangulation
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use std::iter::FromIterator;
-
     use crate::test_utilities::{random_points_with_seed, SEED};
-    use crate::{DelaunayTriangulation, Point2, Triangulation};
+
+    use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
 
     #[allow(unused)]
     #[cfg(all(feature = "serde_crate"))]
     // Just needs to compile
-    fn check_serde<'a>() {
+    fn check_serde() {
         use serde_crate::{Deserialize, Serialize};
 
         use crate::{HierarchyHintGenerator, LastUsedVertexHintGenerator, Point2};
@@ -362,15 +348,16 @@ mod test {
 
         type DT<L> = super::DelaunayTriangulation<Point2<f64>, (), (), (), L>;
 
-        requires_serde::<'a, DT<LastUsedVertexHintGenerator>>();
-        requires_serde::<'a, DT<HierarchyHintGenerator<f64>>>();
+        requires_serde::<DT<LastUsedVertexHintGenerator>>();
+        requires_serde::<DT<HierarchyHintGenerator<f64>>>();
     }
 
     #[test]
-    fn test_nearest_neighbor() {
-        const SIZE: usize = 100;
+    fn test_nearest_neighbor() -> Result<(), InsertionError> {
+        const SIZE: usize = 54;
         let points = random_points_with_seed(SIZE, SEED);
-        let d = DelaunayTriangulation::<_>::from_iter(points.iter().copied());
+
+        let d = DelaunayTriangulation::<_>::bulk_load(points.clone())?;
 
         let sample_points = random_points_with_seed(SIZE * 3, SEED);
         for p in sample_points {
@@ -382,14 +369,16 @@ mod test {
             });
             assert_eq!(nn_delaunay.map(|p| p.position()), nn_linear_search.cloned());
         }
+        Ok(())
     }
 
     #[test]
-    fn test_nearest_neighbor_small() {
+    fn test_nearest_neighbor_small() -> Result<(), InsertionError> {
         let mut d = DelaunayTriangulation::<_>::new();
         assert_eq!(None, d.nearest_neighbor(Point2::new(0.0, 0.0)));
 
-        d.insert(Point2::new(0.0, 0.0));
+        d.insert(Point2::new(0.0, 0.0))?;
         assert!(d.nearest_neighbor(Point2::new(0.0, 1.0)).is_some());
+        Ok(())
     }
 }

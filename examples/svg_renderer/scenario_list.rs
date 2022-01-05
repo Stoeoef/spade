@@ -8,7 +8,7 @@ use spade::{
         FixedDirectedEdgeHandle,
         VoronoiVertex::{self, Inner, Outer},
     },
-    ConstrainedDelaunayTriangulation, Triangulation as _,
+    ConstrainedDelaunayTriangulation, InsertionError, Triangulation as _,
 };
 
 use crate::{
@@ -19,27 +19,27 @@ use crate::{
     },
 };
 
-fn big_triangulation() -> Triangulation {
+fn big_triangulation() -> Result<Triangulation, InsertionError> {
     let mut result = Triangulation::new();
 
-    result.insert(VertexType::new(15.0, 39.0));
-    result.insert(VertexType::new(-5.0, -42.0));
-    result.insert(VertexType::new(30.0, 2.0));
-    result.insert(VertexType::new(5.0, -12.0));
-    result.insert(VertexType::new(-35.0, 32.0));
-    result.insert(VertexType::new(-2.0, -24.0));
-    result.insert(VertexType::new(-67.0, 52.0));
-    result.insert(VertexType::new(-14.0, -52.0));
-    result.insert(VertexType::new(76.0, 10.0));
-    result.insert(VertexType::new(12.0, 10.0));
-    result.insert(VertexType::new(-35.0, 5.0));
-    result.insert(VertexType::new(33.0, -30.0));
-    result.insert(VertexType::new(-30.0, -25.0));
-    result.insert(VertexType::new(-55.0, -25.0));
-    result.insert(VertexType::new(50.0, 50.0));
-    result.insert(VertexType::new(45.0, -47.0));
+    result.insert(VertexType::new(15.0, 39.0))?;
+    result.insert(VertexType::new(-5.0, -42.0))?;
+    result.insert(VertexType::new(30.0, 2.0))?;
+    result.insert(VertexType::new(5.0, -12.0))?;
+    result.insert(VertexType::new(-35.0, 32.0))?;
+    result.insert(VertexType::new(-2.0, -24.0))?;
+    result.insert(VertexType::new(-67.0, 52.0))?;
+    result.insert(VertexType::new(-14.0, -52.0))?;
+    result.insert(VertexType::new(76.0, 10.0))?;
+    result.insert(VertexType::new(12.0, 10.0))?;
+    result.insert(VertexType::new(-35.0, 5.0))?;
+    result.insert(VertexType::new(33.0, -30.0))?;
+    result.insert(VertexType::new(-30.0, -25.0))?;
+    result.insert(VertexType::new(-55.0, -25.0))?;
+    result.insert(VertexType::new(50.0, 50.0))?;
+    result.insert(VertexType::new(45.0, -47.0))?;
 
-    result
+    Ok(result)
 }
 
 fn add_circular_arrows(sketch: &mut Sketch, center: Point, is_lhs: bool, radius: f64) {
@@ -65,9 +65,9 @@ fn add_circular_arrows(sketch: &mut Sketch, center: Point, is_lhs: bool, radius:
         angle_to_position(Deg(140.0)),
     );
     let arrow1 = if is_lhs {
-        arrow1.clone().with_arrow_end(ARROW_TYPE)
+        arrow1.with_arrow_end(ARROW_TYPE)
     } else {
-        arrow1.clone().with_arrow_start(ARROW_TYPE)
+        arrow1.with_arrow_start(ARROW_TYPE)
     };
 
     let arrow2 = arrow.move_to(angle_to_position(Deg(180.0))).arc_to(
@@ -91,13 +91,13 @@ fn add_circular_arrows(sketch: &mut Sketch, center: Point, is_lhs: bool, radius:
 pub fn lhs_rhs_scenario(is_lhs: bool) -> Sketch {
     let mut triangulation = Triangulation::new();
 
-    triangulation.insert(VertexType::new(-67.0, 52.0));
-    triangulation.insert(VertexType::new(-40.0, -24.0));
-    triangulation.insert(VertexType::new(-30.0, 20.0));
-    triangulation.insert(VertexType::new(-6.0, -42.0));
-    triangulation.insert(VertexType::new(-5.0, 0.0));
-    triangulation.insert(VertexType::new(15.0, 42.0));
-    triangulation.insert(VertexType::new(30.0, 2.0));
+    triangulation.insert(VertexType::new(-67.0, 52.0)).unwrap();
+    triangulation.insert(VertexType::new(-40.0, -24.0)).unwrap();
+    triangulation.insert(VertexType::new(-30.0, 20.0)).unwrap();
+    triangulation.insert(VertexType::new(-6.0, -42.0)).unwrap();
+    triangulation.insert(VertexType::new(-5.0, 0.0)).unwrap();
+    triangulation.insert(VertexType::new(15.0, 42.0)).unwrap();
+    triangulation.insert(VertexType::new(30.0, 2.0)).unwrap();
 
     let mut sketch = convert_triangulation(
         &triangulation,
@@ -112,13 +112,13 @@ pub fn lhs_rhs_scenario(is_lhs: bool) -> Sketch {
         add_circular_arrows(&mut sketch, convert_point(circumcenter), is_lhs, 4.5);
     }
 
-    sketch.set_width(450);
+    sketch.set_width(420);
 
     sketch
 }
 
 pub fn circumcircle_scenario() -> Sketch {
-    let triangulation = big_triangulation();
+    let triangulation = big_triangulation().unwrap();
 
     let mut sketch = convert_triangulation(&triangulation, &Default::default());
 
@@ -140,11 +140,11 @@ pub fn circumcircle_scenario() -> Sketch {
 pub fn outer_face_scenario() -> Sketch {
     let mut triangulation = Triangulation::default();
 
-    triangulation.insert(VertexType::new(50.0, 10.0));
-    triangulation.insert(VertexType::new(40.0, -35.0));
-    triangulation.insert(VertexType::new(-50.0, 50.0));
-    triangulation.insert(VertexType::new(-20.0, 0.0));
-    triangulation.insert(VertexType::new(35.0, 45.0));
+    triangulation.insert(VertexType::new(50.0, 10.0)).unwrap();
+    triangulation.insert(VertexType::new(40.0, -35.0)).unwrap();
+    triangulation.insert(VertexType::new(-50.0, 50.0)).unwrap();
+    triangulation.insert(VertexType::new(-20.0, 0.0)).unwrap();
+    triangulation.insert(VertexType::new(35.0, 45.0)).unwrap();
 
     let mut sketch = convert_triangulation(&triangulation, &Default::default());
 
@@ -173,7 +173,7 @@ pub fn outer_face_scenario() -> Sketch {
 }
 
 pub fn basic_voronoi_example() -> Sketch {
-    let triangulation = big_triangulation();
+    let triangulation = big_triangulation().unwrap();
 
     let mut sketch = convert_triangulation(&triangulation, &Default::default());
     const LINE_COLOR: SketchColor = SketchColor::ROYAL_BLUE;
@@ -227,19 +227,19 @@ pub fn basic_voronoi_example() -> Sketch {
 pub fn voronoi_edge_details_scenario() -> Sketch {
     let mut triangulation = Triangulation::new();
 
-    triangulation.insert(VertexType::new(-50.0, -50.0));
-    triangulation.insert(VertexType::new(-41.0, -60.0));
-    triangulation.insert(VertexType::new(-41.0, 61.0));
-    triangulation.insert(VertexType::new(-40.0, -40.0));
-    triangulation.insert(VertexType::new(-30.0, 25.0));
-    let vertex = triangulation.insert(VertexType::new(30.0, 0.0));
-    triangulation.insert(VertexType::new(40.0, 20.0));
-    triangulation.insert(VertexType::new(41.0, -70.0));
-    triangulation.insert(VertexType::new(41.0, -80.0));
-    triangulation.insert(VertexType::new(41.0, -20.0));
-    triangulation.insert(VertexType::new(107.0, -20.0));
-    triangulation.insert(VertexType::new(90.0, -40.0));
-    triangulation.insert(VertexType::new(90.0, 60.0));
+    triangulation.insert(VertexType::new(-50.0, -50.0)).unwrap();
+    triangulation.insert(VertexType::new(-41.0, -60.0)).unwrap();
+    triangulation.insert(VertexType::new(-41.0, 61.0)).unwrap();
+    triangulation.insert(VertexType::new(-40.0, -40.0)).unwrap();
+    triangulation.insert(VertexType::new(-30.0, 25.0)).unwrap();
+    let vertex = triangulation.insert(VertexType::new(30.0, 0.0)).unwrap();
+    triangulation.insert(VertexType::new(40.0, 20.0)).unwrap();
+    triangulation.insert(VertexType::new(41.0, -70.0)).unwrap();
+    triangulation.insert(VertexType::new(41.0, -80.0)).unwrap();
+    triangulation.insert(VertexType::new(41.0, -20.0)).unwrap();
+    triangulation.insert(VertexType::new(107.0, -20.0)).unwrap();
+    triangulation.insert(VertexType::new(90.0, -40.0)).unwrap();
+    triangulation.insert(VertexType::new(90.0, 60.0)).unwrap();
 
     for undirected_edge in triangulation.fixed_undirected_edges() {
         triangulation
@@ -286,17 +286,14 @@ pub fn voronoi_edge_details_scenario() -> Sketch {
         };
 
     for edge in triangulation.undirected_voronoi_edges() {
-        match edge.vertices() {
-            [Inner(from), Inner(to)] => {
-                let directed = edge.as_directed();
-                if directed.face() == example_face || directed.rev().face() == example_face {
-                    // Edges of the example face are drawn manually
-                    continue;
-                }
-
-                sketch.add(create_line(Inner(from), Inner(to)));
+        if let [Inner(from), Inner(to)] = edge.vertices() {
+            let directed = edge.as_directed();
+            if directed.face() == example_face || directed.rev().face() == example_face {
+                // Edges of the example face are drawn manually
+                continue;
             }
-            _ => {}
+
+            sketch.add(create_line(Inner(from), Inner(to)));
         }
     }
 
@@ -353,32 +350,33 @@ pub fn voronoi_edge_details_scenario() -> Sketch {
     sketch
 }
 
-fn delaunay_edge_details_triangulation() -> (Triangulation, FixedDirectedEdgeHandle) {
+fn delaunay_edge_details_triangulation(
+) -> Result<(Triangulation, FixedDirectedEdgeHandle), InsertionError> {
     let mut triangulation = Triangulation::new();
 
-    triangulation.insert(VertexType::new(-50.0, -50.0));
-    triangulation.insert(VertexType::new(-41.0, -60.0));
-    triangulation.insert(VertexType::new(-41.0, 61.0));
-    triangulation.insert(VertexType::new(-40.0, -40.0));
-    triangulation.insert(VertexType::new(-30.0, 25.0));
-    let to = triangulation.insert(VertexType::new(0.0, 0.0));
-    let from = triangulation.insert(VertexType::new(40.0, 20.0));
-    triangulation.insert(VertexType::new(41.0, -70.0));
-    triangulation.insert(VertexType::new(41.0, -80.0));
-    triangulation.insert(VertexType::new(41.0, -20.0));
-    triangulation.insert(VertexType::new(107.0, -20.0));
-    triangulation.insert(VertexType::new(90.0, -40.0));
-    triangulation.insert(VertexType::new(90.0, 60.0));
+    triangulation.insert(VertexType::new(-50.0, -50.0))?;
+    triangulation.insert(VertexType::new(-41.0, -60.0))?;
+    triangulation.insert(VertexType::new(-41.0, 61.0))?;
+    triangulation.insert(VertexType::new(-40.0, -40.0))?;
+    triangulation.insert(VertexType::new(-30.0, 25.0))?;
+    let to = triangulation.insert(VertexType::new(0.0, 0.0))?;
+    let from = triangulation.insert(VertexType::new(40.0, 20.0))?;
+    triangulation.insert(VertexType::new(41.0, -70.0))?;
+    triangulation.insert(VertexType::new(41.0, -80.0))?;
+    triangulation.insert(VertexType::new(41.0, -20.0))?;
+    triangulation.insert(VertexType::new(107.0, -20.0))?;
+    triangulation.insert(VertexType::new(90.0, -40.0))?;
+    triangulation.insert(VertexType::new(90.0, 60.0))?;
 
     let edge = triangulation
         .get_edge_from_neighbors(from, to)
         .unwrap()
         .fix();
-    (triangulation, edge)
+    Ok((triangulation, edge))
 }
 
 pub fn delaunay_directed_edge_details_scenario() -> Sketch {
-    let (triangulation, edge) = delaunay_edge_details_triangulation();
+    let (triangulation, edge) = delaunay_edge_details_triangulation().unwrap();
     let edge = triangulation.directed_edge(edge);
 
     let mut sketch = convert_triangulation(
@@ -431,7 +429,7 @@ pub fn delaunay_directed_edge_details_scenario() -> Sketch {
 }
 
 pub fn delaunay_directed_edge_vertex_and_face_scenario() -> Sketch {
-    let (mut triangulation, edge) = delaunay_edge_details_triangulation();
+    let (mut triangulation, edge) = delaunay_edge_details_triangulation().unwrap();
 
     let face_fixed = triangulation.directed_edge(edge).face().fix();
     triangulation.face_data_mut(face_fixed).fill =
@@ -520,32 +518,32 @@ pub fn cdt_scenario() -> Sketch {
         >::new();
         let v = |x, y| VertexType::new(x + offset, y);
 
-        cdt.insert(v(-50.0, -50.0));
-        cdt.insert(v(-41.0, -60.0));
-        cdt.insert(v(-41.0, 61.0));
-        cdt.insert(v(-20.0, -40.0));
-        cdt.insert(v(-10.0, 15.0));
-        cdt.insert(v(0.0, 0.0));
-        cdt.insert(v(40.0, 20.0));
-        cdt.insert(v(41.0, -60.0));
-        cdt.insert(v(41.0, -70.0));
-        cdt.insert(v(41.0, -20.0));
-        cdt.insert(v(65.0, -20.0));
-        cdt.insert(v(70.0, -40.0));
-        cdt.insert(v(70.0, 60.0));
-        cdt.insert(v(-20.0, 40.0));
-        cdt.insert(v(35.0, 35.0));
-        cdt.insert(v(35.0, -35.0));
-        cdt.insert(v(-35.0, -35.0));
-        cdt.insert(v(-35.0, 35.0));
+        cdt.insert(v(-50.0, -50.0)).unwrap();
+        cdt.insert(v(-41.0, -60.0)).unwrap();
+        cdt.insert(v(-41.0, 61.0)).unwrap();
+        cdt.insert(v(-20.0, -40.0)).unwrap();
+        cdt.insert(v(-10.0, 15.0)).unwrap();
+        cdt.insert(v(0.0, 0.0)).unwrap();
+        cdt.insert(v(40.0, 20.0)).unwrap();
+        cdt.insert(v(41.0, -60.0)).unwrap();
+        cdt.insert(v(41.0, -70.0)).unwrap();
+        cdt.insert(v(41.0, -20.0)).unwrap();
+        cdt.insert(v(65.0, -20.0)).unwrap();
+        cdt.insert(v(70.0, -40.0)).unwrap();
+        cdt.insert(v(70.0, 60.0)).unwrap();
+        cdt.insert(v(-20.0, 40.0)).unwrap();
+        cdt.insert(v(35.0, 35.0)).unwrap();
+        cdt.insert(v(35.0, -35.0)).unwrap();
+        cdt.insert(v(-35.0, -35.0)).unwrap();
+        cdt.insert(v(-35.0, 35.0)).unwrap();
         cdt
     };
 
     let mut cdt = create_cdt(0.0);
-    let v0 = cdt.insert(VertexType::new(35.0, 35.0));
-    let v1 = cdt.insert(VertexType::new(35.0, -35.0));
-    let v2 = cdt.insert(VertexType::new(-35.0, -35.0));
-    let v3 = cdt.insert(VertexType::new(-35.0, 35.0));
+    let v0 = cdt.insert(VertexType::new(35.0, 35.0)).unwrap();
+    let v1 = cdt.insert(VertexType::new(35.0, -35.0)).unwrap();
+    let v2 = cdt.insert(VertexType::new(-35.0, -35.0)).unwrap();
+    let v3 = cdt.insert(VertexType::new(-35.0, 35.0)).unwrap();
 
     cdt.add_constraint(v0, v1);
     cdt.add_constraint(v1, v2);
@@ -589,14 +587,14 @@ pub fn circular_iterator_example() -> Sketch {
 
     let mut v0 = VertexType::new(0.0, 0.0);
     v0.radius = 3.5;
-    let v0 = triangulation.insert(v0);
-    triangulation.insert(VertexType::new(66.0, -5.0));
-    triangulation.insert(VertexType::new(6.0, 40.0));
-    triangulation.insert(VertexType::new(-55.0, 5.0));
-    triangulation.insert(VertexType::new(60.0, 40.0));
-    triangulation.insert(VertexType::new(-45.0, 25.0));
-    triangulation.insert(VertexType::new(45.0, -40.0));
-    triangulation.insert(VertexType::new(-49.0, -30.0));
+    let v0 = triangulation.insert(v0).unwrap();
+    triangulation.insert(VertexType::new(66.0, -5.0)).unwrap();
+    triangulation.insert(VertexType::new(6.0, 40.0)).unwrap();
+    triangulation.insert(VertexType::new(-55.0, 5.0)).unwrap();
+    triangulation.insert(VertexType::new(60.0, 40.0)).unwrap();
+    triangulation.insert(VertexType::new(-45.0, 25.0)).unwrap();
+    triangulation.insert(VertexType::new(45.0, -40.0)).unwrap();
+    triangulation.insert(VertexType::new(-49.0, -30.0)).unwrap();
 
     let mut sketch = convert_triangulation(
         &triangulation,

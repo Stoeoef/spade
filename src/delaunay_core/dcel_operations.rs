@@ -84,7 +84,7 @@ where
         faces_to_remove.extend(edge.face().fix().as_inner());
     }
 
-    return remesh_edge_ring(dcel, border_loop, edges_to_remove, faces_to_remove);
+    remesh_edge_ring(dcel, border_loop, edges_to_remove, faces_to_remove)
 }
 
 pub fn remesh_edge_ring<V, DE, UE, F>(
@@ -233,7 +233,7 @@ where
     // After:
     // Added a new edge between edge.next().to() and edge.from()
     //
-    // new edge
+    // new edge (return value)
     //   |
     //   |   ^
     //   | /   \
@@ -293,9 +293,9 @@ where
     new_outer_handle
 }
 
-pub fn connect_edge_strip<V, DE, UE, F>(
+pub fn create_new_face_adjacent_to_edge<V, DE, UE, F>(
     dcel: &mut DCEL<V, DE, UE, F>,
-    edges_to_connect: &[FixedDirectedEdgeHandle],
+    edge: FixedDirectedEdgeHandle,
     new_vertex: V,
 ) -> FixedVertexHandle
 where
@@ -303,113 +303,93 @@ where
     UE: Default,
     F: Default,
 {
+    // Before:
+    //
+    // --- edge --->
+    //
+    // After:
+    //
+    //  new_prev.rev
+    //  |   ^
+    //  |  / \
+    //  | /   \
+    //  V/ new \<---new_next.rev
+    //  / face  \
+    // /         \
+    // --- edge -->
+    let edge_entry = *dcel.half_edge(edge);
+
+    let edge_from = edge_entry.origin;
+    let edge_to = dcel.directed_edge(edge).to().fix();
+
+    let new_next_handle = FixedUndirectedEdgeHandle::new(dcel.num_undirected_edges());
+    let new_prev_handle = FixedUndirectedEdgeHandle::new(dcel.num_undirected_edges() + 1);
+
+    let new_face_handle = FixedFaceHandle::<PossiblyOuterTag>::new(dcel.num_faces());
     let new_vertex_handle = FixedVertexHandle::new(dcel.num_vertices());
 
-    let first_edge_index = dcel.num_undirected_edges();
-    let num_of_edges_to_generate = edges_to_connect.len() + 1;
+    let new_next = HalfEdgeEntry {
+        next: new_prev_handle.normalized(),
+        prev: edge,
+        face: new_face_handle,
+        origin: edge_to,
+    };
 
-    dcel.edges.reserve(num_of_edges_to_generate as usize);
+    let new_next_rev = HalfEdgeEntry {
+        next: edge_entry.next,
+        prev: new_prev_handle.not_normalized(),
+        face: edge_entry.face,
+        origin: new_vertex_handle,
+    };
 
-    let new_edges = |index| FixedUndirectedEdgeHandle::new(first_edge_index + index);
+    let new_prev = HalfEdgeEntry {
+        next: edge,
+        prev: new_next_handle.normalized(),
+        face: new_face_handle,
+        origin: new_vertex_handle,
+    };
 
-    let num_faces = dcel.num_faces();
-    let new_faces = |index| FixedFaceHandle::<PossiblyOuterTag>::new(num_faces + index);
+    let new_prev_rev = HalfEdgeEntry {
+        next: new_next_handle.not_normalized(),
+        prev: edge_entry.prev,
+        face: edge_entry.face,
+        origin: edge_from,
+    };
 
-    let first_edge_to_connect = dcel.directed_edge(edges_to_connect[0]);
-    let last_edge_to_connect = dcel.directed_edge(edges_to_connect[edges_to_connect.len() - 1]);
+    dcel.edges.push(EdgeEntry {
+        entries: [new_next, new_next_rev],
+        directed_data: [DE::default(), DE::default()],
+        undirected_data: UE::default(),
+    });
 
-    let first_prev = first_edge_to_connect.prev().fix();
-    let first_from = first_edge_to_connect.from().fix();
-    let last_to = last_edge_to_connect.to().fix();
-    let last_next = last_edge_to_connect.next().fix();
-
-    // All "normalized" edges connect new_vertex to some edge of edges_to_connect
-
-    // Insert first edge
-    dcel.edges.push(EdgeEntry::new(
-        HalfEdgeEntry {
-            next: edges_to_connect[0],
-            prev: new_edges(1).not_normalized(),
-            face: new_faces(0),
-            origin: new_vertex_handle,
-        },
-        HalfEdgeEntry {
-            next: new_edges(num_of_edges_to_generate - 1).normalized(),
-            prev: first_prev,
-            face: OUTER_FACE_HANDLE,
-            origin: first_from,
-        },
-    ));
+    dcel.edges.push(EdgeEntry {
+        entries: [new_prev, new_prev_rev],
+        directed_data: [DE::default(), DE::default()],
+        undirected_data: UE::default(),
+    });
 
     dcel.faces.push(FaceEntry {
-        adjacent_edge: optional::some(edges_to_connect[0]),
+        adjacent_edge: optional::some(edge),
         data: F::default(),
     });
 
-    let first_edge_to_connect = dcel.half_edge_mut(edges_to_connect[0]);
-    first_edge_to_connect.face = new_faces(0);
-    first_edge_to_connect.next = new_edges(1).not_normalized();
-    first_edge_to_connect.prev = new_edges(0).normalized();
-
-    // Insert edges between first and last
-    for (index, cur_edge) in edges_to_connect.iter().copied().enumerate().skip(1) {
-        let cur_edge_from = dcel.directed_edge(cur_edge).from().fix();
-
-        dcel.edges.push(EdgeEntry::new(
-            HalfEdgeEntry {
-                next: cur_edge,
-                prev: new_edges(index + 1).not_normalized(),
-                face: new_faces(index),
-                origin: new_vertex_handle,
-            },
-            HalfEdgeEntry {
-                next: new_edges(index - 1).normalized(),
-                prev: edges_to_connect[index - 1],
-                face: new_faces(index - 1),
-                origin: cur_edge_from,
-            },
-        ));
-
-        dcel.faces.push(FaceEntry {
-            adjacent_edge: optional::some(cur_edge),
-            data: F::default(),
-        });
-
-        let cur_edge = dcel.half_edge_mut(cur_edge);
-        cur_edge.face = new_faces(index);
-        cur_edge.prev = new_edges(index).normalized();
-        cur_edge.next = new_edges(index + 1).not_normalized();
-    }
-
-    // Insert last edge
-    dcel.edges.push(EdgeEntry::new(
-        HalfEdgeEntry {
-            next: last_next,
-            prev: new_edges(0).not_normalized(),
-            face: OUTER_FACE_HANDLE,
-            origin: new_vertex_handle,
-        },
-        HalfEdgeEntry {
-            next: new_edges(num_of_edges_to_generate - 2).normalized(),
-            prev: edges_to_connect[num_of_edges_to_generate as usize - 2],
-            face: new_faces(num_of_edges_to_generate - 2),
-            origin: last_to,
-        },
-    ));
-
-    let first_new_edge = new_edges(0);
-    let last_new_edge = new_edges(num_of_edges_to_generate - 1);
-
     dcel.vertices.push(VertexEntry {
         data: new_vertex,
-        out_edge: optional::some(first_new_edge.normalized()),
+        out_edge: optional::some(new_prev_handle.normalized()),
     });
 
-    dcel.faces[OUTER_FACE_HANDLE.index()].adjacent_edge =
-        optional::some(first_new_edge.not_normalized());
+    *dcel.half_edge_mut(edge) = HalfEdgeEntry {
+        prev: new_prev_handle.normalized(),
+        next: new_next_handle.normalized(),
+        face: new_face_handle,
+        ..edge_entry
+    };
 
-    dcel.half_edge_mut(first_prev).next = first_new_edge.not_normalized();
-    dcel.half_edge_mut(last_next).prev = last_new_edge.normalized();
+    dcel.faces[edge_entry.face.index()].adjacent_edge =
+        optional::some(new_prev_handle.not_normalized());
+
+    dcel.half_edge_mut(edge_entry.next).prev = new_next_handle.not_normalized();
+    dcel.half_edge_mut(edge_entry.prev).next = new_prev_handle.not_normalized();
 
     new_vertex_handle
 }
@@ -457,13 +437,13 @@ where
         HalfEdgeEntry {
             next: out_edge,
             prev: new_edge_rev,
-            face: face,
+            face,
             origin: new_vertex_handle,
         },
         HalfEdgeEntry {
             next: new_edge,
             prev: in_edge,
-            face: face,
+            face,
             origin: end_vertex,
         },
     ));
@@ -1455,8 +1435,8 @@ mod test {
         dcel.sanity_check();
     }
 
-    fn get_border_loop<'a, V, DE, UE, F>(
-        vertex: VertexHandle<'a, V, DE, UE, F>,
+    fn get_border_loop<V, DE, UE, F>(
+        vertex: VertexHandle<V, DE, UE, F>,
     ) -> Vec<FixedDirectedEdgeHandle> {
         vertex.out_edges().rev().map(|e| e.next().fix()).collect()
     }
@@ -1628,49 +1608,6 @@ mod test {
     }
 
     #[test]
-    fn test_connect_edge_strip_small() {
-        let mut dcel = DCEL::<_>::default();
-
-        let v0 = super::insert_first_vertex(&mut dcel, 0);
-        let v1 = super::insert_second_vertex(&mut dcel, 1);
-
-        let e0 = dcel.get_edge_from_neighbors(v0, v1).unwrap().fix();
-
-        dcel.sanity_check();
-        super::connect_edge_strip(&mut dcel, &[e0], 3);
-
-        assert_eq!(dcel.num_faces(), 2);
-        assert_eq!(dcel.num_vertices(), 3);
-        assert_eq!(dcel.num_undirected_edges(), 3);
-        dcel.sanity_check();
-    }
-
-    #[test]
-    fn test_connect_edge_strip_big() {
-        let mut dcel = DCEL::<_, (), (), ()>::default();
-
-        // Create strip connecting v0, v1, v2, v3
-        // v0 --e0--> v1 --e1--> v2 --e2--> v3
-        let v1 = super::insert_first_vertex(&mut dcel, 1);
-        let v2 = super::insert_second_vertex(&mut dcel, 2);
-        let v0 = super::extend_line(&mut dcel, v1, 0);
-        let v3 = super::extend_line(&mut dcel, v2, 3);
-
-        let e0 = dcel.get_edge_from_neighbors(v0, v1).unwrap().fix();
-        let e1 = dcel.get_edge_from_neighbors(v1, v2).unwrap().fix();
-        let e2 = dcel.get_edge_from_neighbors(v2, v3).unwrap().fix();
-
-        dcel.sanity_check();
-
-        super::connect_edge_strip(&mut dcel, &[e0, e1, e2], 4);
-
-        assert_eq!(dcel.num_faces(), 4);
-        assert_eq!(dcel.num_vertices(), 5);
-        assert_eq!(dcel.num_undirected_edges(), 7);
-        dcel.sanity_check();
-    }
-
-    #[test]
     fn test_create_single_face_between_edge_and_next() {
         let mut dcel = DCEL::<_>::default();
         super::insert_first_vertex(&mut dcel, 0);
@@ -1679,6 +1616,14 @@ mod test {
 
         super::create_single_face_between_edge_and_next(&mut dcel, FixedDirectedEdgeHandle::new(0));
 
+        dcel.sanity_check();
+    }
+
+    #[test]
+    fn test_create_new_face_adjacent_to_edge() {
+        let mut dcel = default_triangle();
+
+        super::create_new_face_adjacent_to_edge(&mut dcel, FixedDirectedEdgeHandle::new(0), 3);
         dcel.sanity_check();
     }
 }

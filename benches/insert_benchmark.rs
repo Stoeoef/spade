@@ -31,9 +31,19 @@ pub fn insert_benchmark(c: &mut Criterion) {
             group.bench_with_input(BenchmarkId::new(name, size), &size, |b, &size| {
                 // Create triangulation to test queries on
                 if is_uniform {
-                    b.iter(|| T::from_iter(uniform_distribution(*SEED, range).take(*size)));
+                    b.iter(|| {
+                        let mut result = T::default();
+                        for vertex in uniform_distribution(*SEED, range).take(*size) {
+                            result.insert(vertex).unwrap();
+                        }
+                    });
                 } else {
-                    b.iter(|| T::from_iter(random_walk_distribution(range, *SEED).take(*size)));
+                    b.iter(|| {
+                        let mut result = T::default();
+                        for vertex in random_walk_distribution(range, *SEED).take(*size) {
+                            result.insert(vertex).unwrap();
+                        }
+                    });
                 }
             });
         }
@@ -41,7 +51,7 @@ pub fn insert_benchmark(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("insert benchmark (small)");
 
-    let ref small_sizes = [200, 800, 1000, 2000, 3500, 5000, 7000];
+    let small_sizes = &[200, 800, 1000, 2000, 3500, 5000, 7000];
 
     single_insert_benchmark::<HierarchyTriangulation<_, 16>, _>(
         &mut group,
@@ -96,7 +106,7 @@ pub fn insert_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("insert benchmark (local insertion)");
 
     const STEP_SIZE: f64 = 1.0;
-    let ref big_sizes = [8000, 32_000, 65_000, 85_000, 120_000, 180_000];
+    let big_sizes = &[8000, 32_000, 65_000, 85_000, 120_000, 180_000];
 
     single_insert_benchmark::<HierarchyTriangulation<_, 16>, _>(
         &mut group,

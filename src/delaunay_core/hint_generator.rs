@@ -1,7 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
-    triangulation::TriangulationExt, DelaunayTriangulation, Point2, SpadeNum, Triangulation,
+    triangulation::TriangulationExt, DelaunayTriangulation, HasPosition, Point2, SpadeNum,
+    Triangulation,
 };
 
 use super::FixedVertexHandle;
@@ -42,6 +43,12 @@ pub trait HintGenerator<S: SpadeNum>: Default {
         vertex: FixedVertexHandle,
         vertex_position: Point2<S>,
     );
+
+    /// Creates a new hint generator initialized to give hints for a specific triangulation
+    fn initialize_from_triangulation<TR, V>(triangulation: &TR) -> Self
+    where
+        TR: Triangulation<Vertex = V>,
+        V: HasPosition<Scalar = S>;
 }
 
 /// A hint generator that returns the last used vertex as hint.
@@ -103,6 +110,14 @@ impl<S: SpadeNum> HintGenerator<S> for LastUsedVertexHintGenerator {
         // were inserted in local batches.
         let hint = FixedVertexHandle::new(vertex.index().saturating_sub(1));
         <Self as HintGenerator<S>>::notify_vertex_lookup(self, hint);
+    }
+
+    fn initialize_from_triangulation<TR, V>(_: &TR) -> Self
+    where
+        TR: Triangulation,
+        V: HasPosition<Scalar = S>,
+    {
+        Self::default()
     }
 }
 
@@ -174,16 +189,15 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
         self.num_elements_of_base_triangulation += 1;
 
         // Find first layer to insert into. Insert into all higher layers.
-
         let mut index = vertex.index() as u32;
 
         let mut remainder = 0;
         for triangulation in &mut self.hierarchy {
             remainder = index % BRANCH_FACTOR;
-            index = index / BRANCH_FACTOR;
+            index /= BRANCH_FACTOR;
 
             if remainder == 0 {
-                triangulation.insert(vertex_position);
+                triangulation.insert(vertex_position).unwrap();
             } else {
                 break;
             }
@@ -196,7 +210,7 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
                 .first()
                 .map(|layer| layer.vertex(FixedVertexHandle::new(0)).position())
                 .unwrap_or(vertex_position);
-            new_layer.insert(position_of_vertex_0);
+            new_layer.insert(position_of_vertex_0).unwrap();
             self.hierarchy.push(new_layer);
         }
     }
@@ -226,7 +240,7 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
                     {
                         // Only insert a new element if the swapped element is not already present
                         // in the layer
-                        triangulation.insert(*swapped_point);
+                        triangulation.insert(*swapped_point).unwrap();
                     }
                 }
                 triangulation.remove(FixedVertexHandle::new(index_to_remove as usize));
@@ -252,16 +266,59 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
             }
         }
     }
+
+    fn initialize_from_triangulation<TR, V>(triangulation: &TR) -> Self
+    where
+        TR: Triangulation<Vertex = V>,
+        V: HasPosition<Scalar = S>,
+    {
+        let mut result = Self::default();
+        for vertex in triangulation.vertices() {
+            result.notify_vertex_inserted(vertex.fix(), vertex.position());
+        }
+        result
+
+        /*
+        if triangulation.num_vertices() == 0 {
+            return result;
+        }
+
+        result.num_elements_of_base_triangulation = triangulation.num_vertices();
+
+        TODO: Check if more efficient bulk loading for the hierarchy layers is required and possible
+        let mut stride = BRANCH_FACTOR;
+        loop {
+            let mut vertices_of_current_layer =
+                Vec::with_capacity(triangulation.num_vertices() / stride as usize + 1);
+
+            // Take every stride'th vertex
+            vertices_of_current_layer.extend(
+                triangulation
+                    .vertices()
+                    .enumerate()
+                    .filter(|(index, _)| *index % stride as usize == 0)
+                    .map(|(_, vertex)| vertex.position()),
+            );
+
+            result
+                .hierarchy
+                .push(DelaunayTriangulation::bulk_load(vertices_of_current_layer));
+
+            stride *= BRANCH_FACTOR;
+            if stride as usize > triangulation.num_vertices() {
+                return result;
+            }
+        }*/
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use std::iter::FromIterator;
-
-    use rand::{prelude::SliceRandom, SeedableRng};
+    use rand::{prelude::SliceRandom, RngCore, SeedableRng};
 
     use crate::{
-        handles::FixedVertexHandle, test_utilities, DelaunayTriangulation, Point2, Triangulation,
+        handles::FixedVertexHandle, test_utilities, triangulation::TriangulationExt,
+        DelaunayTriangulation, InsertionError, Point2, Triangulation,
     };
 
     const BRANCH_FACTOR: u32 = 3;
@@ -275,11 +332,12 @@ mod test {
     >;
 
     #[test]
-    fn hierarchy_hint_generator_test() {
+    fn hierarchy_hint_generator_test() -> Result<(), InsertionError> {
         let vertices = test_utilities::random_points_with_seed(1025, test_utilities::SEED);
-        let triangulation = HierarchyTriangulation::from_iter(vertices);
+        let triangulation = HierarchyTriangulation::bulk_load(vertices)?;
 
         hierarchy_sanity_check(&triangulation);
+        Ok(())
     }
 
     fn hierarchy_sanity_check(triangulation: &HierarchyTriangulation) {
@@ -302,9 +360,33 @@ mod test {
     }
 
     #[test]
-    fn hierarchy_hint_generator_removal_test() {
+    fn test_hierarchy_hint_generator_bulk_load_small() -> Result<(), InsertionError> {
+        let mut rng = rand::rngs::StdRng::from_seed(*test_utilities::SEED);
+        let mut seed_fn = || {
+            let mut seed = [0u8; 32];
+            rng.fill_bytes(seed.as_mut());
+            seed
+        };
+
+        for size in 0..5 {
+            let vertices = test_utilities::random_points_with_seed(size, &seed_fn());
+            let triangulation = HierarchyTriangulation::bulk_load(vertices)?;
+            hierarchy_sanity_check(&triangulation);
+            triangulation.sanity_check();
+        }
+
+        for size in 1..20 {
+            let vertices = test_utilities::random_points_with_seed(1 + size * 26, &seed_fn());
+            let triangulation = HierarchyTriangulation::bulk_load(vertices)?;
+            hierarchy_sanity_check(&triangulation);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn hierarchy_hint_generator_removal_test() -> Result<(), InsertionError> {
         let vertices = test_utilities::random_points_with_seed(300, test_utilities::SEED);
-        let mut triangulation = HierarchyTriangulation::from_iter(vertices);
+        let mut triangulation = HierarchyTriangulation::bulk_load(vertices)?;
 
         let mut rng = rand::rngs::StdRng::from_seed(*test_utilities::SEED2);
         while let Some(to_remove) = triangulation
@@ -315,5 +397,6 @@ mod test {
             triangulation.remove(*to_remove);
             hierarchy_sanity_check(&triangulation);
         }
+        Ok(())
     }
 }

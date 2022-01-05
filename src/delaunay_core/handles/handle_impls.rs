@@ -520,7 +520,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, InnerTag, V, DE, UE, F> {
     pub fn adjacent_edge(&self) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
         // unwrap is okay since every inner face has an adjacent edge
         let handle = self.dcel.face_adjacent_edge(self.handle).unwrap();
-        DynamicHandleImpl::new(&self.dcel, handle)
+        DynamicHandleImpl::new(self.dcel, handle)
     }
 
     /// Returns the face's three vertices.
@@ -639,15 +639,15 @@ where
 pub struct CCWEdgesNextBackFn;
 
 impl NextBackFn for CCWEdgesNextBackFn {
-    fn next<'a, V, DE, UE, F>(
-        edge_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
-    ) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
+    fn next<V, DE, UE, F>(
+        edge_handle: DirectedEdgeHandle<V, DE, UE, F>,
+    ) -> DirectedEdgeHandle<V, DE, UE, F> {
         edge_handle.ccw()
     }
 
-    fn next_back<'a, V, DE, UE, F>(
-        edge_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
-    ) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
+    fn next_back<V, DE, UE, F>(
+        edge_handle: DirectedEdgeHandle<V, DE, UE, F>,
+    ) -> DirectedEdgeHandle<V, DE, UE, F> {
         edge_handle.cw()
     }
 }
@@ -657,6 +657,7 @@ impl<'a, V, DE, UE, F> VertexHandle<'a, V, DE, UE, F> {
     ///
     /// The edges are returned in counter clockwise order, beginning at an arbitrary
     /// edge.
+    ///
     #[doc = include_str!("../../../images/circular_iterator.svg")]
     ///
     /// *A possible iteration order of `v.out_edges()`*
@@ -743,7 +744,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
     pub fn adjacent_edge(&self) -> Option<DirectedEdgeHandle<'a, V, DE, UE, F>> {
         self.dcel
             .face_adjacent_edge(self.handle)
-            .map(|handle| DirectedEdgeHandle::new(&self.dcel, handle))
+            .map(|handle| DirectedEdgeHandle::new(self.dcel, handle))
     }
 }
 

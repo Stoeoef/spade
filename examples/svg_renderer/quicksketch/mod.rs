@@ -143,7 +143,7 @@ impl Style {
             self.fill
                 .as_ref()
                 .map(|fill| fill.get_attribute_string(converter))
-                .unwrap_or("none".to_string())
+                .unwrap_or_else(|| "none".to_string())
         );
 
         let stroke_dash_array = self.stroke_style.map(|stroke_style| {
@@ -153,14 +153,14 @@ impl Style {
         let marker_start = self.marker_start.as_ref().map(|arrow_type| {
             format!(
                 "marker-start: url(#{})",
-                converter.add_arrowhead(&self, *arrow_type, true)
+                converter.add_arrowhead(self, *arrow_type, true)
             )
         });
 
         let marker_end = self.marker_end.as_ref().map(|arrow_type| {
             format!(
                 "marker-end: url(#{})",
-                converter.add_arrowhead(&self, *arrow_type, false)
+                converter.add_arrowhead(self, *arrow_type, false)
             )
         });
 
@@ -446,12 +446,10 @@ impl SketchLine {
 
         let middle = EuclideanSpace::centroid(&[self.from, self.to]);
         let text = SketchElement::text(text);
-        let text = text
-            .angle(-rotation - Deg(90.0))
-            .position(middle)
-            .horizontal_alignment(HorizontalAlignment::Middle);
 
-        text
+        text.angle(-rotation - Deg(90.0))
+            .position(middle)
+            .horizontal_alignment(HorizontalAlignment::Middle)
     }
 }
 

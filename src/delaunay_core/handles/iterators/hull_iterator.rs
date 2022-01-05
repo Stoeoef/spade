@@ -11,15 +11,15 @@ pub struct HullIterator<'a, V, DE, UE, F> {
 struct HullNextBackFn;
 
 impl NextBackFn for HullNextBackFn {
-    fn next<'a, V, DE, UE, F>(
-        edge_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
-    ) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
+    fn next<V, DE, UE, F>(
+        edge_handle: DirectedEdgeHandle<V, DE, UE, F>,
+    ) -> DirectedEdgeHandle<V, DE, UE, F> {
         edge_handle.next()
     }
 
-    fn next_back<'a, V, DE, UE, F>(
-        edge_handle: DirectedEdgeHandle<'a, V, DE, UE, F>,
-    ) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
+    fn next_back<V, DE, UE, F>(
+        edge_handle: DirectedEdgeHandle<V, DE, UE, F>,
+    ) -> DirectedEdgeHandle<V, DE, UE, F> {
         edge_handle.prev()
     }
 }
@@ -59,24 +59,25 @@ impl<'a, V, DE, UE, F> DoubleEndedIterator for HullIterator<'a, V, DE, UE, F> {
 #[cfg(test)]
 mod test {
     use crate::test_utilities::{random_points_with_seed, SEED};
-    use crate::{DelaunayTriangulation, Point2, Triangulation};
+    use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
 
     #[test]
-    fn test_empty_hull() {
+    fn test_empty_hull() -> Result<(), InsertionError> {
         let mut triangulation = DelaunayTriangulation::<Point2<f64>>::new();
         assert!(triangulation.convex_hull().next().is_none());
 
-        triangulation.insert(Point2::new(0.0, 0.0));
+        triangulation.insert(Point2::new(0.0, 0.0))?;
         assert!(triangulation.convex_hull().next().is_none());
 
-        triangulation.insert(Point2::new(0.0, 1.0));
+        triangulation.insert(Point2::new(0.0, 1.0))?;
         assert_eq!(triangulation.convex_hull().count(), 2);
+        Ok(())
     }
 
     #[test]
-    fn test_bigger_triangulation() {
-        let vertices = random_points_with_seed(100, &SEED);
-        let triangulation: DelaunayTriangulation<_> = vertices.into_iter().collect();
+    fn test_bigger_triangulation() -> Result<(), InsertionError> {
+        let vertices = random_points_with_seed(100, SEED);
+        let triangulation = DelaunayTriangulation::<_>::bulk_load(vertices)?;
 
         let convex_hull: Vec<_> = triangulation.convex_hull().collect();
         let mut reversed: Vec<_> = triangulation.convex_hull().rev().collect();
@@ -89,5 +90,6 @@ mod test {
         assert_eq!(convex_hull, reversed);
 
         assert_eq!(triangulation.convex_hull_size(), convex_hull.len());
+        Ok(())
     }
 }

@@ -1,5 +1,3 @@
-use std::iter::FromIterator;
-
 use smallvec::SmallVec;
 
 use crate::delaunay_core::iterators::HullIterator;
@@ -9,7 +7,7 @@ use crate::{delaunay_core::dcel_operations, iterators::*};
 use crate::{delaunay_core::DCEL, handles::*};
 use crate::{
     delaunay_core::{dcel_operations::IsolateVertexResult, math},
-    HasPosition, Point2, PositionInTriangulation,
+    HasPosition, InsertionError, Point2, PositionInTriangulation,
 };
 pub enum PositionWhenAllVerticesOnLine {
     OnEdge(FixedDirectedEdgeHandle),
@@ -33,7 +31,7 @@ pub struct RemovalResult<V> {
 /// These operations are both available for
 /// [ConstrainedDelaunayTriangulations](crate::ConstrainedDelaunayTriangulation) as well as
 /// regular [DelaunayTriangulations](crate::DelaunayTriangulation).
-pub trait Triangulation: Default + FromIterator<Self::Vertex> {
+pub trait Triangulation: Default {
     /// The triangulation's vertex type.
     type Vertex: HasPosition;
     /// The triangulation's edge type. Any new edge is created by using the `Default` trait.
@@ -110,8 +108,11 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// Creates a new triangulation populated with some vertices.
     ///
     /// This will usually be more efficient than inserting the elements sequentially by calling [insert].
-    fn bulk_load(elements: Vec<Self::Vertex>) -> Self {
-        crate::delaunay_core::bulk_load(elements)
+    fn bulk_load(elements: Vec<Self::Vertex>) -> Result<Self, InsertionError> {
+        let mut result: Self = crate::delaunay_core::bulk_load(elements)?;
+        let hint_generator = Self::HintGenerator::initialize_from_triangulation(&result);
+        *result.hint_generator_mut() = hint_generator;
+        Ok(result)
     }
 
     /// Converts a fixed vertex handle to a reference vertex handle.
@@ -330,6 +331,7 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// Locates a vertex at a given position.
     ///
     /// Returns `None` if the point could not be found.
+    #[allow(clippy::type_complexity)]
     fn locate_vertex(
         &self,
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
@@ -346,6 +348,7 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// If the edge does not exist, `None` is returned.
     /// This operation runs in `O(n)` time, where `n` is
     /// the degree of `from`.
+    #[allow(clippy::type_complexity)]
     fn get_edge_from_neighbors(
         &self,
         from: FixedVertexHandle,
@@ -376,7 +379,11 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     /// in this case the insertion time can be reduced to O(1) on average
     /// if the hint is close. If the hint is randomized, running time will
     /// be O(sqrt(n)) on average with an O(n) worst case.
-    fn insert_with_hint(&mut self, t: Self::Vertex, hint: FixedVertexHandle) -> FixedVertexHandle {
+    fn insert_with_hint(
+        &mut self,
+        t: Self::Vertex,
+        hint: FixedVertexHandle,
+    ) -> Result<FixedVertexHandle, InsertionError> {
         self.insert_with_hint_option(t, Some(hint))
     }
 
@@ -419,7 +426,7 @@ pub trait Triangulation: Default + FromIterator<Self::Vertex> {
     ///
     /// Returns a handle to the new vertex. Use this handle with
     /// `ConstrainedDelaunayTriangulation::vertex(..)` to refer to it.
-    fn insert(&mut self, vertex: Self::Vertex) -> FixedVertexHandle {
+    fn insert(&mut self, vertex: Self::Vertex) -> Result<FixedVertexHandle, InsertionError> {
         self.insert_with_hint_option(vertex, None)
     }
 
@@ -497,13 +504,14 @@ pub trait TriangulationExt: Triangulation {
         &mut self,
         t: Self::Vertex,
         hint: Option<FixedVertexHandle>,
-    ) -> FixedVertexHandle {
+    ) -> Result<FixedVertexHandle, InsertionError> {
+        math::validate_vertex(&t)?;
         let position = t.position();
         let result = self.insert_with_hint_option_impl(t, hint);
 
         self.hint_generator_mut()
             .notify_vertex_inserted(result, position);
-        result
+        Ok(result)
     }
 
     fn insert_with_hint_option_impl(
@@ -570,47 +578,43 @@ pub trait TriangulationExt: Triangulation {
         &mut self,
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) -> PositionWhenAllVerticesOnLine {
-        let mut edge = self
+        use PositionWhenAllVerticesOnLine::*;
+
+        let edge = self
             .directed_edges()
             .next()
-            .expect("Must not be called on a triangulations without any edge");
+            .expect("Must not be called on empty triangulations");
         let query = edge.side_query(position);
         if query.is_on_left_side() {
-            return PositionWhenAllVerticesOnLine::NotOnLine(edge.fix());
-        } else if query.is_on_right_side() {
-            return PositionWhenAllVerticesOnLine::NotOnLine(edge.rev().fix());
+            return NotOnLine(edge.fix());
+        }
+        if query.is_on_right_side() {
+            return NotOnLine(edge.fix().rev());
         }
 
-        assert!(query.is_on_line());
-        // The target position is neither right nor left of the line. Walk along the line until
-        // we walk over the position or reach one of the line's end vertices.
+        let mut vertices: Vec<_> = self.vertices().collect();
+        vertices.sort_by(|left, right| left.position().partial_cmp(&right.position()).unwrap());
 
-        let mut projection = edge.project_point(position);
-        if projection.is_before_edge() {
-            edge = edge.rev();
-            // Make sure that the target vertex comes always after the edge. This makes sure we
-            // only need to walk forwards by calling edge.next()
-            projection = projection.reversed();
+        let index_to_insert =
+            match vertices.binary_search_by(|v| v.position().partial_cmp(&position).unwrap()) {
+                Ok(index) => return OnVertex(vertices[index].fix()),
+                Err(index) => index,
+            };
+
+        if index_to_insert == 0 {
+            return ExtendingLine(vertices.first().unwrap().fix());
         }
-        loop {
-            if edge.from().position() == position {
-                return PositionWhenAllVerticesOnLine::OnVertex(edge.from().fix());
-            } else if edge.to().position() == position {
-                return PositionWhenAllVerticesOnLine::OnVertex(edge.to().fix());
-            }
-
-            if projection.is_on_edge() {
-                return PositionWhenAllVerticesOnLine::OnEdge(edge.fix());
-            }
-
-            edge = edge.next();
-            projection = edge.project_point(position);
-            if projection.is_before_edge() {
-                // the target position came after the edge, now it comes before. The only
-                // explanation is that we have reached on of the lines end vertices
-                return PositionWhenAllVerticesOnLine::ExtendingLine(edge.from().fix());
-            }
+        if index_to_insert == vertices.len() {
+            return ExtendingLine(vertices.last().unwrap().fix());
         }
+
+        let v1 = vertices[index_to_insert];
+        let v2 = vertices[index_to_insert - 1];
+
+        let edge = self
+            .get_edge_from_neighbors(v1.fix(), v2.fix())
+            .expect("Expected edge between sorted neighbors. This is a bug in spade.");
+        OnEdge(edge.fix())
     }
 
     fn insert_second_vertex(&mut self, vertex: Self::Vertex) -> InsertionResult {
@@ -669,16 +673,56 @@ pub trait TriangulationExt: Triangulation {
     ) -> FixedVertexHandle {
         let position = new_vertex.position();
 
-        let predicate =
-            |edge: DirectedEdgeHandle<_, _, _, _>| edge.side_query(position).is_on_left_side();
+        assert!(self
+            .directed_edge(convex_hull_edge)
+            .side_query(position)
+            .is_on_left_side());
 
-        let edges_to_connect: Vec<_> = self
-            .get_vertex_facing_edges(convex_hull_edge, position, predicate, predicate)
-            .into();
+        let result = dcel_operations::create_new_face_adjacent_to_edge(
+            self.s_mut(),
+            convex_hull_edge,
+            new_vertex,
+        );
 
-        let result =
-            dcel_operations::connect_edge_strip(self.s_mut(), &edges_to_connect, new_vertex);
-        self.legalize_edges_after_insertion(&mut edges_to_connect.into(), position);
+        let ccw_walk_start = self.directed_edge(convex_hull_edge).prev().rev().fix();
+        let cw_walk_start = self.directed_edge(convex_hull_edge).next().rev().fix();
+
+        self.legalize_edge(convex_hull_edge);
+
+        let mut current_edge = ccw_walk_start;
+        loop {
+            let handle = self.directed_edge(current_edge);
+            let prev = handle.prev();
+            current_edge = prev.fix();
+            if prev.side_query(position).is_on_left_side() {
+                let new_edge = dcel_operations::create_single_face_between_edge_and_next(
+                    self.s_mut(),
+                    current_edge,
+                );
+                self.legalize_edge(current_edge);
+                current_edge = new_edge;
+            } else {
+                break;
+            }
+        }
+
+        let mut current_edge = cw_walk_start;
+        loop {
+            let handle = self.directed_edge(current_edge);
+            let next = handle.next();
+            let next_fix = next.fix();
+            if next.side_query(position).is_on_left_side() {
+                let new_edge = dcel_operations::create_single_face_between_edge_and_next(
+                    self.s_mut(),
+                    current_edge,
+                );
+                self.legalize_edge(next_fix);
+                current_edge = new_edge;
+            } else {
+                break;
+            }
+        }
+
         result
     }
 
@@ -755,14 +799,16 @@ pub trait TriangulationExt: Triangulation {
     }
 
     fn legalize_vertex(&mut self, new_handle: FixedVertexHandle) {
-        let position = self.vertex(new_handle).position();
-        let mut edges = self
+        let edges: SmallVec<[_; 3]> = self
             .vertex(new_handle)
             .out_edges()
             .filter(|e| !e.is_outer_edge())
             .map(|edge| edge.next().fix())
             .collect();
-        self.legalize_edges_after_insertion(&mut edges, position);
+
+        for edge_to_legalize in edges {
+            self.legalize_edge(edge_to_legalize);
+        }
     }
 
     /// The Delaunay property refers to the property that no point lies inside
@@ -779,22 +825,25 @@ pub trait TriangulationExt: Triangulation {
     ///
     /// "Flipping an edge" refers to switching to the other diagonal in a
     /// four sided polygon.
-    fn legalize_edges_after_insertion(
-        &mut self,
-        edges: &mut SmallVec<[FixedDirectedEdgeHandle; 16]>,
-        position: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) {
+    ///
+    /// Returns `true` if at least one edge was flipped. This will always include the initial edge.
+    fn legalize_edge(&mut self, edge: FixedDirectedEdgeHandle) -> bool {
+        let mut edges: SmallVec<[FixedDirectedEdgeHandle; 8]> = Default::default();
+        edges.push(edge);
+
+        let mut result = false;
+
         while let Some(e) = edges.pop() {
             if !self.is_defined_legal(e.as_undirected()) {
                 let edge = self.directed_edge(e);
 
-                //         v2------edge.from()
+                //         v2------ v0
                 //          |     / |
                 //          |    /  |
                 //          |   /<-edge that might be flipped ("edge")
                 //          |  /    |
                 //          | V     |
-                //  edge.to()-------position of newly inserted point
+                //         v1-------v3
                 //
                 //
                 // If the edge is flipped, the new quad will look like this:
@@ -802,19 +851,22 @@ pub trait TriangulationExt: Triangulation {
                 //      New illegal edge
                 //              |
                 //              V
-                //         v2-------+
-                //          | \     |
+                //         v2-------v0
+                //          | ^     |
                 // New      |  \    |
                 // illegal->|   \   |
                 // edge     |    \  |
                 //          |     \ |
-                //          +-------position of newly inserted point
+                //         v1-------v3
                 let v2 = edge.rev().opposite_position();
-                if let Some(v2) = v2 {
-                    let v1 = edge.to().position();
+                let v3 = edge.opposite_position();
+
+                if let (Some(v2), Some(v3)) = (v2, v3) {
                     let v0 = edge.from().position();
-                    debug_assert!(math::is_ordered_ccw(v2, v1, v0));
-                    let should_flip = math::contained_in_circumference(v2, v1, v0, position);
+                    let v1 = edge.to().position();
+                    //debug_assert!(math::is_ordered_ccw(v2, v1, v0));
+                    let should_flip = math::contained_in_circumference(v2, v1, v0, v3);
+                    result |= should_flip;
 
                     if should_flip {
                         let e1 = edge.rev().next().fix();
@@ -827,6 +879,7 @@ pub trait TriangulationExt: Triangulation {
                 }
             }
         }
+        result
     }
 
     fn validate_vertex_handle(&self, handle: FixedVertexHandle) -> FixedVertexHandle {
@@ -1021,7 +1074,7 @@ pub trait TriangulationExt: Triangulation {
             position,
         );
 
-        return removal_result.removed_vertex;
+        removal_result.removed_vertex
     }
 
     fn remove_core(&mut self, vertex_to_remove: FixedVertexHandle) -> RemovalResult<Self::Vertex> {
@@ -1053,7 +1106,7 @@ pub trait TriangulationExt: Triangulation {
                 vertex_to_remove,
             );
             // Not exactly elegant. IsolateVertexResult should maybe be split into two parts
-            let mut new_edges = std::mem::replace(&mut isolation_result.new_edges, Vec::new());
+            let mut new_edges = std::mem::take(&mut isolation_result.new_edges);
             self.legalize_edges_after_removal(&mut new_edges, |edge| {
                 !isolation_result.is_new_edge(edge)
             });
@@ -1081,26 +1134,22 @@ pub trait TriangulationExt: Triangulation {
             let edge = current_handle.next().fix();
             convex_edges.push(edge);
 
-            loop {
-                if let &[.., edge1, edge2] = &*convex_edges {
-                    let edge1 = self.directed_edge(edge1);
-                    let edge2 = self.directed_edge(edge2);
+            while let &[.., edge1, edge2] = &*convex_edges {
+                let edge1 = self.directed_edge(edge1);
+                let edge2 = self.directed_edge(edge2);
 
-                    let target_position = edge2.to().position();
-                    // Check if the new edge would violate the convex hull property by turning left
-                    // The convex hull must only contain curves turning right
-                    if edge1.side_query(target_position).is_on_left_side() {
-                        // Violation detected. It is resolved by flipping the edge that connects
-                        // the most recently added edge (edge2) with the point that was removed
-                        let edge_to_flip = edge2.prev().fix().rev();
-                        dcel_operations::flip_cw(self.s_mut(), edge_to_flip.as_undirected());
-                        convex_edges.pop();
-                        convex_edges.pop();
-                        convex_edges.push(edge_to_flip);
-                        edges_to_validate.push(edge_to_flip.as_undirected());
-                    } else {
-                        break;
-                    }
+                let target_position = edge2.to().position();
+                // Check if the new edge would violate the convex hull property by turning left
+                // The convex hull must only contain curves turning right
+                if edge1.side_query(target_position).is_on_left_side() {
+                    // Violation detected. It is resolved by flipping the edge that connects
+                    // the most recently added edge (edge2) with the point that was removed
+                    let edge_to_flip = edge2.prev().fix().rev();
+                    dcel_operations::flip_cw(self.s_mut(), edge_to_flip.as_undirected());
+                    convex_edges.pop();
+                    convex_edges.pop();
+                    convex_edges.push(edge_to_flip);
+                    edges_to_validate.push(edge_to_flip.as_undirected());
                 } else {
                     break;
                 }
@@ -1185,10 +1234,16 @@ pub trait TriangulationExt: Triangulation {
                 let e1 = edge.next();
                 let e3 = edge.rev().next();
 
-                edges_to_validate.push(e1.fix().as_undirected());
-                edges_to_validate.push(e2.fix().as_undirected());
-                edges_to_validate.push(e3.fix().as_undirected());
-                edges_to_validate.push(e4.fix().as_undirected());
+                let mut push_if_not_contained = |handle| {
+                    if !edges_to_validate.contains(&handle) {
+                        edges_to_validate.push(handle);
+                    }
+                };
+
+                push_if_not_contained(e1.fix().as_undirected());
+                push_if_not_contained(e2.fix().as_undirected());
+                push_if_not_contained(e3.fix().as_undirected());
+                push_if_not_contained(e4.fix().as_undirected());
 
                 let fixed = edge.fix();
                 dcel_operations::flip_cw(self.s_mut(), fixed.as_undirected());
@@ -1196,8 +1251,8 @@ pub trait TriangulationExt: Triangulation {
         }
     }
 
-    #[cfg(test)]
-    fn sanity_check(&self) {
+    #[cfg(any(test, fuzzing))]
+    fn basic_sanity_check(&self) {
         self.s().sanity_check();
         let all_vertices_on_line = self.s().num_faces() <= 1;
 
@@ -1237,6 +1292,29 @@ pub trait TriangulationExt: Triangulation {
 
             let num_inner_faces = self.s().num_faces() - 1;
             assert_eq!(num_inner_faces * 3, num_inner_edges);
+        }
+    }
+
+    #[cfg(any(test, fuzzing))]
+    fn sanity_check(&self) {
+        self.basic_sanity_check();
+
+        for edge in self.undirected_edges() {
+            let edge = edge.as_directed();
+            let rev = edge.rev();
+
+            if let (Some(edge_opposite), Some(rev_opposite)) =
+                (edge.opposite_position(), rev.opposite_position())
+            {
+                let from = edge.from().position();
+                let to = edge.to().position();
+                assert!(!math::contained_in_circumference(
+                    from,
+                    to,
+                    edge_opposite,
+                    rev_opposite
+                ))
+            }
         }
     }
 }

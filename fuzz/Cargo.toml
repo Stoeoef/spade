@@ -1,0 +1,32 @@
+[package]
+name = "spade-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.spade]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "bulk_load_fuzz"
+path = "fuzz_targets/bulk_load_fuzz.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "bulk_load_int_fuzz"
+path = "fuzz_targets/bulk_load_int_fuzz.rs"
+test = false
+doc = false

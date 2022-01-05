@@ -11,7 +11,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
-#![warn(missing_docs)]
+#![cfg_attr(not(fuzzing), warn(missing_docs))]
 
 mod cdt;
 mod delaunay_core;
@@ -19,11 +19,19 @@ mod delaunay_triangulation;
 mod intersection_iterator;
 mod point;
 
+#[cfg(not(fuzzing))]
 mod triangulation;
+
+#[cfg(fuzzing)]
+pub mod triangulation;
 
 pub use crate::cdt::{CdtEdge, ConstrainedDelaunayTriangulation};
 pub use crate::delaunay_triangulation::DelaunayTriangulation;
 pub use crate::point::{HasPosition, Point2, SpadeNum};
+
+pub use crate::delaunay_core::math::{
+    validate_coordinate, validate_vertex, InsertionError, MAX_ALLOWED_VALUE, MIN_ALLOWED_VALUE,
+};
 
 pub use delaunay_core::{
     HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
@@ -136,19 +144,23 @@ mod test_utilities;
 ///     }
 /// }
 ///
+/// # fn try_main() -> Result<(), spade::InsertionError> {
+///
 /// let vertices = vec![
 ///     Point2::new(0.0, 1.0),
 ///     Point2::new(1.0, 1.0),
 ///     Point2::new(0.0, 0.0),
 ///     Point2::new(1.0, 0.0),
 /// ];
-/// let triangulation: DelaunayTriangulation<Point2<f64>> = vertices.into_iter().collect();
+/// let triangulation: DelaunayTriangulation<Point2<f64>> = Triangulation::bulk_load(vertices)?;
 ///
 /// // Check that everything works!
 /// for vertex in triangulation.vertices() {
 ///     let nearest_neighbor = nearest_neighbor(&triangulation, vertex.position());
 ///     assert_eq!(nearest_neighbor, vertex);
 /// }
+/// # Ok(()) }
+/// # fn main() { try_main().unwrap() }
 /// ```
 pub mod handles {
     pub use crate::delaunay_core::{

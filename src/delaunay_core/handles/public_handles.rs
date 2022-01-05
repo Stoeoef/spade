@@ -91,12 +91,16 @@ pub type FixedFaceHandle<InnerOuter> = FixedHandleImpl<FaceTag, InnerOuter>;
 ///
 /// Use [next()](#method.next), [prev()](#method.prev), [rev()](#method.rev) to access
 /// any adjacent edge:
+///
 #[doc = include_str!("../../../images/delaunay_directed_edge_details.svg")]
+///
 /// # Retrieving adjacent faces and vertices
 ///
 /// Use [face()](#method.face), [from()](#method.from()) and [to()](#method.to()) to access the adjacent face and
 /// vertices:
+///
 #[doc = include_str!("../../../images/delaunay_directed_edge_face_and_vertex.svg")]
+///
 /// *See also the [handles module](crate::handles).*
 pub type DirectedEdgeHandle<'a, V, DE, UE, F> =
     DynamicHandleImpl<'a, V, DE, UE, F, DirectedEdgeTag, InnerTag>;
