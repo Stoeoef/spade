@@ -1,4 +1,4 @@
-use crate::{triangulation::TriangulationExt, DelaunayTriangulation, Point2, Triangulation};
+use crate::{DelaunayTriangulation, Point2, Triangulation, TriangulationExt};
 
 fn fuzz_test(vertices: Vec<Point2<f64>>) {
     let mut clone = vertices.clone();

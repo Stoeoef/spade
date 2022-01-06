@@ -19,11 +19,7 @@ mod delaunay_triangulation;
 mod intersection_iterator;
 mod point;
 
-#[cfg(not(fuzzing))]
 mod triangulation;
-
-#[cfg(fuzzing)]
-pub mod triangulation;
 
 pub use crate::cdt::{CdtEdge, ConstrainedDelaunayTriangulation};
 pub use crate::delaunay_triangulation::DelaunayTriangulation;
@@ -41,7 +37,13 @@ pub use delaunay_core::{
 pub use delaunay_core::{LineSideInfo, PositionInTriangulation};
 pub use triangulation::Triangulation;
 
-pub(crate) use triangulation::TriangulationExt;
+#[cfg(not(fuzzing))]
+pub(crate) use delaunay_core::TriangulationExt;
+
+#[cfg(fuzzing)]
+pub use delaunay_core::TriangulationExt;
+
+pub(crate) use delaunay_core::RemovalResult;
 
 #[cfg(test)]
 mod test_utilities;

@@ -9,10 +9,13 @@ mod delaunay_core_impl;
 mod handles;
 mod hint_generator;
 mod line_side_info;
+mod triangulation_ext;
 
-pub(crate) mod math;
+pub mod math;
 
-pub(crate) use bulk_load::bulk_load;
+pub use bulk_load::bulk_load;
+
+pub use triangulation_ext::{RemovalResult, TriangulationExt};
 
 pub use dcel::Dcel;
 pub use hint_generator::{

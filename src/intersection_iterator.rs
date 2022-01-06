@@ -1,7 +1,6 @@
 use crate::delaunay_core::math;
 use crate::handles::{DirectedEdgeHandle, FixedVertexHandle, VertexHandle};
-use crate::triangulation::{Triangulation, TriangulationExt};
-use crate::{HasPosition, Point2};
+use crate::{HasPosition, Point2, Triangulation, TriangulationExt};
 
 pub struct LineIntersectionIterator<'a, V, DE, UE, F>
 where

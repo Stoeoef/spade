@@ -1,8 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 
-use spade::triangulation::TriangulationExt;
-use spade::{DelaunayTriangulation, Point2, Triangulation};
+use spade::{DelaunayTriangulation, Point2, Triangulation, TriangulationExt};
 
 fuzz_target!(|data: Vec<IntFuzzPoint>| {
     const MAX_VALUE: i32 = 1024;
@@ -17,13 +16,6 @@ fuzz_target!(|data: Vec<IntFuzzPoint>| {
             .collect(),
     )
     .unwrap();
-
-    let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
-    for point in data {
-        triangulation
-            .insert(Point2::new(point.x as f64, point.y as f64))
-            .unwrap();
-    }
 
     triangulation.sanity_check();
 });

@@ -1,4 +1,4 @@
-use crate::triangulation::RemovalResult;
+use crate::RemovalResult;
 use crate::HasPosition;
 
 use super::dcel::{Dcel, EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry};

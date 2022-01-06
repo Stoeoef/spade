@@ -6,7 +6,7 @@ use serde_crate::{Deserialize, Serialize};
 /// A coordinate type that can be used with a triangulation.
 ///
 /// Internally, most calculations are performed after converting the type into a `f64`.
-/// However, changing this to `f32` will reduce the required storage space.
+/// However, changing this to `f32` will reduce the required storage space slightly.
 ///
 /// This type should usually be either `f32` or `f64`.
 pub trait SpadeNum:
@@ -138,9 +138,7 @@ impl<S: SpadeNum> From<(S, S)> for Point2<S> {
 
 /// An object with position.
 ///
-/// Vertices need to implement this trait to allow insertion into triangulations.
-///
-/// Spade defines [Point2] as a basic point primitive.
+/// Vertices need to implement this trait to allow being inserted into triangulations.
 pub trait HasPosition {
     /// The number type used by this coordinate type.
     type Scalar: SpadeNum;
@@ -148,7 +146,8 @@ pub trait HasPosition {
     /// Returns the position of this object.
     ///
     /// **Note**: It is assumed that the position doesn't change once it has been
-    /// inserted into a triangulation. Failing this requirement will lead to logical errors.
+    /// inserted into a triangulation. Failing this requirement can lead to crashes,
+    /// invalid results or endless loops.
     fn position(&self) -> Point2<Self::Scalar>;
 }
 

@@ -31,7 +31,7 @@ mod test {
     use super::PositionInTriangulation;
     use crate::test_utilities::SEED;
     use crate::test_utilities::*;
-    use crate::triangulation::TriangulationExt;
+    use crate::TriangulationExt;
     use crate::{
         handles::FixedVertexHandle, DelaunayTriangulation, InsertionError, Point2, Triangulation,
     };

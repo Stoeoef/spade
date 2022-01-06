@@ -1,8 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
-    triangulation::TriangulationExt, DelaunayTriangulation, HasPosition, Point2, SpadeNum,
-    Triangulation,
+    DelaunayTriangulation, HasPosition, Point2, SpadeNum, Triangulation, TriangulationExt,
 };
 
 use super::FixedVertexHandle;
@@ -285,8 +284,8 @@ mod test {
     use rand::{prelude::SliceRandom, RngCore, SeedableRng};
 
     use crate::{
-        handles::FixedVertexHandle, test_utilities, triangulation::TriangulationExt,
-        DelaunayTriangulation, InsertionError, Point2, Triangulation,
+        handles::FixedVertexHandle, test_utilities, DelaunayTriangulation, InsertionError, Point2,
+        Triangulation, TriangulationExt,
     };
 
     const BRANCH_FACTOR: u32 = 3;

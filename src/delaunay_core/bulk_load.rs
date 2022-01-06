@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::{triangulation::TriangulationExt, HasPosition, InsertionError, Point2, Triangulation};
+use crate::{HasPosition, InsertionError, Point2, Triangulation, TriangulationExt};
 
 use super::{dcel_operations, FixedDirectedEdgeHandle};
 
@@ -9,7 +9,7 @@ struct FloatOrd(f64);
 
 impl Eq for FloatOrd {}
 
-pub(crate) fn bulk_load<V, T>(elements: Vec<V>) -> Result<T, InsertionError>
+pub fn bulk_load<V, T>(elements: Vec<V>) -> Result<T, InsertionError>
 where
     V: HasPosition,
     T: Triangulation<Vertex = V>,
@@ -626,10 +626,7 @@ mod test {
 
     use crate::test_utilities::{random_points_with_seed, SEED2};
 
-    use crate::{
-        triangulation::TriangulationExt, DelaunayTriangulation, InsertionError, Point2,
-        Triangulation,
-    };
+    use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation, TriangulationExt};
 
     use super::Hull;
 

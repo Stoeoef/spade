@@ -1,8 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 
-use spade::triangulation::TriangulationExt;
-use spade::{DelaunayTriangulation, Point2, Triangulation};
+use spade::{DelaunayTriangulation, Point2, Triangulation, TriangulationExt};
 
 fuzz_target!(|data: Vec<FuzzPoint>| {
     for p in &data {

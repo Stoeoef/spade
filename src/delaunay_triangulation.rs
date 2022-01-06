@@ -1,7 +1,7 @@
 use super::delaunay_core::Dcel;
 use crate::{
-    handles::VertexHandle, triangulation::TriangulationExt, HasPosition, HintGenerator,
-    LastUsedVertexHintGenerator, Point2, Triangulation,
+    handles::VertexHandle, HasPosition, HintGenerator, LastUsedVertexHintGenerator, Point2,
+    Triangulation, TriangulationExt,
 };
 
 #[cfg(feature = "serde")]

@@ -332,7 +332,7 @@ impl<'a, V, DE, UE, F> DirectedVoronoiEdge<'a, V, DE, UE, F> {
 
     /// Returns the edge that is connected to this edge in counter clockwise order.
     ///
-    /// See also [prev](Self::prev).
+    /// See also [prev](Self::prev)
     pub fn next(&self) -> DirectedVoronoiEdge<'a, V, DE, UE, F> {
         self.as_delaunay_edge().ccw().as_voronoi_edge()
     }
