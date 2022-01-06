@@ -1,7 +1,7 @@
 use crate::triangulation::RemovalResult;
 use crate::HasPosition;
 
-use super::dcel::{EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry, DCEL};
+use super::dcel::{Dcel, EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry};
 use super::handles::*;
 
 use smallvec::SmallVec;
@@ -26,7 +26,7 @@ impl IsolateVertexResult {
 /// with the outer face.
 /// `edge_strip` should be a vec of connected edges ordered ccw.
 pub fn disconnect_edge_strip<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge_strip: Vec<FixedDirectedEdgeHandle>,
 ) -> IsolateVertexResult
 where
@@ -65,7 +65,7 @@ where
 /// Removes a vertex from the DCEL.
 /// Then, the resulting hole will be re-triangulated with a triangle fan.
 pub fn isolate_vertex_and_fill_hole<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     border_loop: Vec<FixedDirectedEdgeHandle>,
     vertex_to_remove: FixedVertexHandle,
 ) -> IsolateVertexResult
@@ -88,7 +88,7 @@ where
 }
 
 pub fn remesh_edge_ring<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     mut border_loop: Vec<FixedDirectedEdgeHandle>,
     edges_to_remove: Vec<FixedUndirectedEdgeHandle>,
     faces_to_remove: Vec<FixedFaceHandle<InnerTag>>,
@@ -212,7 +212,7 @@ where
 }
 
 pub fn create_single_face_between_edge_and_next<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge: FixedDirectedEdgeHandle,
 ) -> FixedDirectedEdgeHandle
 where
@@ -294,7 +294,7 @@ where
 }
 
 pub fn create_new_face_adjacent_to_edge<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge: FixedDirectedEdgeHandle,
     new_vertex: V,
 ) -> FixedVertexHandle
@@ -395,7 +395,7 @@ where
 }
 
 pub fn extend_line<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     end_vertex: FixedVertexHandle,
     new_vertex: V,
 ) -> FixedVertexHandle
@@ -457,7 +457,7 @@ where
 }
 
 pub fn split_edge_when_all_vertices_on_line<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge: FixedDirectedEdgeHandle,
     new_vertex: V,
 ) -> FixedVertexHandle
@@ -532,7 +532,7 @@ where
 
 /// Splits `edge_handle` only one side. Used to split edges on the convex hull.
 pub fn split_half_edge<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
     new_vertex_data: V,
 ) -> FixedVertexHandle
@@ -664,7 +664,7 @@ where
 /// Splits `edge_handle`, introducing 6 new half edges, two new faces and one
 /// new vertex.
 pub fn split_edge<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
     new_vertex: V,
 ) -> FixedVertexHandle
@@ -836,7 +836,7 @@ where
 }
 
 pub fn insert_first_vertex<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex: V,
 ) -> FixedVertexHandle {
     assert!(dcel.vertices.is_empty());
@@ -848,7 +848,7 @@ pub fn insert_first_vertex<V, DE, UE, F>(
 }
 
 pub fn insert_second_vertex<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex: V,
 ) -> FixedVertexHandle
 where
@@ -885,7 +885,7 @@ where
 }
 
 pub fn insert_into_triangle<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex: V,
     f0: FixedFaceHandle<InnerTag>,
 ) -> FixedVertexHandle
@@ -1017,7 +1017,7 @@ where
     v.adjust_inner_outer()
 }
 
-pub fn new<V, DE, UE, F>() -> DCEL<V, DE, UE, F>
+pub fn new<V, DE, UE, F>() -> Dcel<V, DE, UE, F>
 where
     F: Default,
 {
@@ -1026,7 +1026,7 @@ where
         data: F::default(),
     };
 
-    DCEL {
+    Dcel {
         vertices: Vec::new(),
         edges: Vec::new(),
         faces: vec![outer_face],
@@ -1034,7 +1034,7 @@ where
 }
 
 /// Flip an edge in cw direction
-pub fn flip_cw<V, DE, UE, F>(dcel: &mut DCEL<V, DE, UE, F>, e: FixedUndirectedEdgeHandle) {
+pub fn flip_cw<V, DE, UE, F>(dcel: &mut Dcel<V, DE, UE, F>, e: FixedUndirectedEdgeHandle) {
     let e = e.as_directed();
     let e_entry = *dcel.half_edge(e);
     let en = e_entry.next;
@@ -1077,7 +1077,7 @@ pub fn flip_cw<V, DE, UE, F>(dcel: &mut DCEL<V, DE, UE, F>, e: FixedUndirectedEd
 /// Vertex removal has two stages: First, the vertex is disconnected from its surroundings (isolated).
 /// Then, any edges, faces and the vertex itself that have become obsolete are removed.
 pub fn cleanup_isolated_vertex<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     isolated: &mut IsolateVertexResult,
 ) {
     // Remove disconnected edges, faces and the vertex
@@ -1093,7 +1093,7 @@ pub fn cleanup_isolated_vertex<V, DE, UE, F>(
 }
 
 fn swap_remove_undirected_edge<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedUndirectedEdgeHandle,
 ) {
     dcel.edges.swap_remove(edge_handle.index());
@@ -1105,7 +1105,7 @@ fn swap_remove_undirected_edge<V, DE, UE, F>(
 }
 
 fn fix_handle_swap<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
 ) {
     // An edge handle was moved to index "edge_handle".
@@ -1147,7 +1147,7 @@ fn fix_handle_swap<V, DE, UE, F>(
 /// references to the swapped in vertex are updated accordingly.
 /// Returns the data of the removed vertex.
 pub fn swap_remove_vertex<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex_handle: FixedVertexHandle,
 ) -> RemovalResult<V> {
     let data = dcel.vertices.swap_remove(vertex_handle.index()).data;
@@ -1176,7 +1176,7 @@ pub fn swap_remove_vertex<V, DE, UE, F>(
 /// This *will* leave the DCEL in an inconsistent state. It is the callers responsibility
 /// to fix the site around the removed face. This method only ensure that any references to
 /// the swapped in faces are updated accordingly.
-fn swap_remove_face<V, DE, UE, F>(dcel: &mut DCEL<V, DE, UE, F>, face: FixedFaceHandle<InnerTag>) {
+fn swap_remove_face<V, DE, UE, F>(dcel: &mut Dcel<V, DE, UE, F>, face: FixedFaceHandle<InnerTag>) {
     dcel.faces.swap_remove(face.index());
     if dcel.faces.len() > face.index() {
         let neighs: SmallVec<[_; 3]> = dcel
@@ -1192,7 +1192,7 @@ fn swap_remove_face<V, DE, UE, F>(dcel: &mut DCEL<V, DE, UE, F>, face: FixedFace
 }
 
 pub fn remove_when_degenerate<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
 ) -> RemovalResult<V>
 where
@@ -1207,7 +1207,7 @@ where
 }
 
 fn remove_when_one_vertex_left<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
 ) -> RemovalResult<V>
 where
@@ -1226,7 +1226,7 @@ where
 }
 
 fn remove_when_two_vertices_left<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
 ) -> RemovalResult<V>
 where
@@ -1253,7 +1253,7 @@ where
 }
 
 fn remove_when_all_vertices_on_line<V, DE, UE, F>(
-    dcel: &mut DCEL<V, DE, UE, F>,
+    dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
 ) -> RemovalResult<V>
 where
@@ -1320,9 +1320,9 @@ where
 mod test {
     use crate::handles::{InnerTag, VertexHandle};
 
-    use super::{FixedDirectedEdgeHandle, FixedFaceHandle, FixedVertexHandle, DCEL};
+    use super::{Dcel, FixedDirectedEdgeHandle, FixedFaceHandle, FixedVertexHandle};
 
-    fn default_triangle() -> DCEL<usize, (), ()> {
+    fn default_triangle() -> Dcel<usize, (), ()> {
         use super::{EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry};
 
         let e0 = FixedDirectedEdgeHandle::new(0);
@@ -1409,7 +1409,7 @@ mod test {
             data: 2,
         };
 
-        DCEL {
+        Dcel {
             vertices: vec![vertex0, vertex1, vertex2],
             faces: vec![face0, face1],
             edges: vec![edge0_1, edge2_3, edge4_5],
@@ -1554,7 +1554,7 @@ mod test {
 
     #[test]
     fn test_insert_first_and_second() {
-        let mut dcel = DCEL::<_>::default();
+        let mut dcel = Dcel::<_>::default();
         super::insert_first_vertex(&mut dcel, 0);
         super::insert_second_vertex(&mut dcel, 1);
 
@@ -1563,7 +1563,7 @@ mod test {
 
     #[test]
     fn test_split_non_triangle_edge() {
-        let mut dcel = DCEL::<_>::default();
+        let mut dcel = Dcel::<_>::default();
         let v0 = super::insert_first_vertex(&mut dcel, 0);
         let v1 = super::insert_second_vertex(&mut dcel, 1);
 
@@ -1591,7 +1591,7 @@ mod test {
 
     #[test]
     fn test_extend_line() {
-        let mut dcel = DCEL::<_>::default();
+        let mut dcel = Dcel::<_>::default();
 
         let v0 = super::insert_first_vertex(&mut dcel, 0);
         let v1 = super::insert_second_vertex(&mut dcel, 1);
@@ -1609,7 +1609,7 @@ mod test {
 
     #[test]
     fn test_create_single_face_between_edge_and_next() {
-        let mut dcel = DCEL::<_>::default();
+        let mut dcel = Dcel::<_>::default();
         super::insert_first_vertex(&mut dcel, 0);
         super::insert_second_vertex(&mut dcel, 1);
         super::split_edge_when_all_vertices_on_line(&mut dcel, FixedDirectedEdgeHandle::new(0), 2);

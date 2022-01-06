@@ -1,4 +1,4 @@
-use super::delaunay_core::DCEL;
+use super::delaunay_core::Dcel;
 use crate::{
     handles::VertexHandle, triangulation::TriangulationExt, HasPosition, HintGenerator,
     LastUsedVertexHintGenerator, Point2, Triangulation,
@@ -250,7 +250,7 @@ where
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
-    dcel: DCEL<V, DE, UE, F>,
+    dcel: Dcel<V, DE, UE, F>,
     hint_generator: L,
 }
 
@@ -313,11 +313,11 @@ where
     type Face = F;
     type HintGenerator = L;
 
-    fn s(&self) -> &DCEL<V, DE, UE, F> {
+    fn s(&self) -> &Dcel<V, DE, UE, F> {
         &self.dcel
     }
 
-    fn s_mut(&mut self) -> &mut DCEL<V, DE, UE, F> {
+    fn s_mut(&mut self) -> &mut Dcel<V, DE, UE, F> {
         &mut self.dcel
     }
 

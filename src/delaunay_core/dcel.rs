@@ -97,13 +97,13 @@ pub(super) struct HalfEdgeEntry {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-pub struct DCEL<V, DE = (), UE = (), F = ()> {
+pub struct Dcel<V, DE = (), UE = (), F = ()> {
     pub(super) vertices: Vec<VertexEntry<V>>,
     pub(super) faces: Vec<FaceEntry<F>>,
     pub(super) edges: Vec<EdgeEntry<DE, UE>>,
 }
 
-impl<V, DE, UE, F> Default for DCEL<V, DE, UE, F>
+impl<V, DE, UE, F> Default for Dcel<V, DE, UE, F>
 where
     DE: Default,
     UE: Default,
@@ -114,7 +114,7 @@ where
     }
 }
 
-impl<V, DE, UE, F> DCEL<V, DE, UE, F> {
+impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
     pub fn reserve_capacity(
         &mut self,
         num_vertices: usize,

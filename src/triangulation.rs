@@ -4,7 +4,7 @@ use crate::delaunay_core::iterators::HullIterator;
 use crate::delaunay_core::InnerOuterMarker;
 use crate::HintGenerator;
 use crate::{delaunay_core::dcel_operations, iterators::*};
-use crate::{delaunay_core::DCEL, handles::*};
+use crate::{delaunay_core::Dcel, handles::*};
 use crate::{
     delaunay_core::{dcel_operations::IsolateVertexResult, math},
     HasPosition, InsertionError, Point2, PositionInTriangulation,
@@ -45,12 +45,12 @@ pub trait Triangulation: Default {
     type HintGenerator: HintGenerator<<Self::Vertex as HasPosition>::Scalar>;
 
     #[doc(hidden)]
-    fn s(&self) -> &DCEL<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>;
+    fn s(&self) -> &Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>;
 
     #[doc(hidden)]
     fn s_mut(
         &mut self,
-    ) -> &mut DCEL<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>;
+    ) -> &mut Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>;
 
     #[doc(hidden)]
     fn is_defined_legal(&self, _: FixedUndirectedEdgeHandle) -> bool {

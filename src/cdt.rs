@@ -1,4 +1,4 @@
-use crate::{delaunay_core::DCEL, intersection_iterator::LineIntersectionIterator};
+use crate::{delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator};
 use crate::{handles::*, intersection_iterator::Intersection};
 use crate::{
     HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator, Point2, Triangulation,
@@ -142,7 +142,7 @@ pub struct ConstrainedDelaunayTriangulation<
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
-    s: DCEL<V, DE, CdtEdge<UE>, F>,
+    s: Dcel<V, DE, CdtEdge<UE>, F>,
     num_constraints: usize,
     lookup: L,
 }
@@ -178,11 +178,11 @@ where
     type Face = F;
     type HintGenerator = L;
 
-    fn s(&self) -> &DCEL<V, DE, CdtEdge<UE>, F> {
+    fn s(&self) -> &Dcel<V, DE, CdtEdge<UE>, F> {
         &self.s
     }
 
-    fn s_mut(&mut self) -> &mut DCEL<V, DE, CdtEdge<UE>, F> {
+    fn s_mut(&mut self) -> &mut Dcel<V, DE, CdtEdge<UE>, F> {
         &mut self.s
     }
 

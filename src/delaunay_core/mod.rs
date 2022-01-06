@@ -14,7 +14,7 @@ pub(crate) mod math;
 
 pub(crate) use bulk_load::bulk_load;
 
-pub use dcel::DCEL;
+pub use dcel::Dcel;
 pub use hint_generator::{
     HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
     LastUsedVertexHintGenerator,

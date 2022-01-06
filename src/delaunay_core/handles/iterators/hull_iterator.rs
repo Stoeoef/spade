@@ -1,6 +1,6 @@
 use super::{CircularIterator, NextBackFn};
 use crate::{
-    delaunay_core::DCEL,
+    delaunay_core::Dcel,
     handles::{DirectedEdgeHandle, FixedDirectedEdgeHandle},
 };
 
@@ -25,7 +25,7 @@ impl NextBackFn for HullNextBackFn {
 }
 
 impl<'a, V, DE, UE, F> HullIterator<'a, V, DE, UE, F> {
-    pub(crate) fn new(dcel: &'a DCEL<V, DE, UE, F>) -> Self {
+    pub(crate) fn new(dcel: &'a Dcel<V, DE, UE, F>) -> Self {
         let outer_face = dcel.outer_face();
 
         let inner_iterator = if let Some(first_edge) = outer_face.adjacent_edge() {

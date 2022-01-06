@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use super::super::handle_defs::{DelaunayElementType, DynamicHandleImpl, FixedHandleImpl};
 use super::super::InnerOuterMarker;
 
-use crate::delaunay_core::DCEL;
+use crate::delaunay_core::Dcel;
 
 pub struct FixedHandleIterator<Type, InnerOuter> {
     range: std::ops::Range<usize>,
@@ -33,7 +33,7 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> Iterator
 
 pub struct DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter> {
     fixed_iterator: FixedHandleIterator<Type, InnerOuter>,
-    dcel: &'a DCEL<V, DE, UE, F>,
+    dcel: &'a Dcel<V, DE, UE, F>,
     inner_outer: std::marker::PhantomData<InnerOuter>,
 }
 
@@ -42,7 +42,7 @@ where
     Type: DelaunayElementType + Default,
     InnerOuter: InnerOuterMarker,
 {
-    pub(crate) fn new(dcel: &'a DCEL<V, DE, UE, F>) -> Self {
+    pub(crate) fn new(dcel: &'a Dcel<V, DE, UE, F>) -> Self {
         DynamicHandleIterator {
             fixed_iterator: FixedHandleIterator::new(Type::num_elements(dcel)),
             dcel,

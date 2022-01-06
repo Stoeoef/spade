@@ -1,13 +1,13 @@
 use std::convert::TryInto;
 
-use super::super::DCEL;
+use super::super::Dcel;
 use super::public_handles::{InnerOuterMarker, PossiblyOuterTag};
 
 #[cfg(feature = "serde")]
 use serde_crate::{Deserialize, Serialize};
 
 pub trait DelaunayElementType: Sized + Default {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize;
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize;
 }
 /// Internal type definition that is only exposed for documentation purposes.
 ///
@@ -114,7 +114,7 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> FixedHandleImpl<Type, InnerOut
 ///
 /// Do not use these types. Their removal will not be considered a breaking change.
 pub struct DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter: InnerOuterMarker> {
-    pub(super) dcel: &'a DCEL<V, DE, UE, F>,
+    pub(super) dcel: &'a Dcel<V, DE, UE, F>,
     pub(super) handle: FixedHandleImpl<Type, InnerOuter>,
 }
 
@@ -123,7 +123,7 @@ impl<'a, V, DE, UE, F, Type: Default, InnerOuter: InnerOuterMarker>
 {
     #[inline]
     pub(crate) fn new(
-        dcel: &'a DCEL<V, DE, UE, F>,
+        dcel: &'a Dcel<V, DE, UE, F>,
         handle: FixedHandleImpl<Type, InnerOuter>,
     ) -> Self {
         Self { dcel, handle }
@@ -179,43 +179,43 @@ pub struct VoronoiVertexTag;
 pub struct VoronoiFaceTag;
 
 impl DelaunayElementType for VertexTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_vertices()
     }
 }
 
 impl DelaunayElementType for DirectedEdgeTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_directed_edges()
     }
 }
 
 impl DelaunayElementType for UndirectedEdgeTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_undirected_edges()
     }
 }
 
 impl DelaunayElementType for FaceTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_faces()
     }
 }
 
 impl DelaunayElementType for VoronoiFaceTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_vertices()
     }
 }
 
 impl DelaunayElementType for DirectedVoronoiEdgeTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_directed_edges()
     }
 }
 
 impl DelaunayElementType for UndirectedVoronoiEdgeTag {
-    fn num_elements<V, DE, UE, F>(dcel: &DCEL<V, DE, UE, F>) -> usize {
+    fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_undirected_edges()
     }
 }
