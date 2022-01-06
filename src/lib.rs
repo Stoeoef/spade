@@ -34,8 +34,8 @@ pub use delaunay_core::{
     LastUsedVertexHintGenerator,
 };
 
-pub use delaunay_core::{LineSideInfo, PositionInTriangulation};
-pub use triangulation::Triangulation;
+pub use delaunay_core::LineSideInfo;
+pub use triangulation::{PositionInTriangulation, Triangulation};
 
 #[cfg(not(fuzzing))]
 pub(crate) use delaunay_core::TriangulationExt;

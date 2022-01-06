@@ -847,3 +847,627 @@ pub trait TriangulationExt: Triangulation {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::test_utilities::SEED;
+    use crate::test_utilities::*;
+    use crate::PositionInTriangulation;
+    use crate::TriangulationExt;
+    use crate::{
+        handles::FixedVertexHandle, DelaunayTriangulation, InsertionError, Point2, Triangulation,
+    };
+    use rand::distributions::{Distribution, Uniform};
+    use rand::{seq::SliceRandom, Rng, SeedableRng};
+
+    #[test]
+    fn test_empty() {
+        let d = DelaunayTriangulation::<Point2<f32>>::default();
+        assert_eq!(d.num_vertices(), 0);
+        assert_eq!(d.num_all_faces(), 1);
+        assert_eq!(d.num_undirected_edges(), 0);
+    }
+
+    #[test]
+    fn test_insert_first() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<Point2<f32>>::default();
+        d.insert(Point2::default())?;
+        assert_eq!(d.num_vertices(), 1);
+        assert_eq!(d.num_all_faces(), 1);
+        assert_eq!(d.num_undirected_edges(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_second() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::default())?;
+        d.insert(Point2::new(0.123, 1.234))?;
+        assert_eq!(d.num_vertices(), 2);
+        assert_eq!(d.num_all_faces(), 1);
+        assert_eq!(d.num_undirected_edges(), 1);
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_third_point() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(1f64, 0f64))?;
+        d.insert(Point2::new(0f64, 1f64))?;
+        d.insert(Point2::new(1f64, 1f64))?;
+
+        assert_eq!(d.num_vertices(), 3);
+        assert_eq!(d.num_all_faces(), 2);
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_five_points() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(1f64, 0f64))?;
+        d.insert(Point2::new(0f64, 1f64))?;
+
+        let v3 = Point2::new(0.433_833_144_214_401f64, 0.900_993_231_373_602_9f64);
+        let v4 = Point2::new(2.0, 2.0);
+        let v5 = Point2::new(0.5, 0.25);
+        d.insert(v3)?;
+        d.sanity_check();
+        d.insert(v4)?;
+        d.s().sanity_check();
+        d.insert(v5)?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_small_triangulation_iterators() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        assert_eq!(d.all_faces().count(), 1);
+        assert_eq!(d.inner_faces().count(), 0);
+
+        d.insert(Point2::new(1f64, 1f64))?;
+        assert_eq!(d.all_faces().count(), 1);
+        assert_eq!(d.inner_faces().count(), 0);
+
+        d.insert(Point2::new(-1f64, 1f64))?;
+        assert_eq!(d.all_faces().count(), 1);
+        assert_eq!(d.inner_faces().count(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_iterate_faces() -> Result<(), InsertionError> {
+        const SIZE: usize = 1000;
+        let points = random_points_with_seed(SIZE, SEED);
+        let mut d = DelaunayTriangulation::<Point2<f64>>::bulk_load(points)?;
+        d.sanity_check();
+
+        assert_eq!(d.all_faces().count(), d.num_all_faces());
+        assert_eq!(d.inner_faces().count(), d.num_inner_faces());
+
+        for _ in 0..SIZE / 2 {
+            d.remove(FixedVertexHandle::new(5));
+        }
+
+        assert_eq!(d.all_faces().count(), d.num_all_faces());
+        assert_eq!(d.inner_faces().count(), d.num_inner_faces());
+
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_many_points() -> Result<(), InsertionError> {
+        const SIZE: usize = 10000;
+        let points = random_points_with_seed(SIZE, SEED);
+
+        let mut d = DelaunayTriangulation::<_>::new();
+        for point in points {
+            d.insert(point)?;
+        }
+
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_outside_convex_hull() -> Result<(), InsertionError> {
+        const NUM: usize = 100;
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
+        let range = Uniform::new(0., 2.0 * ::std::f64::consts::PI);
+
+        let mut d = DelaunayTriangulation::<_>::default();
+
+        // Insert points on a circle. Every new point lies outside the convex hull.
+        for _ in 0..NUM {
+            let ang = range.sample(&mut rng);
+            let vec = Point2::new(ang.sin(), ang.cos());
+            d.insert(vec)?;
+        }
+        assert_eq!(d.num_vertices(), NUM);
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_same_point_small() -> Result<(), InsertionError> {
+        let points = vec![
+            Point2::new(0.2, 0.1),
+            Point2::new(1.3, 2.2),
+            Point2::new(0.0, 0.0),
+        ];
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points.clone())?;
+
+        for p in &points {
+            d.insert(*p)?;
+            d.sanity_check();
+        }
+        assert_eq!(d.num_vertices(), points.len());
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_same_point() -> Result<(), InsertionError> {
+        const SIZE: usize = 300;
+        let points = random_points_with_seed(SIZE, SEED);
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points.clone())?;
+        for p in points {
+            d.insert(p)?;
+        }
+        assert_eq!(d.num_vertices(), SIZE);
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_point_on_ch_edge() -> Result<(), InsertionError> {
+        let points = vec![
+            Point2::new(0., 0f64),
+            Point2::new(1., 0.),
+            Point2::new(0., 1.),
+            Point2::new(0., 0.4),
+        ];
+        let d = DelaunayTriangulation::<_>::bulk_load(points)?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_on_edges() -> Result<(), InsertionError> {
+        let points = vec![Point2::new(0., 0f64), Point2::new(1., 0.)];
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points)?;
+
+        d.insert(Point2::new(1., 1.))?;
+        d.sanity_check();
+        d.insert(Point2::new(0.5, 0.5))?;
+        d.sanity_check();
+        d.insert(Point2::new(0., 0.4))?;
+        d.sanity_check();
+        d.insert(Point2::new(1., 0.5))?;
+        d.sanity_check();
+        d.insert(Point2::new(0.5, 1.))?;
+        d.sanity_check();
+        d.insert(Point2::new(0.7, 0.))?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_degenerate_triangulation() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        for i in -50..50 {
+            d.insert(Point2::new(f64::from(i), 0.))?;
+        }
+
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_points_on_line() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(0.0, 1.0))?;
+        for i in -50..50 {
+            d.insert(Point2::new(f64::from(i), 0.))?;
+        }
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_points_on_line_2() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(0.0, 1.0))?;
+
+        for i in -50..50 {
+            d.insert(Point2::new(f64::from(i), 0.))?;
+            d.sanity_check();
+        }
+
+        for i in -10..10 {
+            d.insert(Point2::new(f64::from(i), 0.5 * f64::from(i)))?;
+            d.sanity_check();
+        }
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_points_on_grid2() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+
+        for y in 0..20 {
+            for x in 0..7 {
+                d.insert(Point2::new(f64::from(x), f64::from(y)))?;
+                d.sanity_check();
+            }
+        }
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_points_with_increasing_distance() -> Result<(), InsertionError> {
+        let mut points = random_points_with_seed(1000, SEED);
+        points.sort_by(|p1, p2| p1.length2().partial_cmp(&p2.length2()).unwrap());
+        let mut d = DelaunayTriangulation::<_>::new();
+        for point in points {
+            d.insert(point)?;
+        }
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_insert_points_on_grid_with_increasing_distance() -> Result<(), InsertionError> {
+        // This test inserts points on a grid with increasing distance from (0., 0.)
+        let mut points = Vec::new();
+        const SIZE: i64 = 7;
+        for x in -SIZE..SIZE {
+            for y in -SIZE..SIZE {
+                let point = Point2::new(x as f64, y as f64);
+                points.push(point);
+            }
+        }
+        points.sort_by(|p1, p2| p1.length2().partial_cmp(&p2.length2()).unwrap());
+        let d = DelaunayTriangulation::<_>::bulk_load(points)?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_in_triangle() -> Result<(), InsertionError> {
+        let points = vec![
+            Point2::new(-1.0, 0.0f64),
+            Point2::new(1.0, 0.0f64),
+            Point2::new(0.0, 1.0f64),
+        ];
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points)?;
+        let to_remove = d.insert(Point2::new(0.0, 0.5))?;
+        d.remove(to_remove);
+        assert_eq!(d.num_vertices(), 3);
+        // Reinsert the last point, just to see if a crash occurs
+        d.insert(Point2::new(0.0, 0.5))?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_complex_single_outer_vertex() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(0.0, 0.0))?;
+        d.insert(Point2::new(0.0, 1.0))?;
+        d.insert(Point2::new(4.0, 0.0))?;
+        d.insert(Point2::new(4.0, 1.0))?;
+        d.insert(Point2::new(2.0, 0.5))?;
+        d.insert(Point2::new(1.0, 0.5))?;
+        d.insert(Point2::new(3.0, 0.5))?;
+
+        let v4_position = Point2::new(2.5, 2.0);
+        let v4 = d.insert(v4_position)?;
+
+        let removed = d.remove(v4);
+        d.sanity_check();
+        assert_eq!(removed, v4_position);
+        assert_eq!(d.num_vertices(), 7);
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_single_outer() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(0.0, 0.0))?;
+        d.insert(Point2::new(0.0, 1.0))?;
+        d.insert(Point2::new(1.0, 0.0))?;
+        let v4_position = Point2::new(1.5, 1.5);
+        let v4 = d.insert(v4_position)?;
+
+        let removed = d.remove(v4);
+        d.sanity_check();
+        assert_eq!(removed, v4_position);
+        assert_eq!(d.num_vertices(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_in_quad() -> Result<(), InsertionError> {
+        let points = vec![
+            Point2::new(0.0, 0.0f64),
+            Point2::new(1.0, 0.0f64),
+            Point2::new(0.0, 1.0f64),
+            Point2::new(1.0, 1.0f64),
+        ];
+
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points)?;
+
+        let to_remove = d.insert(Point2::new(0.5, 0.6))?;
+        d.remove(to_remove);
+        assert_eq!(d.num_vertices(), 4);
+        let to_remove = d.insert(Point2::new(0.5, 0.6))?;
+        d.remove(to_remove);
+        assert_eq!(d.num_vertices(), 4);
+        d.insert(Point2::new(0.5, 0.6))?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_star_shaped() -> Result<(), InsertionError> {
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
+        let mut points = vec![
+            Point2::new(0.0, 0.0),
+            Point2::new(1.0, 1.0),
+            Point2::new(1.0, -1.0),
+            Point2::new(-1.0, 1.0),
+            Point2::new(-1.0, -1.0),
+            Point2::new(0.0, 3.0),
+            Point2::new(0.0, -3.0),
+            Point2::new(3.0, 0.0),
+            Point2::new(-3.0, 0.0),
+        ];
+
+        points.shuffle(&mut rng);
+        points.shuffle(&mut rng);
+        points.shuffle(&mut rng);
+        for _ in 0..20 {
+            points.shuffle(&mut rng);
+            let mut d = DelaunayTriangulation::<_>::bulk_load(points.clone())?;
+            d.locate_and_remove(Point2::new(0.0, 0.0));
+            d.sanity_check();
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_inner() -> Result<(), InsertionError> {
+        use ::rand::SeedableRng;
+        use PositionInTriangulation::OnVertex;
+
+        let mut points = random_points_with_seed(1000, SEED);
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points.clone())?;
+
+        // Insert an outer quad since we don't want to remove vertices from
+        // the convex hull.
+        d.insert(Point2::new(-2.0, -2.0))?;
+        d.insert(Point2::new(-2.0, 2.0))?;
+        d.insert(Point2::new(2.0, -2.0))?;
+        d.insert(Point2::new(2.0, 2.0))?;
+        // Now remove all inner points
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
+        points.shuffle(&mut rng);
+        assert_eq!(d.num_vertices(), 1004);
+        for point in points {
+            match d.locate(point) {
+                OnVertex(handle) => {
+                    d.remove(handle);
+                }
+                _ => panic!("Point lookup failed: {:?}", point),
+            }
+        }
+        assert_eq!(d.num_vertices(), 4);
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_outer() -> Result<(), InsertionError> {
+        use PositionInTriangulation::OnVertex;
+
+        let mut points = random_points_with_seed(1000, SEED);
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points.clone())?;
+
+        points.sort_by(|p1, p2| p1.length2().partial_cmp(&p2.length2()).unwrap());
+        for (index, point) in points[3..].iter().rev().enumerate() {
+            match d.locate(*point) {
+                OnVertex(handle) => {
+                    d.remove(handle);
+                    if index % 50 == 0 {
+                        // Check only every 50 iterations to reduce test runtime
+                        d.sanity_check();
+                    }
+                }
+                _ => panic!("Point lookup failed: {:?}", point),
+            }
+        }
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_removal_and_insertion() -> Result<(), InsertionError> {
+        let points = random_points_with_seed(1000, SEED);
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points)?;
+
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
+        for _ in 0..1000 {
+            if rng.gen() {
+                // Insert new random point
+                let x = rng.gen();
+                let y = rng.gen();
+                d.insert(Point2::new(x, y))?;
+            } else {
+                // Remove random point
+                let range = Uniform::new(1, d.num_vertices());
+                let handle = range.sample(&mut rng);
+                d.remove(FixedVertexHandle::new(handle));
+            }
+        }
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_until_empty() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::bulk_load(vec![
+            Point2::new(0.0, 0.0),
+            Point2::new(0.0, 1.0),
+            Point2::new(1.0, 2.0),
+        ])?;
+
+        while let Some(to_remove) = d.vertices().next() {
+            let to_remove = to_remove.fix();
+            d.remove(to_remove);
+            d.sanity_check();
+        }
+
+        assert_eq!(d.num_vertices(), 0);
+
+        d.insert(Point2::new(1.0, 0.0))?;
+        d.insert(Point2::new(1.0, 1.0))?;
+        d.insert(Point2::new(1.0, 2.0))?;
+        d.insert(Point2::new(2.3, 1.4))?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_until_degenerate() -> Result<(), InsertionError> {
+        let points = vec![
+            Point2::new(0., 0f64),
+            Point2::new(1., 0.),
+            Point2::new(0., 1.),
+            Point2::new(0., 0.5),
+            Point2::new(0., 0.25),
+            Point2::new(0., 0.75),
+        ];
+        let mut d = DelaunayTriangulation::<_>::bulk_load(points)?;
+
+        assert_eq!(d.num_all_faces(), 5);
+        d.locate_and_remove(Point2::new(1., 0.));
+        d.sanity_check();
+        assert!(d.all_vertices_on_line());
+
+        while let Some(to_remove) = d.vertices().next() {
+            let to_remove = to_remove.fix();
+            d.remove(to_remove);
+            d.sanity_check();
+        }
+
+        d.sanity_check();
+        d.insert(Point2::new(0.5, 0.5))?;
+        d.insert(Point2::new(0.2, 0.5))?;
+        d.insert(Point2::new(1.5, 0.0))?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_few_points() -> Result<(), InsertionError> {
+        let mut triangulation = DelaunayTriangulation::<_>::bulk_load(vec![
+            Point2::new(0.0, 1.0),
+            Point2::new(100.0, 1.0),
+            Point2::new(0.0, 110.0),
+            Point2::new(110.110, 110.0),
+            Point2::new(50.0, 50.0),
+            Point2::new(50.0, 80.0),
+            Point2::new(75.0, 80.0),
+        ])?;
+
+        triangulation.remove(FixedVertexHandle::new(5));
+        triangulation.sanity_check();
+        triangulation.remove(FixedVertexHandle::new(5));
+        triangulation.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_on_line_small() -> Result<(), InsertionError> {
+        let mut triangulation = DelaunayTriangulation::<_>::bulk_load(vec![
+            Point2::new(0.0, 0.0),
+            Point2::new(1.0, 0.0), // This point will be removed
+            Point2::new(2.0, 0.0),
+        ])?;
+        triangulation.remove(FixedVertexHandle::new(2));
+        triangulation.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_on_line_big() -> Result<(), InsertionError> {
+        let mut triangulation = DelaunayTriangulation::<_>::default();
+        for x in 2..100 {
+            triangulation.insert(Point2::new(f64::from(x), 0.0))?;
+        }
+        let mut rng = rand::rngs::StdRng::from_seed(*SEED);
+        while triangulation.num_vertices() > 3 {
+            if rng.gen() {
+                triangulation.remove(FixedVertexHandle::new(1));
+            } else {
+                triangulation.remove(FixedVertexHandle::new(2));
+            }
+
+            triangulation.sanity_check();
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_small_insert_on_line() -> Result<(), InsertionError> {
+        let mut d = DelaunayTriangulation::<_>::default();
+        d.insert(Point2::new(0.0, 0.0))?;
+        d.insert(Point2::new(2.0, 0.0))?;
+        d.insert(Point2::new(1.0, 0.0))?;
+        d.sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn test_locate_when_empty() {
+        let triangulation = DelaunayTriangulation::<Point2<_>>::default();
+        assert_eq!(
+            triangulation.locate(Point2::new(0.0, 0.0)),
+            PositionInTriangulation::NoTriangulation
+        )
+    }
+
+    #[test]
+    fn test_locate_with_single_vertex() -> Result<(), InsertionError> {
+        let mut triangulation = DelaunayTriangulation::<_>::default();
+        let point = Point2::new(0.0, 0.0);
+        triangulation.insert(point)?;
+        assert_eq!(
+            triangulation.locate(point),
+            PositionInTriangulation::OnVertex(FixedVertexHandle::new(0))
+        );
+        assert_eq!(
+            triangulation.locate(Point2::new(1.0, 1.0)),
+            PositionInTriangulation::NoTriangulation
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_on_line_end() -> Result<(), InsertionError> {
+        let mut triangulation = DelaunayTriangulation::<_>::bulk_load(vec![
+            Point2::new(0.0, 0.0),
+            Point2::new(1.0, 0.0),
+            Point2::new(2.0, 0.0),
+        ])?;
+        triangulation.remove(FixedVertexHandle::new(2));
+        triangulation.sanity_check();
+        Ok(())
+    }
+}

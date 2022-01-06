@@ -120,7 +120,7 @@ where
     where
         T: Triangulation<Vertex = V, DirectedEdge = DE, UndirectedEdge = UE, Face = F>,
     {
-        use crate::delaunay_core::PositionInTriangulation::*;
+        use crate::PositionInTriangulation::*;
 
         match delaunay.locate_with_hint_option_core(line_from, None) {
             OutsideOfConvexHull(edge_handle) => {

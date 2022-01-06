@@ -3,7 +3,33 @@ use crate::delaunay_core::InnerOuterMarker;
 use crate::iterators::*;
 use crate::HintGenerator;
 use crate::{delaunay_core::Dcel, handles::*};
-use crate::{HasPosition, InsertionError, Point2, PositionInTriangulation, TriangulationExt};
+use crate::{HasPosition, InsertionError, Point2, TriangulationExt};
+
+/// Describes a position in a triangulation.
+///
+/// The position is set in relation to the triangulation's vertices, edges and faces.
+/// This type is usually the result of calling [trait.Triangulation.html#method.locate]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+pub enum PositionInTriangulation {
+    /// A position lies exactly on an existing vertex. The verticis handle is given.
+    OnVertex(FixedVertexHandle),
+
+    /// A position lies exactly on an edge. The edge's handle is given.
+    OnEdge(FixedDirectedEdgeHandle),
+
+    /// A position lies in the interior of a face. The face's handle is given.
+    OnFace(FixedFaceHandle<InnerTag>),
+
+    /// A position lies outside the convex hull. The given edge handle refers to an edge
+    /// of the convex hull which has both the point and an outer face on its left side.
+    ///
+    /// *Note*: The given edge is *not* necessarily the *closest* edge to a position.
+    OutsideOfConvexHull(FixedDirectedEdgeHandle),
+
+    /// The triangulation contains either no vertices or exactly one vertex which has a
+    /// different position than the query point.
+    NoTriangulation,
+}
 
 /// Defines common operations on triangulations.
 ///
