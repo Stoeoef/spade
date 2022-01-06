@@ -144,7 +144,7 @@ use serde_crate::{Deserialize, Serialize};
 ///
 /// Keep in mind that "faces" and "vertices" are swapped - an (inner) Voronoi *vertex*
 /// corresponds to a single Delaunay *face*.
-/// The position of an inner voronoi vertex is the *circumcenter* of its corresponding Delaunay
+/// The position of an inner voronoi vertex is the *circumcenter* of its dual Delaunay
 /// face.
 ///
 #[doc = include_str!("../images/basic_voronoi.svg")]
@@ -155,22 +155,22 @@ use serde_crate::{Deserialize, Serialize};
 /// Spade defines various functions to extract information about the Voronoi diagram:
 ///
 /// **Types**
-/// * [DirectedVoronoiEdge](./handles/type.DirectedVoronoiEdge.html)
-/// * [UndirectedVoronoiEdge](./handles/type.UndirectedVoronoiEdge.html)
-///  * [VoronoiVertex](./handles/type.VoronoiVertex.html)
-///  * [VoronoiFace](./handles/type.VoronoiFace.html)
+///  * [DirectedVoronoiEdge](crate::handles::DirectedVoronoiEdge)
+///  * [UndirectedVoronoiEdge](crate::handles::UndirectedVoronoiEdge)
+///  * [VoronoiVertex](crate::handles::VoronoiVertex)
+///  * [VoronoiFace](crate::handles::VoronoiFace)
 ///
 /// **Iterators**
 ///  * [Triangulation::directed_voronoi_edges()]
 ///  * [Triangulation::undirected_voronoi_edges()]
 ///
-///  **Conversion**
-///  * [DirectedVoronoiEdge::as_undirected()](./handles/type.DirectedVoronoiEdge.html#method.as_undirected)
-///  * [UndirectedVoronoiEdge::as_directed()](./handles/type.UndirectedVoronoiEdge.html#method.as_directed)
-///  * [DirectedEdgeHandle::as_voronoi_edge()](./handles/type.DirectedEdgeHandle.html#method.as_voronoi_edge)
-///  * [DirectedVoronoiEdge::as_delaunay_edge()](./handles/type.DirectedVoronoiEdge.html#method.as_delaunay_edge)
-///  * [UndirectedEdgeHandle::as_voronoi_edge()](./handles/type.UndirectedEdgeHandle.html#method.as_voronoi_edge)
-///  * [UndirectedVoronoiEdge::as_delaunay_edge()](./handles/type.UndirectedVoronoiEdge.html#method.as_delaunay_edge)
+/// **Conversion**
+///  * [DirectedVoronoiEdge::as_undirected()](crate::handles::DirectedVoronoiEdge::as_undirected())
+///  * [UndirectedVoronoiEdge::as_directed()](crate::handles::UndirectedVoronoiEdge::as_directed())
+///  * [DirectedEdgeHandle::as_voronoi_edge()](crate::handles::DirectedEdgeHandle::as_voronoi_edge())
+///  * [DirectedVoronoiEdge::as_delaunay_edge()](crate::handles::DirectedVoronoiEdge::as_delaunay_edge())
+///  * [UndirectedEdgeHandle::as_voronoi_edge()](crate::handles::UndirectedEdgeHandle::as_voronoi_edge())
+///  * [UndirectedVoronoiEdge::as_delaunay_edge()](crate::handles::UndirectedVoronoiEdge::as_delaunay_edge())
 ///
 /// ## Extracting the Voronoi Diagram (Example)
 /// Extracting the geometry of the voronoi diagram can be slightly tricky as some of the voronoi

@@ -2,7 +2,7 @@ use super::quicksketch::{
     ArrowType, HorizontalAlignment, Point, Sketch, SketchColor, SketchElement, SketchFill,
     StrokeStyle, Vector,
 };
-use cgmath::{Angle, Bounded, Deg};
+use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Vector2};
 use spade::{
     handles::{
         FixedDirectedEdgeHandle,
@@ -707,6 +707,122 @@ pub fn convex_hull_scenario() -> Sketch {
     }
 
     sketch.set_width(470);
+
+    sketch
+}
+
+pub fn inner_voronoi_vertex_example() -> Sketch {
+    let mut triangulation = big_triangulation().unwrap();
+
+    for face in triangulation.fixed_inner_faces().skip(13).take(6) {
+        triangulation.face_data_mut(face).fill = SketchFill::Solid(SketchColor::STEEL_BLUE);
+    }
+
+    let mut sketch = convert_triangulation(&triangulation, &ConversionOptions::default());
+
+    for face in triangulation.inner_faces().skip(13).take(6) {
+        let circumcenter = convert_point(face.circumcenter());
+        let center = convert_point(face.center());
+
+        sketch.add(
+            SketchElement::line(circumcenter, center)
+                .with_arrow_end(ArrowType::FilledArrow)
+                .stroke_color(SketchColor::SALMON)
+                .stroke_width(0.8)
+                .shift_to(-2.0),
+        );
+
+        sketch.add(
+            SketchElement::circle(circumcenter, 2.0)
+                .stroke_color(SketchColor::BLACK)
+                .stroke_width(0.8)
+                .fill(SketchFill::Solid(SketchColor::ROYAL_BLUE)),
+        );
+    }
+    sketch
+}
+
+pub fn outer_voronoi_vertex_example() -> Sketch {
+    let mut triangulation = big_triangulation().unwrap();
+
+    let edge_selection = triangulation
+        .convex_hull()
+        .step_by(2)
+        .map(|e| e.fix())
+        .collect::<Vec<_>>();
+
+    for edge in &edge_selection {
+        triangulation
+            .undirected_edge_data_mut(edge.as_undirected())
+            .color = SketchColor::ROYAL_BLUE
+    }
+
+    let mut sketch = convert_triangulation(&triangulation, &ConversionOptions::default());
+
+    for edge in edge_selection {
+        let edge = triangulation.directed_edge(edge);
+        let from = convert_point(edge.from().position());
+        let to = convert_point(edge.to().position());
+
+        let center = EuclideanSpace::centroid(&[from, to]);
+
+        let diff = to - from;
+        let direction = Vector2::new(-diff.y, diff.x).normalize();
+
+        let arrow_end = center + direction * 30.0;
+
+        sketch.add(
+            SketchElement::line(center, arrow_end)
+                .stroke_color(SketchColor::SALMON)
+                .stroke_width(0.8)
+                .stroke_style(StrokeStyle::Dashed)
+                .with_arrow_end(ArrowType::FilledArrow),
+        );
+
+        sketch.add(
+            SketchElement::circle(center, 1.0)
+                .stroke_width(0.7)
+                .stroke_color(SketchColor::BLACK)
+                .fill(SketchFill::Solid(SketchColor::LIGHT_BLUE)),
+        );
+    }
+
+    sketch
+}
+
+pub fn dual_edge_example() -> Sketch {
+    let mut triangulation = big_triangulation().unwrap();
+
+    for edge in triangulation.fixed_undirected_edges().skip(2).take(4) {
+        triangulation.undirected_edge_data_mut(edge).color = SketchColor::SALMON;
+    }
+
+    let mut sketch = convert_triangulation(&triangulation, &ConversionOptions::default());
+
+    for edge in triangulation.undirected_edges().skip(2).take(4) {
+        let edge = edge.as_voronoi_edge().as_directed();
+
+        if let (Inner(from), Inner(to)) = (edge.from(), edge.to()) {
+            let from = convert_point(from.circumcenter());
+            let to = convert_point(to.circumcenter());
+            sketch.add(
+                SketchElement::line(from, to)
+                    .stroke_color(SketchColor::ROYAL_BLUE)
+                    .stroke_width(1.3),
+            );
+            let circle = |pos| {
+                SketchElement::circle(pos, 1.3)
+                    .fill(SketchFill::Solid(SketchColor::LIGHT_BLUE))
+                    .stroke_color(SketchColor::BLACK)
+                    .stroke_width(1.0)
+            };
+
+            sketch.add(circle(from));
+            sketch.add(circle(to));
+        }
+    }
+
+    sketch.set_width(500);
 
     sketch
 }

@@ -209,7 +209,7 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
         DynamicHandleImpl::new(self.dcel, entry.origin.adjust_inner_outer())
     }
 
-    /// Returns the edges destination vertex.
+    /// Returns the edge's destination vertex.
     pub fn to(&self) -> VertexHandle<'a, V, DE, UE, F> {
         self.rev().from()
     }
@@ -308,7 +308,9 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
         self.is_outer_edge() || self.rev().is_outer_edge()
     }
 
-    /// Converts this edge into its corresponding voronoi edge.
+    /// Converts this edge into its dual voronoi edge.
+    ///
+    /// See also [as_delaunay_edge](crate::handles::DirectedVoronoiEdge::as_delaunay_edge).
     pub fn as_voronoi_edge(&self) -> DirectedVoronoiEdge<'a, V, DE, UE, F> {
         DirectedVoronoiEdge::new(self.dcel, FixedHandleImpl::new(self.handle.index()))
     }
@@ -415,7 +417,7 @@ impl<'a, V, DE, UE, F> UndirectedVoronoiEdge<'a, V, DE, UE, F> {
         self.as_delaunay_edge().as_directed().as_voronoi_edge()
     }
 
-    /// Returns the corresponding edge of the Delaunay triangulation.
+    /// Returns the dual edge of the Delaunay triangulation.
     pub fn as_delaunay_edge(&self) -> UndirectedEdgeHandle<'a, V, DE, UE, F> {
         UndirectedEdgeHandle::new(
             self.dcel,
@@ -444,7 +446,7 @@ impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, UE, F> {
         DirectedEdgeHandle::new(self.dcel, self.handle.as_directed())
     }
 
-    /// Returns the corresponding edge in the Voronoi diagram.
+    /// Returns the dual edge in the Voronoi diagram.
     pub fn as_voronoi_edge(&self) -> UndirectedVoronoiEdge<'a, V, DE, UE, F> {
         UndirectedVoronoiEdge::new(self.dcel, FixedHandleImpl::new(self.handle.index()))
     }

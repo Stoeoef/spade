@@ -31,6 +31,11 @@ fn main() -> Result {
         .save_to_svg("face_adjacent_edges", "images/face_adjacent_edges.svg")?;
     scenario_list::convex_hull_scenario()
         .save_to_svg("convex_hull", "images/convex_hull_scenario.svg")?;
+    scenario_list::inner_voronoi_vertex_example()
+        .save_to_svg("inner_voronoi_vertex", "images/inner_voronoi_vertex.svg")?;
+    scenario_list::outer_voronoi_vertex_example()
+        .save_to_svg("outer_voronoi_vertex", "images/outer_voronoi_vertex.svg")?;
+    scenario_list::dual_edge_example().save_to_svg("dual_edges", "images/dual_edges.svg")?;
     Ok(())
 }
 

@@ -45,17 +45,8 @@ impl Default for UndirectedEdgeType {
     }
 }
 
-pub struct DirectedEdgeType {
-    pub color: SketchColor,
-}
-
-impl Default for DirectedEdgeType {
-    fn default() -> Self {
-        Self {
-            color: SketchColor::BLACK,
-        }
-    }
-}
+#[derive(Default)]
+pub struct DirectedEdgeType {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct FaceType {
