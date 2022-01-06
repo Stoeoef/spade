@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, convert::TryInto};
+use std::cmp::Ordering;
 
 use crate::{triangulation::TriangulationExt, HasPosition, InsertionError, Point2, Triangulation};
 
@@ -256,44 +256,6 @@ where
         if Some(&current_fixed) == convex_edges.get(1) {
             break;
         }
-    }
-}
-
-type Index = u32;
-
-////////////////////////////////////////////////////////////////////////////////
-
-/// This represents a strongly-typed index into a [`TypedVec`] parameterized
-/// with the same `PhantomData`.  It should be zero-cost at runtime.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd)]
-pub struct TypedIndex<P>(pub Index, std::marker::PhantomData<*const P>);
-impl<P> TypedIndex<P> {
-    pub fn new(i: usize) -> Self {
-        Self::const_new(i.try_into().unwrap())
-    }
-
-    pub const fn const_new(i: Index) -> Self {
-        Self(i, std::marker::PhantomData)
-    }
-}
-
-impl<P> std::ops::Add<usize> for TypedIndex<P> {
-    type Output = Self;
-    fn add(self, i: usize) -> Self::Output {
-        Self::new((self.0 as usize).checked_add(i).unwrap())
-    }
-}
-
-impl<P> std::ops::AddAssign<usize> for TypedIndex<P> {
-    fn add_assign(&mut self, i: usize) {
-        let i: Index = i.try_into().unwrap();
-        self.0 = self.0.checked_add(i).unwrap();
-    }
-}
-
-impl<P> std::cmp::PartialEq<usize> for TypedIndex<P> {
-    fn eq(&self, i: &usize) -> bool {
-        (self.0 as usize).eq(i)
     }
 }
 
