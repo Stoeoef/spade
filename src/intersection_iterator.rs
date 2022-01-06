@@ -154,7 +154,6 @@ where
                         edge_from_query.is_on_left_side(),
                         edge_to_query.is_on_left_side_or_on_line(),
                     ) {
-                        // TODO: reuse edge_from_query / edge_to_query in next iteration
                         (true, true) => edge = edge.prev(),
                         (false, false) => edge = edge.next(),
                         (false, true) => {
