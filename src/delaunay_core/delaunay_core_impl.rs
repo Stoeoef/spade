@@ -287,82 +287,14 @@ mod test {
         Ok(())
     }
 
-    /*
-        TODO
-        #[derive(Default)]
-        struct PointWithHeight {
-            point: Point2<f64>,
-        }
-
-        impl HasPosition for PointWithHeight {
-            type Scalar = f64;
-
-            fn position(&self) -> Point2<f64> {
-                self.point
-            }
-        }
-
-        impl PointWithHeight {
-            fn new(x: f64, y: f64, height: f64) -> PointWithHeight {
-                PointWithHeight {
-                    point: Point2::new(x, y),
-                }
-            }
-        }
-    */
-    /*
-    #[test]
-    fn test_natural_neighbor_interpolation() -> Result<(), InsertionError>
-        let points = vec![
-            PointWithHeight::new(0.0, 0.0, 0.0),
-            PointWithHeight::new(1.0, 0.0, 0.0),
-            PointWithHeight::new(0.0, 1.0, 0.0),
-            PointWithHeight::new(1.0, 1.0, 0.0),
-            PointWithHeight::new(2.0, 0.0, 0.0),
-            PointWithHeight::new(2.0, 1.0, 0.0),
-            PointWithHeight::new(3.0, 0.0, 1.0),
-            PointWithHeight::new(3.0, 1.0, 1.0),
-            PointWithHeight::new(4.0, 0.0, 1.0),
-            PointWithHeight::new(4.0, 1.0, 1.0),
-        ];
-        let d = DelaunayTriangulation::<_>::bulk_load(Default::default(), points).unwrap();
-        assert_eq!(
-            d.nn_interpolation(Point::new(0.5, 0.5), |p| p.height),
-            Some(0.0)
-        );
-        assert_eq!(
-            d.nn_interpolation(Point::new(0.2, 0.8), |p| p.height),
-            Some(0.0)
-        );
-        assert_eq!(
-            d.nn_interpolation(Point::new(3.5, 1.), |p| p.height),
-            Some(1.0)
-        );
-        assert_eq!(
-            d.nn_interpolation(Point::new(-20., 0.2), |p| p.height),
-            Some(0.0)
-        );
-        let height = d
-            .nn_interpolation(Point::new(3.2, 0.9), |p| p.height)
-            .unwrap();
-        assert!((height - 1.0).abs() < 0.00001);
-        let height = d
-            .nn_interpolation(Point::new(3.5, 0.5), |p| p.height)
-            .unwrap();
-        assert!((height - 1.0).abs() < 0.00001);
-        assert_eq!(
-            d.nn_interpolation(Point::new(3.0, 0.0), |p| p.height),
-            Some(1.0)
-        );
-    }
-    */
-
     #[test]
     fn test_insert_points_with_increasing_distance() -> Result<(), InsertionError> {
-        // TODO: Swap to iterative
         let mut points = random_points_with_seed(1000, SEED);
         points.sort_by(|p1, p2| p1.length2().partial_cmp(&p2.length2()).unwrap());
-        let d = DelaunayTriangulation::<_>::bulk_load(points)?;
+        let mut d = DelaunayTriangulation::<_>::new();
+        for point in points {
+            d.insert(point)?;
+        }
         d.sanity_check();
         Ok(())
     }
