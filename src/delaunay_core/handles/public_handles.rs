@@ -123,9 +123,9 @@ pub type UndirectedEdgeHandle<'a, V, DE = (), UE = (), F = ()> =
 
 /// Handle to a vertex of a triangulation.
 ///
-/// Use this handle to retrieve the vertex position or outgoing edges.
+/// Use this handle to retrieve the vertex [position](Self::position) or its
+/// [outgoing edges](Self::out_edges).
 ///
-/// TODO: Vertex method overview image
 ///
 /// *See also the [handles module](crate::handles).*
 pub type VertexHandle<'a, V, DE = (), UE = (), F = ()> =
@@ -137,6 +137,8 @@ pub type VertexHandle<'a, V, DE = (), UE = (), F = ()> =
 ///
 /// * `FaceHandle<'a, PossiblyOuterTag, ...>]`: The face may refer to the single outer face.
 /// * `FaceHandle<'a, InnerTag, ...>`: The face refers to an inner triangle of the triangulation.
+///
+#[doc = include_str!("../../../images/outer_faces.svg")]
 ///
 /// `FaceHandle<'a, InnerTag, ...>` implements some additional methods that require it to be an inner
 /// face - e.g. [vertices()](#method.vertices) will return an array containing exactly 3

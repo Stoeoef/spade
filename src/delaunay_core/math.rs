@@ -20,14 +20,14 @@ pub enum InsertionError {
     /// greater than or equal to [crate::MIN_ALLOWED_VALUE].
     TooSmall,
 
-    /// A coordinate value was too big.
+    /// A coordinate value was too large.
     ///
     /// The absolute value of any inserted vertex coordinate must be less than or equal to
     /// [crate::MAX_ALLOWED_VALUE].
-    TooBig,
+    TooLarge,
 
     /// A coordinate value was NaN.
-    NaN,
+    NAN,
 }
 
 impl Display for InsertionError {
@@ -39,18 +39,23 @@ impl Display for InsertionError {
 impl Error for InsertionError {}
 
 /// The smallest allowed coordinate value greater than zero that can be inserted into Delaunay
-/// triangulations.
+/// triangulations. This value is equal to 2<sup>-142</sup>.
 ///
 /// The *absolute value* of any inserted vertex coordinate must be either zero or greater
 /// than or equal to this value.
 /// This is a requirement for preventing floating point underflow when calculating exact
 /// geometric predicates.
 ///
-/// *See also [validate_coordinate], [validate_point], [validate_vertex], [MAX_ALLOWED_VALUE],
+/// Note that "underflow" refers to underflow of the `f64` _exponent_ in contrast to underflow towards
+/// negative infinity: Values very close to zero (but not zero itself) can potentially trigger this
+/// situation.
+///
+/// *See also [validate_coordinate], [validate_vertex], [MAX_ALLOWED_VALUE],
 /// [crate::Triangulation::insert]*
 pub const MIN_ALLOWED_VALUE: f64 = 1.793662034335766e-43; // 1.0 * 2^-142
 
-/// The biggest allowed coordinate value that can be inserted into Delaunay triangulations.
+/// The largest allowed coordinate value that can be inserted into Delaunay triangulations.
+/// This value is equal to 2<sup>201</sup>.
 ///
 /// The *absolute value* of any inserted vertex coordinate must be either smaller than or
 /// equal to this value.
@@ -67,14 +72,20 @@ pub const MAX_ALLOWED_VALUE: f64 = 3.2138760885179806e60; // 1.0 * 2^201
 ///  - The absolute value of the coordinate is too small (See [MIN_ALLOWED_VALUE])
 ///  - The absolute value of the coordinate is too large (See [MAX_ALLOWED_VALUE])
 ///  - The coordinate is NaN (not a number)
+///
+/// Passing in any non-finite floating point number (e.g. `f32::NEG_INFINITY`) will
+/// result in `Err(InsertionError::TooLarge)`.
+///
+/// Note that any non-nan, finite, **normal** `f32` coordinate will always be valid.
+/// However, the smallest subnormal `f32` number will still cause an underflow.
 pub fn validate_coordinate<S: SpadeNum>(value: S) -> Result<(), InsertionError> {
     let as_f64: f64 = value.into();
     if as_f64.is_nan() {
-        Err(InsertionError::NaN)
+        Err(InsertionError::NAN)
     } else if as_f64.abs() < MIN_ALLOWED_VALUE && as_f64 != 0.0 {
         Err(InsertionError::TooSmall)
     } else if as_f64.abs() > MAX_ALLOWED_VALUE {
-        Err(InsertionError::TooBig)
+        Err(InsertionError::TooLarge)
     } else {
         Ok(())
     }
@@ -253,6 +264,29 @@ where
 mod test {
     use crate::Point2;
     use approx::assert_relative_eq;
+
+    #[test]
+    fn test_validate_coordinate() {
+        use super::{validate_coordinate, InsertionError::*};
+        assert_eq!(validate_coordinate(f64::NAN), Err(NAN));
+        let max_value = super::MAX_ALLOWED_VALUE;
+
+        assert_eq!(validate_coordinate(f64::INFINITY), Err(TooLarge));
+        assert_eq!(validate_coordinate(f64::NEG_INFINITY), Err(TooLarge));
+        assert_eq!(validate_coordinate(max_value * 2.0), Err(TooLarge));
+
+        let min_value = super::MIN_ALLOWED_VALUE;
+        assert_eq!(validate_coordinate(min_value / 2.0), Err(TooSmall));
+
+        let tiny_float = f32::MIN_POSITIVE;
+        assert_eq!(validate_coordinate(tiny_float), Ok(()));
+
+        let big_float = f32::MAX;
+        assert_eq!(validate_coordinate(big_float), Ok(()));
+
+        assert_eq!(validate_coordinate(min_value), Ok(()));
+        assert_eq!(validate_coordinate(0.0), Ok(()));
+    }
 
     #[test]
     fn check_min_value() {

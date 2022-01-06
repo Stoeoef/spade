@@ -14,7 +14,7 @@ use spade::{
 use crate::{
     convert_point,
     scenario::{
-        convert_triangulation, ConversionOptions, DirectedEdgeMode, DirectedEdgeType, FaceType,
+        convert_triangulation, ConversionOptions, DirectedEdgeType, EdgeMode, FaceType,
         Triangulation, UndirectedEdgeType, VertexType,
     },
 };
@@ -102,7 +102,7 @@ pub fn lhs_rhs_scenario(is_lhs: bool) -> Sketch {
     let mut sketch = convert_triangulation(
         &triangulation,
         &ConversionOptions {
-            directed_edge_mode: DirectedEdgeMode::Enabled { reversed: is_lhs },
+            directed_edge_mode: EdgeMode::Directed { reversed: is_lhs },
             ..Default::default()
         },
     );
@@ -382,7 +382,7 @@ pub fn delaunay_directed_edge_details_scenario() -> Sketch {
     let mut sketch = convert_triangulation(
         &triangulation,
         &ConversionOptions {
-            directed_edge_mode: DirectedEdgeMode::Enabled { reversed: false },
+            directed_edge_mode: EdgeMode::Directed { reversed: false },
             ..Default::default()
         },
     );
@@ -438,7 +438,7 @@ pub fn delaunay_directed_edge_vertex_and_face_scenario() -> Sketch {
     let mut sketch = convert_triangulation(
         &triangulation,
         &ConversionOptions {
-            directed_edge_mode: DirectedEdgeMode::Enabled { reversed: false },
+            directed_edge_mode: EdgeMode::Directed { reversed: false },
             ..Default::default()
         },
     );
@@ -599,7 +599,7 @@ pub fn circular_iterator_example() -> Sketch {
     let mut sketch = convert_triangulation(
         &triangulation,
         &ConversionOptions {
-            directed_edge_mode: DirectedEdgeMode::Enabled { reversed: false },
+            directed_edge_mode: EdgeMode::Directed { reversed: false },
             ..Default::default()
         },
     );
@@ -632,6 +632,81 @@ pub fn circular_iterator_example() -> Sketch {
 
     sketch.set_relative_padding(-0.01);
     sketch.set_width(400);
+
+    sketch
+}
+
+pub fn face_adjacent_edges_scenario() -> Sketch {
+    let mut d = Triangulation::new();
+
+    d.insert(VertexType::new(0.0, -15.0)).unwrap();
+    d.insert(VertexType::new(60.0, 15.0)).unwrap();
+    d.insert(VertexType::new(30.0, 45.0)).unwrap();
+
+    let conversion_options = ConversionOptions {
+        directed_edge_mode: EdgeMode::Disabled,
+        ..Default::default()
+    };
+    let mut sketch = convert_triangulation(&d, &conversion_options);
+
+    let face = d.inner_faces().next().unwrap();
+
+    for (index, edge) in face.adjacent_edges().into_iter().enumerate() {
+        let from = convert_point(edge.from().position());
+        let to = convert_point(edge.to().position());
+
+        let line = SketchElement::line(from, to)
+            .stroke_color(SketchColor::ROYAL_BLUE)
+            .with_arrow_start(ArrowType::FilledArrow)
+            .shift_from(-7.0)
+            .shift_to(-2.4);
+        sketch.add(
+            line.create_adjacent_text(format!("e{}", 2 - index))
+                .font_size(6.0)
+                .dy(if index == 1 { 5.0 } else { -1.2 }),
+        );
+        sketch.add(line);
+    }
+
+    let mut center = convert_point(face.center());
+    center.x += 4.0;
+    sketch.add(
+        SketchElement::text("face")
+            .horizontal_alignment(HorizontalAlignment::Middle)
+            .position(center)
+            .font_size(6.0)
+            .dy(4.0),
+    );
+
+    sketch.set_width(220);
+
+    sketch
+}
+
+pub fn convex_hull_scenario() -> Sketch {
+    let d = big_triangulation().unwrap();
+
+    let mut sketch = convert_triangulation(&d, &Default::default());
+
+    for (index, edge) in d.convex_hull().enumerate() {
+        let from = convert_point(edge.from().position());
+        let to = convert_point(edge.to().position());
+
+        let line = SketchElement::line(from, to)
+            .stroke_color(SketchColor::ROYAL_BLUE)
+            .with_arrow_start(ArrowType::FilledArrow)
+            .stroke_width(1.4)
+            .shift_from(-9.0)
+            .shift_to(-2.4);
+        sketch.add(
+            line.create_adjacent_text(format!("e{}", d.convex_hull_size() - index - 1))
+                .font_size(7.0)
+                .dy(if index == 4 || index == 3 { 6.0 } else { -1.7 }),
+        );
+        sketch.add(line);
+    }
+
+    sketch.set_width(470);
 
     sketch
 }

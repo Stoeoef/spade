@@ -81,12 +81,15 @@ pub trait Triangulation: Default {
     /// assert_eq!(triangulation.num_all_faces(), 1);
     /// assert_eq!(triangulation.num_inner_faces(), 0); // This count excludes the outer face
     /// assert_eq!(triangulation.num_directed_edges(), 0);
+    ///
     /// triangulation.insert(Point2::new(0.0, 1.0));
     /// assert_eq!(triangulation.num_vertices(), 1);
     /// assert_eq!(triangulation.num_inner_faces(), 0);
+    ///
     /// triangulation.insert(Point2::new(1.0, 1.0));
     /// // Two vertices define the first edge
     /// assert_eq!(triangulation.num_undirected_edges(), 1);
+    ///
     /// triangulation.insert(Point2::new(1.0, 0.0));
     /// assert_eq!(triangulation.num_vertices(), 3);
     // // The third point will generate the first inner face!
@@ -107,7 +110,16 @@ pub trait Triangulation: Default {
 
     /// Creates a new triangulation populated with some vertices.
     ///
-    /// This will usually be more efficient than inserting the elements sequentially by calling [insert].
+    /// This will usually be more efficient than inserting the elements sequentially by calling
+    /// [insert](Triangulation::insert).
+    ///
+    /// Returns an [InsertionError] if any input coordinate is invalid. This method should never fail
+    /// if all vertices were successfully checked with [crate::validate_vertex].
+    ///
+    /// # Runtime
+    /// This method has a run time of `O(n)` but will run near linearly in practice.
+    /// The runtime can be as worse as `O(n²)` if the inputs are very degenerate, e.g.
+    /// if all input vertices lie on the same line.
     fn bulk_load(elements: Vec<Self::Vertex>) -> Result<Self, InsertionError> {
         let mut result: Self = crate::delaunay_core::bulk_load(elements)?;
         let hint_generator = Self::HintGenerator::initialize_from_triangulation(&result);
@@ -208,6 +220,8 @@ pub trait Triangulation: Default {
     }
 
     /// Returns the number of edges of the convex hull.
+    ///
+    /// *See also [convex_hull](Self::convex_hull)*
     ///
     /// # Complexity
     /// This method does not need to iterate through the convex hull and has a complexity of O(1)
@@ -424,8 +438,10 @@ pub trait Triangulation: Default {
     /// distributed. If the point has already been contained in the
     /// triangulation, the old vertex is overwritten.
     ///
-    /// Returns a handle to the new vertex. Use this handle with
-    /// `ConstrainedDelaunayTriangulation::vertex(..)` to refer to it.
+    /// Returns either a handle to the new vertex or an error if the vertex could not be inserted.
+    /// The triangulation will remain unchanged if an error ocurred.
+    ///
+    /// Use [vertex](Self::vertex) to retrieve more information about the inserted vertex.
     fn insert(&mut self, vertex: Self::Vertex) -> Result<FixedVertexHandle, InsertionError> {
         self.insert_with_hint_option(vertex, None)
     }
@@ -472,7 +488,14 @@ pub trait Triangulation: Default {
 
     /// Returns an iterator over all convex hull edges.
     ///
-    /// The edges are returned in clockwise order as seen from any point _in_ the triangulation.
+    /// The edges are returned in clockwise order as seen from any point in the triangulation.
+    ///
+    #[doc = include_str!("../images/convex_hull_scenario.svg")]
+    ///
+    /// *A triangulation with its convex hull being highlighted. `e0` .. `e5` denote the returned
+    /// edges in clockwise order.*
+    ///
+    /// *See also [convex_hull_size](Self::convex_hull_size)*
     fn convex_hull(
         &self,
     ) -> HullIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {

@@ -27,6 +27,10 @@ fn main() -> Result {
     scenario_list::cdt_scenario().save_to_svg("cdt_scenario", "images/cdt.svg")?;
     scenario_list::circular_iterator_example()
         .save_to_svg("circular_iterator", "images/circular_iterator.svg")?;
+    scenario_list::face_adjacent_edges_scenario()
+        .save_to_svg("face_adjacent_edges", "images/face_adjacent_edges.svg")?;
+    scenario_list::convex_hull_scenario()
+        .save_to_svg("convex_hull", "images/convex_hull_scenario.svg")?;
     Ok(())
 }
 

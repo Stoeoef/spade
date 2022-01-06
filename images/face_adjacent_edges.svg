@@ -1,0 +1,39 @@
+<svg viewBox="-8.4 -23.4 76.8 76.8" width="220" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<pattern height="1" id="face_adjacent_edges_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
+<line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
+</pattern>
+<marker fill="rgb(65 105 225)" id="face_adjacent_edges_filled_arrow0002" markerHeight="3" markerWidth="5" orient="auto" refX="4.9" refY="1.5" stroke="none">
+<path d="M0,0 L5,1.5 L0,3 z" transform="scale(-1 1) translate (-5 0)"/>
+</marker>
+<marker fill="rgb(65 105 225)" id="face_adjacent_edges_filled_arrow0003" markerHeight="3" markerWidth="5" orient="auto" refX="4.9" refY="1.5" stroke="none">
+<path d="M0,0 L5,1.5 L0,3 z" transform="scale(-1 1) translate (-5 0)"/>
+</marker>
+<marker fill="rgb(65 105 225)" id="face_adjacent_edges_filled_arrow0004" markerHeight="3" markerWidth="5" orient="auto" refX="4.9" refY="1.5" stroke="none">
+<path d="M0,0 L5,1.5 L0,3 z" transform="scale(-1 1) translate (-5 0)"/>
+</marker>
+</defs>
+<rect height="100%" style="fill: url(#face_adjacent_edges_pattern0001)" width="100%" x="-8.4" y="-23.4"/>
+<g>
+<path d="M30,45 L0,-15 L60,15 z" style="fill: rgb(211 211 211)"/>
+<circle cx="0" cy="-15" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="60" cy="15" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="30" cy="45" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<text dy="-1.2" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (15 15) rotate (63.434948822922024) translate(-15 -15)" x="15" y="15">
+e2
+</text>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0002); fill: none" x1="26.869504831500294" x2="1.0733126291998991" y1="38.73900966300059" y2="-12.853374741600202"/>
+<text dy="5" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (30 0) rotate (26.56505117707799) translate(-30 -0)" x="30" y="0">
+e1
+</text>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0003); fill: none" x1="6.260990336999412" x2="57.8533747416002" y1="-11.869504831500294" y2="13.926687370800101"/>
+<text dy="-1.2" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (45 30) rotate (-45) translate(-45 -30)" x="45" y="30">
+e0
+</text>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0004); fill: none" x1="55.05025253169417" x2="31.697056274847714" y1="19.94974746830583" y2="43.30294372515229"/>
+<text dy="4" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (34 15) rotate (0) translate(-34 -15)" x="34" y="15">
+face
+</text>
+</g>
+</svg>

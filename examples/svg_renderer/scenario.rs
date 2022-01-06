@@ -74,14 +74,15 @@ pub type Triangulation =
     DelaunayTriangulation<VertexType, DirectedEdgeType, UndirectedEdgeType, FaceType>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub enum DirectedEdgeMode {
+pub enum EdgeMode {
     Disabled,
-    Enabled { reversed: bool },
+    Undirected,
+    Directed { reversed: bool },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ConversionOptions {
-    pub directed_edge_mode: DirectedEdgeMode,
+    pub directed_edge_mode: EdgeMode,
     pub vertex_stroke_color: SketchColor,
     pub vertex_color: SketchColor,
 }
@@ -89,7 +90,7 @@ pub struct ConversionOptions {
 impl Default for ConversionOptions {
     fn default() -> Self {
         Self {
-            directed_edge_mode: DirectedEdgeMode::Disabled,
+            directed_edge_mode: EdgeMode::Undirected,
             vertex_stroke_color: SketchColor::BLACK,
             vertex_color: SketchColor::DIM_GRAY,
         }
@@ -129,29 +130,33 @@ where
         let color = undirected_edge.data().as_ref().color;
 
         const SHIFT: f64 = -3.0;
-        if let DirectedEdgeMode::Enabled { reversed } = options.directed_edge_mode {
-            if reversed {
-                std::mem::swap(&mut from, &mut to);
+        match options.directed_edge_mode {
+            EdgeMode::Directed { reversed } => {
+                if reversed {
+                    std::mem::swap(&mut from, &mut to);
+                }
+
+                let line = SketchElement::line(convert_point(from), convert_point(to))
+                    .draw_double_line()
+                    .shift_to(SHIFT)
+                    .shift_from(SHIFT)
+                    .stroke_width(0.7)
+                    .stroke_color(color);
+
+                let line = if reversed {
+                    line.with_arrow_end(ArrowType::HalfArrow)
+                } else {
+                    line.with_arrow_start(ArrowType::HalfArrow)
+                };
+
+                sketch.add(line);
             }
-
-            let line = SketchElement::line(convert_point(from), convert_point(to))
-                .draw_double_line()
-                .shift_to(SHIFT)
-                .shift_from(SHIFT)
-                .stroke_width(0.7)
-                .stroke_color(color);
-
-            let line = if reversed {
-                line.with_arrow_end(ArrowType::HalfArrow)
-            } else {
-                line.with_arrow_start(ArrowType::HalfArrow)
-            };
-
-            sketch.add(line);
-        } else {
-            sketch.add(
-                SketchElement::line(convert_point(from), convert_point(to)).stroke_color(color),
-            );
+            EdgeMode::Undirected => {
+                sketch.add(
+                    SketchElement::line(convert_point(from), convert_point(to)).stroke_color(color),
+                );
+            }
+            EdgeMode::Disabled => {}
         }
     }
 

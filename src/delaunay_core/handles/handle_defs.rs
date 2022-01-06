@@ -112,7 +112,11 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> FixedHandleImpl<Type, InnerOut
 /// Rust will currently not generate documentation for type definitions depending
 /// `pub(crate)` types, see [#32077](https://github.com/rust-lang/rust/issues/32077).
 ///
-/// Do not use these types. Their removal will not be considered a breaking change.
+/// Do not use these types. Their removal from the public API will not be considered a
+/// breaking change.
+///
+/// Refer to the [handles](crate::handles) module for the handle types that should be used
+/// instead.
 pub struct DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter: InnerOuterMarker> {
     pub(super) dcel: &'a Dcel<V, DE, UE, F>,
     pub(super) handle: FixedHandleImpl<Type, InnerOuter>,

@@ -506,6 +506,8 @@ where
 impl<'a, V, DE, UE, F> FaceHandle<'a, InnerTag, V, DE, UE, F> {
     /// Returns the three inner edges adjacent to this face.
     ///
+    #[doc = include_str!("../../../images/face_adjacent_edges.svg")]
+    ///
     /// The edges are returned in counter clockwise order.
     pub fn adjacent_edges(&self) -> [DirectedEdgeHandle<'a, V, DE, UE, F>; 3] {
         let e1 = self.adjacent_edge();
@@ -567,7 +569,7 @@ where
 
     /// Returns the face's center point.
     ///
-    /// The center point is the average position.
+    /// The center point is the average position of its vertices.
     pub fn center(&self) -> Point2<V::Scalar> {
         let [v0, v1, v2] = self.positions();
         let one = V::Scalar::one();
@@ -726,7 +728,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
         self.handle.is_outer()
     }
 
-    /// Converts this possibly outer face handle face handle into an inner face handle.
+    /// Converts this possibly outer face handle into an inner face handle.
     ///
     /// Returns `None` if this handle refers to the outer face.
     pub fn as_inner(&self) -> Option<FaceHandle<'a, InnerTag, V, DE, UE, F>> {
@@ -740,7 +742,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
     /// Returns an edge that is adjacent to this face.
     ///
     /// The returned edge has this face on its left side.
-    /// Returns `None` if the triangulation has only one or none vertices.
+    /// Returns `None` if the triangulation has only one or no vertices.
     pub fn adjacent_edge(&self) -> Option<DirectedEdgeHandle<'a, V, DE, UE, F>> {
         self.dcel
             .face_adjacent_edge(self.handle)
