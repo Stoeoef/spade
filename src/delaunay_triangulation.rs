@@ -214,12 +214,13 @@ use serde_crate::{Deserialize, Serialize};
 /// Fine-tuning a Delaunay triangulation can be more tricky from time to time. However, some will *nearly always* be
 /// the right thing to do:
 ///
-/// - Measure, don't guess
-/// - For data sets with uniformly distributed vertices: Use [HierarchyHintGenerator]
+/// - Measure, don't guess. Execution times are hard to predict.
+/// - For data sets with uniformly distributed vertices: Use [HierarchyHintGenerator](crate::HierarchyHintGenerator)
 /// - For data sets where vertices are inserted in close local proximity (each vertex is not too far away from the
-///   previously inserted vertex): Use [LastHintVertexGenerator]
+///   previously inserted vertex): Use [LastUsedVertexHintGenerator](crate::LastUsedVertexHintGenerator)
 /// - Try to avoid large custom data types for edges, vertices and faces.
 /// - Using `f64` and `f32` as scalar type will usually end up roughly having the same run time performance.
+/// - Prefer using [bulk_load](Triangulation::bulk_load) over [insert](Triangulation::insert).
 /// - The run time of all vertex operations (insertion, removal and lookup) is roughly the same for larger triangulations.
 ///   
 /// ## Complexity classes
