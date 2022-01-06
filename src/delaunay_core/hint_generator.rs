@@ -277,38 +277,6 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
             result.notify_vertex_inserted(vertex.fix(), vertex.position());
         }
         result
-
-        /*
-        if triangulation.num_vertices() == 0 {
-            return result;
-        }
-
-        result.num_elements_of_base_triangulation = triangulation.num_vertices();
-
-        TODO: Check if more efficient bulk loading for the hierarchy layers is required and possible
-        let mut stride = BRANCH_FACTOR;
-        loop {
-            let mut vertices_of_current_layer =
-                Vec::with_capacity(triangulation.num_vertices() / stride as usize + 1);
-
-            // Take every stride'th vertex
-            vertices_of_current_layer.extend(
-                triangulation
-                    .vertices()
-                    .enumerate()
-                    .filter(|(index, _)| *index % stride as usize == 0)
-                    .map(|(_, vertex)| vertex.position()),
-            );
-
-            result
-                .hierarchy
-                .push(DelaunayTriangulation::bulk_load(vertices_of_current_layer));
-
-            stride *= BRANCH_FACTOR;
-            if stride as usize > triangulation.num_vertices() {
-                return result;
-            }
-        }*/
     }
 }
 
