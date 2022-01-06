@@ -395,7 +395,6 @@ where
     let o_next = edge.next();
 
     // Find out which edges of the left face intersect the line
-    // TODO: Optimize number of queries
     let e_prev_inter = e_prev.intersects_edge_non_collinear(line_from, line_to);
     let o_next_inter = o_next.intersects_edge_non_collinear(line_from, line_to);
 
