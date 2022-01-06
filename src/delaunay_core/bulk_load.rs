@@ -281,14 +281,6 @@ impl Segment {
             self.from <= angle || angle < self.to
         }
     }
-
-    pub(crate) fn is_greater_than_180_degree(&self) -> bool {
-        if self.is_non_wrapping_segment() {
-            self.to.0 - self.from.0 > 0.5
-        } else {
-            self.to.0 + 1.0 - self.from.0 > 0.5
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -296,10 +288,7 @@ struct Node {
     /// Pseudo-angle of the point
     angle: FloatOrd,
 
-    /// TODO: Adjust comment
-    /// `EdgeIndex` of the edge to the right of this point, i.e. having this
-    /// point as its `dst` (since the hull is on top of the shape and triangle
-    /// are wound counter-clockwise).
+    /// An edge leaving at this hull entry.
     edge: FixedDirectedEdgeHandle,
 
     /// Neighbors (indexes into the hull)
@@ -324,7 +313,7 @@ pub struct Hull {
     buckets: Vec<usize>,
     data: Vec<Node>,
 
-    /// Spare slots in the [`Hull::data`] array, to keep it small
+    /// Empty elements which can be reused later.
     empty: Vec<usize>,
 }
 
@@ -396,11 +385,6 @@ impl Hull {
             let segment = self.segment(&current_node);
             let start_bucket = self.ceiled_bucket(segment.from);
             let end_bucket = self.ceiled_bucket(segment.to);
-            if start_bucket == end_bucket && segment.is_greater_than_180_degree() {
-                // Special case: All buckets point to the same node
-                self.buckets.fill(current_index);
-                return;
-            }
 
             self.update_bucket_segment(start_bucket, end_bucket, current_index);
 
