@@ -1,5 +1,4 @@
 use crate::RemovalResult;
-use crate::HasPosition;
 
 use super::dcel::{Dcel, EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry};
 use super::handles::*;
@@ -1194,10 +1193,7 @@ fn swap_remove_face<V, DE, UE, F>(dcel: &mut Dcel<V, DE, UE, F>, face: FixedFace
 pub fn remove_when_degenerate<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> RemovalResult<V>
-where
-    V: HasPosition,
-{
+) -> RemovalResult<V> {
     match dcel.num_vertices() {
         0 => panic!("Cannot remove vertex when triangulation is empty"),
         1 => remove_when_one_vertex_left(dcel, vertex_to_remove),
@@ -1209,10 +1205,7 @@ where
 fn remove_when_one_vertex_left<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> RemovalResult<V>
-where
-    V: HasPosition,
-{
+) -> RemovalResult<V> {
     assert_eq!(
         vertex_to_remove.index(),
         0,
@@ -1228,10 +1221,7 @@ where
 fn remove_when_two_vertices_left<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> RemovalResult<V>
-where
-    V: HasPosition,
-{
+) -> RemovalResult<V> {
     assert_eq!(dcel.num_faces(), 1);
     assert_eq!(dcel.num_vertices(), 2);
     assert_eq!(dcel.num_directed_edges(), 2);
@@ -1255,10 +1245,7 @@ where
 fn remove_when_all_vertices_on_line<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     vertex_to_remove: FixedVertexHandle,
-) -> RemovalResult<V>
-where
-    V: HasPosition,
-{
+) -> RemovalResult<V> {
     let out_edges: Vec<_> = dcel.vertex(vertex_to_remove).out_edges().collect();
     match &*out_edges {
         [out_edge1] => {
