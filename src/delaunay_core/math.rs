@@ -52,6 +52,16 @@ impl Error for InsertionError {}
 ///
 /// *See also [validate_coordinate], [validate_vertex], [MAX_ALLOWED_VALUE],
 /// [crate::Triangulation::insert]*
+
+// Implementation note: These numbers come from the paper of Jonathan Richard Shewchuk:
+// "The four predicates implemented for this report will not overflow nor underflow if
+// their inputs have exponents in the range -[142, 201] and IEEE-745 double precision
+// arithmetic is used."
+// Source: Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates
+//
+// This suggests that the limit as is is needlessly tight as spade only requires two of
+// the four implemented predicates. There is unfortunately no motivation given for these
+// limits, hence its not obvious how those would need to be derived.
 pub const MIN_ALLOWED_VALUE: f64 = 1.793662034335766e-43; // 1.0 * 2^-142
 
 /// The largest allowed coordinate value that can be inserted into Delaunay triangulations.
