@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::cmp::{Ordering, Reverse};
 
 use crate::{HasPosition, InsertionError, Point2, Triangulation, TriangulationExt};
 
@@ -6,6 +6,16 @@ use super::{dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle}
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 struct FloatOrd(f64);
+
+#[allow(clippy::derive_ord_xor_partial_ord)]
+impl Ord for FloatOrd {
+    /// bulk_load checks all f64 values via validate_coordinate.
+    /// Hence, all coordinates are known to be finite and not none.
+    /// Thus, this comparison should be fine.
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
 
 impl Eq for FloatOrd {}
 
@@ -32,18 +42,10 @@ where
     let center_as_scalar = min.add(max).mul(0.5f32.into());
     let center = center_as_scalar.to_f64();
 
-    let sorting_fn = |a: &V, b: &V| -> Ordering {
-        let (a, b) = (a.position().to_f64(), b.position().to_f64());
-        center
-            .distance2(b)
-            .partial_cmp(&center.distance2(a.position()))
-            .expect("Invalid point position - possible NAN detected")
-    };
-
     let mut result = T::with_capacity(elements.len(), elements.len() * 3, elements.len() * 2);
 
     // Sort by distance, smallest values last. This allows to pop values depending on their distance.
-    elements.sort_unstable_by(sorting_fn);
+    elements.sort_unstable_by_key(|e| Reverse(FloatOrd(center.distance2(e.position().to_f64()))));
 
     while let Some(next) = elements.pop() {
         result.insert(next)?;
