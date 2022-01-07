@@ -13,7 +13,6 @@ smallvec = "1.4"
 robust = "0.2.3"
 num-traits = "0.2"
 optional = "0.5.0"
-binary-heap-plus = "0.4.1"
 
 [dependencies.serde_crate]
 package = "serde"

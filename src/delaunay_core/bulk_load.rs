@@ -9,7 +9,7 @@ struct FloatOrd(f64);
 
 impl Eq for FloatOrd {}
 
-pub fn bulk_load<V, T>(elements: Vec<V>) -> Result<T, InsertionError>
+pub fn bulk_load<V, T>(mut elements: Vec<V>) -> Result<T, InsertionError>
 where
     V: HasPosition,
     T: Triangulation<Vertex = V>,
@@ -29,7 +29,8 @@ where
         max = max.max(position);
     }
 
-    let center = min.add(max).mul(0.5f32.into()).to_f64();
+    let center_as_scalar = min.add(max).mul(0.5f32.into());
+    let center = center_as_scalar.to_f64();
 
     let sorting_fn = |a: &V, b: &V| -> Ordering {
         let (a, b) = (a.position().to_f64(), b.position().to_f64());
@@ -42,9 +43,9 @@ where
     let mut result = T::with_capacity(elements.len(), elements.len() * 3, elements.len() * 2);
 
     // Sort by distance, smallest values last. This allows to pop values depending on their distance.
-    let mut heap = binary_heap_plus::BinaryHeap::from_vec_cmp(elements, sorting_fn);
+    elements.sort_unstable_by(sorting_fn);
 
-    while let Some(next) = heap.pop() {
+    while let Some(next) = elements.pop() {
         result.insert(next)?;
         if !result.all_vertices_on_line() && result.num_vertices() >= 4 {
             // We'll need 4 vertices to calculate a center position with good precision.
@@ -53,7 +54,7 @@ where
         }
     }
 
-    if heap.is_empty() {
+    if elements.is_empty() {
         return Ok(result);
     }
 
@@ -63,10 +64,6 @@ where
     let sum_x = center_positions().map(|p| p.x).sum();
     let sum_y = center_positions().map(|p| p.y).sum();
     let center = Point2::new(sum_x, sum_y).mul(0.25);
-
-    // Sort new elements in increasing distance compared to the new center
-    let mut elements = heap.into_vec();
-    elements.sort_unstable_by(sorting_fn);
 
     let mut hull = loop {
         if let Some(hull) = Hull::from_triangulation(&result, center) {
