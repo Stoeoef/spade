@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::{HasPosition, InsertionError, Point2, Triangulation, TriangulationExt};
 
-use super::{dcel_operations, FixedDirectedEdgeHandle};
+use super::{dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle};
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 struct FloatOrd(f64);
@@ -82,10 +82,12 @@ where
         }
     };
 
+    let mut buffer = Vec::new();
     let mut skipped_elements = Vec::new();
     while let Some(next) = elements.pop() {
-        skipped_elements
-            .extend(single_bulk_insertion_step(&mut result, center, &mut hull, next).err());
+        skipped_elements.extend(
+            single_bulk_insertion_step(&mut result, center, &mut hull, next, &mut buffer).err(),
+        );
     }
 
     if cfg!(any(fuzzing, test)) {
@@ -101,18 +103,18 @@ where
     Ok(result)
 }
 
+#[inline(never)] // Prevent inlining for better profiling data
 fn single_bulk_insertion_step<TR, T>(
     result: &mut TR,
     center: Point2<f64>,
     hull: &mut Hull,
     element: T,
+    buffer_for_edge_legalization: &mut Vec<FixedUndirectedEdgeHandle>,
 ) -> Result<(), T>
 where
     T: HasPosition,
     TR: Triangulation<Vertex = T>,
 {
-    let mut buffer_for_edge_legalization = Vec::new();
-
     let next_position = element.position();
     let current_angle = pseudo_angle(next_position.to_f64(), center);
 
@@ -156,7 +158,7 @@ where
             buffer_for_edge_legalization.clear();
             buffer_for_edge_legalization.push(handle.as_undirected());
             buffer_for_edge_legalization.push(current_edge.as_undirected());
-            result.legalize_edges_after_removal(&mut buffer_for_edge_legalization, |_| false);
+            result.legalize_edges_after_removal(buffer_for_edge_legalization, |_| false);
 
             current_edge = new_edge;
         } else {
@@ -183,7 +185,7 @@ where
             buffer_for_edge_legalization.clear();
             buffer_for_edge_legalization.push(handle.as_undirected());
             buffer_for_edge_legalization.push(next_fix.as_undirected());
-            result.legalize_edges_after_removal(&mut buffer_for_edge_legalization, |_| false);
+            result.legalize_edges_after_removal(buffer_for_edge_legalization, |_| false);
 
             current_edge = new_edge;
         } else {
@@ -746,8 +748,14 @@ mod test {
         ];
 
         for (index, element) in additional_elements.iter().enumerate() {
-            super::single_bulk_insertion_step(&mut triangulation, center, &mut hull, *element)
-                .unwrap();
+            super::single_bulk_insertion_step(
+                &mut triangulation,
+                center,
+                &mut hull,
+                *element,
+                &mut Vec::new(),
+            )
+            .unwrap();
             if index != 0 {
                 super::hull_sanity_check(&triangulation, &hull)
             }

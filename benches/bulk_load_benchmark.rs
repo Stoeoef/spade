@@ -24,11 +24,7 @@ pub fn bulk_load_benchmark(c: &mut Criterion) {
     group.finish();
 
     let mut group = c.benchmark_group("bulk load benchmark (big)");
-    for (hint_generator_type, sample_distribution) in [
-        (LastUsedVertex, RandomWalk),
-        (Hierarchy, Uniform),
-        (Hierarchy, RandomWalk),
-    ] {
+    for (hint_generator_type, sample_distribution) in [(LastUsedVertex, Uniform)] {
         let config = CreationBenchConfig {
             creation_method: CreationMethod::BulkLoad,
             sample_size: SampleSize::LargeSampleSet,

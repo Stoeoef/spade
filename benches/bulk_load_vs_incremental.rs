@@ -5,7 +5,7 @@ use crate::benchmark_utilities::*;
 pub fn bulk_load_vs_incremental_benchmark(c: &mut Criterion) {
     {
         use CreationMethod::*;
-        let mut group = c.benchmark_group("bulk load vs sequential load (small)");
+        let mut group = c.benchmark_group("bulk vs incremental loading");
         for creation_method in [BulkLoad, Incremental] {
             let config = CreationBenchConfig {
                 creation_method,
