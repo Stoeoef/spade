@@ -10,6 +10,7 @@ pub fn bulk_load_benchmark(c: &mut Criterion) {
 
     for (hint_generator_type, sample_distribution) in [
         (LastUsedVertex, RandomWalk),
+        (LastUsedVertex, Uniform),
         (Hierarchy, Uniform),
         (Hierarchy, RandomWalk),
     ] {
