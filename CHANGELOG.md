@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  This release is focussed on API refinement, performance improvements and usability improvements.
   
  ## General API refinement
- Many features of Spade 1 showed too little benefit to legitimize to keep them. Spade 2.0 attempts to slim down the API surface to a few important functions and types and leaves out the more complicated bits to make it more simple to use.
+ Many features of Spade 1 showed too little benefit to legitimize keeping them. Spade 2.0 attempts to slim down the API surface to a few important functions and types and leaves out the more complicated bits to make it more simple to use.
 
 ### Removed features (may be re-introduced in an upcoming release)
  - Removed interpolation functions
@@ -33,11 +33,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
    - Fixed directed edge handles can now be `rev`ersed
  - Both `DelaunayTriangulation` and `CDT` now allow to also annotate undirected edges with arbitrary data
  - Added `Triangulation::convex_hull` which allows to directly iterate over the triangulation's convex hull
+ - Added `Triangulation::bulk_load` for efficient bulk creation of triangulations.
 
 ### Changed
  - Performance improvements
   - The newly introduced `HierarchyHintGenerator` should outperform the r-tree based hint generator consistently for uniformly distributed data sets (2x - 3x times faster)
   - `LastUsedVertexHintGenerator` and its predecessor `DelaunayWalkLocate` are still comparable.
+  - The new `Triangulation::bulk_load` will be more efficient for creating triangulations from a given set of vertices compared to inserting them incrementally.
  - Cleaned up crate dependencies: Spade 2.0 depends only on 4 other crates without any transitive dependencies. This should make it more viable to include Spade into other projects.
  - Renamed any `o_next` / `o_prev` function to `next` / `prev`.
  - Renamed `sym` to `rev`
@@ -47,7 +49,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  Keep in mind that not all features have been preserved before attempting to upgrade. Other than that, upgrading should be mostly consist of renaming:
 
   - `FloatDelaunayTriangulation` and `FloatCdt` have been replaced by `DelaunayTriangulation` and `ConstrainedDelaunayTriangulation`
-  - `IntDelaunayTriangulation` is not supported anymore. Use `f64` as scalar type instead if possible.
+  - `IntDelaunayTriangulation` is not supported anymore. Use `f64` or `f32` as scalar type instead if possible.
   - `DelaunayWalkLocate` has been renamed to `LastUsedVertexHintGenerator`
   - `DelaunayTreeLocate` has been replaced by `HierarchyHintGenerator`
 
