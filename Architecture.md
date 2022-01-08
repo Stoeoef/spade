@@ -16,7 +16,7 @@ The type parameters control which API is implemented for them:
 Internally, fixed handles use `u32` to index the appropriate element in a vector. Using `u32` reduces the required space and performs much better in practice.
 Dynamic handles store both a fixed handle and a reference to the DCEL they belong to.
 
-# Directed edge and undirected edge handles
+# Directed and undirected edge handles
 
 Directed edge handles that just differ in the smallest bit of their `u32` index refer to the same *undirected* edge and encode both of its possible directions.
 E.g. indices 0 and 1 will refer to a directed edge and its `rev()`, indices 2 and 3 refer to another edge and its `rev()`.
@@ -31,7 +31,7 @@ This system has several advantages:
 
 # Triangulation and TriangulationExt
 
-`Triangulation` contains *publicly visible* functions that are common for both Cdts and unconstrained triangulations.
+Trait `Triangulation` contains *publicly visible* functions that are common for both Cdts and unconstrained triangulations.
 
 `TriangulationExt` is defined as `pub(crate)` and contains helper methods that are used by both Cdts and DTs to fulfill the Delaunay property.
 
