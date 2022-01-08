@@ -3,13 +3,6 @@
 
 # spade
 
- * [Documentation](https://docs.rs/spade/)
- * [Using spade](#using-spade)
- * [Examples](#examples)
- * [Project state](#project-state)
- * [Performance](#performance)
- * [License](#license)
-
 Delaunay triangulations for the rust ecosystem.
 
 - 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by a hierarchy
@@ -33,11 +26,9 @@ Looking for co-maintainers! I don't have the best track record when it comes to 
 
 If you want to contribute, please consider opening an issue first. I'm happy to help out with any questions!
 
-# Performance
+# Performance and comparison to other Delaunay crates
 
-Neither spade's triangulation nor r-tree were optimized to be exceptionally fast. The library focussed on a rich and high quality feature set and an early 1.0 release at the cost of performance. Compared to any GCed language, spade's performance is likely better (feel free to contribute a benchmark!) but it is _by far not_ in the same ballpark as its C/C++ contenders like CGAL. However, for many use cases, spade will hopefully be fast enough and a viable rust only alternative.
-
-The [user guide](https://stoeoef.gitbooks.io/spade-user-manual/content/triangulation-performance.html) contains detailed graphs, benchmarks and more information about the delaunay triangulation's performance.
+Refer to [the delaunay_compare readme](./delaunay_compare/README.md) for some benchmarks and a comparison with other crates.
 
 # License
 Licensed under either of
@@ -46,10 +37,3 @@ Licensed under either of
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
-
-## Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
