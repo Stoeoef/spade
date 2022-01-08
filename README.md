@@ -12,6 +12,11 @@ Delaunay triangulations for the rust ecosystem.
 - Precise calculation kernel out of the box to prevent incorrect geometries due to rounding issues
 - Supports extracting the Voronoi diagram
 
+---------------------------
+<img src="images/basic_voronoi.svg" width=60% style="margin-left: auto;margin-right:auto;display:block">
+
+---------------------------
+
 # Project goals
 
 Project goals, in the order of their importance:
