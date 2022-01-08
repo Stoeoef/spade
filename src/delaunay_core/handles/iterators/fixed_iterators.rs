@@ -29,6 +29,23 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> Iterator
     fn next(&mut self) -> Option<Self::Item> {
         self.range.next().map(FixedHandleImpl::new)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+
+impl<Type: Default, InnerOuter: InnerOuterMarker> ExactSizeIterator
+    for FixedHandleIterator<Type, InnerOuter>
+{
+}
+
+impl<Type: Default, InnerOuter: InnerOuterMarker> DoubleEndedIterator
+    for FixedHandleIterator<Type, InnerOuter>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.range.next_back().map(FixedHandleImpl::new)
+    }
 }
 
 pub struct DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter> {
@@ -64,4 +81,29 @@ where
             .next()
             .map(|handle| DynamicHandleImpl::new(self.dcel, handle.adjust_inner_outer()))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.fixed_iterator.size_hint()
+    }
+}
+
+impl<'a, V, DE, UE, F, Type, InnerOuter> DoubleEndedIterator
+    for DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter>
+where
+    Type: DelaunayElementType,
+    InnerOuter: InnerOuterMarker,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.fixed_iterator
+            .next_back()
+            .map(|handle| DynamicHandleImpl::new(self.dcel, handle.adjust_inner_outer()))
+    }
+}
+
+impl<'a, V, DE, UE, F, Type, InnerOuter> ExactSizeIterator
+    for DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter>
+where
+    Type: DelaunayElementType,
+    InnerOuter: InnerOuterMarker,
+{
 }
