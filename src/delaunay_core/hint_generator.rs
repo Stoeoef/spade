@@ -258,7 +258,7 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
             last_layer_size = triangulation.num_vertices();
         }
 
-        if let &[.., ref before_last, _] = self.hierarchy.as_slice() {
+        if let [.., ref before_last, _] = self.hierarchy.as_slice() {
             if before_last.num_vertices() == 1 {
                 // Last layer has become irrelevant
                 self.hierarchy.pop();
