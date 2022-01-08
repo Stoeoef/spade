@@ -4,9 +4,9 @@ Small benchmark suite for comparing different Delaunay triangulation implementat
 
 ## Crates under test
 
- - [delaunator 1.0.1] (https://crates.io/crates/delaunator)
- - [cdt 0.1.0] (https://crates.io/crates/cdt)
- - [spade 2.0] (https://crates.io/crates/spade)
+ - [delaunator 1.0.1](https://crates.io/crates/delaunator)
+ - [cdt 0.1.0](https://crates.io/crates/cdt)
+ - [spade 2.0](https://crates.io/crates/spade)
 
 For spade: Both insertion *with* a lookup structure ("hierarchy") and *without* are being tested.
 The look up structure allows efficient position lookup (e.g. for nearest neighbor searches) on the resulting triangulations but takes additional time to construct.
