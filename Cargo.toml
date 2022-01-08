@@ -23,6 +23,9 @@ features = ["derive"]
 [features]
 serde = ["optional/serde", "serde_crate"]
 
+[workspace]
+members = ["delaunay_compare"]
+
 [dev-dependencies]
 approx = "0.5"
 rand = "0.8.3"

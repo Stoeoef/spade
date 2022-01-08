@@ -1,0 +1,20 @@
+[package]
+name = "delaunay_compare"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+
+[dependencies]
+num-traits = "0.2.14"
+cdt = "0.1" 
+delaunator = "1.0.1"
+spade = { path = ".." }
+
+[dev-dependencies]
+criterion = { version = "0.3", features = ["html_reports"] }
+rand = "0.8"
+
+[[bench]]
+name = "delaunay_comparison"
+harness = false
