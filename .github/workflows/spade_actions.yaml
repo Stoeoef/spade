@@ -1,4 +1,4 @@
-# Copied from https://github.com/actions-rs/meta/blob/master/recipes/quickstart.md
+# Based on https://github.com/actions-rs/meta/blob/master/recipes/quickstart.md
 on: [push, pull_request]
 
 name: Continuous integration
@@ -63,3 +63,21 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-fuzz
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fuzz
+          args: build
