@@ -10,7 +10,7 @@
 
 <g id="gnuplot_canvas">
 
-<rect x="0" y="0" width="1280" height="720" fill="none"/>
+<rect x="0" y="0" width="1280" height="720" fill="white" opacity="0.5"/>
 <defs>
 
 	<circle id='gpDot' r='0.5' stroke-width='0.5' stroke='currentColor'/>
