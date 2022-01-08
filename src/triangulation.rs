@@ -122,9 +122,16 @@ pub trait Triangulation: Default {
     /// if all vertices were successfully checked with [crate::validate_vertex].
     ///
     /// # Runtime
+    ///
     /// This method has a run time of `O(n)` but will run near linearly in practice.
     /// The runtime can be as worse as `O(n²)` if the inputs are very degenerate, e.g.
     /// if all input vertices lie on the same line.
+    ///
+    /// # Comparison to incremental insertion
+    ///
+    /// This graph shows the difference between incremental and bulk loading for a different number of random points - bulk loading becomes
+    /// more efficient very quickly.
+    #[doc = include_str!("../images/bulk_load_vs_incremental_graph.svg")]
     fn bulk_load(elements: Vec<Self::Vertex>) -> Result<Self, InsertionError> {
         let mut result: Self = crate::delaunay_core::bulk_load(elements)?;
         let hint_generator = Self::HintGenerator::initialize_from_triangulation(&result);
