@@ -21,7 +21,15 @@ Project goals, in the order of their importance:
  3. Performance - Delaunay triangulations are often a low level component of an application. Optimization in this area pays off greatly.
  4. Small footprint - Spade should be a sensible library to include in your project that doesn't require too many dependencies. Bigger dependencies will be feature gated.
 
+# Roadmap
+
+Spade 2.0.beta is currently feature-complete. A few next steps are already planned:
+ - Fix anything that comes up during beta phase
+ - Release 2.0 on crates.io
+ - Add back the removed interpolation methods (natural neighbor interpolation)
+
 # Project state and contributing
+
 Looking for co-maintainers! I don't have the best track record when it comes to being an open-source maintainer and would love to see this burden being distributed on more shoulders! This is less about *implementing* things but rather about general maintenance tasks, e.g. package updates, minor bug fixes, reviewing PRs, etc...
 
 If you want to contribute, please consider opening an issue first. I'm happy to help out with any questions!
