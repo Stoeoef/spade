@@ -32,6 +32,7 @@ Spade 2.0.beta is currently feature-complete. A few next steps are already plann
  - Fix anything that comes up during beta phase
  - Release 2.0 on crates.io
  - Add back the removed interpolation methods (natural neighbor interpolation)
+ - Ideas for a 3.0 release: Possibly base `spade` on `nalgebra` as underlying vector and matrix library. Not much else planned yet!
 
 # Project state and contributing
 
