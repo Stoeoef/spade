@@ -36,6 +36,8 @@ fn main() -> Result {
     scenario_list::outer_voronoi_vertex_example()
         .save_to_svg("outer_voronoi_vertex", "images/outer_voronoi_vertex.svg")?;
     scenario_list::dual_edge_example().save_to_svg("dual_edges", "images/dual_edges.svg")?;
+    scenario_list::project_point_scenario()
+        .save_to_svg("project_point", "images/project_point.svg")?;
     Ok(())
 }
 

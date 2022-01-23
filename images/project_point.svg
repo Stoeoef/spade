@@ -1,0 +1,25 @@
+<svg height="400" viewBox="-8.4 -1.68 36.8 7.359999999999999" width="800" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<marker fill="rgb(0 0 0)" id="project_point_filled_arrow0001" markerHeight="3" markerWidth="5" orient="auto" refX="0.1" refY="1.5" stroke="none">
+<path d="M0,0 L5,1.5 L0,3 z"/>
+</marker>
+</defs>
+<rect height="100%" style="fill: none" width="100%" x="-8.4" y="-1.68"/>
+<g>
+<path d="M-32,-48 L8,-40 L-8,40 L-48,32" style="fill: rgb(143 188 143)"/>
+<path d="M8,-40 L28,-36 L12,44 L-8,40" style="fill: rgb(100 149 237)"/>
+<path d="M68,-28 L28,-36 L12,44 L52,52" style="fill: rgb(250 128 114)"/>
+<line style="stroke-width: 0.5; stroke: rgb(0 0 0); marker-end: url(#project_point_filled_arrow0001); fill: none" x1="0" x2="17.6" y1="0" y2="3.52"/>
+<text dy="0" font-size="2" style="fill: rgb(0 0 0)" transform="translate (-7 -2) rotate (0) translate(7 2)" x="-7" y="-2">
+before
+</text>
+<text dy="0" font-size="2" style="fill: rgb(0 0 0)" transform="translate (4 7) rotate (0) translate(-4 -7)" x="4" y="7">
+on edge
+</text>
+<text dy="0" font-size="2" style="fill: rgb(0 0 0)" transform="translate (21 5) rotate (0) translate(-21 -5)" x="21" y="5">
+behind
+</text>
+<line style="stroke-width: 0.1; stroke: rgb(47 79 79); stroke-dasharray: 1 0.5; fill: none" x1="8" x2="-8" y1="-40" y2="40"/>
+<line style="stroke-width: 0.1; stroke: rgb(47 79 79); stroke-dasharray: 1 0.5; fill: none" x1="28" x2="12" y1="-36" y2="44"/>
+</g>
+</svg>

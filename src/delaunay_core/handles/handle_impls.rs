@@ -346,6 +346,8 @@ where
     /// A point's projection can either come _before_, _on_ or _after_ this edge.
     /// Note that this method may return inaccurate results due to rounding issues.
     ///
+    #[doc = include_str!("../../../images/project_point.svg")]
+    ///
     /// # Example
     /// ```
     /// # fn main() -> Result<(), spade::InsertionError> {

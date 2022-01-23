@@ -2,7 +2,7 @@ use super::quicksketch::{
     ArrowType, HorizontalAlignment, Point, Sketch, SketchColor, SketchElement, SketchFill,
     StrokeStyle, Vector,
 };
-use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Vector2};
+use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Point2, Vector2};
 use spade::{
     handles::{
         FixedDirectedEdgeHandle,
@@ -824,5 +824,84 @@ pub fn dual_edge_example() -> Sketch {
 
     sketch.set_width(500);
 
+    sketch
+}
+
+pub fn project_point_scenario() -> Sketch {
+    let mut sketch = Sketch::new();
+
+    let from = Point2::new(0.0, 0.0);
+    let to = Point2::new(20.0, 4.0);
+    let offset = Vector2::new(to.y, -to.x) * 2.0;
+    let direction = to - from;
+
+    let far_before = from - direction * 2.0;
+    let far_behind = to + direction * 2.0;
+
+    let before_area = SketchElement::path()
+        .move_to(far_before + offset)
+        .line_to(from + offset)
+        .line_to(from - offset)
+        .line_to(far_before - offset);
+
+    let edge_area = SketchElement::path()
+        .move_to(from + offset)
+        .line_to(to + offset)
+        .line_to(to - offset)
+        .line_to(from - offset);
+
+    let behind_area = SketchElement::path()
+        .move_to(far_behind + offset)
+        .line_to(to + offset)
+        .line_to(to - offset)
+        .line_to(far_behind - offset);
+
+    sketch.add(before_area.fill(SketchFill::solid(SketchColor::DARK_SEA_GREEN)));
+    sketch.add(edge_area.fill(SketchFill::solid(SketchColor::CORNFLOWER_BLUE)));
+    sketch.add(behind_area.fill(SketchFill::solid(SketchColor::SALMON)));
+
+    sketch.add(
+        SketchElement::line(from, to - direction * 0.12)
+            .with_arrow_end(ArrowType::FilledArrow)
+            .stroke_width(0.5),
+    );
+
+    const FONT_SIZE: f64 = 2.0;
+
+    sketch.add(
+        SketchElement::text("before")
+            .position(Point2::new(-7.0, -2.0))
+            .font_size(FONT_SIZE),
+    );
+    sketch.add(
+        SketchElement::text("on edge")
+            .position(Point2::new(4.0, 7.0))
+            .font_size(FONT_SIZE),
+    );
+    sketch.add(
+        SketchElement::text("behind")
+            .position(Point2::new(21.0, 5.0))
+            .font_size(FONT_SIZE),
+    );
+
+    sketch.add(
+        SketchElement::line(from + offset, from - offset)
+            .stroke_width(0.1)
+            .stroke_style(StrokeStyle::SmallDashed)
+            .stroke_color(SketchColor::DARK_SLATE_GREY),
+    );
+
+    sketch.add(
+        SketchElement::line(to + offset, to - offset)
+            .stroke_width(0.1)
+            .stroke_style(StrokeStyle::SmallDashed)
+            .stroke_color(SketchColor::DARK_SLATE_GREY),
+    );
+
+    sketch
+        .set_view_box_min(from)
+        .set_view_box_max(to)
+        .set_relative_padding(0.42)
+        .set_height(400);
     sketch
 }
