@@ -374,8 +374,8 @@ where
     /// assert!(edge.project_point(Point2::new(1.0, 0.0)).is_on_edge());
     ///
     /// // These vertices are all projected behind the edge
-    /// assert!(edge.project_point(Point2::new(-0.2, 0.0)).is_behind_edge());
-    /// assert!(edge.project_point(Point2::new(-1002.0, -12.0)).is_behind_edge());
+    /// assert!(edge.project_point(Point2::new(4.000001, 0.0)).is_behind_edge());
+    /// assert!(edge.project_point(Point2::new(5.0, -12.0)).is_behind_edge());
     /// # Ok (()) }
     /// ```
     pub fn project_point(
