@@ -88,24 +88,6 @@ impl<S: SpadeNum> Point2<S> {
     pub(crate) fn dot(&self, other: Self) -> S {
         self.x * other.x + self.y * other.y
     }
-
-    pub(crate) fn min(&self, other: Self) -> Self {
-        let partial_min = |s1, s2| if s1 < s2 { s1 } else { s2 };
-
-        Point2 {
-            x: partial_min(self.x, other.x),
-            y: partial_min(self.y, other.y),
-        }
-    }
-
-    pub(crate) fn max(&self, other: Self) -> Self {
-        let partial_max = |s1, s2| if s1 > s2 { s1 } else { s2 };
-
-        Point2 {
-            x: partial_max(self.x, other.x),
-            y: partial_max(self.y, other.y),
-        }
-    }
 }
 
 impl<S: SpadeNum> From<Point2<S>> for [S; 2] {

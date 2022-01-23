@@ -75,18 +75,24 @@ where
         return Ok(T::new());
     }
 
-    let mut min = elements[0].position();
-    let mut max = elements[0].position();
+    let mut point_sum = Point2::<f64>::new(0.0, 0.0);
 
     for element in &elements {
         crate::validate_vertex(element)?;
         let position = element.position();
 
-        min = min.min(position);
-        max = max.max(position);
+        point_sum = point_sum.add(position.to_f64());
     }
 
-    let initial_center = min.add(max).mul(0.5f32.into()).to_f64();
+    // Set the initial center to the average of all positions. This should be a good choice for most triangulations.
+    //
+    // The research paper uses a different approach by taking the center of the points' bounding box.
+    // However, this position might be far off the center off mass if the triangulation has just a few outliers.
+    // This could lead to a very uneven angle distribution as nearly all points are might be in a very small angle segment
+    // around the center. This degrades the hull-structure's lookup and insertion performance.
+    // For this reason, taking the average appears to be a safer option as most vertices should be distributed around the
+    // initial center.
+    let initial_center = point_sum.mul(1.0 / (elements.len() as f64));
 
     let mut result = T::with_capacity(elements.len(), elements.len() * 3, elements.len() * 2);
 
@@ -109,6 +115,7 @@ where
     }
 
     // Get new center that is guaranteed to be within the convex hull
+    //
     let center_positions = || {
         result
             .vertices()
@@ -119,6 +126,11 @@ where
 
     let sum_x = center_positions().map(|p| p.x).sum();
     let sum_y = center_positions().map(|p| p.y).sum();
+
+    // Note that we don't re-sort the elements according to their distance to the newest center. This doesn't seem to
+    // be required for the algorithms performance, probably due to the `center` being close to `initial_center`.
+    // As of now, it's a unclear how to construct point sets that result in a `center` being farther off
+    // `initial center` and what the impact of this would be.
     let center = Point2::new(sum_x, sum_y).mul(0.25);
 
     let mut hull = loop {
@@ -424,7 +436,7 @@ impl Hull {
             let angle_from = pseudo_angle(edge.from().position().to_f64(), center);
             let angle_to = pseudo_angle(edge.to().position().to_f64(), center);
 
-            if angle_from == angle_to {
+            if angle_from == angle_to || angle_from.0.is_nan() || angle_to.0.is_nan() {
                 // Should only be possible for very degenerate triangulations
                 return None;
             }
