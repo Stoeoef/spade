@@ -3,6 +3,11 @@ use std::{error::Error, fmt::Display};
 use crate::{HasPosition, LineSideInfo, Point2, SpadeNum};
 use num_traits::Float;
 
+/// Indicates a point's projected position relative to an edge.
+///
+/// This struct is usually the result of calling
+/// [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point), refer to its
+/// documentation for more information.
 pub struct PointProjection<S> {
     factor: S,
     length_2: S,
@@ -51,7 +56,7 @@ impl Error for InsertionError {}
 /// situation.
 ///
 /// *See also [validate_coordinate], [validate_vertex], [MAX_ALLOWED_VALUE],
-/// [crate::Triangulation::insert]*
+/// [crate::Triangulation::insert], [mitigate_underflow]*
 
 // Implementation note: These numbers come from the paper of Jonathan Richard Shewchuk:
 // "The four predicates implemented for this report will not overflow nor underflow if
@@ -87,7 +92,9 @@ pub const MAX_ALLOWED_VALUE: f64 = 3.2138760885179806e60; // 1.0 * 2^201
 /// result in `Err(InsertionError::TooLarge)`.
 ///
 /// Note that any non-nan, finite, **normal** `f32` coordinate will always be valid.
-/// However, the smallest subnormal `f32` number will still cause an underflow.
+/// However, subnormal `f32` numbers may still cause an underflow.
+///
+/// *See also [mitigate_underflow]*
 pub fn validate_coordinate<S: SpadeNum>(value: S) -> Result<(), InsertionError> {
     let as_f64: f64 = value.into();
     if as_f64.is_nan() {
@@ -105,6 +112,8 @@ pub fn validate_coordinate<S: SpadeNum>(value: S) -> Result<(), InsertionError> 
 ///
 /// A vertex is considered suitable if all of its coordinates are valid. See [validate_coordinate]
 /// for more information.
+///
+/// *See also [mitigate_underflow]*
 pub fn validate_vertex<V: HasPosition>(vertex: &V) -> Result<(), InsertionError> {
     let position = vertex.position();
     validate_coordinate(position.x)?;
@@ -112,23 +121,83 @@ pub fn validate_vertex<V: HasPosition>(vertex: &V) -> Result<(), InsertionError>
     Ok(())
 }
 
+/// Prevents underflow issues of a position by setting any coordinate that is too small to zero.
+///
+/// A vertex inserted with a position returned by this function will never cause [InsertionError::TooSmall] when
+/// being inserted into a triangulation or.
+/// Note that this method will _always_ round towards zero, even if rounding to ±[MIN_ALLOWED_VALUE] would result
+/// in a smaller rounding error.
+///
+/// This function might be useful if the vertices come from an uncontrollable source like user input.
+/// Spade does _not_ offer a `mitigate_overflow` method as clamping a coordinate to ±`MIN_ALLOWED_VALUE`
+/// could result in an arbitrarily large error.
+///
+/// # Example
+/// ```
+/// use spade::{DelaunayTriangulation, InsertionError, Triangulation, Point2};
+///
+/// let mut triangulation = DelaunayTriangulation::<_>::default();
+///
+/// let invalid_position = Point2::new(1.0e-44, 42.0);
+/// // Oh no! We're not allowed to insert that point!
+/// assert_eq!(
+///     triangulation.insert(invalid_position),
+///     Err(InsertionError::TooSmall)
+/// );
+///
+/// let valid_position = spade::mitigate_underflow(invalid_position);
+///
+/// // That's better!
+/// assert!(triangulation.insert(valid_position).is_ok());
+///
+/// // But keep in mind that the position has changed:
+/// assert_ne!(invalid_position, valid_position);
+/// assert_eq!(valid_position, Point2::new(0.0, 42.0));
+/// ```
+pub fn mitigate_underflow(position: Point2<f64>) -> Point2<f64> {
+    Point2::new(
+        mitigate_underflow_for_coordinate(position.x),
+        mitigate_underflow_for_coordinate(position.y),
+    )
+}
+
+fn mitigate_underflow_for_coordinate<S: SpadeNum>(coordinate: S) -> S {
+    if coordinate != S::zero() && coordinate.abs().into() < MIN_ALLOWED_VALUE {
+        S::zero()
+    } else {
+        coordinate
+    }
+}
+
 impl<S: SpadeNum> PointProjection<S> {
     fn new(factor: S, length_2: S) -> Self {
         Self { factor, length_2 }
     }
 
+    /// Returns `true` if a point's projection is located before an edge.
+    ///
+    /// *See [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point) for more information*
     pub fn is_before_edge(&self) -> bool {
         self.factor < S::zero()
     }
 
+    /// Returns `true` if a point's projection is located after an edge.
+    ///
+    /// *See [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point) for more information*
     pub fn is_after_edge(&self) -> bool {
         self.factor > self.length_2
     }
 
+    /// Returns `true` if a point's projection is located on an edge.
+    ///
+    /// *See [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point) for more information*
     pub fn is_on_edge(&self) -> bool {
         !self.is_before_edge() && !self.is_after_edge()
     }
 
+    /// Returns the inverse of this point projection.
+    ///
+    /// The inverse projection projects the same point on the *reversed* edge used by the original projection.    
     pub fn reversed(&self) -> Self {
         Self {
             factor: -self.factor,
@@ -138,6 +207,14 @@ impl<S: SpadeNum> PointProjection<S> {
 }
 
 impl<S: SpadeNum + Float> PointProjection<S> {
+    /// Returns the relative position of the point used to create this projection relative to the edge used when
+    /// creating this projection.
+    ///
+    /// This method will return a value between 0.0 and 1.0 (linearly interpolated) if the projected
+    /// point lies between `self.from` and `self.to`, a value close to zero (due to rounding errors)
+    /// if the projected point is equal to `self.from` and a value smaller than zero if the projected
+    /// point lies "before" `self.from`. Analogously, a value close to 1. or greater than 1. is
+    /// returned if the projected point is equal to or lies behind `self.to`.
     pub fn relative_position(&self) -> S {
         self.factor / self.length_2
     }
@@ -272,7 +349,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::Point2;
+    use super::{mitigate_underflow_for_coordinate, validate_coordinate};
+    use crate::{InsertionError, Point2};
     use approx::assert_relative_eq;
 
     #[test]
@@ -296,6 +374,33 @@ mod test {
 
         assert_eq!(validate_coordinate(min_value), Ok(()));
         assert_eq!(validate_coordinate(0.0), Ok(()));
+    }
+
+    #[test]
+    fn test_mitigate_underflow() {
+        use float_next_after::NextAfter;
+
+        for number_under_test in [
+            0.0.next_after(f64::NEG_INFINITY),
+            0.0.next_after(f64::INFINITY),
+            super::MIN_ALLOWED_VALUE.next_after(f64::NEG_INFINITY),
+            (-super::MIN_ALLOWED_VALUE).next_after(f64::INFINITY),
+        ] {
+            assert!(validate_coordinate(number_under_test).is_err());
+            let mitigated = mitigate_underflow_for_coordinate(number_under_test);
+            assert_ne!(mitigated, number_under_test);
+            assert_eq!(mitigated, 0.0);
+        }
+
+        assert_eq!(
+            validate_coordinate(mitigate_underflow_for_coordinate(f64::NAN)),
+            Err(InsertionError::NAN),
+        );
+
+        assert_eq!(
+            validate_coordinate(mitigate_underflow_for_coordinate(f64::INFINITY)),
+            Err(InsertionError::TooLarge),
+        );
     }
 
     #[test]

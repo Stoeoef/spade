@@ -96,8 +96,13 @@ use serde_crate::{Deserialize, Serialize};
 ///   * `UE: Default` The undirected edge type.
 ///   * `F: Default` The face type.
 ///  
-///  Only vertices can be inserted directly. Faces and edges are create via `Default`
-///  necessary. Usually, edge and face data will need to be modified in a separate pass.
+///  Only vertices can be inserted directly. Faces and edges are create via `Default::default()`.
+///  Usually, edge and face data will need to be modified in a separate pass.
+///
+/// Setting any custom data works by calling [vertex_data_mut](Triangulation::vertex_data_mut),
+/// [directed_edge_data_mut](Triangulation::directed_edge_data_mut),
+/// [undirected_edge_data_mut](Triangulation::undirected_edge_data_mut) and
+/// [face_data_mut](Triangulation::face_data_mut).
 ///  
 ///  ## Example
 ///  ```
@@ -215,9 +220,12 @@ use serde_crate::{Deserialize, Serialize};
 /// the right thing to do:
 ///
 /// - Measure, don't guess. Execution times are hard to predict.
-/// - For data sets with uniformly distributed vertices: Use [HierarchyHintGenerator](crate::HierarchyHintGenerator)
+/// - If you plan to perform several random access queries (e.g. looking up the point at an arbitrary position):
+///   Consider using `[HierarchyHintGenerator](crate::HierarchyHintGenerator)
+/// - For data sets with uniformly distributed vertices: Use [HierarchyHintGenerator](crate::HierarchyHintGenerator) if
+///   bulk loading is not applicable.
 /// - For data sets where vertices are inserted in close local proximity (each vertex is not too far away from the
-///   previously inserted vertex): Use [LastUsedVertexHintGenerator](crate::LastUsedVertexHintGenerator)
+///   previously inserted vertex): Consider using [LastUsedVertexHintGenerator](crate::LastUsedVertexHintGenerator).
 /// - Try to avoid large custom data types for edges, vertices and faces.
 /// - Using `f64` and `f32` as scalar type will usually end up roughly having the same run time performance.
 /// - Prefer using [bulk_load](Triangulation::bulk_load) over [insert](Triangulation::insert).
@@ -226,7 +234,6 @@ use serde_crate::{Deserialize, Serialize};
 /// ## Complexity classes
 ///
 /// This table display the average and amortized cost for inserting a vertex into a triangulation with `n` vertices.
-///
 /// |                             | Uniformly distributed vertices | Insertion of vertices with local proximity |
 /// |-----------------------------|--------------------------------|--------------------------------------------|
 /// | LastUsedVertexHintGenerator |        O(sqrt(n)) (worst case) |                  O(1) (best case), fastest |

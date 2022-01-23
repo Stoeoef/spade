@@ -79,7 +79,7 @@ pub type FixedUndirectedEdgeHandle = FixedHandleImpl<UndirectedEdgeTag, InnerTag
 ///
 /// The type parameter is either [InnerTag] or [PossiblyOuterTag], depending on the face type.
 ///
-/// "*See also the [handles module](index.html).*
+/// "*See also the [handles module](crate::handles)*
 pub type FixedFaceHandle<InnerOuter> = FixedHandleImpl<FaceTag, InnerOuter>;
 
 /// Handle to a directed edge of a triangulation.
@@ -117,7 +117,7 @@ pub type DirectedEdgeHandle<'a, V, DE, UE, F> =
 ///
 /// ![DirectedEdgeHandle](../../../../images/DirectedEdgeHandle.svg)
 ///
-/// *See also the [handles module](index.html).*
+/// *See also the [handles module](crate::handles)*
 pub type UndirectedEdgeHandle<'a, V, DE = (), UE = (), F = ()> =
     DynamicHandleImpl<'a, V, DE, UE, F, UndirectedEdgeTag, InnerTag>;
 

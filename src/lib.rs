@@ -11,6 +11,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(not(fuzzing), warn(missing_docs))]
 
 mod cdt;
@@ -26,7 +27,8 @@ pub use crate::delaunay_triangulation::DelaunayTriangulation;
 pub use crate::point::{HasPosition, Point2, SpadeNum};
 
 pub use crate::delaunay_core::math::{
-    validate_coordinate, validate_vertex, InsertionError, MAX_ALLOWED_VALUE, MIN_ALLOWED_VALUE,
+    mitigate_underflow, validate_coordinate, validate_vertex, InsertionError, PointProjection,
+    MAX_ALLOWED_VALUE, MIN_ALLOWED_VALUE,
 };
 
 pub use delaunay_core::{

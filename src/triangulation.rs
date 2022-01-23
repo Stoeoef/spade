@@ -8,7 +8,7 @@ use crate::{HasPosition, InsertionError, Point2, TriangulationExt};
 /// Describes a position in a triangulation.
 ///
 /// The position is set in relation to the triangulation's vertices, edges and faces.
-/// This type is usually the result of calling [trait.Triangulation.html#method.locate]
+/// This type is usually the result of calling [Triangulation::locate]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub enum PositionInTriangulation {
     /// A position lies exactly on an existing vertex. The verticis handle is given.
@@ -233,7 +233,7 @@ pub trait Triangulation: Default {
 
     /// Returns the number of edges of the convex hull.
     ///
-    /// *See also [convex_hull](Self::convex_hull)*
+    /// *See also [convex_hull](Triangulation::convex_hull)*
     ///
     /// # Complexity
     /// This method does not need to iterate through the convex hull and has a complexity of O(1)
@@ -273,7 +273,7 @@ pub trait Triangulation: Default {
 
     /// An iterator visiting all vertices.
     ///
-    /// The iterator type is [VertexHandle](handles/type.VertexHandle.html).
+    /// The iterator type is [VertexHandle]
     fn vertices(
         &self,
     ) -> VertexIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
@@ -282,7 +282,7 @@ pub trait Triangulation: Default {
 
     /// An iterator visiting all vertices.
     ///
-    /// The iterator type is [FixedVertexHandle](handles/struct.FixedVertexHandle.html).
+    /// The iterator type is [FixedVertexHandle]
     fn fixed_vertices(&self) -> FixedVertexIterator {
         self.s().fixed_vertices()
     }
@@ -291,7 +291,8 @@ pub trait Triangulation: Default {
     ///
     /// The first returned face is the outer face, all other faces will be inner faces.
     /// The iterator type is [FaceHandle<PossiblyOuterTag, ...>](FaceHandle).
-    /// See also [inner_faces()](Self::inner_faces()).
+    ///
+    /// *See also [inner_faces()](Triangulation::inner_faces())*
     fn all_faces(
         &self,
     ) -> FaceIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
@@ -390,6 +391,8 @@ pub trait Triangulation: Default {
     /// Additionally, a hint can be given to speed up computation.
     /// The hint should be a vertex close to the position that
     /// is being looked up.
+    ///
+    /// *See also [locate](Triangulation::locate), [locate_vertex](Triangulation::locate_vertex)*
     fn locate_with_hint(
         &self,
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
@@ -405,6 +408,8 @@ pub trait Triangulation: Default {
     /// in this case the insertion time can be reduced to O(1) on average
     /// if the hint is close. If the hint is randomized, running time will
     /// be O(sqrt(n)) on average with an O(n) worst case.
+    ///
+    /// *See also [insert](Triangulation::insert)*
     fn insert_with_hint(
         &mut self,
         t: Self::Vertex,
@@ -420,6 +425,8 @@ pub trait Triangulation: Default {
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles
     /// upon successful removal.
+    ///
+    /// *See also [remove](Triangulation::remove)*
     fn locate_and_remove(
         &mut self,
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
@@ -432,8 +439,8 @@ pub trait Triangulation: Default {
 
     /// Removes a vertex from the triangulation.
     ///
-    /// This operation runs in O(n²), where n is the degree of the
-    /// removed vertex.
+    /// This operation runs in O(d²), where d is the degree of the
+    /// removed vertex (the number of its outgoing edges).
     ///
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles.
@@ -453,21 +460,44 @@ pub trait Triangulation: Default {
     /// Returns either a handle to the new vertex or an error if the vertex could not be inserted.
     /// The triangulation will remain unchanged if an error ocurred.
     ///
-    /// Use [vertex](Self::vertex) to retrieve more information about the inserted vertex.
+    /// Use [vertex](Triangulation::vertex) to retrieve more information about the inserted vertex.
+    ///
+    /// # Example
+    /// ```
+    /// # fn main() -> Result<(), spade::InsertionError> {
+    /// use spade::{DelaunayTriangulation, InsertionError, Triangulation, Point2};
+    ///
+    /// let mut triangulation = DelaunayTriangulation::<_>::default();
+    ///
+    /// let vertices = vec![Point2::new(0.0, 1.0), Point2::new(4.0, 2.0), Point2::new(3.0, 4.0)];
+    /// for vertex in vertices {
+    ///   // While not required in this example, it might be a good idea in general to prevent underflow errors like this:
+    ///   let corrected_position = spade::mitigate_underflow(vertex);
+    ///   triangulation.insert(corrected_position)?;
+    /// }
+    ///
+    /// // Done!
+    /// assert_eq!(triangulation.num_inner_faces(), 1);
+    /// assert_eq!(triangulation.num_vertices(), 3);
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// *See also [insert_with_hint](Triangulation::insert_with_hint), [validate_vertex](crate::validate_vertex),
+    ///  [mitigate_underflow](crate::mitigate_underflow), [bulk_load](Triangulation::bulk_load)*
     fn insert(&mut self, vertex: Self::Vertex) -> Result<FixedVertexHandle, InsertionError> {
         self.insert_with_hint_option(vertex, None)
     }
 
     /// An iterator visiting all undirected edges.
     ///
-    /// The iterator type is [FixedUndirectedEdgeHandle](handles/struct.FixedUndirectedEdgeHandle.html).
+    /// The iterator type is [FixedUndirectedEdgeHandle].
     fn fixed_undirected_edges(&self) -> FixedUndirectedEdgeIterator {
         FixedUndirectedEdgeIterator::new(self.num_undirected_edges())
     }
 
     /// An iterator visiting all directed edges.
     ///
-    /// The iterator type is [FixedDirectedEdgeHandle](handles/struct.FixedDirectedEdgeHandle.html).
+    /// The iterator type is [FixedDirectedEdgeHandle].
     fn fixed_directed_edges(&self) -> FixedDirectedEdgeIterator {
         FixedDirectedEdgeIterator::new(self.num_directed_edges())
     }
@@ -507,7 +537,7 @@ pub trait Triangulation: Default {
     /// *A triangulation with its convex hull being highlighted. `e0` .. `e5` denote the returned
     /// edges in clockwise order.*
     ///
-    /// *See also [convex_hull_size](Self::convex_hull_size)*
+    /// *See also [convex_hull_size](Triangulation::convex_hull_size)*
     fn convex_hull(
         &self,
     ) -> HullIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {

@@ -164,7 +164,7 @@ impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker>
 {
     /// Converts this dynamic handle to its fixed variant.
     ///
-    /// *See also the [handles module](index.html).*
+    /// *See also the [handles module](crate::handles)*
     pub fn fix(&self) -> FixedHandleImpl<Type, InnerOuter> {
         self.handle
     }
@@ -280,7 +280,7 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
 
     /// Returns a reference to the data associated with this directed edge.
     ///
-    /// Use [Triangulation::directed_edge_data_mut(handle)](../trait.Triangulation.html#method#directed_edge_data_mut)
+    /// Use [Triangulation::directed_edge_data_mut](crate::Triangulation::directed_edge_data_mut)
     /// to modify the edge data.
     pub fn data(&self) -> &'a DE {
         self.entry().get_directed_data(self.handle)
@@ -341,13 +341,39 @@ where
         math::side_query(p1, p2, query_point)
     }
 
-    /// Projects a point on the line going through this edge and returns its relative position.
+    /// Indicates the position of a point being projected onto this edge.
     ///
-    /// This method will return a value between 0. and 1. (linearly interpolated) if the projected
-    /// point lies between `self.from` and `self.to`, a value close to zero (due to rounding errors)
-    /// if the projected point is equal to `self.from` and a value smaller than zero if the projected
-    /// point lies "before" `self.from`. Analogously, a value close to 1. or greater than 1. is
-    /// returned if the projected point is equal to or lies behind `self.to`.
+    /// A point's projection can either come _before_, _on_ or _after_ this edge.
+    /// Note that this method may return inaccurate results due to rounding issues.
+    ///
+    /// # Example
+    /// ```
+    /// # fn main() -> Result<(), spade::InsertionError> {
+    /// use spade::{Point2, Triangulation, DelaunayTriangulation};
+    ///
+    /// let from = Point2::new(0.0, 0.0);
+    /// let to = Point2::new(2.0, 0.0);
+    ///
+    /// let mut triangulation: DelaunayTriangulation<_> = Default::default();
+    /// let v0 = triangulation.insert(from)?;
+    /// let v1 = triangulation.insert(to)?;
+    /// // This edge goes from "from" to "to"
+    /// let edge = triangulation.get_edge_from_neighbors(v0, v1).unwrap();
+    ///
+    /// // These vertices are all projected before the edge
+    /// assert!(edge.project_point(Point2::new(-0.2, 0.0)).is_before_edge());
+    /// assert!(edge.project_point(Point2::new(-1002.0, -12.0)).is_before_edge());
+    ///
+    /// // These vertices are all projected onto the edge
+    /// assert!(edge.project_point(Point2::new(1.0, 5.0)).is_on_edge());
+    /// assert!(edge.project_point(Point2::new(0.5, -2.0)).is_on_edge());
+    /// assert!(edge.project_point(Point2::new(1.0, 0.0)).is_on_edge());
+    ///
+    /// // These vertices are all projected after the edge
+    /// assert!(edge.project_point(Point2::new(-0.2, 0.0)).is_after_edge());
+    /// assert!(edge.project_point(Point2::new(-1002.0, -12.0)).is_after_edge());
+    /// # Ok (()) }
+    /// ```
     pub fn project_point(
         &self,
         query_point: Point2<V::Scalar>,
@@ -387,7 +413,7 @@ impl FixedUndirectedEdgeHandle {
     ///
     /// Any of the two directed edges may be returned.
     ///
-    /// See also [FixedDirectedEdgeHandle::as_undirected()]()
+    /// See also [FixedDirectedEdgeHandle::as_undirected]
     #[inline]
     pub fn as_directed(&self) -> FixedDirectedEdgeHandle {
         FixedDirectedEdgeHandle::new_normalized(self.index())
@@ -453,7 +479,7 @@ impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, UE, F> {
 
     /// Returns a reference to the data associated with this directed edge.
     ///
-    /// Use [Triangulation::undirected_edge_data_mut(handle)](../trait.Triangulation.html#method#undirected_edge_data_mut)
+    /// Use [Triangulation::undirected_edge_data_mut](crate::Triangulation::undirected_edge_data_mut)
     /// to modify the edge data.
     pub fn data(&self) -> &UE {
         self.dcel.undirected_edge_data(self.handle)

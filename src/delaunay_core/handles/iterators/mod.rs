@@ -18,7 +18,7 @@ macro_rules! type_handle_doc {
             "This iterator is created by [Triangulation::",
             $item_type,
             "()]",
-            "(../trait.Triangulation.html#method.",
+            "(crate::Triangulation::",
             $item_type,
             ")."
         )
@@ -58,7 +58,7 @@ pub type DirectedVoronoiEdgeIterator<'a, V, DE, UE, F> =
 pub type UndirectedVoronoiEdgeIterator<'a, V, DE, UE, F> =
     DynamicHandleIterator<'a, V, DE, UE, F, UndirectedVoronoiEdgeTag, InnerTag>;
 
-#[doc = type_handle_doc!("faces", "faces")]
+#[doc = type_handle_doc!("faces", "all_faces")]
 pub type FaceIterator<'a, V, DE, UE, F> =
     DynamicHandleIterator<'a, V, DE, UE, F, FaceTag, PossiblyOuterTag>;
 
@@ -66,7 +66,7 @@ pub type FaceIterator<'a, V, DE, UE, F> =
 pub type InnerFaceIterator<'a, V, DE, UE, F> =
     DynamicHandleIterator<'a, V, DE, UE, F, FaceTag, InnerTag>;
 
-#[doc = type_handle_doc!("fixed faces", "fixed_faces")]
+#[doc = type_handle_doc!("fixed faces", "fixed_all_faces")]
 pub type FixedFaceIterator = FixedHandleIterator<FaceTag, PossiblyOuterTag>;
 
 #[doc = type_handle_doc!("fixed inner faces", "fixed_inner_faces")]
