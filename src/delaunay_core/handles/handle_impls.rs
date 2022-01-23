@@ -343,10 +343,12 @@ where
 
     /// Indicates the position of a point being projected onto this edge.
     ///
-    /// A point's projection can either come _before_, _on_ or _after_ this edge.
+    /// A point's projection can either come _before_, _on_ or _behind_ this edge.
     /// Note that this method may return inaccurate results due to rounding issues.
     ///
     #[doc = include_str!("../../../images/project_point.svg")]
+    ///
+    /// *An image displaying differently colored areas which would result in different point projections*
     ///
     /// # Example
     /// ```
@@ -371,9 +373,9 @@ where
     /// assert!(edge.project_point(Point2::new(0.5, -2.0)).is_on_edge());
     /// assert!(edge.project_point(Point2::new(1.0, 0.0)).is_on_edge());
     ///
-    /// // These vertices are all projected after the edge
-    /// assert!(edge.project_point(Point2::new(-0.2, 0.0)).is_after_edge());
-    /// assert!(edge.project_point(Point2::new(-1002.0, -12.0)).is_after_edge());
+    /// // These vertices are all projected behind the edge
+    /// assert!(edge.project_point(Point2::new(-0.2, 0.0)).is_behind_edge());
+    /// assert!(edge.project_point(Point2::new(-1002.0, -12.0)).is_behind_edge());
     /// # Ok (()) }
     /// ```
     pub fn project_point(

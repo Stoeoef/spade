@@ -239,7 +239,7 @@ where
 
         // `!point_projection.is_after_edge` is used to identify if the new face's angle will be less
         // than 90°.
-        if !point_projection.is_after_edge() && prev.side_query(next_position).is_on_left_side() {
+        if !point_projection.is_behind_edge() && prev.side_query(next_position).is_on_left_side() {
             let new_edge = dcel_operations::create_single_face_between_edge_and_next(
                 result.s_mut(),
                 current_edge,
@@ -268,7 +268,7 @@ where
             super::math::project_point(next_position, next.from().position(), next.to().position());
 
         let next_fix = next.fix();
-        if !point_projection.is_after_edge() && next.side_query(next_position).is_on_left_side() {
+        if !point_projection.is_behind_edge() && next.side_query(next_position).is_on_left_side() {
             let new_edge = dcel_operations::create_single_face_between_edge_and_next(
                 result.s_mut(),
                 current_edge,

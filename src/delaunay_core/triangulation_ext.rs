@@ -577,7 +577,7 @@ pub trait TriangulationExt: Triangulation {
 
             let current_projection = current_edge.project_point(position);
 
-            if current_projection.is_after_edge() {
+            if current_projection.is_behind_edge() {
                 if current_edge.next() == current_edge.rev() {
                     return PositionInTriangulation::OutsideOfConvexHull(current_edge.fix());
                 }

@@ -181,10 +181,10 @@ impl<S: SpadeNum> PointProjection<S> {
         self.factor < S::zero()
     }
 
-    /// Returns `true` if a point's projection is located after an edge.
+    /// Returns `true` if a point's projection is located behind an edge.
     ///
     /// *See [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point) for more information*
-    pub fn is_after_edge(&self) -> bool {
+    pub fn is_behind_edge(&self) -> bool {
         self.factor > self.length_2
     }
 
@@ -192,7 +192,7 @@ impl<S: SpadeNum> PointProjection<S> {
     ///
     /// *See [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point) for more information*
     pub fn is_on_edge(&self) -> bool {
-        !self.is_before_edge() && !self.is_after_edge()
+        !self.is_before_edge() && !self.is_behind_edge()
     }
 
     /// Returns the inverse of this point projection.
