@@ -55,7 +55,7 @@ bulk loading efficiency is not everything. The libraries also differ in which ot
 | custom types for edges, faces and vertices       |                     ✅                   |                  ❌                |                  ❌                |
 | near-neighbors (points very close to each other) | regularly inserted                       | near neighbors get merged together | near neighbors get merged together |
 | supported coordinate values                      | `abs(x) == 0` or 2<sup>-142</sup> < `abs(x)` < 2<sup>201</sup> | any `f64` value (can overflow)     | any `f64` value (can overflow)     |
-| maximum number of vertices                       | roughly 2<sup>32</sup> / 6 <br> ≈ **716 million** | 2<sup>32</sup> / 6 or <br> 2<sup>64</sup> / 6 with the `large-indexes` feature | 2<sup>64</sup> / 6                           |
+| maximum number of vertices                       | roughly 2<sup>32</sup> / 6 <br> ≈ **716 million** | 2<sup>64</sup> / 6 | 2<sup>32</sup> / 6 or <br> 2<sup>64</sup> / 6 with the `large-indexes` feature |
 
 # Disclaimer
 
