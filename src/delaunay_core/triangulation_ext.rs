@@ -430,14 +430,14 @@ pub trait TriangulationExt: Triangulation {
             return self.vertex(start);
         }
 
-        let mut current_minimal_distance = position.distance2(start_position);
+        let mut current_minimal_distance = position.distance_2(start_position);
         let mut current_minimum_vertex = self.vertex(start);
 
         while let Some((next_minimum_index, next_minimal_distance)) = current_minimum_vertex
             .out_edges()
             .filter_map(|out_edge| {
                 let next_candidate = out_edge.to();
-                let new_distance = next_candidate.position().distance2(position);
+                let new_distance = next_candidate.position().distance_2(position);
                 if new_distance < current_minimal_distance {
                     Some((next_candidate, new_distance))
                 } else {

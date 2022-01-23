@@ -129,8 +129,8 @@ where
 
                 loop {
                     if line_from_query.is_on_line() {
-                        let dist_from = edge.from().position().point_distance_2(line_from);
-                        let dist_to = edge.to().position().point_distance_2(line_from);
+                        let dist_from = edge.from().position().distance_2(line_from);
+                        let dist_to = edge.to().position().distance_2(line_from);
                         let vertex = if dist_to < dist_from {
                             edge.to()
                         } else {

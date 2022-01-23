@@ -122,7 +122,7 @@ use serde_crate::{Deserialize, Serialize};
 ///  
 ///  for edge in triangulation.fixed_undirected_edges() {
 ///    let positions = triangulation.undirected_edge(edge).positions();
-///    let length = positions[0].point_distance_2(positions[1]).sqrt();
+///    let length = positions[0].distance_2(positions[1]).sqrt();
 ///    // Write length into the edge data
 ///    triangulation.undirected_edge_data_mut(edge).length = length;
 ///  }
@@ -371,8 +371,8 @@ mod test {
         for p in sample_points {
             let nn_delaunay = d.nearest_neighbor(p);
             let nn_linear_search = points.iter().min_by(|l, r| {
-                let d1 = l.distance2(p);
-                let d2 = r.distance2(p);
+                let d1 = l.distance_2(p);
+                let d2 = r.distance_2(p);
                 d1.partial_cmp(&d2).unwrap()
             });
             assert_eq!(nn_delaunay.map(|p| p.position()), nn_linear_search.cloned());

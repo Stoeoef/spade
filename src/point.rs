@@ -46,7 +46,7 @@ impl<S> Point2<S> {
 impl<S: SpadeNum> Point2<S> {
     /// Returns the squared distance of this point and another point.
     #[inline]
-    pub fn point_distance_2(&self, other: Point2<S>) -> S {
+    pub fn distance_2(&self, other: Self) -> S {
         self.sub(other).length2()
     }
 
@@ -66,12 +66,6 @@ impl<S: SpadeNum> Point2<S> {
             x: self.x + other.x,
             y: self.y + other.y,
         }
-    }
-
-    pub(crate) fn distance2(&self, other: Self) -> S {
-        let delta_x = self.x - other.x;
-        let delta_y = self.y - other.y;
-        delta_x * delta_x + delta_y * delta_y
     }
 
     pub(crate) fn length2(&self) -> S {

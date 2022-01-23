@@ -98,7 +98,7 @@ where
 
     // Sort by distance, smallest values last. This allows to pop values depending on their distance.
     elements.sort_unstable_by_key(|e| {
-        Reverse(FloatOrd(initial_center.distance2(e.position().to_f64())))
+        Reverse(FloatOrd(initial_center.distance_2(e.position().to_f64())))
     });
 
     while let Some(next) = elements.pop() {

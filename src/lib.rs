@@ -128,11 +128,11 @@ mod test_utilities;
 ///     target_point: Point2<f64>,
 /// ) -> VertexHandle<Point2<f64>> {
 ///     let mut current = triangulation.vertices().next().unwrap();
-///     let mut best_distance = current.position().point_distance_2(target_point);
+///     let mut best_distance = current.position().distance_2(target_point);
 ///     loop {
 ///         let mut closer = None;
 ///         for neighbor in current.out_edges().map(|edge| edge.to()) {
-///             let neighbor_distance = neighbor.position().point_distance_2(target_point);
+///             let neighbor_distance = neighbor.position().distance_2(target_point);
 ///             if neighbor_distance < best_distance {
 ///                 best_distance = neighbor_distance;
 ///                 closer = Some(neighbor);
