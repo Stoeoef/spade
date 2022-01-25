@@ -583,7 +583,7 @@ where
         let [v0, v1, v2] = self.positions();
         let b = v1.sub(v0);
         let c = v2.sub(v0);
-        (b.x * c.y - b.y * c.x).abs()
+        (b.x * c.y - b.y * c.x).abs() * 0.5.into()
     }
 }
 
