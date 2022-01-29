@@ -23,114 +23,122 @@ use serde_crate::{Deserialize, Serialize};
 /// Most methods on this type require the [Triangulation] trait. Refer to its documentation
 /// for more details on how to use `DelaunayTriangulation`.
 ///
-///  # Basic Usage
-///  Vertices need to implement the [HasPosition] trait. Spade bundles
-///  the [Point2](crate::Point2) struct for basic use cases.
+/// # Basic Usage
+/// Vertices need to implement the [HasPosition] trait. Spade bundles
+/// the [Point2](crate::Point2) struct for basic use cases.
 ///
 /// ## Basic example
 ///  ```
-///  use spade::{DelaunayTriangulation, Triangulation, Point2};
+/// use spade::{DelaunayTriangulation, Triangulation, Point2, InsertionError};
 ///
-///  let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
+/// fn main() -> Result<(), InsertionError> {
 ///
-///  // Insert three vertices that span one triangle (face)
-///  triangulation.insert(Point2::new(0.0, 1.0));
-///  triangulation.insert(Point2::new(1.0, 1.0));
-///  triangulation.insert(Point2::new(0.5, -1.0));
+///     let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
 ///
-///  assert_eq!(triangulation.num_vertices(), 3);
-///  assert_eq!(triangulation.num_inner_faces(), 1);
-///  assert_eq!(triangulation.num_undirected_edges(), 3);
-///  ```
-///  ## Right handed and left handed coordinate systems
-///  For simplicity, all method names and their documentation assume that the underlying coordinate system
-///  is right handed (e.g. x axis points to the right, y axis points upwards). If a left handed system
-///  (lhs) is used, any term related to orientation needs to be reversed:
+///     // Insert three vertices that span one triangle (face)
+///     triangulation.insert(Point2::new(0.0, 1.0))?;
+///     triangulation.insert(Point2::new(1.0, 1.0))?;
+///     triangulation.insert(Point2::new(0.5, -1.0))?;
+///
+///     assert_eq!(triangulation.num_vertices(), 3);
+///     assert_eq!(triangulation.num_inner_faces(), 1);
+///     assert_eq!(triangulation.num_undirected_edges(), 3);
+///     Ok(())
+/// }
+/// ```
+/// ## Right handed and left handed coordinate systems
+/// For simplicity, all method names and their documentation assume that the underlying coordinate system
+/// is right handed (e.g. x axis points to the right, y axis points upwards). If a left handed system
+/// (lhs) is used, any term related to orientation needs to be reversed:
 ///  - "left" becomes "right" (example: the face of a directed edge is on the right side for a lhs
 ///  - "counter clock wise" becomes "clockwise" (example: the vertices of a face are returned in clock wise order for a lhs)
 ///  
-///  <table>
-///  <tr><th>left handed system</th><th>right handed system</th></tr>
-///  <tr><td>
+/// <table>
+/// <tr><th>left handed system</th><th>right handed system</th></tr>
+/// <tr><td>
 #[doc = concat!(include_str!("../images/lhs.svg"), "</td><td>",include_str!("../images/rhs.svg"), " </td></tr></table>")]
-///  # Extracting geometry information
-///  Spade uses [handles](crate::handles) to extract the triangulation's geometry.
-///  Handles are usually retrieved by inserting a vertex or by iterating.
+/// # Extracting geometry information
+/// Spade uses [handles](crate::handles) to extract the triangulation's geometry.
+/// Handles are usually retrieved by inserting a vertex or by iterating.
 ///  
-///  ## Example
-///  ```
-///  use crate::spade::{DelaunayTriangulation, Triangulation, Point2};
-///  
-///  let mut triangulation: DelaunayTriangulation<Point2<f64>> = DelaunayTriangulation::new();
-///  
-///  triangulation.insert(Point2::new(0.0, 1.0));
-///  triangulation.insert(Point2::new(1.0, 1.0));
-///  triangulation.insert(Point2::new(0.5, -1.0));
-///  
-///  for face in triangulation.inner_faces() {
-///    // face is a FaceHandle
-///    // edges is an array containing 3 directed edge handles
-///    let edges = face.adjacent_edges();
-///    for edge in &edges {
-///      let from = edge.from();
-///  let to = edge.to();
-///      // from and to are vertex handles
-///      println!("found an edge: {:?} -> {:?}", from, to);
-///    }
-///  
-///    // vertices is an array containing 3 vertex handles
-///    let vertices = face.vertices();
-///    for vertex in &vertices {
-///      println!("Found vertex with position {:?}", vertex.position());
-///    }
-///  }
-///  ```
+/// ## Example
+/// ```
+///  fn main() -> Result<(), spade::InsertionError> {
+/// use crate::spade::{DelaunayTriangulation, Triangulation, Point2};
 ///
-///  # Type parameters
-///  The triangulation's vertices, edges and faces can contain custom data.
-///  By default, the edge and face types are set to `()`. The vertex type must
-///  be specified.
-///  
-///   * `V: HasPosition` The vertex type
-///   * `DE: Default` The directed edge type.
-///   * `UE: Default` The undirected edge type.
-///   * `F: Default` The face type.
-///  
-///  Only vertices can be inserted directly. Faces and edges are create via `Default::default()`.
-///  Usually, edge and face data will need to be modified in a separate pass.
+/// let mut triangulation: DelaunayTriangulation<Point2<f64>> = DelaunayTriangulation::new();
+///
+/// triangulation.insert(Point2::new(0.0, 1.0))?;
+/// triangulation.insert(Point2::new(1.0, 1.0))?;
+/// triangulation.insert(Point2::new(0.5, -1.0))?;
+///
+/// for face in triangulation.inner_faces() {
+///   // face is a FaceHandle
+///   // edges is an array containing 3 directed edge handles
+///   let edges = face.adjacent_edges();
+///   for edge in &edges {
+///     let from = edge.from();
+/// let to = edge.to();
+///     // from and to are vertex handles
+///     println!("found an edge: {:?} -> {:?}", from, to);
+///   }
+///
+///   // vertices is an array containing 3 vertex handles
+///   let vertices = face.vertices();
+///   for vertex in &vertices {
+///     println!("Found vertex with position {:?}", vertex.position());
+///   }
+/// }
+/// # Ok(()) }
+/// ```
+///
+/// # Type parameters
+/// The triangulation's vertices, edges and faces can contain custom data.
+/// By default, the edge and face types are set to `()`. The vertex type must
+/// be specified.
+///
+///  * `V: HasPosition` The vertex type
+///  * `DE: Default` The directed edge type.
+///  * `UE: Default` The undirected edge type.
+///  * `F: Default` The face type.
+///
+/// Only vertices can be inserted directly. Faces and edges are create via `Default::default()`.
+/// Usually, edge and face data will need to be modified in a separate pass.
 ///
 /// Setting any custom data works by calling [vertex_data_mut](Triangulation::vertex_data_mut),
 /// [directed_edge_data_mut](Triangulation::directed_edge_data_mut),
 /// [undirected_edge_data_mut](Triangulation::undirected_edge_data_mut) and
 /// [face_data_mut](Triangulation::face_data_mut).
 ///  
-///  ## Example
-///  ```
-///  use crate::spade::{DelaunayTriangulation, Triangulation, Point2};
-///  
-///  // A custom undirected edge type used to cache the length of an edge
-///  #[derive(Default)]
-///  struct EdgeWithLength { length: f64 }
-///  
-///  // Creates a new triangulation with a custom undirected edge type
-///  let mut triangulation: DelaunayTriangulation<Point2<f64>, (), EdgeWithLength>
-///                           = DelaunayTriangulation::new();
-///  
-///  triangulation.insert(Point2::new(0.0, 1.0));
-///  triangulation.insert(Point2::new(1.0, 1.0));
-///  triangulation.insert(Point2::new(0.5, -1.0));
-///  
-///  for edge in triangulation.fixed_undirected_edges() {
-///    let positions = triangulation.undirected_edge(edge).positions();
-///    let length = positions[0].distance_2(positions[1]).sqrt();
-///    // Write length into the edge data
-///    triangulation.undirected_edge_data_mut(edge).length = length;
-///  }
-///  
-///  for edge in triangulation.undirected_edges() {
-///     let length = edge.data().length;
-///     assert!(length > 0.0);
-///  }
+/// ## Example
+/// ```
+/// fn main() -> Result<(), spade::InsertionError> {
+/// use crate::spade::{DelaunayTriangulation, Triangulation, Point2};
+///
+/// // A custom undirected edge type used to cache the length of an edge
+/// #[derive(Default)]
+/// struct EdgeWithLength { length: f64 }
+///
+/// // Creates a new triangulation with a custom undirected edge type
+/// let mut triangulation: DelaunayTriangulation<Point2<f64>, (), EdgeWithLength>
+///                          = DelaunayTriangulation::new();
+///
+/// triangulation.insert(Point2::new(0.0, 1.0))?;
+/// triangulation.insert(Point2::new(1.0, 1.0))?;
+/// triangulation.insert(Point2::new(0.5, -1.0))?;
+///
+/// for edge in triangulation.fixed_undirected_edges() {
+///   let positions = triangulation.undirected_edge(edge).positions();
+///   let length = positions[0].distance_2(positions[1]).sqrt();
+///   // Write length into the edge data
+///   triangulation.undirected_edge_data_mut(edge).length = length;
+/// }
+///
+/// for edge in triangulation.undirected_edges() {
+///    let length = edge.data().length;
+///    assert!(length > 0.0);
+/// }
+/// # Ok(()) }
 /// ```
 ///
 /// # Outer face
@@ -234,6 +242,7 @@ use serde_crate::{Deserialize, Serialize};
 /// ## Complexity classes
 ///
 /// This table display the average and amortized cost for inserting a vertex into a triangulation with `n` vertices.
+///
 /// |                             | Uniformly distributed vertices | Insertion of vertices with local proximity |
 /// |-----------------------------|--------------------------------|--------------------------------------------|
 /// | LastUsedVertexHintGenerator |        O(sqrt(n)) (worst case) |                  O(1) (best case), fastest |
