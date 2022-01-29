@@ -3,12 +3,17 @@ mod bulk_load;
 #[cfg(test)]
 mod bulk_load_fuzz_tests;
 
+#[cfg(test)]
+mod refinement_fuzz_tests;
+
 mod dcel;
 pub mod dcel_operations;
 mod handles;
 mod hint_generator;
 mod line_side_info;
 mod triangulation_ext;
+
+pub mod refinement;
 
 pub mod math;
 
@@ -21,6 +26,9 @@ pub use hint_generator::{
     HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
     LastUsedVertexHintGenerator,
 };
+
+pub use refinement::{AngleLimit, RefinementParameters};
+
 pub use line_side_info::LineSideInfo;
 
 pub use handles::iterators;

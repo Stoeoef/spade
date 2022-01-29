@@ -531,7 +531,7 @@ where
     }
 
     #[cfg(test)]
-    fn cdt_sanity_check(&self) {
+    pub fn cdt_sanity_check(&self) {
         let num_undirected_edges = self
             .s
             .undirected_edges()
@@ -988,6 +988,7 @@ mod test {
 
         cdt.add_constraint(from, to);
         cdt.cdt_sanity_check();
+
         Ok(())
     }
 
