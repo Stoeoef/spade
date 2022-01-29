@@ -531,11 +531,14 @@ where
 }
 
 /// Splits `edge_handle` only one side. Used to split edges on the convex hull.
+///
+/// Returns the newly inserted vertex and the two resulting parts of the split edge.
+/// The returned edges will point away from the inserted vertex
 pub fn split_half_edge<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
     new_vertex_data: V,
-) -> FixedVertexHandle
+) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2])
 where
     DE: Default,
     UE: Default,
@@ -658,16 +661,19 @@ where
     dcel.vertices[to.index()].out_edge = Some(e2.rev());
     dcel.faces[f1.index()].adjacent_edge = Some(edge_handle);
 
-    nv
+    (nv, [e2, edge_handle])
 }
 
 /// Splits `edge_handle`, introducing 6 new half edges, two new faces and one
 /// new vertex.
+///
+/// Returns the newly created vertex handle and the two resulting parts of the split edge.
+/// The returned edges will point in the same direction as the input edge
 pub fn split_edge<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
     new_vertex: V,
-) -> FixedVertexHandle
+) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2])
 where
     DE: Default,
     UE: Default,
@@ -708,7 +714,8 @@ where
     // All edges are oriented counter clock wise
     // f0 .. f3 will denote the faces adjacent to e0 .. e3
     // t0 .. t3 will denote the twins of e0 .. e3
-
+    //
+    // Splitting edge e0 would return [e0, e2.rev()]
     let edge = dcel.half_edge(edge_handle);
     let twin = dcel.half_edge(edge_handle.rev());
 
@@ -832,7 +839,7 @@ where
     dcel.faces.push(face2);
     dcel.faces.push(face3);
 
-    v0.adjust_inner_outer()
+    (v0.adjust_inner_outer(), [e0, e2.rev()])
 }
 
 pub fn insert_first_vertex<V, DE, UE, F>(
@@ -1463,7 +1470,7 @@ mod test {
             .unwrap()
             .fix();
 
-        let vertex_to_remove = super::split_edge(&mut dcel, e_split, 3);
+        let (vertex_to_remove, _) = super::split_edge(&mut dcel, e_split, 3);
         let border_loop = get_border_loop(dcel.vertex(vertex_to_remove));
 
         let mut result =

@@ -72,21 +72,16 @@ pub trait TriangulationExt: Triangulation {
                         }
                         OnEdge(edge) => {
                             if self.is_defined_legal(edge.as_undirected()) {
+                                let (new_handle, split_parts) = self.insert_on_edge(edge, t);
+
                                 // If the edge is defined as legal the resulting edges must
                                 // be redefined as legal
-                                let handle = self.directed_edge(edge);
-                                let from = handle.from().fix();
-                                let to = handle.to().fix();
-
-                                let new_handle = self.insert_on_edge(edge, t);
-                                let e1 = self.get_edge_from_neighbors(from, new_handle).unwrap();
-                                let e2 = self.get_edge_from_neighbors(new_handle, to).unwrap();
-                                let handles = [e1.fix().as_undirected(), e2.fix().as_undirected()];
-
-                                self.handle_legal_edge_split(handles);
+                                self.handle_legal_edge_split(
+                                    split_parts.map(|edge| edge.as_undirected()),
+                                );
                                 InsertionResult::NewlyInserted(new_handle)
                             } else {
-                                InsertionResult::NewlyInserted(self.insert_on_edge(edge, t))
+                                InsertionResult::NewlyInserted(self.insert_on_edge(edge, t).0)
                             }
                         }
                         OnVertex(vertex) => {
@@ -316,21 +311,21 @@ pub trait TriangulationExt: Triangulation {
         &mut self,
         edge: FixedDirectedEdgeHandle,
         new_vertex: Self::Vertex,
-    ) -> FixedVertexHandle {
+    ) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2]) {
         let edge_handle = self.directed_edge(edge);
-        let new_vertex = if edge_handle.is_outer_edge() {
+        let result = if edge_handle.is_outer_edge() {
             dcel_operations::split_half_edge(self.s_mut(), edge.rev(), new_vertex)
         } else if edge_handle.rev().is_outer_edge() {
             dcel_operations::split_half_edge(self.s_mut(), edge, new_vertex)
         } else {
             dcel_operations::split_edge(self.s_mut(), edge, new_vertex)
         };
-        self.legalize_vertex(new_vertex);
-        new_vertex
+        self.legalize_vertex(result.0);
+        result
     }
 
     fn legalize_vertex(&mut self, new_handle: FixedVertexHandle) {
-        let edges: SmallVec<[_; 3]> = self
+        let edges: SmallVec<[_; 4]> = self
             .vertex(new_handle)
             .out_edges()
             .filter(|e| !e.is_outer_edge())

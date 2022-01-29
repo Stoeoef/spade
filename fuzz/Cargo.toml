@@ -30,3 +30,10 @@ name = "bulk_load_int_fuzz"
 path = "fuzz_targets/bulk_load_int_fuzz.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "delaunay_refinement_fuzz"
+path = "fuzz_targets/delaunay_refinement_fuzz.rs"
+test = false
+doc = false
+

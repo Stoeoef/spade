@@ -55,6 +55,7 @@ fn main() -> Result {
     scenario_list::dual_edge_example().save_to_svg("dual_edges", "images/dual_edges.svg")?;
     scenario_list::project_point_scenario()
         .save_to_svg("project_point", "images/project_point.svg")?;
+    scenario_list::refinement_scenario().save_to_svg("refinement", "images/refinement.svg")?;
     Ok(())
 }
 

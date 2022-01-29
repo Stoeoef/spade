@@ -14,7 +14,7 @@ use spade::{
 use crate::{
     convert_point,
     scenario::{
-        convert_triangulation, ConversionOptions, DirectedEdgeType, EdgeMode, FaceType,
+        convert_triangulation, Cdt, ConversionOptions, DirectedEdgeType, EdgeMode, FaceType,
         Triangulation, UndirectedEdgeType, VertexType,
     },
 };
@@ -510,12 +510,7 @@ pub fn delaunay_directed_edge_vertex_and_face_scenario() -> Sketch {
 
 pub fn cdt_scenario() -> Sketch {
     let create_cdt = |offset| {
-        let mut cdt = ConstrainedDelaunayTriangulation::<
-            VertexType,
-            DirectedEdgeType,
-            UndirectedEdgeType,
-            FaceType,
-        >::new();
+        let mut cdt = Cdt::new();
         let v = |x, y| VertexType::new(x + offset, y);
 
         cdt.insert(v(-50.0, -50.0)).unwrap();
@@ -976,4 +971,91 @@ pub fn shape_iterator_scenario(use_circle_metric: bool, iterate_vertices: bool) 
 
     result.set_width(500);
     result
+}
+
+pub fn refinement_scenario() -> Sketch {
+    let mut cdt = Cdt::new();
+    let v0 = VertexType::new(0.0, 0.0);
+    let v1 = VertexType::new(0.0, 100.0);
+    let v2 = VertexType::new(100.0, 100.0);
+    let v3 = VertexType::new(100.0, 0.0);
+
+    cdt.insert(v0).unwrap();
+    cdt.insert(v1).unwrap();
+    cdt.insert(v2).unwrap();
+    cdt.insert(v3).unwrap();
+
+    let inner_vertices = [
+        // "A" Shape
+        VertexType::new(10.0, 75.0),
+        VertexType::new(20.0, 75.0),
+        VertexType::new(25.0, 60.0),
+        VertexType::new(35.0, 60.0),
+        VertexType::new(40.0, 75.0),
+        VertexType::new(50.0, 75.0),
+        VertexType::new(30.0, 20.0),
+        VertexType::new(10.0, 75.0),
+    ];
+
+    for window in inner_vertices.windows(2) {
+        cdt.add_constraint_edge(window[0], window[1]).unwrap();
+    }
+
+    let inner_vertices = [
+        // Inner "A"
+        VertexType::new(25.0, 55.0),
+        VertexType::new(35.0, 55.0),
+        VertexType::new(30.0, 40.0),
+        VertexType::new(25.0, 55.0),
+    ];
+
+    for window in inner_vertices.windows(2) {
+        cdt.add_constraint_edge(window[0], window[1]).unwrap();
+    }
+
+    let inner_vertices = [
+        // "C" Shape bottom half
+        VertexType::new(55.0, 55.0),
+        VertexType::new(55.0, 65.0),
+        VertexType::new(60.0, 75.0),
+        VertexType::new(70.0, 85.0),
+        VertexType::new(80.0, 90.0),
+        VertexType::new(85.0, 90.0),
+        VertexType::new(85.0, 80.0),
+        VertexType::new(80.0, 80.0),
+        VertexType::new(70.0, 75.0),
+        VertexType::new(65.0, 65.0),
+        VertexType::new(65.0, 55.0),
+        // "C" Shape upper half
+        VertexType::new(70.0, 45.0),
+        VertexType::new(80.0, 40.0),
+        VertexType::new(85.0, 40.0),
+        VertexType::new(85.0, 30.0),
+        VertexType::new(80.0, 30.0),
+        VertexType::new(70.0, 35.0),
+        VertexType::new(60.0, 45.0),
+        VertexType::new(55.0, 55.0),
+    ];
+
+    for window in inner_vertices.windows(2) {
+        cdt.add_constraint_edge(window[0], window[1]).unwrap();
+    }
+
+    let parameters = RefinementParameters::default();
+
+    cdt.refine(parameters);
+
+    for vertex in cdt.fixed_vertices() {
+        cdt.vertex_data_mut(vertex).radius = 0.4;
+    }
+
+    for edge in cdt.fixed_undirected_edges() {
+        if cdt.is_constraint_edge(edge) {
+            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_RED;
+        } else {
+            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_GRAY;
+        }
+    }
+
+    convert_triangulation(&cdt, &ConversionOptions::default())
 }

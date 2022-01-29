@@ -443,6 +443,11 @@ impl FixedUndirectedEdgeHandle {
         FixedDirectedEdgeHandle::new_normalized(self.index())
     }
 
+    /// Returns the two directed edges of this undirected edge in any order.
+    pub fn directed_edges(&self) -> [FixedDirectedEdgeHandle; 2] {
+        [self.as_directed(), self.as_directed().rev()]
+    }
+
     #[inline]
     pub(in super::super) fn normalized(&self) -> FixedDirectedEdgeHandle {
         self.as_directed()
@@ -666,6 +671,18 @@ where
         let lambda2 = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / det;
         let lambda3 = V::Scalar::one() - lambda1 - lambda2;
         [lambda1, lambda2, lambda3]
+    }
+
+    pub fn shortest_edge(&self) -> (DirectedEdgeHandle<'a, V, DE, UE, F>, V::Scalar) {
+        let [e0, e1, e2] = self.adjacent_edges();
+        let [l0, l1, l2] = [e0.length_2(), e1.length_2(), e2.length_2()];
+        if l0 < l1 && l1 < l2 {
+            (e0, l0)
+        } else if l1 < l2 {
+            (e1, l1)
+        } else {
+            (e2, l2)
+        }
     }
 }
 

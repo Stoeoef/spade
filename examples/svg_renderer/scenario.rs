@@ -1,11 +1,18 @@
 use super::quicksketch::{ArrowType, Point, Sketch, SketchColor, SketchElement, SketchFill};
-use spade::{DelaunayTriangulation, HasPosition, Point2};
+use spade::{ConstrainedDelaunayTriangulation, DelaunayTriangulation, HasPosition, Point2};
 
 use crate::convert_point;
 
+#[derive(Copy, Clone)]
 pub struct VertexType {
     position: Point,
     pub radius: f64,
+}
+
+impl From<Point2<f64>> for VertexType {
+    fn from(point: Point2<f64>) -> Self {
+        Self::new(point.x, point.y)
+    }
 }
 
 impl VertexType {
@@ -63,6 +70,9 @@ impl Default for FaceType {
 
 pub type Triangulation =
     DelaunayTriangulation<VertexType, DirectedEdgeType, UndirectedEdgeType, FaceType>;
+
+pub type Cdt =
+    ConstrainedDelaunayTriangulation<VertexType, DirectedEdgeType, UndirectedEdgeType, FaceType>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum EdgeMode {
