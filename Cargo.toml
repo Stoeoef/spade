@@ -3,6 +3,10 @@ name = "spade"
 version = "2.0.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 edition = "2021"
+documentation = "https://docs.rs/spade"
+description = "Delaunay triangulations for the rust ecosystem"
+repository = "https://github.com/Stoeoef/spade"
+license = "MIT OR Apache-2.0"
 autobenches = false
 
 [lib]
