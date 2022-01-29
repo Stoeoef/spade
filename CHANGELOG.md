@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  ## General API refinement
  Many features of Spade 1 showed too little benefit to legitimize keeping them. Spade 2.0 attempts to slim down the API surface to a few important functions and types and leaves out the more complicated bits to make it more simple to use.
 
-### Removed features (may be re-introduced in an upcoming release)
+### Removed features (planned to be re-introduced in an upcoming release)
  - Removed interpolation functions
 
 ### Removed features (not planned to re-introduced)
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - Removed `PointN`. Using Spade now requires to convert any position into `Spade::Point2`.
  - Removed r-tree data structure (it has been moved into the `rstar` crate)
  - Removed geometric primitives (`SimpleCircle`, `SimpleEdge`, `SimpleTriangle`)
- - Removed support for custom calculation kernels. `spade` now uses the precise calculation kernel by default (previously called `FloatKernel`).
+ - Removed support for custom calculation kernels. Spade now uses the precise calculation kernel by default (previously called `FloatKernel`).
  - Removed support for Delaunay triangulations backed by r-trees. Use the newly introduced `HierarchyHintGenerator` instead.
 
 ### Added features

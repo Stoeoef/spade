@@ -1,6 +1,6 @@
 [package]
 name = "spade"
-version = "2.0.0-beta.0"
+version = "2.0.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 edition = "2021"
 autobenches = false
@@ -9,15 +9,15 @@ autobenches = false
 bench = false
 
 [dependencies]
-smallvec = "1.4"
-robust = "0.2.3"
+smallvec = "1"
+robust = "0.2"
 num-traits = "0.2"
-optional = "0.5.0"
+optional = "0.5"
 
 [dependencies.serde_crate]
 package = "serde"
 optional = true
-version = "1.0"
+version = "1"
 features = ["derive"]
 
 [features]
