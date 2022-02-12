@@ -12,45 +12,81 @@ use super::{
     TriangulationExt, UndirectedEdgeHandle,
 };
 
+/// Specifies the minimum allowed angle that should be kept after a refinement procedure.
+///
+/// The refinement algorithm will attempt to keep the *minimum angle in the triangulation* greater than
+/// an angle limit specified with this struct.
+///
+/// *See method [refine](crate::ConstrainedDelaunayTriangulation::refine) *
 #[derive(Copy, Clone, PartialEq, PartialOrd)]
 pub struct AngleLimit {
     radius_to_shortest_edge_limit: f64,
 }
 
 impl AngleLimit {
+    /// Create a new angle limit from an angle given in degrees.
+    ///
+    /// Note that angles larger than 30 degrees will quickly lead to overrefinement as the algorithm
+    /// cannot necessarily guarantee termination (other than limiting the number of additional inserted vertices).
+    ///
+    /// Defaults to 30°. An angle of 0 degrees will disable refining due to small angles.
+    ///
+    /// *See also [from_rad](crate::AngleLimit::from_rad)*
     pub fn from_deg(degree: f64) -> Self {
         Self::from_rad(degree.to_radians())
     }
 
+    /// Create a new angle limit from an angle given in radians.
+    ///
+    /// Note angles larger than 30 degrees (≈0.52rad = PI / 6) will quickly lead to poor refinement quality.
+    /// Passing in an angle of 0rad will disable refining due to small angles.
+    ///
+    /// *See also [from_deg](crate::AngleLimit::from_deg)*
     pub fn from_rad(rad: f64) -> Self {
-        if rad <= std::f64::consts::PI / 3.0 || rad >= std::f64::consts::PI / 2. {
-            panic!(
-                "Invalid angle - angle must be in [PI / 3 .. PI / 2] (exclusive, actual: {rad})"
-            );
-        }
         let sin = rad.sin();
-        assert_ne!(sin, 0.0);
-
-        Self::new_from_radius_to_shortest_edge_ratio(0.5 / sin)
+        if sin == 0.0 {
+            Self::from_radius_to_shortest_edge_ratio(f64::INFINITY)
+        } else {
+            Self::from_radius_to_shortest_edge_ratio(0.5 / sin)
+        }
     }
 
+    /// Returns the radius to shortest edge limit corresponding to this angle limit.
+    ///
+    /// See [from_radius_to_shortest_edge_ratio](crate::AngleLimit::from_radius_to_shortest_edge_ratio) for more
+    /// information.
     pub fn radius_to_shortest_edge_limit(&self) -> f64 {
         self.radius_to_shortest_edge_limit
     }
 
-    /// TODO
+    /// Creates a new angle limit by specifying the circumradius to shortest edge ratio that must be kept.
     ///
-    /// | Ratio              | Degree | Rad  |
-    /// | 0.5773502691899182 | 60.00° | 1.05 |
-    /// | 0.6                | 56.44° | 0.99 |
-    /// | 0.7                | 45.58° | 0.80 |
-    /// | 0.8                | 38.68° | 0.68 |
-    /// | 0.9                | 33.75° | 0.59 |
-    /// | 1                  | 30.00° | 0.52 |
-    /// | 1.1                | 27.04° | 0.47 |
-    /// | 1.2                | 24.62° | 0.43 |
-    /// | 1.3                | 22.62° | 0.39 |
-    pub fn new_from_radius_to_shortest_edge_ratio(ratio: f64) -> Self {
+    /// For each face, this ratio is calculated by dividing the circumradius of the face by the length of its shortest
+    /// edge.
+    /// This ratio is related directly to the minimum allowed angle by the formula
+    /// `ratio = 1 / (2 sin * (min_angle))`.
+    /// The *larger* the allowed min angle is, the *smaller* will the ratio become.
+    ///
+    /// Larger ratio values will lead to a less refined triangulation. Passing in `f64::INFINITY` will disable
+    /// refining due to small angles.
+    ///
+    /// Defaults to 1.0 (30 degrees).
+    ///
+    /// # Example values
+    ///
+    /// | ratio | Bound on smallest angle (deg) | Bound on smallest angle (rad) |
+    /// |-------|-------------------------------|-------------------------------|
+    /// | 0.58  |                        60.00° |                          1.05 |
+    /// | 0.60  |                        56.44° |                          0.99 |
+    /// | 0.70  |                        45.58° |                          0.80 |
+    /// | 0.80  |                        38.68° |                          0.68 |
+    /// | 0.90  |                        33.75° |                          0.59 |
+    /// | 1.00  |                        30.00° |                          0.52 |
+    /// | 1.10  |                        27.04° |                          0.47 |
+    /// | 1.20  |                        24.62° |                          0.43 |
+    /// | 1.30  |                        22.62° |                          0.39 |
+    /// | +INF  |                            0° |                             0 |
+    pub fn from_radius_to_shortest_edge_ratio(ratio: f64) -> Self {
         Self {
             radius_to_shortest_edge_limit: ratio,
         }
@@ -72,7 +108,7 @@ impl std::fmt::Debug for AngleLimit {
 
 impl Default for AngleLimit {
     fn default() -> Self {
-        Self::new_from_radius_to_shortest_edge_ratio(1.0)
+        Self::from_radius_to_shortest_edge_ratio(1.0)
     }
 }
 
@@ -98,7 +134,7 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
     fn default() -> Self {
         Self {
             max_additional_vertices: None,
-            angle_limit: AngleLimit::new_from_radius_to_shortest_edge_ratio(1.0),
+            angle_limit: AngleLimit::from_radius_to_shortest_edge_ratio(1.0),
             min_area: None,
             max_area: None,
             excluded_faces: HashSet::new(),
@@ -574,6 +610,45 @@ mod test {
     pub type Cdt = ConstrainedDelaunayTriangulation<Point2<f64>>;
 
     #[test]
+    fn test_zero_angle_limit_dbg() {
+        let limit = AngleLimit::from_deg(0.0);
+        let debug_string = format!("{:?}", limit);
+        assert_eq!(debug_string, "AngleLimit { angle limit (deg): 0.0 }");
+    }
+
+    #[test]
+    fn test_zero_angle_limit() -> Result<(), InsertionError> {
+        let limit = AngleLimit::from_deg(0.0);
+
+        assert_eq!(limit.radius_to_shortest_edge_limit(), f64::INFINITY);
+
+        let mut vertices = random_points_with_seed(20, SEED);
+
+        // Insert an artificial outer boundary that will prevent the convex hull from being encroached.
+        // This should prevent any refinement.
+        vertices.push(Point2::new(100.0, 100.0));
+        vertices.push(Point2::new(100.0, 0.0));
+        vertices.push(Point2::new(100.0, -100.0));
+        vertices.push(Point2::new(0.0, -100.0));
+        vertices.push(Point2::new(-100.0, -100.0));
+        vertices.push(Point2::new(-100.0, 0.0));
+        vertices.push(Point2::new(-100.0, 100.0));
+        vertices.push(Point2::new(0.0, 100.0));
+
+        let mut cdt = Cdt::bulk_load(vertices)?;
+
+        let initial_num_vertices = cdt.num_vertices();
+        cdt.refine(RefinementParameters::new().with_angle_limit(limit));
+
+        assert_eq!(initial_num_vertices, cdt.num_vertices());
+
+        cdt.refine(RefinementParameters::new());
+        assert!(initial_num_vertices < cdt.num_vertices());
+
+        Ok(())
+    }
+
+    #[test]
     fn test_nearest_power_of_two() {
         use super::nearest_power_of_two;
 
@@ -621,7 +696,7 @@ mod test {
 
         let refinement_parameters = RefinementParameters::new()
             .with_max_additional_vertices(20)
-            .with_angle_limit(AngleLimit::new_from_radius_to_shortest_edge_ratio(0.7));
+            .with_angle_limit(AngleLimit::from_radius_to_shortest_edge_ratio(0.7));
 
         cdt.refine(refinement_parameters);
 
