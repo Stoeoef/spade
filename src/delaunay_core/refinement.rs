@@ -90,6 +90,7 @@ pub struct RefinementParameters<S: SpadeNum + Float> {
     angle_limit: AngleLimit,
     min_area: Option<S>,
     max_area: Option<S>,
+    keep_constraint_edges: bool,
     excluded_faces: HashSet<FixedFaceHandle<InnerTag>>,
 }
 
@@ -101,6 +102,7 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
             min_area: None,
             max_area: None,
             excluded_faces: HashSet::new(),
+            keep_constraint_edges: false,
         }
     }
 }
@@ -127,6 +129,11 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
 
     pub fn with_max_additional_vertices(mut self, max_additional_vertices: usize) -> Self {
         self.max_additional_vertices = Some(max_additional_vertices);
+        self
+    }
+
+    pub fn keep_constraint_edges(mut self) -> Self {
+        self.keep_constraint_edges = true;
         self
     }
 
@@ -241,7 +248,13 @@ where
 
         encroached_segment_candidates.extend(
             self.undirected_edges()
-                .filter(|edge| Self::is_fixed_edge(*edge))
+                .filter(|edge| {
+                    if parameters.keep_constraint_edges {
+                        edge.is_part_of_convex_hull()
+                    } else {
+                        Self::is_fixed_edge(*edge)
+                    }
+                })
                 .map(|edge| edge.fix()),
         );
 
@@ -348,6 +361,12 @@ where
                     OnEdge(edge) => {
                         let edge = self.directed_edge(edge);
                         if edge.is_part_of_convex_hull() {
+                            if parameters.keep_constraint_edges
+                                && edge.as_undirected().data().is_constraint_edge()
+                            {
+                                continue;
+                            }
+
                             forcibly_splitted_segments_buffer.push(edge.fix().as_undirected());
                         } else {
                             legalize_edges_buffer.extend([
@@ -370,14 +389,22 @@ where
                     NoTriangulation => unreachable!(),
                 };
 
+                let mut is_encroaching = false;
+
                 while let Some(edge) = legalize_edges_buffer.pop() {
                     let edge = self.directed_edge(edge);
                     let [from, to] = edge.as_undirected().positions();
                     if Self::is_fixed_edge(edge.as_undirected()) {
                         if is_encroaching_edge(from, to, circumcenter) {
-                            // New circumcenter would encroach a constraint edge. Don't insert the circumcenter
-                            // but force splitting the segment
-                            forcibly_splitted_segments_buffer.push(edge.as_undirected().fix());
+                            is_encroaching = true;
+
+                            if !parameters.keep_constraint_edges
+                                || !edge.as_undirected().data().is_constraint_edge()
+                            {
+                                // New circumcenter would encroach a constraint edge. Don't insert the circumcenter
+                                // but force splitting the segment
+                                forcibly_splitted_segments_buffer.push(edge.as_undirected().fix());
+                            }
                         }
                         continue;
                     }
@@ -399,7 +426,7 @@ where
                     }
                 }
 
-                if forcibly_splitted_segments_buffer.is_empty() {
+                if !is_encroaching {
                     // The circumcenter doesn't encroach any segment. Continue really inserting it.
                     let new_vertex = self
                         .insert_with_hint(circumcenter.into(), locate_hint)
@@ -409,7 +436,7 @@ where
                             .out_edges()
                             .flat_map(|edge| edge.face().fix().as_inner()),
                     );
-                } else {
+                } else if !forcibly_splitted_segments_buffer.is_empty() {
                     // Revisit this face later
                     encroached_face_candidates.push(face.fix());
                 }
