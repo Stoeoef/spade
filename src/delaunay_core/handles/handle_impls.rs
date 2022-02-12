@@ -673,7 +673,7 @@ where
         [lambda1, lambda2, lambda3]
     }
 
-    pub fn shortest_edge(&self) -> (DirectedEdgeHandle<'a, V, DE, UE, F>, V::Scalar) {
+    pub(crate) fn shortest_edge(&self) -> (DirectedEdgeHandle<'a, V, DE, UE, F>, V::Scalar) {
         let [e0, e1, e2] = self.adjacent_edges();
         let [l0, l1, l2] = [e0.length_2(), e1.length_2(), e2.length_2()];
         if l0 < l1 && l1 < l2 {
