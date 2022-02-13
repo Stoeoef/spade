@@ -46,7 +46,7 @@ impl AngleLimit {
     /// Create a new angle limit from an angle given in degrees.
     ///
     /// Note that angles larger than 30 degrees will quickly lead to overrefinement as the algorithm
-    /// cannot necessarily guarantee termination (other than limiting the number of additional inserted vertices).
+    /// cannot necessarily guarantee termination (other than by limiting the number of additional inserted vertices).
     ///
     /// Defaults to 30°. An angle of 0 degrees will disable refining due to small angles.
     ///
@@ -84,7 +84,7 @@ impl AngleLimit {
     /// edge.
     /// This ratio is related directly to the minimum allowed angle by the formula
     /// `ratio = 1 / (2 sin * (min_angle))`.
-    /// The *larger* the allowed min angle is, the *smaller* will the ratio become.
+    /// The *larger* the allowed min angle is, the *smaller* ratio becomes.
     ///
     /// Larger ratio values will lead to a less refined triangulation. Passing in `f64::INFINITY` will disable
     /// refining due to small angles.
@@ -143,14 +143,6 @@ pub enum RefinementHint {
 /// Refer to [ConstrainedDelaunayTriangulation::refine] and methods implemented by this type for more details
 /// about which parameters are supported.
 ///
-/// The following parameters will be used by `Self::default` and [Self::new]:
-/// * `exclude_outer_faces`: false
-/// * `keep_constraint_edges`: false
-/// * `min_required_area`: disabled - no lower area limit is used
-/// * `max_allowed_area`: disabled - no upper area limit is used
-/// * `angle_limit`: 30 degrees by default.
-/// * `num_additional_vertices`: 10 times the number of vertices in the triangulation
-///
 /// # Example
 ///
 /// ```
@@ -194,7 +186,13 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
 impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// Creates a new set of `RefinementParameters`.
     ///
-    /// Refer to the [struct definition](Self) for more information.
+    /// The following values will be used by `new` and `Self::default`:
+    /// * `exclude_outer_faces`: disabled - all faces are used for refinement
+    /// * `keep_constraint_edges`: disabled
+    /// * `min_required_area`: disabled - no lower area limit is used
+    /// * `max_allowed_area`: disabled - no upper area limit is used
+    /// * `angle_limit`: 30 degrees by default.
+    /// * `num_additional_vertices`: 10 times the number of vertices in the triangulation
     pub fn new() -> Self {
         Self::default()
     }
@@ -202,13 +200,12 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// Specifies the smallest allowed inner angle in a refined triangulation.
     ///
     /// The refinement algorithm will attempt to insert additional points (called steiner points) until the
-    /// minimum angle is larger than the angle bound specified by this function.
+    /// minimum angle is larger than the angle bound specified by the refinement parameters.
     ///
     /// Defaults to 30 degrees.
     ///
-    /// Note that angle limits much larger than 30 degrees may not always terminate successfully - check
-    /// [RefinementResult::refinement_complete] to make sure that the angle limit did not lead to an overly strong
-    /// refined triangulation.
+    /// Note that angle limits much larger than 30 degrees may not always terminate successfully - consider checking
+    /// [RefinementResult::refinement_complete] to make sure that the angle limit could actually be applied everywhere.
     ///
     /// # Examples of different angle limits
     /// <table>
@@ -244,13 +241,13 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// Specifies an upper bound for triangle areas in the triangulation.
     ///
     /// By default, the refinement tries to be conservative in how many vertices it adds. This will lead to an uneven
-    /// triangle size distribution - areas with larger feature will contain fewer, larger triangles whereas regions with
-    /// small features will contain more densely packed triangles.
-    /// By specifying an upper area bound for triangles, the resulting triangle sizes can be brought evened out a little
+    /// triangle size distribution - areas with larger input features will contain fewer, larger triangles whereas
+    /// regions with small features will contain more densely packed triangles.
+    /// By specifying an upper area bound for triangles, the resulting triangle sizes can be made more similar
     /// as any large triangle above the bound will be split into smaller parts.
     ///
-    /// Should be set to something larger than `with_min_required_area`. If this method is not called, no upper area bound
-    /// check will be performed.
+    /// Should be set to something larger than [Self::with_min_required_area]. If this method is not called, no upper area
+    /// bound check will be performed.
     pub fn with_max_allowed_area(mut self, max_area: S) -> Self {
         self.max_area = Some(max_area);
         self
@@ -273,7 +270,7 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// Prevents constraint edges from being split during refinement.
     ///
     /// By default, constraint edges may be split in order to restore the triangulation's Delaunay property.
-    /// The resulting two new edges will *become* new constraint edges, hence the original shape outlined by
+    /// The resulting two new edges will *become new constraint edges*, hence the original shape outlined by
     /// constraint edges remains the same - no "gaps" or deviations are introduced.
     ///
     /// Enabling this option will, in general, reduce the quality of the resulting mesh - it is not necessarily
@@ -326,8 +323,11 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
         let mut return_outer_faces = true;
 
         loop {
+            // Every iteration of the outer while loop will peel of the outmost layer and pre-populate the
+            // next, inner layer.
             while let Some(next_edge) = current_todo_list.pop() {
                 let (list, face_set) = if next_edge.is_constraint_edge() {
+                    // We're crossing a constraint edge - add that face to the *next* todo list
                     (&mut next_todo_list, &mut inner_faces)
                 } else {
                     (&mut current_todo_list, &mut outer_faces)
@@ -407,7 +407,7 @@ where
     /// Some applications (e.g. interpolation and finite element methods) perform poorly in the presence of skewed triangles.
     ///
     /// Refining by inserting additional points (called "steiner points") may increase the minimum angle. The given
-    /// [RefinementParameters] should be used to fine-tune the refinement behavior.
+    /// [RefinementParameters] should be used to modify the refinement behavior.
     ///
     /// # General usage
     ///
@@ -446,7 +446,7 @@ where
     /// Refinement will ensure that the resulting triangulation fulfills a few properties:
     ///  - The triangulation's minimum angle will be larger than the angle specified by
     ///    [with_angle_limit](crate::RefinementParameters::with_angle_limit).<br>
-    ///    *Exception*: Acute input angles (small angles between initial constraint edges) cannot be resolved as the constraint edges
+    ///    *Exception*: Acute input angles (small angles between initial constraint edges) cannot be maximized as the constraint edges
     ///    must be kept intact. The algorithm will, for the most part, leave those places unchanged.<br>
     ///    *Exception*: The refinement will often not be able to increase the minimal angle much above 30 degrees as every newly
     ///    inserted steiner point may create additional skewed triangles.
@@ -454,7 +454,7 @@ where
     ///    *Exception*: Refining with [keep_constraint_edges](crate::RefinementParameters::keep_constraint_edges) cannot restore
     ///    the Delaunay property if doing so would require splitting a constraint edge.<br>
     ///    *Exception*: Refining with [exclude_outer_faces](crate::RefinementParameters::exclude_outer_faces) will not
-    ///    ensure the Delaunay property of any outer face.
+    ///    restore the Delaunay property of any outer face.
     ///  - Spade allows to specify a [maximum allowed triangle area](crate::RefinementParameters::with_max_allowed_area).
     ///    The algorithm will attempt to subdivide any triangle with an area larger than this, independent of its smallest angle.
     ///  - Spade allows to specify a [minimum required triangle area](crate::RefinementParameters::with_min_required_area).
@@ -495,8 +495,9 @@ where
         let mut excluded_faces = std::mem::take(&mut parameters.excluded_faces);
 
         let mut legalize_edges_buffer = Vec::with_capacity(20);
-        let mut forcibly_splitted_segments_buffer = Vec::with_capacity(5);
+        let mut forcibly_split_segments_buffer = Vec::with_capacity(5);
 
+        // Stores all edges that should be checked for encroachment
         let mut encroached_segment_candidates =
             VecDeque::with_capacity(self.num_constraints() + self.convex_hull_size());
 
@@ -512,7 +513,8 @@ where
                 .map(|edge| edge.fix()),
         );
 
-        let mut encroached_face_candidates: VecDeque<_> = self.fixed_inner_faces().collect();
+        // Stores all faces that should be checked for their area and angles ("skinniness").
+        let mut skinny_triangle_candidates: VecDeque<_> = self.fixed_inner_faces().collect();
 
         let num_initial_vertices: usize = self.num_vertices();
         let num_additional_vertices = parameters
@@ -524,16 +526,44 @@ where
 
         let mut refinement_complete = true;
 
-        'outer: loop {
+        // Main loop of the algorithm
+        //
+        // Some terminology:
+        //  - "Skinny triangle" refers to any triangle that has a minimum inner angle less than the allowed limit specified
+        //    by the refinement parameters. The algorithm will attempt to insert steiner points to increase their minimal
+        //    angle.
+        //  - An edge is *encroached* by a point if that point lies in the diametral circle of the edge (the smallest circle
+        //    fully containing the edge)
+        //  - a "fixed" edge is a constraint edge or an edge of the convex hull. These are special as they may not be
+        //    flipped - the input geometry must remain the same.
+        //  - "input angle" is any angle between two fixed edges. Small input angles cannot be refined away as
+        //    the input geometry must be kept intact.
+        //  - "excluded faces" may exist if the triangulation's outer faces should not be refined. They are excluded from
+        //     the third step in the main loop (see below). We don't simply delete these faces to keep the triangulation's
+        //     convexity.
+        //
+        // Every iterations performs up to three checks:
+        //  - First, check if any edges that must be split exists (`forcibly_split_segments_buffer`).
+        //  - Second, check if any segment is encroached. If found, resolve the offending encroachment.
+        //    Checking segments first makes sure that the algorithm
+        //    restores the Delaunay property as quickly as possible.
+        //  - Third, search for skinny triangles. Attempt to insert a new vertex at the triangles circumcenter. If inserting
+        //    such a vertex would encroach any fixed edge, add the encroached edge to the forcibly split segments buffer
+        //    and revisit the face later.
+        //
+        // See method `resolve_encroachment` for more details on how step 1 and 2 manage to split edges in order to resolve
+        // an encroachment.
+        loop {
             if self.num_vertices() >= max_allowed_vertices {
                 refinement_complete = false;
                 break;
             }
 
-            if let Some(forcibly_split_segment) = forcibly_splitted_segments_buffer.pop() {
+            // Step 1: Check for forcibly splitted segments.
+            if let Some(forcibly_split_segment) = forcibly_split_segments_buffer.pop() {
                 self.resolve_encroachment(
                     &mut encroached_segment_candidates,
-                    &mut encroached_face_candidates,
+                    &mut skinny_triangle_candidates,
                     forcibly_split_segment,
                     is_original_vertex,
                     &mut excluded_faces,
@@ -541,18 +571,19 @@ where
                 continue;
             }
 
-            // Take from encroached segments
+            // Step 2: Check for encroached segments.
             if let Some(segment_candidate) = encroached_segment_candidates.pop_front() {
+                // Check both adjacent faces of any candidate for encroachment.
                 for edge in segment_candidate.directed_edges() {
                     let edge = self.directed_edge(edge);
 
-                    let is_protected = edge
+                    let is_excluded = edge
                         .face()
                         .as_inner()
                         .map(|face| excluded_faces.contains(&face.fix()))
                         .unwrap_or(true);
 
-                    if is_protected {
+                    if is_excluded {
                         continue;
                     }
 
@@ -565,12 +596,11 @@ where
                             // The edge is encroaching
                             self.resolve_encroachment(
                                 &mut encroached_segment_candidates,
-                                &mut encroached_face_candidates,
+                                &mut skinny_triangle_candidates,
                                 segment_candidate,
                                 is_original_vertex,
                                 &mut excluded_faces,
                             );
-                            continue 'outer;
                         }
                     }
                 }
@@ -578,8 +608,8 @@ where
                 continue;
             }
 
-            // Take the next triangle candidate
-            if let Some(face) = encroached_face_candidates.pop_front() {
+            // Step 3: Take the next skinny triangle candidate
+            if let Some(face) = skinny_triangle_candidates.pop_front() {
                 if excluded_faces.contains(&face) {
                     continue;
                 }
@@ -587,33 +617,50 @@ where
                 let face = self.face(face);
 
                 let (shortest_edge, _) = face.shortest_edge();
-                let is_fixed_angle = [shortest_edge.next(), shortest_edge.prev()]
+
+                // Check if the shortest edge is opposite of an input angle.
+                //
+                // Such an input angle cannot be maximized as that would require flipping at least one of its edges.
+                //
+                // Instead, the algorithm will consider the face to be skinny only *once* and do one split resolution.
+                // If that angle is encountered again, it will be ignored instead.
+                let is_input_angle = [shortest_edge.next(), shortest_edge.prev()]
                     .into_iter()
                     .all(|edge| Self::is_fixed_edge(edge.as_undirected()));
 
                 let refinement_hint = parameters.get_refinement_hint(face);
 
                 if refinement_hint == RefinementHint::Ignore {
+                    // Triangle is fine as is and can be skipped
                     continue;
                 }
 
                 if refinement_hint == RefinementHint::ShouldRefine
-                    && is_fixed_angle
+                    && is_input_angle
+                    // `is_original_vertex` will return `false` iff a vertex is a steiner point (thus, it's not part
+                    //  of the original triangulation).
+                    //  This is used to check if we have already attempted to fix the face at this input angle.
                     && (!is_original_vertex(shortest_edge.from().fix())
                         || !is_original_vertex(shortest_edge.to().fix()))
                 {
-                    // The fixed segment has already been split. Don't attempt to subdivide it any further, this
-                    // is as good as we can get.
+                    // Don't attempt to subdivide it any further, this is as good as we can get.
                     continue;
                 }
 
+                // Continue to resolve the skinny face!
                 let locate_hint = face.vertices()[0].fix();
 
-                forcibly_splitted_segments_buffer.clear();
+                assert!(forcibly_split_segments_buffer.is_empty());
                 legalize_edges_buffer.clear();
 
                 let circumcenter = face.circumcenter();
 
+                // "Simulate" inserting the circumcenter by locating the insertion site and identifying which edges
+                // would need to be flipped (legalized) by the insertion. If any of these edges is fixed, an
+                // encroachment with this edge is found.
+                //
+                // First step: fill `legalize_edges_buffer` with the initial set of edges that would need to be legalized
+                // if the triangle's circumcenter would be inserted.
                 match self.locate_with_hint(circumcenter, locate_hint) {
                     OnEdge(edge) => {
                         let edge = self.directed_edge(edge);
@@ -622,7 +669,7 @@ where
                                 continue;
                             }
 
-                            forcibly_splitted_segments_buffer.push(edge.fix().as_undirected());
+                            forcibly_split_segments_buffer.push(edge.fix().as_undirected());
                         } else {
                             legalize_edges_buffer.extend([
                                 edge.next().fix(),
@@ -646,23 +693,26 @@ where
 
                 let mut is_encroaching = false;
 
+                // Next step: Perform the regular legalization procedure by "simulating" edge flips
                 while let Some(edge) = legalize_edges_buffer.pop() {
                     let edge = self.directed_edge(edge);
                     let [from, to] = edge.as_undirected().positions();
                     if Self::is_fixed_edge(edge.as_undirected()) {
                         if is_encroaching_edge(from, to, circumcenter) {
+                            // We found an encroaching edge! Makes sure that we won't attempt to
+                            // insert the circumcenter.
                             is_encroaching = true;
 
                             if !parameters.keep_constraint_edges || !edge.is_constraint_edge() {
                                 // New circumcenter would encroach a constraint edge. Don't insert the circumcenter
                                 // but force splitting the segment
-                                forcibly_splitted_segments_buffer.push(edge.as_undirected().fix());
+                                forcibly_split_segments_buffer.push(edge.as_undirected().fix());
                             }
                         }
-                        continue;
+                        continue; // Don't actually flip the edge as it's fixed - continue with any other edge instead.
                     }
 
-                    // Edge is not a constraint edge. Check if it needs to be legalized.
+                    // edge is not a fixed edge. Check if it needs to be legalized.
                     // We've already checked that this edge is not part of the convex hull - unwrap is safe
                     let opposite = edge.rev().opposite_position().unwrap();
                     let from = edge.from().position();
@@ -684,19 +734,24 @@ where
                     let new_vertex = self
                         .insert_with_hint(circumcenter.into(), locate_hint)
                         .expect("Failed to insert circumcenter, likely due to loss of precision. Consider refining with fewer additional vertices.");
-                    encroached_face_candidates.extend(
+
+                    // Add all new and changed faces to the skinny candidate list
+                    skinny_triangle_candidates.extend(
                         self.vertex(new_vertex)
                             .out_edges()
                             .flat_map(|edge| edge.face().fix().as_inner()),
                     );
-                } else if !forcibly_splitted_segments_buffer.is_empty() {
-                    // Revisit this face later
-                    encroached_face_candidates.push_back(face.fix());
+                } else if !forcibly_split_segments_buffer.is_empty() {
+                    // Revisit this face later. Since the encroached edge will have been split in the next iteration,
+                    // inserting the circumcenter might succeed this time around.
+                    skinny_triangle_candidates.push_back(face.fix());
                 }
             } else {
+                // Done! This branch is reached if no skinny triangle could be identified anymore.
                 break;
             }
         }
+
         RefinementResult {
             excluded_faces,
             refinement_complete,
@@ -715,6 +770,25 @@ where
         is_original_vertex: impl Fn(FixedVertexHandle) -> bool,
         excluded_faces: &mut HashSet<FixedFaceHandle<InnerTag>>,
     ) {
+        // Resolves an encroachment by splitting the encroached edge. Since this reduces the diametral circle, this will
+        // eventually get rid of the encroachment completely.
+        //
+        // There are a few details that make this more complicated:
+        //
+        // # Runaway encroachment
+        // Any input angle less than 45 degrees may lead to a "runaway encroachment". In such a situation, any of the
+        // angle's edges will encroach *the other* edge. This goes on forever, subdividing the edges infinitely.
+        //
+        // To work around this, spade will split edges at their center position only *once*.
+        // Any subsegment will not be split at its center position but *rounded towards the nearest power of 2*.
+        // With this behavior, neighboring edges will eventually share vertices equally far away from the offending angle's
+        // apex vertex. Points and edges in such a configuration cannot encroach each other. Refer to the original paper
+        // by Ruppert for more details.
+        //
+        // # Keeping track of which edges and faces have changed
+        // Since `resolve_encroachment` will create new edges and faces, we need to add those to the existing buffers as
+        // appropriate. This becomes a little convoluted when supporting all different refinement modes, e.g. excluded faces.
+
         let segment = self.directed_edge(encroached_edge.as_directed());
 
         let [v0, v1] = segment.vertices();
@@ -732,14 +806,18 @@ where
                 (half, half)
             }
             (v0_is_original, _) => {
+                // One point is a steiner point, another point isn't. This will trigger rounding the distance to
+                // the nearest power of two to prevent runaway encroachment.
+
                 let half_length = segment.length_2().sqrt() * half;
 
-                // Round down to the nearest power of two to prevent runaway encroachment
                 let nearest_power_of_two = nearest_power_of_two(half_length);
                 let other_vertex_weight = half * nearest_power_of_two / half_length;
                 let original_vertex_weight = Into::<V::Scalar>::into(1.0) - other_vertex_weight;
 
                 if v0_is_original {
+                    // Orient the weight towards to original vertex. This makes sure that any edge participating in
+                    // a runaway encroachment will end up with the same distance to the non-steiner (original) point.
                     (original_vertex_weight, other_vertex_weight)
                 } else {
                     (other_vertex_weight, original_vertex_weight)
@@ -749,12 +827,12 @@ where
 
         let final_position = v0.position().mul(w0).add(v1.position().mul(w1));
 
-        let is_left_side_protected = segment
+        let is_left_side_excluded = segment
             .face()
             .as_inner()
             .map(|face| excluded_faces.contains(&face.fix()));
 
-        let is_right_side_protected = segment
+        let is_right_side_excluded = segment
             .rev()
             .face()
             .as_inner()
@@ -762,39 +840,45 @@ where
 
         let is_constraint_edge = segment.is_constraint_edge();
 
-        // Split the edge at its center
+        // Perform the actual split!
         let segment = segment.fix();
         let (new_vertex, [e1, e2]) = self.insert_on_edge(segment, final_position.into());
 
         if is_constraint_edge {
+            // Make sure to update the constraint edges count as required.
             self.handle_legal_edge_split([e1, e2].map(|edge| edge.as_undirected()));
         }
 
         let (h1, h2) = (self.directed_edge(e1), self.directed_edge(e2));
 
-        if is_left_side_protected == Some(true) {
+        if is_left_side_excluded == Some(true) {
+            // Any newly added face on the left becomes an excluded face
             excluded_faces.insert(h1.face().fix().as_inner().unwrap());
             excluded_faces.insert(h2.face().fix().as_inner().unwrap());
         }
 
-        if is_right_side_protected == Some(true) {
+        if is_right_side_excluded == Some(true) {
+            // Any newly added face on the right becomes an excluded face
             excluded_faces.insert(h1.rev().face().fix().as_inner().unwrap());
             excluded_faces.insert(h2.rev().face().fix().as_inner().unwrap());
         }
 
         self.legalize_vertex(new_vertex);
 
+        // Any of the faces that share an outgoing edge may be changed by the vertex insertion. Make sure that all of them
+        // will be revisited.
         encroached_faces_buffer.extend(
             self.vertex(new_vertex)
                 .out_edges()
                 .flat_map(|edge| edge.face().fix().as_inner()),
         );
 
-        // Update encroachment candidates
+        // Update encroachment candidates - any of the resulting edges may still be in an encroaching state.
         encroached_segments_buffer.push_back(e1.as_undirected());
         encroached_segments_buffer.push_back(e2.as_undirected());
 
         // Neighboring edges may have become encroached. Check if they need to be added to the encroached segment buffer.
+        // This leverages that `e1.rev()` and `e2` point *away* from the newly inserted point.
         encroached_segments_buffer.extend(
             [e1.rev(), e2]
                 .into_iter()
