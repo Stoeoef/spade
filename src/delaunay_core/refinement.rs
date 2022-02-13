@@ -140,7 +140,7 @@ pub enum RefinementHint {
 
 /// Controls how a refinement is performed.
 ///
-/// Refer to [ConstrainedDelaunayTriangulation::refine] and any method on this type for more details
+/// Refer to [ConstrainedDelaunayTriangulation::refine] and methods implemented by this type for more details
 /// about which parameters are supported.
 ///
 /// The following parameters will be used by `Self::default` and [Self::new]:
@@ -234,8 +234,8 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// will still be required to restore the triangulation's Delaunay property. Also, this value does not specify a lower
     /// bound for the smallest possible triangle in the triangulation.
     ///
-    /// Should be set to something lower than [with_max_allowed_area]. If this method is not called, no lower bound check
-    /// will be performed.
+    /// Should be set to something lower than [Self::with_max_allowed_area]. If this method is not called, no lower
+    /// bound check will be performed.
     pub fn with_min_required_area(mut self, min_area: S) -> Self {
         self.min_area = Some(min_area);
         self
