@@ -676,7 +676,7 @@ where
     pub(crate) fn shortest_edge(&self) -> (DirectedEdgeHandle<'a, V, DE, UE, F>, V::Scalar) {
         let [e0, e1, e2] = self.adjacent_edges();
         let [l0, l1, l2] = [e0.length_2(), e1.length_2(), e2.length_2()];
-        if l0 < l1 && l1 < l2 {
+        if l0 < l1 && l0 < l2 {
             (e0, l0)
         } else if l1 < l2 {
             (e1, l1)
