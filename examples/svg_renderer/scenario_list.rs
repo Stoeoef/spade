@@ -2,13 +2,14 @@ use super::quicksketch::{
     ArrowType, HorizontalAlignment, Point, Sketch, SketchColor, SketchElement, SketchFill,
     SketchLayer, StrokeStyle, Vector,
 };
+
 use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Point2, Vector2};
 use spade::{
     handles::{
         FixedDirectedEdgeHandle,
         VoronoiVertex::{self, Inner, Outer},
     },
-    ConstrainedDelaunayTriangulation, FloatTriangulation as _, InsertionError, Triangulation as _,
+    AngleLimit, FloatTriangulation as _, InsertionError, RefinementParameters, Triangulation as _,
 };
 
 use crate::{
@@ -973,7 +974,52 @@ pub fn shape_iterator_scenario(use_circle_metric: bool, iterate_vertices: bool) 
     result
 }
 
-pub fn refinement_scenario() -> Sketch {
+pub fn refinement_scenario(do_refine: bool) -> Sketch {
+    let mut cdt = create_refinement_cdt();
+
+    let parameters = RefinementParameters::default();
+
+    if do_refine {
+        cdt.refine(parameters);
+    }
+
+    convert_refinement_cdt(&mut cdt)
+}
+
+pub fn exclude_outer_faces_scenario(do_refine: bool) -> Sketch {
+    let mut cdt = create_refinement_cdt();
+
+    let num_additional_vertices = if do_refine { 500 } else { 0 };
+
+    let parameters = RefinementParameters::<f64>::default()
+        .exclude_outer_faces(&cdt)
+        .with_max_additional_vertices(num_additional_vertices);
+
+    let result = cdt.refine(parameters);
+    for face in &result.excluded_faces {
+        cdt.face_data_mut(*face).fill = SketchFill::solid(SketchColor::TAN);
+    }
+
+    convert_refinement_cdt(&mut cdt)
+}
+
+fn convert_refinement_cdt(cdt: &mut Cdt) -> Sketch {
+    for vertex in cdt.fixed_vertices() {
+        cdt.vertex_data_mut(vertex).radius = 0.4;
+    }
+    for edge in cdt.fixed_undirected_edges() {
+        if cdt.is_constraint_edge(edge) {
+            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_RED;
+        } else {
+            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_GRAY;
+        }
+    }
+    let mut sketch = convert_triangulation(cdt, &ConversionOptions::default());
+    sketch.set_width(360);
+    sketch
+}
+
+fn create_refinement_cdt() -> Cdt {
     let mut cdt = Cdt::new();
     let v0 = VertexType::new(0.0, 0.0);
     let v1 = VertexType::new(0.0, 100.0);
@@ -1040,22 +1086,45 @@ pub fn refinement_scenario() -> Sketch {
     for window in inner_vertices.windows(2) {
         cdt.add_constraint_edge(window[0], window[1]).unwrap();
     }
+    cdt
+}
 
-    let parameters = RefinementParameters::default();
+pub fn angle_limit_scenario(angle_limit_degrees: f64) -> Sketch {
+    let mut cdt = create_angle_limit_cdt();
 
-    cdt.refine(parameters);
+    cdt.refine(
+        RefinementParameters::default().with_angle_limit(AngleLimit::from_deg(angle_limit_degrees)),
+    );
+    let mut result = convert_refinement_cdt(&mut cdt);
+    result.set_width(200);
+    result
+}
 
-    for vertex in cdt.fixed_vertices() {
-        cdt.vertex_data_mut(vertex).radius = 0.4;
-    }
+fn create_angle_limit_cdt() -> Cdt {
+    let mut cdt = Cdt::new();
 
-    for edge in cdt.fixed_undirected_edges() {
-        if cdt.is_constraint_edge(edge) {
-            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_RED;
-        } else {
-            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_GRAY;
+    let num_slices = 22;
+
+    cdt.insert(VertexType::new(0.0, 0.0)).unwrap();
+    for index in 0..num_slices {
+        if index == 2 || index == 5 || index == 6 || index == 15 || index == 16 || index == 17 {
+            // Add some arbitrary irregularities to make the result look more interesting
+            continue;
         }
+
+        let angle = std::f64::consts::PI * 0.9 * index as f64 / num_slices as f64;
+        let distance = 50.0;
+        let (sin, cos) = angle.sin_cos();
+        cdt.insert(VertexType::new(sin * distance, cos * distance))
+            .unwrap();
     }
 
-    convert_triangulation(&cdt, &ConversionOptions::default())
+    let mut handles = cdt.fixed_vertices().collect::<Vec<_>>();
+
+    handles.push(handles[0]);
+    for vertices in handles.windows(2) {
+        cdt.add_constraint(vertices[0], vertices[1]);
+    }
+
+    cdt
 }

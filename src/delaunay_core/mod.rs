@@ -27,7 +27,7 @@ pub use hint_generator::{
     LastUsedVertexHintGenerator,
 };
 
-pub use refinement::{AngleLimit, RefinementParameters};
+pub use refinement::{AngleLimit, RefinementParameters, RefinementResult};
 
 pub use line_side_info::LineSideInfo;
 
