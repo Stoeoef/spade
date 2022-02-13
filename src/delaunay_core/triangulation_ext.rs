@@ -71,18 +71,18 @@ pub trait TriangulationExt: Triangulation {
                             InsertionResult::NewlyInserted(self.insert_into_face(face, t))
                         }
                         OnEdge(edge) => {
-                            if self.is_defined_legal(edge.as_undirected()) {
-                                let (new_handle, split_parts) = self.insert_on_edge(edge, t);
+                            let (new_handle, split_parts) = self.insert_on_edge(edge, t);
 
+                            if self.is_defined_legal(edge.as_undirected()) {
                                 // If the edge is defined as legal the resulting edges must
                                 // be redefined as legal
                                 self.handle_legal_edge_split(
                                     split_parts.map(|edge| edge.as_undirected()),
                                 );
-                                InsertionResult::NewlyInserted(new_handle)
-                            } else {
-                                InsertionResult::NewlyInserted(self.insert_on_edge(edge, t).0)
                             }
+                            self.legalize_vertex(new_handle);
+
+                            InsertionResult::NewlyInserted(new_handle)
                         }
                         OnVertex(vertex) => {
                             self.s_mut().update_vertex(vertex, t);
@@ -313,15 +313,15 @@ pub trait TriangulationExt: Triangulation {
         new_vertex: Self::Vertex,
     ) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2]) {
         let edge_handle = self.directed_edge(edge);
-        let result = if edge_handle.is_outer_edge() {
-            dcel_operations::split_half_edge(self.s_mut(), edge.rev(), new_vertex)
+        if edge_handle.is_outer_edge() {
+            let (new_vertex, [e0, e1]) =
+                dcel_operations::split_half_edge(self.s_mut(), edge.rev(), new_vertex);
+            (new_vertex, [e1.rev(), e0.rev()])
         } else if edge_handle.rev().is_outer_edge() {
             dcel_operations::split_half_edge(self.s_mut(), edge, new_vertex)
         } else {
             dcel_operations::split_edge(self.s_mut(), edge, new_vertex)
-        };
-        self.legalize_vertex(result.0);
-        result
+        }
     }
 
     fn legalize_vertex(&mut self, new_handle: FixedVertexHandle) {

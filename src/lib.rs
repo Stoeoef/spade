@@ -42,7 +42,7 @@ pub use crate::delaunay_core::math::{
 
 pub use delaunay_core::{
     AngleLimit, HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
-    LastUsedVertexHintGenerator, RefinementParameters,
+    LastUsedVertexHintGenerator, RefinementParameters, RefinementResult,
 };
 
 pub use delaunay_core::LineSideInfo;

@@ -1,0 +1,74 @@
+<svg viewBox="-5.477960964140946 -55.178403760945045 60.93553156969135 115.1764404664855" width="200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<pattern height="1" id="angle_limit_0_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
+<line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
+</pattern>
+</defs>
+<rect height="100%" style="fill: url(#angle_limit_0_pattern0001)" width="100%" x="-5.477960964140946" y="-55.178403760945045"/>
+<g>
+<path d="M6.4083095,49.587635 L0,50 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M18.803862,46.329414 L6.4083095,49.587635 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M24.586647,43.537304 L18.803862,46.329414 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M39.15509,31.094679 L24.586647,43.537304 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M42.81745,25.819874 L39.15509,31.094679 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M45.77356,20.119179 L42.81745,25.819874 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M47.974648,14.086628 L45.77356,20.119179 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M49.38442,7.8217235 L47.974648,14.086628 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M49.97961,1.4278026 L49.38442,7.8217235 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M49.75041,-4.9896693 L49.97961,1.4278026 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M48.700596,-11.324839 L49.75041,-4.9896693 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M36.837055,-33.808746 L48.700596,-11.324839 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M32.20011,-38.25118 L36.837055,-33.808746 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M27.032042,-42.062675 L32.20011,-38.25118 L0,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M21.418087,-45.180367 L27.032042,-42.062675 L0,0 z" style="fill: rgb(211 211 211)"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="0" x2="0" y1="0" y2="50"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="6.408309576054638" y1="0" y2="49.58763523679514"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="6.408309576054638" x2="0" y1="49.58763523679514" y2="50"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="18.80386247692999" y1="0" y2="46.32941566595357"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="18.80386247692999" x2="6.408309576054638" y1="46.32941566595357" y2="49.58763523679514"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="24.586646232280188" y1="0" y2="43.53730385598886"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="24.586646232280188" x2="18.80386247692999" y1="43.53730385598886" y2="46.32941566595357"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="39.15508854902776" y1="0" y2="31.094678655966117"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="39.15508854902776" x2="24.586646232280188" y1="31.094678655966117" y2="43.53730385598886"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="42.817451512579446" y1="0" y2="25.819873081948096"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="42.817451512579446" x2="39.15508854902776" y1="25.819873081948096" y2="31.094678655966117"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="45.773558145970306" y1="0" y2="20.11917927395339"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="45.773558145970306" x2="42.817451512579446" y1="20.11917927395339" y2="25.819873081948096"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="47.97464868072487" y1="0" y2="14.08662784207149"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="47.97464868072487" x2="45.773558145970306" y1="14.08662784207149" y2="20.11917927395339"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="49.38441702975689" y1="0" y2="7.821723252011546"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="49.38441702975689" x2="47.97464868072487" y1="7.821723252011546" y2="14.08662784207149"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="49.97960964140946" y1="0" y2="1.4278025396848126"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="49.97960964140946" x2="49.38441702975689" y1="1.4278025396848126" y2="7.821723252011546"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="49.75040905726798" y1="0" y2="-4.9896691908891375"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="49.75040905726798" x2="49.97960964140946" y1="-4.9896691908891375" y2="1.4278025396848126"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="48.70059584711668" y1="0" y2="-11.324838371288202"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="48.70059584711668" x2="49.75040905726798" y1="-11.324838371288202" y2="-4.9896691908891375"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="36.83705689382024" y1="0" y2="-33.80874501370098"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="36.83705689382024" x2="48.70059584711668" y1="-33.80874501370098" y2="-11.324838371288202"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="32.20011272044277" y1="0" y2="-38.25117959999116"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="32.20011272044277" x2="36.83705689382024" y1="-38.25117959999116" y2="-33.80874501370098"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="0" x2="27.032040872779888" y1="0" y2="-42.06267664155906"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="27.032040872779888" x2="32.20011272044277" y1="-42.06267664155906" y2="-38.25117959999116"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="0" x2="21.41808657977906" y1="0" y2="-45.18036705540459"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="21.41808657977906" x2="27.032040872779888" y1="-45.18036705540459" y2="-42.06267664155906"/>
+<circle cx="0" cy="0" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="0" cy="50" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="6.408309576054638" cy="49.58763523679514" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="18.80386247692999" cy="46.32941566595357" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="24.586646232280188" cy="43.53730385598886" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="39.15508854902776" cy="31.094678655966117" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="42.817451512579446" cy="25.819873081948096" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="45.773558145970306" cy="20.11917927395339" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="47.97464868072487" cy="14.08662784207149" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="49.38441702975689" cy="7.821723252011546" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="49.97960964140946" cy="1.4278025396848126" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="49.75040905726798" cy="-4.9896691908891375" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="48.70059584711668" cy="-11.324838371288202" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="36.83705689382024" cy="-33.80874501370098" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="32.20011272044277" cy="-38.25117959999116" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="27.032040872779888" cy="-42.06267664155906" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="21.41808657977906" cy="-45.18036705540459" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+</g>
+</svg>

@@ -533,7 +533,10 @@ where
 /// Splits `edge_handle` only one side. Used to split edges on the convex hull.
 ///
 /// Returns the newly inserted vertex and the two resulting parts of the split edge.
-/// The returned edges will point away from the inserted vertex
+///
+/// The returned edges will point in the same direction as the input edge. The first
+/// returned edge has the same origin as the input edge, the second returned edge has the
+/// same destination as the input edge.
 pub fn split_half_edge<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
@@ -544,7 +547,7 @@ where
     UE: Default,
     F: Default,
 {
-    // Original quad:
+    // Original face:
     //
     //      to
     //      +
@@ -584,6 +587,8 @@ where
     // nf = new face
     // e1, e2 = new edges
     // nv = new vertex
+    //
+    // This would return [e, e2]
     let edge = dcel.directed_edge(edge_handle);
     let v = edge.prev().from().fix();
     let to = edge.to().fix();
@@ -661,7 +666,7 @@ where
     dcel.vertices[to.index()].out_edge = Some(e2.rev());
     dcel.faces[f1.index()].adjacent_edge = Some(edge_handle);
 
-    (nv, [e2, edge_handle])
+    (nv, [edge_handle, e2])
 }
 
 /// Splits `edge_handle`, introducing 6 new half edges, two new faces and one

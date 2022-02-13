@@ -55,7 +55,24 @@ fn main() -> Result {
     scenario_list::dual_edge_example().save_to_svg("dual_edges", "images/dual_edges.svg")?;
     scenario_list::project_point_scenario()
         .save_to_svg("project_point", "images/project_point.svg")?;
-    scenario_list::refinement_scenario().save_to_svg("refinement", "images/refinement.svg")?;
+    scenario_list::refinement_scenario(true).save_to_svg("refined", "images/refined.svg")?;
+    scenario_list::refinement_scenario(false).save_to_svg("unrefined", "images/unrefined.svg")?;
+    scenario_list::angle_limit_scenario(0.0)
+        .save_to_svg("angle_limit_0", "images/angle_limit_00.svg")?;
+    scenario_list::angle_limit_scenario(20.0)
+        .save_to_svg("angle_limit_20", "images/angle_limit_20.svg")?;
+    scenario_list::angle_limit_scenario(30.0)
+        .save_to_svg("angle_limit_30", "images/angle_limit_30.svg")?;
+    scenario_list::angle_limit_scenario(34.0)
+        .save_to_svg("angle_limit_34", "images/angle_limit_34.svg")?;
+
+    scenario_list::exclude_outer_faces_scenario(false).save_to_svg(
+        "exclude_unrefined",
+        "images/exclude_outer_faces_unrefined.svg",
+    )?;
+    scenario_list::exclude_outer_faces_scenario(true)
+        .save_to_svg("exclude_refined", "images/exclude_outer_faces_refined.svg")?;
+
     Ok(())
 }
 
