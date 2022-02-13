@@ -1040,24 +1040,18 @@ fn create_refinement_cdt() -> Cdt {
         VertexType::new(40.0, 75.0),
         VertexType::new(50.0, 75.0),
         VertexType::new(30.0, 20.0),
-        VertexType::new(10.0, 75.0),
     ];
 
-    for window in inner_vertices.windows(2) {
-        cdt.add_constraint_edge(window[0], window[1]).unwrap();
-    }
+    cdt.add_constraint_edges(inner_vertices, true).unwrap();
 
     let inner_vertices = [
         // Inner "A"
         VertexType::new(25.0, 55.0),
         VertexType::new(35.0, 55.0),
         VertexType::new(30.0, 40.0),
-        VertexType::new(25.0, 55.0),
     ];
 
-    for window in inner_vertices.windows(2) {
-        cdt.add_constraint_edge(window[0], window[1]).unwrap();
-    }
+    cdt.add_constraint_edges(inner_vertices, true).unwrap();
 
     let inner_vertices = [
         // "C" Shape bottom half
@@ -1080,12 +1074,9 @@ fn create_refinement_cdt() -> Cdt {
         VertexType::new(80.0, 30.0),
         VertexType::new(70.0, 35.0),
         VertexType::new(60.0, 45.0),
-        VertexType::new(55.0, 55.0),
     ];
 
-    for window in inner_vertices.windows(2) {
-        cdt.add_constraint_edge(window[0], window[1]).unwrap();
-    }
+    cdt.add_constraint_edges(inner_vertices, true).unwrap();
     cdt
 }
 
@@ -1105,7 +1096,8 @@ fn create_angle_limit_cdt() -> Cdt {
 
     let num_slices = 22;
 
-    cdt.insert(VertexType::new(0.0, 0.0)).unwrap();
+    let mut vertices = vec![VertexType::new(0.0, 0.0)];
+
     for index in 0..num_slices {
         if index == 2 || index == 5 || index == 6 || index == 15 || index == 16 || index == 17 {
             // Add some arbitrary irregularities to make the result look more interesting
@@ -1115,16 +1107,9 @@ fn create_angle_limit_cdt() -> Cdt {
         let angle = std::f64::consts::PI * 0.9 * index as f64 / num_slices as f64;
         let distance = 50.0;
         let (sin, cos) = angle.sin_cos();
-        cdt.insert(VertexType::new(sin * distance, cos * distance))
-            .unwrap();
+        vertices.push(VertexType::new(sin * distance, cos * distance));
     }
 
-    let mut handles = cdt.fixed_vertices().collect::<Vec<_>>();
-
-    handles.push(handles[0]);
-    for vertices in handles.windows(2) {
-        cdt.add_constraint(vertices[0], vertices[1]);
-    }
-
+    cdt.add_constraint_edges(vertices, true).unwrap();
     cdt
 }

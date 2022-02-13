@@ -47,6 +47,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Bugfixes
  - (breaking fix) `ConstrainedDelaunayTriangulation::can_add_constraint_edge` accidentally returned the wrong result (`true` when it should have returned `false` and vice versa) #75
  - Fixes a crash that could occur when inserting an element into a CDT (#78)
+## [2.1.0] - YYYY-MM-DD
+ # Added
+  - Delaunay refinement: Adds `ConstrainedDelaunayTriangulation::refine`, along with `RefinementParameters` to modify the refinement behavior.
+  - Added method `ConstrainedDelaunayTriangulation::add_constraint_edges` for simpler creation of strips and loops of connected constraint edges.
+ # Fixed
+  - Bugfix: Calling `ConstrainedDelaunayTriangulation::add_constraint` with *the same two vertex handles*  would incorrectly increase the number returned by `ConstrainedDelaunayTriangulation::num_constraints`
+  - Bugfix: The same bug as above would happen for `ConstrainedDelaunayTriangulation::add_constraint_edge`
 
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.
