@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  # Added
   - Delaunay refinement: Adds `ConstrainedDelaunayTriangulation::refine`, along with `RefinementParameters` to modify the refinement behavior.
   - Added method `ConstrainedDelaunayTriangulation::add_constraint_edges` for simpler creation of strips and loops of connected constraint edges.
+  - Added method `is_constraint_edge` to `DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>` and `UndirectedEdgeHandle<V, DE, CdtEdge<UE>, F>`. This is a shortcut for calling `some_directed_edge_handle.as_undirected().data().is_constraint_edge()`.
  # Fixed
   - Bugfix: Calling `ConstrainedDelaunayTriangulation::add_constraint` with *the same two vertex handles*  would incorrectly increase the number returned by `ConstrainedDelaunayTriangulation::num_constraints`
   - Bugfix: The same bug as above would happen for `ConstrainedDelaunayTriangulation::add_constraint_edge`
