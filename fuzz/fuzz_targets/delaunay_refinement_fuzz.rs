@@ -21,7 +21,7 @@ fuzz_target!(|data: Vec<IntFuzzPoint>| {
     .unwrap();
 
     let parameters = RefinementParameters::new()
-        .with_angle_limit(AngleLimit::new_from_radius_to_shortest_edge_ratio(0.7));
+        .with_angle_limit(AngleLimit::from_radius_to_shortest_edge_ratio(1.0));
 
     triangulation.refine(parameters);
     triangulation.sanity_check();

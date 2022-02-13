@@ -12,8 +12,22 @@ use super::{
     TriangulationExt, UndirectedEdgeHandle,
 };
 
+/// Contains details about the outcome of a refinement procedure.
+///
+/// *See [ConstrainedDelaunayTriangulation::refine]*
 pub struct RefinementResult {
+    /// A hash set containing all excluded faces at the end of the triangulation.
+    ///
+    /// This set will be empty unless [RefinementParameters::exclude_outer_faces] has been used during refinement.
+    /// In this case, the set contains the outer faces at the end of the triangulation, including any outer faces
+    /// that were created during the refinement.
     pub excluded_faces: HashSet<FixedFaceHandle<InnerTag>>,
+
+    /// Set to `true` if the refinement could be completed regularly.
+    ///
+    /// This will be `false` if the refinement ran out of additional vertices
+    /// (see [RefinementParameters::with_max_additional_vertices]). Consider adapting the refinement parameters in this case,
+    /// either by using a higher additional vertex count or by e.g. lowering the [angle limit](RefinementParameters::with_angle_limit).
     pub refinement_complete: bool,
 }
 
@@ -124,6 +138,35 @@ pub enum RefinementHint {
     MustRefine,
 }
 
+/// Controls how a refinement is performed.
+///
+/// Refer to [ConstrainedDelaunayTriangulation::refine] and any method on this type for more details
+/// about which parameters are supported.
+///
+/// The following parameters will be used by `Self::default` and [Self::new]:
+/// * `exclude_outer_faces`: false
+/// * `keep_constraint_edges`: false
+/// * `min_required_area`: disabled - no lower area limit is used
+/// * `max_allowed_area`: disabled - no upper area limit is used
+/// * `angle_limit`: 30 degrees by default.
+/// * `num_additional_vertices`: 10 times the number of vertices in the triangulation
+///
+/// # Example
+///
+/// ```
+/// use spade::{AngleLimit, ConstrainedDelaunayTriangulation, Point2, RefinementParameters};
+///
+/// fn refine_cdt(cdt: &mut ConstrainedDelaunayTriangulation<Point2<f64>>) {
+///     let params = RefinementParameters::<f64>::new()
+///         .exclude_outer_faces(&cdt)
+///         .keep_constraint_edges()
+///         .with_min_required_area(0.0001)
+///         .with_max_allowed_area(0.5)
+///         .with_angle_limit(AngleLimit::from_deg(25.0));
+///
+///     cdt.refine(params);
+/// }
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct RefinementParameters<S: SpadeNum + Float> {
     max_additional_vertices: Option<usize>,
@@ -149,6 +192,9 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
 }
 
 impl<S: SpadeNum + Float> RefinementParameters<S> {
+    /// Creates a new set of `RefinementParameters`.
+    ///
+    /// Refer to the [struct definition](Self) for more information.
     pub fn new() -> Self {
         Self::default()
     }
@@ -179,16 +225,46 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
         self
     }
 
+    /// Specifies a lower bound for a triangles area.
+    ///
+    /// The algorithm will attempt to ignore any triangle with an area below this limit. This can also prevent an
+    /// exhaustion of additionally available vertices (see [Self::with_max_additional_vertices]).
+    ///
+    /// Note that there is no guarantee that no face below this area bound will be kept intact - in some cases, a split
+    /// will still be required to restore the triangulation's Delaunay property. Also, this value does not specify a lower
+    /// bound for the smallest possible triangle in the triangulation.
+    ///
+    /// Should be set to something lower than [with_max_allowed_area]. If this method is not called, no lower bound check
+    /// will be performed.
     pub fn with_min_required_area(mut self, min_area: S) -> Self {
         self.min_area = Some(min_area);
         self
     }
 
+    /// Specifies an upper bound for triangle areas in the triangulation.
+    ///
+    /// By default, the refinement tries to be conservative in how many vertices it adds. This will lead to an uneven
+    /// triangle size distribution - areas with larger feature will contain fewer, larger triangles whereas regions with
+    /// small features will contain more densely packed triangles.
+    /// By specifying an upper area bound for triangles, the resulting triangle sizes can be brought evened out a little
+    /// as any large triangle above the bound will be split into smaller parts.
+    ///
+    /// Should be set to something larger than `with_min_required_area`. If this method is not called, no upper area bound
+    /// check will be performed.
     pub fn with_max_allowed_area(mut self, max_area: S) -> Self {
         self.max_area = Some(max_area);
         self
     }
 
+    /// Specifies how many additional vertices may be inserted during Delaunay refinement.
+    ///
+    /// Refinement may, in some cases, fail to terminate if the angle limit is set too high
+    /// (see [with_angle_limit](Self::with_angle_limit)). Simply stopping the refinement after a certain number of vertices
+    /// has been inserted is an easy way to enforce termination. However, the resulting mesh may exhibit very poor quality
+    /// in this case - some areas may have become overly refined, others might be overlooked completely. Consider changing
+    /// the parameters (most notably the angle limit) if the refinement runs out of vertices.
+    ///
+    /// Use [RefinementResult::refinement_complete] to check if the refinement has completed successfully.
     pub fn with_max_additional_vertices(mut self, max_additional_vertices: usize) -> Self {
         self.max_additional_vertices = Some(max_additional_vertices);
         self
@@ -411,6 +487,8 @@ where
     /// Wikipedia: <https://en.wikipedia.org/wiki/Delaunay_refinement>
     ///
     ///
+    #[doc(alias = "Refinement")]
+    #[doc(alias = "Delaunay Refinement")]
     pub fn refine(&mut self, mut parameters: RefinementParameters<V::Scalar>) -> RefinementResult {
         use PositionInTriangulation::*;
 
@@ -439,7 +517,7 @@ where
         let num_initial_vertices: usize = self.num_vertices();
         let num_additional_vertices = parameters
             .max_additional_vertices
-            .unwrap_or_else(|| num_initial_vertices * 16);
+            .unwrap_or_else(|| num_initial_vertices * 10);
         let max_allowed_vertices = num_initial_vertices + num_additional_vertices;
 
         let is_original_vertex = |vertex: FixedVertexHandle| vertex.index() < num_initial_vertices;
