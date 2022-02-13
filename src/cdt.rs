@@ -203,7 +203,7 @@ where
     }
 
     fn is_defined_legal(&self, edge: FixedUndirectedEdgeHandle) -> bool {
-        self.s.undirected_edge(edge).data().is_constraint_edge()
+        self.is_constraint_edge(edge)
     }
 
     fn handle_legal_edge_split(&mut self, handles: [FixedUndirectedEdgeHandle; 2]) {

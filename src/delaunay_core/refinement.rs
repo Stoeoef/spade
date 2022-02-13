@@ -327,7 +327,7 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
 
         loop {
             while let Some(next_edge) = current_todo_list.pop() {
-                let (list, face_set) = if next_edge.as_undirected().data().is_constraint_edge() {
+                let (list, face_set) = if next_edge.is_constraint_edge() {
                     (&mut next_todo_list, &mut inner_faces)
                 } else {
                     (&mut current_todo_list, &mut outer_faces)
@@ -618,9 +618,7 @@ where
                     OnEdge(edge) => {
                         let edge = self.directed_edge(edge);
                         if edge.is_part_of_convex_hull() {
-                            if parameters.keep_constraint_edges
-                                && edge.as_undirected().data().is_constraint_edge()
-                            {
+                            if parameters.keep_constraint_edges && edge.is_constraint_edge() {
                                 continue;
                             }
 
@@ -655,9 +653,7 @@ where
                         if is_encroaching_edge(from, to, circumcenter) {
                             is_encroaching = true;
 
-                            if !parameters.keep_constraint_edges
-                                || !edge.as_undirected().data().is_constraint_edge()
-                            {
+                            if !parameters.keep_constraint_edges || !edge.is_constraint_edge() {
                                 // New circumcenter would encroach a constraint edge. Don't insert the circumcenter
                                 // but force splitting the segment
                                 forcibly_splitted_segments_buffer.push(edge.as_undirected().fix());
@@ -708,7 +704,7 @@ where
     }
 
     fn is_fixed_edge(edge: UndirectedEdgeHandle<V, DE, CdtEdge<UE>, F>) -> bool {
-        edge.data().is_constraint_edge() || edge.is_part_of_convex_hull()
+        edge.is_constraint_edge() || edge.is_part_of_convex_hull()
     }
 
     fn resolve_encroachment(
@@ -764,7 +760,7 @@ where
             .as_inner()
             .map(|face| excluded_faces.contains(&face.fix()));
 
-        let is_constraint_edge = segment.as_undirected().data().is_constraint_edge();
+        let is_constraint_edge = segment.is_constraint_edge();
 
         // Split the edge at its center
         let segment = segment.fix();
