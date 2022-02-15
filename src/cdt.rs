@@ -260,7 +260,7 @@ where
     /// constraint edge.
     pub fn can_add_constraint(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
         let line_intersection_iterator = LineIntersectionIterator::new_from_handles(self, from, to);
-        self.contains_any_constraint_edge(line_intersection_iterator)
+        !self.contains_any_constraint_edge(line_intersection_iterator)
     }
 
     /// Checks if a line intersects a constraint edge.
