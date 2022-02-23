@@ -473,9 +473,18 @@ where
     /// Use [RefinementResult::refinement_complete] to identify if a refinement operation has succeeded without running out of
     /// vertices.
     ///
-    /// To prevent this from happening, consider either lowering the minimum angle limit
+    /// For mitigation, consider either lowering the minimum angle limit
     /// (see [RefinementParameters::with_angle_limit]) or introduce a
     /// [minimum required area](RefinementParameters::with_min_required_area).
+    ///
+    /// Meshes with very small input angles (angles between two constraint edges) may lead to poorly refined results.
+    /// Please consider providing a bug report if you encounter an input mesh which you think isn't refined well.
+    ///
+    /// # Stability guarantees
+    ///
+    /// While changing the interface of this method is considered to be a breaking change, changes to the specific
+    /// refinement process (e.g. which faces are split in which order) are not. Any patch release may change how
+    /// the same input mesh is being refined.
     ///
     /// # References
     ///

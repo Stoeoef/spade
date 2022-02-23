@@ -11,6 +11,7 @@ Delaunay triangulations for the rust ecosystem.
 - Allows both incremental and bulk loading creation of triangulations
 - Support for vertex removal
 - 2D constrained Delaunay triangulation (CDT)
+- [Delaunay refinement](https://en.wikipedia.org/wiki/Delaunay_refinement)
 - Uses precise geometric predicates to prevent incorrect geometries due to rounding issues
 - Supports extracting the Voronoi diagram
 
@@ -32,7 +33,6 @@ Project goals, in the order of their importance:
 
 For Spade 2.x:
  - Add back the removed interpolation methods (natural neighbor interpolation, #67)
- - Delaunay refinement (#66)
 
 For Spade 3:
  - Possibly base `spade` on `nalgebra` as underlying vector and matrix library. Not much else planned yet!
