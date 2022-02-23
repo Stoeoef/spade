@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use num_traits::Float;
 
@@ -15,6 +15,7 @@ use super::{
 /// Contains details about the outcome of a refinement procedure.
 ///
 /// *See [ConstrainedDelaunayTriangulation::refine]*
+#[derive(Debug, Clone)]
 pub struct RefinementResult {
     /// A hash set containing all excluded faces at the end of the triangulation.
     ///
@@ -132,7 +133,7 @@ impl Default for AngleLimit {
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Hash)]
-pub enum RefinementHint {
+enum RefinementHint {
     Ignore,
     ShouldRefine,
     MustRefine,
@@ -359,7 +360,7 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
         self
     }
 
-    pub(crate) fn get_refinement_hint<V, DE, UE, F>(
+    fn get_refinement_hint<V, DE, UE, F>(
         &self,
         face: FaceHandle<InnerTag, V, DE, UE, F>,
     ) -> RefinementHint
@@ -497,6 +498,11 @@ where
         let mut legalize_edges_buffer = Vec::with_capacity(20);
         let mut forcibly_split_segments_buffer = Vec::with_capacity(5);
 
+        // Maps each steiner point on an input edge onto the two vertices of that
+        // input edge. This helps in identifying when two steiner points share a common
+        // input angle
+        let mut constraint_edge_map = HashMap::new();
+
         // Stores all edges that should be checked for encroachment
         let mut encroached_segment_candidates =
             VecDeque::with_capacity(self.num_constraints() + self.convex_hull_size());
@@ -521,8 +527,6 @@ where
             .max_additional_vertices
             .unwrap_or_else(|| num_initial_vertices * 10);
         let max_allowed_vertices = num_initial_vertices + num_additional_vertices;
-
-        let is_original_vertex = |vertex: FixedVertexHandle| vertex.index() < num_initial_vertices;
 
         let mut refinement_complete = true;
 
@@ -553,7 +557,7 @@ where
         //
         // See method `resolve_encroachment` for more details on how step 1 and 2 manage to split edges in order to resolve
         // an encroachment.
-        loop {
+        'main_loop: loop {
             if self.num_vertices() >= max_allowed_vertices {
                 refinement_complete = false;
                 break;
@@ -564,8 +568,8 @@ where
                 self.resolve_encroachment(
                     &mut encroached_segment_candidates,
                     &mut skinny_triangle_candidates,
+                    &mut constraint_edge_map,
                     forcibly_split_segment,
-                    is_original_vertex,
                     &mut excluded_faces,
                 );
                 continue;
@@ -597,8 +601,8 @@ where
                             self.resolve_encroachment(
                                 &mut encroached_segment_candidates,
                                 &mut skinny_triangle_candidates,
+                                &mut constraint_edge_map,
                                 segment_candidate,
-                                is_original_vertex,
                                 &mut excluded_faces,
                             );
                         }
@@ -618,16 +622,6 @@ where
 
                 let (shortest_edge, _) = face.shortest_edge();
 
-                // Check if the shortest edge is opposite of an input angle.
-                //
-                // Such an input angle cannot be maximized as that would require flipping at least one of its edges.
-                //
-                // Instead, the algorithm will consider the face to be skinny only *once* and do one split resolution.
-                // If that angle is encountered again, it will be ignored instead.
-                let is_input_angle = [shortest_edge.next(), shortest_edge.prev()]
-                    .into_iter()
-                    .all(|edge| Self::is_fixed_edge(edge.as_undirected()));
-
                 let refinement_hint = parameters.get_refinement_hint(face);
 
                 if refinement_hint == RefinementHint::Ignore {
@@ -636,24 +630,38 @@ where
                 }
 
                 if refinement_hint == RefinementHint::ShouldRefine
-                    && is_input_angle
-                    // `is_original_vertex` will return `false` iff a vertex is a steiner point (thus, it's not part
-                    //  of the original triangulation).
-                    //  This is used to check if we have already attempted to fix the face at this input angle.
-                    && (!is_original_vertex(shortest_edge.from().fix())
-                        || !is_original_vertex(shortest_edge.to().fix()))
+                    && !Self::is_fixed_edge(shortest_edge.as_undirected())
                 {
-                    // Don't attempt to subdivide it any further, this is as good as we can get.
-                    continue;
+                    // Check if the shortest edge ends in two input edges that span a small
+                    // input angle.
+                    //
+                    // Such an input angle cannot be maximized as that would require flipping at least one of its edges.
+                    //
+                    // See Miller, Gary; Pav, Steven; Walkington, Noel (2005). "When and why Delaunay refinement algorithms work".
+                    // for more details on this idea.
+                    let original_from = constraint_edge_map
+                        .get(&shortest_edge.from().fix())
+                        .copied();
+                    let original_to = constraint_edge_map.get(&shortest_edge.to().fix()).copied();
+
+                    for from_input_vertex in original_from.iter().flatten() {
+                        for to_input_vertex in original_to.iter().flatten() {
+                            if from_input_vertex == to_input_vertex {
+                                // The two edges are input segments and join a common segment.
+                                // Don't attempt to subdivide it any further, this is as good as we can get.
+                                continue 'main_loop;
+                            }
+                        }
+                    }
                 }
 
-                // Continue to resolve the skinny face!
+                // Continue to resolve the skinny face
+                let circumcenter = face.circumcenter();
+
                 let locate_hint = face.vertices()[0].fix();
 
                 assert!(forcibly_split_segments_buffer.is_empty());
                 legalize_edges_buffer.clear();
-
-                let circumcenter = face.circumcenter();
 
                 // "Simulate" inserting the circumcenter by locating the insertion site and identifying which edges
                 // would need to be flipped (legalized) by the insertion. If any of these edges is fixed, an
@@ -664,19 +672,14 @@ where
                 match self.locate_with_hint(circumcenter, locate_hint) {
                     OnEdge(edge) => {
                         let edge = self.directed_edge(edge);
-                        if edge.is_part_of_convex_hull() {
-                            if parameters.keep_constraint_edges && edge.is_constraint_edge() {
-                                continue;
-                            }
+                        if parameters.keep_constraint_edges && edge.is_constraint_edge() {
+                            continue;
+                        }
 
-                            forcibly_split_segments_buffer.push(edge.fix().as_undirected());
-                        } else {
-                            legalize_edges_buffer.extend([
-                                edge.next().fix(),
-                                edge.prev().fix(),
-                                edge.rev().next().fix(),
-                                edge.rev().prev().fix(),
-                            ]);
+                        for edge in [edge, edge.rev()] {
+                            if !edge.is_outer_edge() {
+                                legalize_edges_buffer.extend([edge.next().fix(), edge.prev().fix()])
+                            }
                         }
                     }
                     OnFace(face_under_circumcenter) => {
@@ -766,8 +769,8 @@ where
         &mut self,
         encroached_segments_buffer: &mut VecDeque<FixedUndirectedEdgeHandle>,
         encroached_faces_buffer: &mut VecDeque<FixedFaceHandle<InnerTag>>,
+        constraint_edge_map: &mut HashMap<FixedVertexHandle, [FixedVertexHandle; 2]>,
         encroached_edge: FixedUndirectedEdgeHandle,
-        is_original_vertex: impl Fn(FixedVertexHandle) -> bool,
         excluded_faces: &mut HashSet<FixedFaceHandle<InnerTag>>,
     ) {
         // Resolves an encroachment by splitting the encroached edge. Since this reduces the diametral circle, this will
@@ -795,17 +798,15 @@ where
 
         let half = Into::<V::Scalar>::into(0.5f32);
 
-        let (w0, w1) = match (is_original_vertex(v0.fix()), is_original_vertex(v1.fix())) {
-            (true, true) => {
+        let v0_constraint_vertex = constraint_edge_map.get(&v0.fix()).copied();
+        let v1_constraint_vertex = constraint_edge_map.get(&v1.fix()).copied();
+
+        let (weight0, weight1) = match (v0_constraint_vertex, v1_constraint_vertex) {
+            (None, None) => {
                 // Split the segment exactly in the middle if it has not been split before.
                 (half, half)
             }
-            (false, false) => {
-                // If both ends are steiner points. We'll also split in the middle - this seems to
-                // slightly improve the average angle
-                (half, half)
-            }
-            (v0_is_original, _) => {
+            _ => {
                 // One point is a steiner point, another point isn't. This will trigger rounding the distance to
                 // the nearest power of two to prevent runaway encroachment.
 
@@ -815,7 +816,7 @@ where
                 let other_vertex_weight = half * nearest_power_of_two / half_length;
                 let original_vertex_weight = Into::<V::Scalar>::into(1.0) - other_vertex_weight;
 
-                if v0_is_original {
+                if v0_constraint_vertex.is_none() {
                     // Orient the weight towards to original vertex. This makes sure that any edge participating in
                     // a runaway encroachment will end up with the same distance to the non-steiner (original) point.
                     (original_vertex_weight, other_vertex_weight)
@@ -825,7 +826,8 @@ where
             }
         };
 
-        let final_position = v0.position().mul(w0).add(v1.position().mul(w1));
+        let final_position = v0.position().mul(weight0).add(v1.position().mul(weight1));
+        let (v0, v1) = (v0.fix(), v1.fix());
 
         let is_left_side_excluded = segment
             .face()
@@ -843,6 +845,11 @@ where
         // Perform the actual split!
         let segment = segment.fix();
         let (new_vertex, [e1, e2]) = self.insert_on_edge(segment, final_position.into());
+
+        let original_vertices = v0_constraint_vertex
+            .or(v1_constraint_vertex)
+            .unwrap_or([v0, v1]);
+        constraint_edge_map.insert(new_vertex, original_vertices);
 
         if is_constraint_edge {
             // Make sure to update the constraint edges count as required.
@@ -873,20 +880,19 @@ where
                 .flat_map(|edge| edge.face().fix().as_inner()),
         );
 
+        // Neighboring edges may have become encroached. Check if they need to be added to the encroached segment buffer.
+        encroached_segments_buffer.extend(
+            self.vertex(new_vertex)
+                .out_edges()
+                .filter(|edge| !edge.is_outer_edge())
+                .map(|edge| edge.next().as_undirected())
+                .filter(|edge| Self::is_fixed_edge(*edge))
+                .map(|edge| edge.fix()),
+        );
+
         // Update encroachment candidates - any of the resulting edges may still be in an encroaching state.
         encroached_segments_buffer.push_back(e1.as_undirected());
         encroached_segments_buffer.push_back(e2.as_undirected());
-
-        // Neighboring edges may have become encroached. Check if they need to be added to the encroached segment buffer.
-        // This leverages that `e1.rev()` and `e2` point *away* from the newly inserted point.
-        encroached_segments_buffer.extend(
-            [e1.rev(), e2]
-                .into_iter()
-                .map(|edge| self.directed_edge(edge))
-                .flat_map(|edge| [edge.next(), edge.rev().prev()].into_iter())
-                .filter(|edge| Self::is_fixed_edge(edge.as_undirected()))
-                .map(|edge| edge.as_undirected().fix()),
-        );
     }
 }
 
@@ -1054,19 +1060,20 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn test_exclude_outer_faces() -> Result<(), InsertionError> {
-        let mut cdt = Cdt::new();
-
-        let shape = [
+    fn test_shape() -> [Point2<f64>; 6] {
+        [
             Point2::new(-1.0, 1.0),
             Point2::new(0.0, 0.7),
             Point2::new(1.0, 1.0),
             Point2::new(2.0, 0.0),
             Point2::new(0.5, -1.0),
             Point2::new(-0.5, -2.0),
-            Point2::new(-1.0, 1.0),
-        ];
+        ]
+    }
+
+    #[test]
+    fn test_exclude_outer_faces() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
 
         let scale_factors = [1.0, 2.0, 3.0, 4.0];
 
@@ -1077,20 +1084,40 @@ mod test {
         assert!(current_excluded_faces.is_empty());
 
         for factor in scale_factors {
-            for points in shape.windows(2) {
-                let p1 = points[0].mul(factor);
-                let p2 = points[1].mul(factor);
-
-                cdt.add_constraint_edge(p1, p2)?;
-            }
+            cdt.add_constraint_edges(test_shape().iter().map(|p| p.mul(factor)), true)?;
 
             let next_excluded_faces = RefinementParameters::<f64>::new()
                 .exclude_outer_faces(&cdt)
                 .excluded_faces;
 
+            assert!(current_excluded_faces.len() < next_excluded_faces.len());
+
             current_excluded_faces = next_excluded_faces;
             assert!(current_excluded_faces.len() < cdt.num_inner_faces());
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_exclude_outer_faces_with_non_closed_mesh() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        cdt.add_constraint_edges(test_shape(), false)?;
+
+        let refinement_result = cdt.refine(
+            RefinementParameters::new()
+                .exclude_outer_faces(&cdt)
+                .with_angle_limit(AngleLimit::from_radius_to_shortest_edge_ratio(
+                    f64::INFINITY,
+                )),
+        );
+
+        assert_eq!(
+            refinement_result.excluded_faces.len(),
+            cdt.num_inner_faces()
+        );
+
+        cdt.refine(RefinementParameters::new().exclude_outer_faces(&cdt));
 
         Ok(())
     }
