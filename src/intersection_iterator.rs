@@ -239,7 +239,12 @@ where
                             Some(Intersection::EdgeOverlap(edge))
                         }
                         VertexOutDirection::EdgeIntersection(edge) => {
-                            Some(Intersection::EdgeIntersection(edge))
+                            if edge.side_query(self.line_to).is_on_right_side() {
+                                // The target point was skipped over - the iteration can finish
+                                None
+                            } else {
+                                Some(Intersection::EdgeIntersection(edge))
+                            }
                         }
                     }
                 }
@@ -686,6 +691,29 @@ mod test {
         let from = Point2::new(0.5, -0.5);
         let to = Point2::new(-0.5, 0.5);
         check(&d, from, to, vec![v2]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_intersecting_through_point_ending_on_face() -> Result<(), InsertionError> {
+        let mut d = Triangulation::new();
+
+        let v0 = d.insert(Point2::new(0.0, 0.0))?;
+        let v1 = d.insert(Point2::new(1.0, 1.0))?;
+        let v2 = d.insert(Point2::new(-1.0, 1.0))?;
+        let v3 = d.insert(Point2::new(0.0, 2.0))?;
+        d.insert(Point2::new(-1.0, 3.0))?;
+        d.insert(Point2::new(1.0, 3.0))?;
+
+        let e = d.get_edge_from_neighbors(v2, v1).unwrap();
+
+        let v0 = VertexIntersection(d.vertex(v0));
+        let e = EdgeIntersection(e);
+        let v3 = VertexIntersection(d.vertex(v3));
+
+        let from = Point2::new(0.0, 0.0);
+        let to = Point2::new(0.0, 2.5);
+        check(&d, from, to, vec![v0, e, v3]);
         Ok(())
     }
 }
