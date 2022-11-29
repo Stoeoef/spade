@@ -4,7 +4,7 @@ use super::super::Dcel;
 use super::public_handles::{InnerOuterMarker, PossiblyOuterTag};
 
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub trait DelaunayElementType: Sized + Default {
     fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize;
@@ -19,7 +19,7 @@ pub trait DelaunayElementType: Sized + Default {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct FixedHandleImpl<Type, InnerOuter: InnerOuterMarker> {
     index: u32,
@@ -144,27 +144,27 @@ impl<'a, V, DE, UE, F, Type: Default, InnerOuter: InnerOuterMarker>
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct VertexTag;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct DirectedEdgeTag;
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
 pub struct UndirectedEdgeTag;
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
 pub struct FaceTag;
@@ -173,7 +173,7 @@ pub struct DirectedVoronoiEdgeTag;
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
 pub struct UndirectedVoronoiEdgeTag;

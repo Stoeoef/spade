@@ -5,7 +5,7 @@ use crate::{
     TriangulationExt,
 };
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
 ///
@@ -21,7 +21,7 @@ use serde_crate::{Deserialize, Serialize};
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct CdtEdge<UE>(bool, UE);
 
@@ -127,7 +127,7 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct ConstrainedDelaunayTriangulation<
     V,
