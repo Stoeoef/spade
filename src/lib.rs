@@ -58,15 +58,15 @@ mod test_utilities;
 ///
 /// # Reference handles
 /// Reference handles come in one of four variants:
-/// * [FaceHandle](Self::FaceHandle)s refer to a single face (triangle) of the triangulation.
+/// * [FaceHandle](handles::FaceHandle)s refer to a single face (triangle) of the triangulation.
 ///   They are used get the triangle's adjacent vertices and edges. They also may refer to
 ///    the single outer face.
-/// * [VertexHandle](Self::VertexHandle)s refer to a single vertex of the triangulation. They
+/// * [VertexHandle](handles::VertexHandle)s refer to a single vertex of the triangulation. They
 ///   allow to retrieve the vertex position and its outgoing edges.
-/// * [DirectedEdgeHandle](Self::DirectedEdgeHandle)s refer to a single directed edge. They
+/// * [DirectedEdgeHandle](handles::DirectedEdgeHandle)s refer to a single directed edge. They
 ///   allow to retrieve the edges origin and destination vertex, its adjacent face as well as
 ///   its previous and next edge.
-/// * [UndirectedEdgeHandle](Self::UndirectedEdgeHandle)s refer to an edge without specifying its
+/// * [UndirectedEdgeHandle](handles::UndirectedEdgeHandle)s refer to an edge without specifying its
 ///   direction.
 ///
 /// All handles also allow to set and retrieve arbitrary additional data associated with that
@@ -89,10 +89,10 @@ mod test_utilities;
 /// has taken place.
 ///
 /// Fixed handles also come in four variants, depending on which element they refer to:
-///  * [FixedVertexHandle](Self::FixedVertexHandle)
-///  * [FixedFaceHandle](Self::FixedFaceHandle)
-///  * [FixedDirectedEdgeHandle](Self::FixedDirectedEdgeHandle)
-///  * [FixedUndirectedEdgeHandle](Self::FixedUndirectedEdgeHandle)
+///  * [FixedVertexHandle](handles::FixedVertexHandle)
+///  * [FixedFaceHandle](handles::FixedFaceHandle)
+///  * [FixedDirectedEdgeHandle](handles::FixedDirectedEdgeHandle)
+///  * [FixedUndirectedEdgeHandle](handles::FixedUndirectedEdgeHandle)
 ///
 /// # Retrieving handles by iteration
 ///
