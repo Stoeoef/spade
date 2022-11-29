@@ -475,7 +475,7 @@ impl Hull {
             .data
             .iter()
             .enumerate()
-            .find(|(index, _)| !self.empty.contains(&*index))
+            .find(|(index, _)| !self.empty.contains(index))
             .unwrap();
 
         let first_index = first_index;

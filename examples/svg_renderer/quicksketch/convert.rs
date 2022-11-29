@@ -157,13 +157,12 @@ impl SketchConverter {
                             sweep,
                             to,
                         } => {
-                            let to_int_flag = |flag| if flag { 1 } else { 0 };
                             data = data.elliptical_arc_to((
                                 radii.x,
                                 radii.y,
                                 rotation.0,
-                                to_int_flag(*large_arc),
-                                to_int_flag(*sweep),
+                                i32::from(*large_arc),
+                                i32::from(*sweep),
                                 to.x,
                                 to.y,
                             ));
