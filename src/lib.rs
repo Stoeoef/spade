@@ -17,8 +17,10 @@
 mod cdt;
 mod delaunay_core;
 mod delaunay_triangulation;
+mod edges_in_rectangle_iterator;
 mod intersection_iterator;
 mod point;
+mod vertices_in_rectangle_iterator;
 
 mod triangulation;
 
@@ -183,6 +185,8 @@ pub mod iterators {
         FixedVertexIterator, InnerFaceIterator, UndirectedEdgeIterator,
         UndirectedVoronoiEdgeIterator, VertexIterator, VoronoiFaceIterator,
     };
+    pub use crate::edges_in_rectangle_iterator::EdgesInRectangleIterator;
+    pub use crate::vertices_in_rectangle_iterator::VerticesInRectangleIterator;
 }
 
 /// Internals that must be published due to technical reasons. This is not the place you are

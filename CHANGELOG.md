@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.1.0] - YYYY-MM-DD
+
+### Added
+ - Added `Triangulation::get_edges_in_rectangle`
+ - Added `Triangulation::get_vertices_in_rectangle`
+
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.
   
@@ -232,6 +238,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.1.0]: https://github.com/Stoeoef/spade/compare/v2.0.0...v2.1.0
 
 [2.0.0]: https://github.com/Stoeoef/spade/compare/v1.8.2...v2.0.0
 

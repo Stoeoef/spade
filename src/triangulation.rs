@@ -1,6 +1,8 @@
 use crate::delaunay_core::iterators::HullIterator;
 use crate::delaunay_core::InnerOuterMarker;
+use crate::edges_in_rectangle_iterator::EdgesInRectangleIterator;
 use crate::iterators::*;
+use crate::vertices_in_rectangle_iterator::VerticesInRectangleIterator;
 use crate::HintGenerator;
 use crate::{delaunay_core::Dcel, handles::*};
 use crate::{HasPosition, InsertionError, Point2, TriangulationExt};
@@ -21,7 +23,7 @@ pub enum PositionInTriangulation {
     OnFace(FixedFaceHandle<InnerTag>),
 
     /// A position lies outside the convex hull. The given edge handle refers to an edge
-    /// of the convex hull which has both the point and an outer face on its left side.
+    /// of the convex hull which has both the point and the outer face on its left side.
     ///
     /// *Note*: The given edge is *not* necessarily the *closest* edge to a position.
     OutsideOfConvexHull(FixedDirectedEdgeHandle),
@@ -384,6 +386,54 @@ pub trait Triangulation: Default {
         DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
     > {
         self.s().get_edge_from_neighbors(from, to)
+    }
+
+    /// Returns all vertices encompassed by a given rectangle.
+    ///
+    /// Any vertex on the rectangle's boundary or on a corner is also returned.
+    ///
+    /// The rectangle is specified by its lower and upper corners. Yields an empty iterator
+    /// if `lower.x > upper.x || lower.y > upper.y`.
+    ///
+    /// # Memory consumption
+    ///
+    /// Consumed memory is in `O(n)` where `n` refers to the number of already returned vertices.
+    ///
+    /// *See also [get_edges_in_rectangle](Triangulation::get_edges_in_rectangle)*
+    fn get_vertices_in_rectangle(
+        &self,
+        lower: Point2<<Self::Vertex as HasPosition>::Scalar>,
+        upper: Point2<<Self::Vertex as HasPosition>::Scalar>,
+    ) -> VerticesInRectangleIterator<
+        Self::Vertex,
+        Self::DirectedEdge,
+        Self::UndirectedEdge,
+        Self::Face,
+    > {
+        VerticesInRectangleIterator::new(self, lower, upper)
+    }
+
+    /// Returns all edges contained in a rectangular area.
+    ///
+    /// An edge is considered to be contained in the rectangle if at least one point exists
+    /// that is both on the edge and inside the rectangle (including its boundary).
+    ///
+    /// The rectangle is specified by its lower and upper corners. Yields an empty iterator
+    /// if `lower.x > upper.x || lower.y > upper.y`.
+    ///
+    /// # Memory consumption
+    ///
+    /// Memory usage is, on average, in O(|convex_hull(E)|) where "E" refers to all edges that
+    /// have been returned so far.
+    ///
+    /// *See also [get_vertices_in_rectangle](Triangulation::get_vertices_in_rectangle)*
+    fn get_edges_in_rectangle(
+        &self,
+        lower: Point2<<Self::Vertex as HasPosition>::Scalar>,
+        upper: Point2<<Self::Vertex as HasPosition>::Scalar>,
+    ) -> EdgesInRectangleIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    {
+        EdgesInRectangleIterator::new(self, lower, upper)
     }
 
     /// Returns information about the location of a point in a triangulation.
