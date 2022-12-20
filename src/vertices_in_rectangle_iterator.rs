@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    edges_in_rectangle_iterator,
+    edges_in_rectangle_iterator::{is_point_inside, EdgesInRectangleIterator},
     handles::{FixedVertexHandle, VertexHandle},
     HasPosition, Point2, Triangulation,
 };
@@ -10,15 +10,14 @@ use crate::{
 /// [Triangulation::get_vertices_in_rectangle].
 ///
 /// The item type is [VertexHandle].
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct VerticesInRectangleIterator<'a, V, DE = (), UE = (), F = ()>
 where
     V: HasPosition,
 {
-    lower: Point2<V::Scalar>,
-    upper: Point2<V::Scalar>,
-    todo: Vec<VertexHandle<'a, V, DE, UE, F>>,
+    iterator: EdgesInRectangleIterator<'a, V, DE, UE, F>,
     already_visited: HashSet<FixedVertexHandle>,
+    pending: Option<VertexHandle<'a, V, DE, UE, F>>,
 }
 
 impl<'a, V, DE, UE, F> VerticesInRectangleIterator<'a, V, DE, UE, F>
@@ -33,20 +32,10 @@ where
     where
         T: Triangulation<Vertex = V, DirectedEdge = DE, UndirectedEdge = UE, Face = F>,
     {
-        let todo: Vec<_> = triangulation
-            .get_edges_in_rectangle(lower, upper)
-            .flat_map(|edge| edge.vertices())
-            .find(|point| {
-                edges_in_rectangle_iterator::is_point_inside(lower, upper, point.position())
-            })
-            .into_iter()
-            .collect();
-        let already_visited = todo.iter().map(|v| v.fix()).collect();
         Self {
-            lower,
-            upper,
-            todo,
-            already_visited,
+            iterator: EdgesInRectangleIterator::new(triangulation, lower, upper),
+            already_visited: HashSet::new(),
+            pending: None,
         }
     }
 }
@@ -58,16 +47,26 @@ where
     type Item = VertexHandle<'a, V, DE, UE, F>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(next) = self.todo.pop() {
-            let neighbors = next.out_edges().map(|edge| edge.to());
-            for neighbor in neighbors {
-                if self.already_visited.insert(neighbor.fix()) {
-                    self.todo.push(neighbor);
+        if let Some(result) = self.pending.take() {
+            return Some(result);
+        }
+        let lower = self.iterator.lower;
+        let upper = self.iterator.upper;
+
+        for edge in self.iterator.by_ref() {
+            let [v0, v1] = edge.vertices();
+            let v0_valid = self.already_visited.insert(v0.fix())
+                && is_point_inside(lower, upper, v0.position());
+            let v1_valid = self.already_visited.insert(v1.fix())
+                && is_point_inside(lower, upper, v1.position());
+            match (v0_valid, v1_valid) {
+                (true, false) => return Some(v0),
+                (false, true) => return Some(v1),
+                (true, true) => {
+                    self.pending = Some(v0);
+                    return Some(v1);
                 }
-            }
-            if edges_in_rectangle_iterator::is_point_inside(self.lower, self.upper, next.position())
-            {
-                return Some(next);
+                (false, false) => continue,
             }
         }
         None

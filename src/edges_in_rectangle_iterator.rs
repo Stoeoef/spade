@@ -36,8 +36,8 @@ where
 {
     remaining_hull_set: HashSet<DirectedEdgeHandle<'a, V, DE, UE, F>>,
     remaining_hull_vec: Vec<DirectedEdgeHandle<'a, V, DE, UE, F>>,
-    lower: Point2<V::Scalar>,
-    upper: Point2<V::Scalar>,
+    pub(crate) lower: Point2<V::Scalar>,
+    pub(crate) upper: Point2<V::Scalar>,
 }
 
 impl<'a, V, DE, UE, F> EdgesInRectangleIterator<'a, V, DE, UE, F>
@@ -113,7 +113,10 @@ where
 
         let edges = [(v0, v1), (v1, v2), (v2, v3), (v3, v0)];
 
-        let mut intersections = Vec::new();
+        let mut intersections = Vec::with_capacity(4);
+
+        let mut moved_to_next = false;
+        let mut moved_to_prev = false;
 
         loop {
             let e0 = edge.from().position().to_f64();
@@ -140,12 +143,21 @@ where
                 &[first, second, ..] => {
                     if first < 0.0 && second < 0.0 {
                         edge = edge.prev();
+                        moved_to_prev = true;
                     } else if first > 1.0 && second > 1.0 {
                         edge = edge.next();
+                        moved_to_next = true;
                     } else {
                         return vec![edge];
                     }
                 }
+            }
+            if moved_to_next && moved_to_prev {
+                // Special case: Sometimes, all edges will cause two intersections while
+                // no edge crosses the rectangle
+                // The algorithm will indefinitely switch directions in this situation
+                // We must make sure to prevent this endless loop by returning no intersections.
+                return vec![];
             }
             intersections.clear();
         }
@@ -298,7 +310,8 @@ mod test {
     use crate::{
         edges_in_rectangle_iterator::{is_handle_inside, is_inside, is_point_inside},
         test_utilities::random_points_with_seed,
-        DelaunayTriangulation, InsertionError, Point2, Triangulation,
+        ConstrainedDelaunayTriangulation, DelaunayTriangulation, InsertionError, Point2,
+        Triangulation,
     };
 
     use super::get_edge_intersections;
@@ -352,14 +365,25 @@ mod test {
 
     #[test]
     fn test_random() -> Result<(), InsertionError> {
-        let vertices = random_points_with_seed(122, crate::test_utilities::SEED);
-        let d = DelaunayTriangulation::<_>::bulk_load(vertices)?;
-        test_rectangle_iterator(&d);
-
+        for size in [4, 52, 122] {
+            let vertices = random_points_with_seed(size, crate::test_utilities::SEED);
+            let d = DelaunayTriangulation::<_>::bulk_load(vertices.clone())?;
+            test_rectangle_iterator(&d);
+            let mut c = ConstrainedDelaunayTriangulation::<_>::bulk_load(vertices)?;
+            let constraints = random_points_with_seed(size, crate::test_utilities::SEED2);
+            for points in constraints.as_slice().chunks_exact(2) {
+                let from = c.insert(points[0])?;
+                let to = c.insert(points[1])?;
+                if c.can_add_constraint(from, to) {
+                    c.add_constraint(from, to);
+                }
+            }
+            test_rectangle_iterator(&c);
+        }
         Ok(())
     }
 
-    fn test_rectangle_iterator(d: &DelaunayTriangulation<Point2<f64>>) {
+    fn test_rectangle_iterator(d: &impl Triangulation<Vertex = Point2<f64>>) {
         let areas = [
             (Point2::new(-2.0, -2.0), Point2::new(-0.1, -0.1)),
             (Point2::new(-10.0, -10.0), Point2::new(10.0, 10.0)),

@@ -117,7 +117,7 @@ pub trait Triangulation: Default {
 
     /// Removes all edges, faces and vertices from the triangulation.
     ///
-    /// This method does not change the allocated capacity.
+    /// This method does not change the allocated internal capacity.
     fn clear(&mut self) {
         self.s_mut().clear();
         let new_hint_generator = HintGenerator::initialize_from_triangulation(self);

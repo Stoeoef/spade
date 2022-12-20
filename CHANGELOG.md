@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
  - Added `Triangulation::get_edges_in_rectangle`
  - Added `Triangulation::get_vertices_in_rectangle`
+ - Added `Triangulation::clear`
+ - Added missing `DelaunayTriangulation::Clone` implementation
+
+### Bugfixes
+ - (breaking fix) `ConstrainedDelaunayTriangulation::can_add_constraint_edge` accidentally returned the wrong result (`true` when it should have returned `false` and vice versa)
 
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.
