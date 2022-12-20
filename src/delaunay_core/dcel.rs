@@ -126,6 +126,12 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.faces.reserve(num_faces);
     }
 
+    pub fn clear(&mut self) {
+        self.vertices.clear();
+        self.edges.clear();
+        self.faces.truncate(1); // Keep outer face
+    }
+
     pub fn num_vertices(&self) -> usize {
         self.vertices.len()
     }

@@ -115,6 +115,15 @@ pub trait Triangulation: Default {
         result
     }
 
+    /// Removes all edges, faces and vertices from the triangulation.
+    ///
+    /// This method does not change the allocated capacity.
+    fn clear(&mut self) {
+        self.s_mut().clear();
+        let new_hint_generator = HintGenerator::initialize_from_triangulation(self);
+        *self.hint_generator_mut() = new_hint_generator;
+    }
+
     /// Creates a new triangulation populated with some vertices.
     ///
     /// This will usually be more efficient than inserting the elements sequentially by calling
