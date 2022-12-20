@@ -253,7 +253,7 @@ use serde::{Deserialize, Serialize};
 #[doc(alias = "Voronoi")]
 #[doc(alias = "Voronoi diagram")]
 #[doc(alias = "Delaunay")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
