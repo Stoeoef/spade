@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - Added `Triangulation::get_edges_in_rectangle`
  - Added `Triangulation::get_vertices_in_rectangle`
  - Added `Triangulation::clear`
+ - Added `index` function for any fixed and dynamic handle
  - Added missing `DelaunayTriangulation::Clone` implementation
 
 ### Bugfixes

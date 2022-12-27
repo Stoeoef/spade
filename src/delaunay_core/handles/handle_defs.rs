@@ -88,7 +88,17 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> FixedHandleImpl<Type, InnerOut
         Self::new_internal(u32::MAX)
     }
 
-    pub(crate) fn index(&self) -> usize {
+    /// Returns the internal index of this element.
+    ///
+    /// Indices of the same handle type are guaranteed to be unique (e.g. different vertices will
+    /// have different indices from each other).
+    ///
+    /// Indices will always be in the interval `0` .. `number_of_elements` (e.g. the number of
+    /// directed edges).
+    ///
+    /// Adding vertices will not change any indices. Vertex removal does affect indices -
+    /// the index of elements may change to swap-fill any gaps that were created.
+    pub fn index(&self) -> usize {
         self.index as usize
     }
 

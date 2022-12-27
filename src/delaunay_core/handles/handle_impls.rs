@@ -159,7 +159,7 @@ impl<'a, V, DE, UE, F, Type: PartialOrd, InnerOuter: InnerOuterMarker> PartialOr
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker>
+impl<'a, V, DE, UE, F, Type: Copy + Default, InnerOuter: InnerOuterMarker>
     DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
 {
     /// Converts this dynamic handle to its fixed variant.
@@ -167,6 +167,20 @@ impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker>
     /// *See also the [handles module](crate::handles)*
     pub fn fix(&self) -> FixedHandleImpl<Type, InnerOuter> {
         self.handle
+    }
+
+    /// Returns the internal index of this element.
+    ///
+    /// Indices of the same handle type are guaranteed to be unique (e.g. different vertices will
+    /// have different indices from each other).
+    ///
+    /// Indices will always be in the interval `0` .. `number_of_elements` (e.g. the number of
+    /// directed edges).
+    ///
+    /// Adding vertices will not change any indices. Vertex removal does affect indices -
+    /// the index of elements may change to swap-fill any gaps that were created.
+    pub fn index(&self) -> usize {
+        self.handle.index()
     }
 }
 
