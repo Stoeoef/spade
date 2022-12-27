@@ -5,7 +5,7 @@ use super::iterators::CircularIterator;
 use super::iterators::NextBackFn;
 use super::public_handles::*;
 use crate::{HasPosition, LineSideInfo, Point2};
-use num_traits::{Float, One, Signed};
+use num_traits::{Float, One};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
@@ -580,10 +580,7 @@ where
 
     /// Returns the triangle's area.
     pub fn area(&self) -> V::Scalar {
-        let [v0, v1, v2] = self.positions();
-        let b = v1.sub(v0);
-        let c = v2.sub(v0);
-        (b.x * c.y - b.y * c.x).abs() * 0.5.into()
+        math::triangle_area(self.positions())
     }
 }
 
@@ -613,21 +610,7 @@ where
     ///
     /// The circumcircle is the unique circle that intersects all three vertices of the face.
     pub fn circumcircle(&self) -> (Point2<V::Scalar>, V::Scalar) {
-        let [v0, v1, v2] = self.positions();
-        let b = v1.sub(v0);
-        let c = v2.sub(v0);
-
-        let one = V::Scalar::one();
-        let two = one + one;
-        let d = two * (b.x * c.y - c.x * b.y);
-        let len_b = b.dot(b);
-        let len_c = c.dot(c);
-        let d_inv: V::Scalar = one / d;
-
-        let x = (len_b * c.y - len_c * b.y) * d_inv;
-        let y = (-len_b * c.x + len_c * b.x) * d_inv;
-        let result = Point2::new(x, y);
-        (result.add(v0), x * x + y * y)
+        math::circumcenter(self.positions())
     }
 
     /// Returns the face's circumcenter.
