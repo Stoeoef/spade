@@ -22,7 +22,7 @@ impl<T> SpadeNum for T where
 /// A two dimensional point.
 ///
 /// This is the basic type used for defining positions.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Default, Hash)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

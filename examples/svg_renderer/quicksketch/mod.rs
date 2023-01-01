@@ -17,6 +17,12 @@ pub enum SketchFill {
     StripePattern(SketchColor, SketchColor, f64),
 }
 
+impl From<SketchColor> for SketchFill {
+    fn from(color: SketchColor) -> Self {
+        Self::Solid(color)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
 pub enum HorizontalAlignment {
     Left,
@@ -186,8 +192,8 @@ pub struct SketchCircle {
 }
 
 impl SketchCircle {
-    pub fn fill(mut self, fill: SketchFill) -> Self {
-        self.style.fill = Some(fill);
+    pub fn fill(mut self, fill: impl Into<SketchFill>) -> Self {
+        self.style.fill = Some(fill.into());
         self
     }
 
@@ -530,7 +536,7 @@ impl From<SketchLine> for SketchElement {
 
 #[derive(Clone, Debug)]
 pub struct Sketch {
-    pub items: Vec<SketchElement>,
+    pub items: [Vec<SketchElement>; SketchLayer::TOP as usize + 1],
     width: u32,
     relative_padding: f64,
     view_box_min: Option<Point>,
@@ -539,10 +545,20 @@ pub struct Sketch {
     style: Style,
 }
 
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SketchLayer {
+    BACKGROUND = 0,
+    EDGES = 1,
+    VERTICES = 2,
+    TOP = 3,
+}
+
 impl Sketch {
     pub fn new() -> Self {
+        const EMPTY: Vec<SketchElement> = Vec::new();
+
         Self {
-            items: Vec::new(),
+            items: [EMPTY; SketchLayer::TOP as usize + 1],
             relative_padding: 0.1,
             width: 800,
             height: None,
@@ -593,7 +609,15 @@ impl Sketch {
     }
 
     pub fn add<T: Into<SketchElement>>(&mut self, item: T) -> &mut Self {
-        self.items.push(item.into());
+        self.add_with_layer(item, SketchLayer::TOP)
+    }
+
+    pub fn add_with_layer<T: Into<SketchElement>>(
+        &mut self,
+        item: T,
+        layer: SketchLayer,
+    ) -> &mut Self {
+        self.items[layer as usize].push(item.into());
         self
     }
 

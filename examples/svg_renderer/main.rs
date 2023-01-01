@@ -7,6 +7,23 @@ type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 /// Used for rendering SVGs for documentation. These are inlined (via #[doc = include_str!(...)])
 /// into the doc comment of a few items. That makes sure they will be visible even for offline users.
 fn main() -> Result {
+    scenario_list::shape_iterator_scenario(true, true).save_to_svg(
+        "shape_iterator_circle_vertices",
+        "images/shape_iterator_circle_vertices.svg",
+    )?;
+    scenario_list::shape_iterator_scenario(true, false).save_to_svg(
+        "shape_iterator_circle_edges",
+        "images/shape_iterator_circle_edges.svg",
+    )?;
+    scenario_list::shape_iterator_scenario(false, true).save_to_svg(
+        "shape_iterator_rectangle_vertices",
+        "images/shape_iterator_rectangle_vertices.svg",
+    )?;
+    scenario_list::shape_iterator_scenario(false, false).save_to_svg(
+        "shape_iterator_rectangle_edges",
+        "images/shape_iterator_rectangle_edges.svg",
+    )?;
+
     scenario_list::circumcircle_scenario()
         .save_to_svg("circumcircle", "images/circumcircle.svg")?;
     scenario_list::lhs_rhs_scenario(false).save_to_svg("rhs", "images/rhs.svg")?;

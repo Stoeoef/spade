@@ -334,6 +334,14 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F>
 where
     V: HasPosition,
 {
+    /// Returns the start and end position of this edge.
+    ///
+    /// The first returned position is `self.from().position()`, the second is
+    ///  `self.to().position()`.
+    pub fn positions(&self) -> [Point2<<V as HasPosition>::Scalar>; 2] {
+        [self.from().position(), self.to().position()]
+    }
+
     /// Returns the position of the vertex opposite of this edge.
     ///
     /// See also [opposite_vertex()](Self::opposite_vertex()).

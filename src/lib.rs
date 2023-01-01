@@ -17,10 +17,9 @@
 mod cdt;
 mod delaunay_core;
 mod delaunay_triangulation;
-mod edges_in_rectangle_iterator;
+mod flood_fill_iterator;
 mod intersection_iterator;
 mod point;
-mod vertices_in_rectangle_iterator;
 
 mod triangulation;
 
@@ -39,7 +38,7 @@ pub use delaunay_core::{
 };
 
 pub use delaunay_core::LineSideInfo;
-pub use triangulation::{PositionInTriangulation, Triangulation};
+pub use triangulation::{FloatTriangulation, PositionInTriangulation, Triangulation};
 
 #[cfg(not(fuzzing))]
 pub(crate) use delaunay_core::TriangulationExt;
@@ -185,8 +184,9 @@ pub mod iterators {
         FixedVertexIterator, InnerFaceIterator, UndirectedEdgeIterator,
         UndirectedVoronoiEdgeIterator, VertexIterator, VoronoiFaceIterator,
     };
-    pub use crate::edges_in_rectangle_iterator::EdgesInRectangleIterator;
-    pub use crate::vertices_in_rectangle_iterator::VerticesInRectangleIterator;
+    pub use crate::flood_fill_iterator::{
+        CircleMetric, EdgesInShapeIterator, RectangleMetric, VerticesInShapeIterator,
+    };
 }
 
 /// Internals that must be published due to technical reasons. This is not the place you are

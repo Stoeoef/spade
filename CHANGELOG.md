@@ -7,14 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.1.0] - YYYY-MM-DD
 
 ### Added
- - Added `Triangulation::get_edges_in_rectangle`
- - Added `Triangulation::get_vertices_in_rectangle`
- - Added `Triangulation::clear`
- - Added `index` function for any fixed and dynamic handle
+ - Added `crate::FloatTriangulations` for additional methods of triangulations over `f32` or `f64`
+ - Added `FloatTriangulation::get_edges_in_rectangle`
+ - Added `FloatTriangulation::get_edges_in_circle`
+ - Added `FloatTriangulation::get_vertices_in_rectangle`
+ - Added `FloatTriangulation::get_vertices_in_circle`
+ - Added `index` function for any fixed and dynamic handle, returning the internal index of the element.
  - Added missing `DelaunayTriangulation::Clone` implementation
+ - Added `DirectedEdgeHandle::positions`
+ - Added `Triangulation::clear`
 
 ### Bugfixes
- - (breaking fix) `ConstrainedDelaunayTriangulation::can_add_constraint_edge` accidentally returned the wrong result (`true` when it should have returned `false` and vice versa)
+ - (breaking fix) `ConstrainedDelaunayTriangulation::can_add_constraint_edge` accidentally returned the wrong result (`true` when it should have returned `false` and vice versa) #75
 
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.

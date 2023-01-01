@@ -49,7 +49,8 @@ impl SketchConverter {
         let mut svg = Group::new();
         let mut converter = SketchConverter::new(unique_prefix);
 
-        let (mut view_box_min, view_box_max) = Self::get_items_bounding_box(&sketch.items);
+        let (mut view_box_min, view_box_max) =
+            Self::get_items_bounding_box(sketch.items.iter().flatten());
 
         view_box_min = sketch.view_box_min.unwrap_or(view_box_min);
         let view_box_max = sketch.view_box_max.unwrap_or(view_box_max);
@@ -67,7 +68,7 @@ impl SketchConverter {
             .set("height", "100%")
             .set("style", sketch.style.get_attribute_string(&mut converter));
 
-        for element in &sketch.items {
+        for element in sketch.items.iter().flatten() {
             svg = converter.convert_item(svg, element);
         }
 
@@ -250,7 +251,9 @@ impl SketchConverter {
         )
     }
 
-    fn get_items_bounding_box(items: &[SketchElement]) -> (Point, Point) {
+    fn get_items_bounding_box<'a, I: Iterator<Item = &'a SketchElement>>(
+        items: I,
+    ) -> (Point, Point) {
         let mut min = Point::max_value();
         let mut max = Point::min_value();
 

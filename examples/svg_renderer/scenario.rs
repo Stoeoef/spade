@@ -106,13 +106,14 @@ where
         let p0 = convert_point(p0);
         let p1 = convert_point(p1);
         let p2 = convert_point(p2);
-        sketch.add(
+        sketch.add_with_layer(
             SketchElement::path()
                 .move_to(p0)
                 .line_to(p1)
                 .line_to(p2)
                 .close()
                 .fill(face.data().fill),
+            crate::quicksketch::SketchLayer::BACKGROUND,
         );
     }
 
@@ -140,11 +141,12 @@ where
                     line.with_arrow_start(ArrowType::HalfArrow)
                 };
 
-                sketch.add(line);
+                sketch.add_with_layer(line, crate::quicksketch::SketchLayer::EDGES);
             }
             EdgeMode::Undirected => {
-                sketch.add(
+                sketch.add_with_layer(
                     SketchElement::line(convert_point(from), convert_point(to)).stroke_color(color),
+                    crate::quicksketch::SketchLayer::EDGES,
                 );
             }
             EdgeMode::Disabled => {}
@@ -152,11 +154,12 @@ where
     }
 
     for vertex in triangulation.vertices() {
-        sketch.add(
+        sketch.add_with_layer(
             SketchElement::circle(convert_point(vertex.position()), vertex.data().radius)
                 .fill(SketchFill::solid(options.vertex_color))
                 .stroke_width(0.5)
                 .stroke_color(options.vertex_stroke_color),
+            crate::quicksketch::SketchLayer::VERTICES,
         );
     }
 
