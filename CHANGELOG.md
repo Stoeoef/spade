@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Bugfixes
  - (breaking fix) `ConstrainedDelaunayTriangulation::can_add_constraint_edge` accidentally returned the wrong result (`true` when it should have returned `false` and vice versa) #75
+ - Fixes a crash that could occur when inserting an element into a CDT (#78)
 
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.
