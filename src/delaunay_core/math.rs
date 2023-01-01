@@ -347,6 +347,37 @@ where
     S::zero()
 }
 
+pub fn circumcenter<S>(positions: [Point2<S>; 3]) -> (Point2<S>, S)
+where
+    S: SpadeNum + Float,
+{
+    let [v0, v1, v2] = positions;
+    let b = v1.sub(v0);
+    let c = v2.sub(v0);
+
+    let one = S::one();
+    let two = one + one;
+    let d = two * (b.x * c.y - c.x * b.y);
+    let len_b = b.dot(b);
+    let len_c = c.dot(c);
+    let d_inv: S = one / d;
+
+    let x = (len_b * c.y - len_c * b.y) * d_inv;
+    let y = (-len_b * c.x + len_c * b.x) * d_inv;
+    let result = Point2::new(x, y);
+    (result.add(v0), x * x + y * y)
+}
+
+pub fn triangle_area<S>(positions: [Point2<S>; 3]) -> S
+where
+    S: SpadeNum,
+{
+    let [v0, v1, v2] = positions;
+    let b = v1.sub(v0);
+    let c = v2.sub(v0);
+    (b.x * c.y - b.y * c.x).abs() * 0.5.into()
+}
+
 #[cfg(test)]
 mod test {
     use super::{mitigate_underflow_for_coordinate, validate_coordinate};

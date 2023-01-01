@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// A two dimensional [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation).
 ///
@@ -253,11 +253,11 @@ use serde_crate::{Deserialize, Serialize};
 #[doc(alias = "Voronoi")]
 #[doc(alias = "Voronoi diagram")]
 #[doc(alias = "Delaunay")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct DelaunayTriangulation<V, DE = (), UE = (), F = (), L = LastUsedVertexHintGenerator>
 where
@@ -354,10 +354,10 @@ mod test {
     use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
 
     #[allow(unused)]
-    #[cfg(all(feature = "serde_crate"))]
+    #[cfg(all(feature = "serde"))]
     // Just needs to compile
     fn check_serde() {
-        use serde_crate::{Deserialize, Serialize};
+        use serde::{Deserialize, Serialize};
 
         use crate::{HierarchyHintGenerator, LastUsedVertexHintGenerator, Point2};
 

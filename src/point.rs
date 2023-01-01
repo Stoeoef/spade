@@ -1,7 +1,7 @@
 use num_traits::{Num, Signed};
 
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// A coordinate type that can be used with a triangulation.
 ///
@@ -22,11 +22,11 @@ impl<T> SpadeNum for T where
 /// A two dimensional point.
 ///
 /// This is the basic type used for defining positions.
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Clone, Copy, Default, Hash)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct Point2<S> {
     /// The point's x coordinate
@@ -81,6 +81,10 @@ impl<S: SpadeNum> Point2<S> {
 
     pub(crate) fn dot(&self, other: Self) -> S {
         self.x * other.x + self.y * other.y
+    }
+
+    pub(crate) fn all_component_wise(&self, other: Self, f: impl Fn(S, S) -> bool) -> bool {
+        f(self.x, other.x) && f(self.y, other.y)
     }
 }
 

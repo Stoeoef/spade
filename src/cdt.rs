@@ -5,7 +5,7 @@ use crate::{
     TriangulationExt,
 };
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
 ///
@@ -21,7 +21,7 @@ use serde_crate::{Deserialize, Serialize};
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct CdtEdge<UE>(bool, UE);
 
@@ -127,7 +127,7 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct ConstrainedDelaunayTriangulation<
     V,
@@ -207,6 +207,13 @@ where
 
     fn hint_generator_mut(&mut self) -> &mut Self::HintGenerator {
         &mut self.lookup
+    }
+
+    fn clear(&mut self) {
+        self.num_constraints = 0;
+        self.s_mut().clear();
+        let new_hint_generator = HintGenerator::initialize_from_triangulation(self);
+        *self.hint_generator_mut() = new_hint_generator;
     }
 }
 
@@ -977,5 +984,17 @@ mod test {
             Point2::new(-7.033691993749462, -8.88072731817851),
             Point2::new(-6.058360215097096, -8.644637388990939),
         ]
+    }
+
+    #[test]
+    fn test_clear() -> Result<(), InsertionError> {
+        let mut cdt = test_cdt()?;
+        cdt.clear();
+
+        assert_eq!(cdt.num_constraints(), 0);
+        assert_eq!(cdt.num_all_faces(), 1);
+        assert_eq!(cdt.num_vertices(), 0);
+        assert_eq!(cdt.num_directed_edges(), 0);
+        Ok(())
     }
 }

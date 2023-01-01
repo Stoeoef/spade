@@ -80,52 +80,6 @@
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="-35" x2="-35" y1="-35" y2="35"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="-20" x2="-35" y1="40" y2="35"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="-41" x2="-35" y1="61" y2="35"/>
-<circle cx="-50" cy="-50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-41" cy="-60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-41" cy="61" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-20" cy="-40" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-10" cy="15" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="0" cy="0" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="40" cy="20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="41" cy="-60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="41" cy="-70" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="41" cy="-20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="65" cy="-20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="70" cy="-40" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="70" cy="60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-20" cy="40" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="35" cy="35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="35" cy="-35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-35" cy="-35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-35" cy="35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<path d="M105,-35 L105,35 L90,-50 z" style="fill: rgb(211 211 211)"/>
-<path d="M90,-50 L99,-60 L105,-35 z" style="fill: rgb(211 211 211)"/>
-<path d="M99,61 L90,-50 L105,35 z" style="fill: rgb(211 211 211)"/>
-<path d="M120,-40 L140,0 L105,-35 z" style="fill: rgb(211 211 211)"/>
-<path d="M130,15 L140,0 L175,35 z" style="fill: rgb(211 211 211)"/>
-<path d="M210,60 L99,61 L175,35 z" style="fill: rgb(211 211 211)"/>
-<path d="M180,20 L140,0 L181,-20 z" style="fill: rgb(211 211 211)"/>
-<path d="M181,-20 L140,0 L175,-35 z" style="fill: rgb(211 211 211)"/>
-<path d="M181,-60 L120,-40 L181,-70 z" style="fill: rgb(211 211 211)"/>
-<path d="M99,-60 L181,-70 L120,-40 z" style="fill: rgb(211 211 211)"/>
-<path d="M120,-40 L175,-35 L140,0 z" style="fill: rgb(211 211 211)"/>
-<path d="M205,-20 L180,20 L181,-20 z" style="fill: rgb(211 211 211)"/>
-<path d="M210,-40 L205,-20 L175,-35 z" style="fill: rgb(211 211 211)"/>
-<path d="M181,-60 L210,-40 L175,-35 z" style="fill: rgb(211 211 211)"/>
-<path d="M181,-70 L210,-40 L181,-60 z" style="fill: rgb(211 211 211)"/>
-<path d="M120,40 L175,35 L99,61 z" style="fill: rgb(211 211 211)"/>
-<path d="M180,20 L205,-20 L210,60 z" style="fill: rgb(211 211 211)"/>
-<path d="M205,-20 L210,-40 L210,60 z" style="fill: rgb(211 211 211)"/>
-<path d="M105,-35 L130,15 L105,35 z" style="fill: rgb(211 211 211)"/>
-<path d="M120,40 L130,15 L175,35 z" style="fill: rgb(211 211 211)"/>
-<path d="M180,20 L175,35 L140,0 z" style="fill: rgb(211 211 211)"/>
-<path d="M175,35 L180,20 L210,60 z" style="fill: rgb(211 211 211)"/>
-<path d="M175,-35 L120,-40 L181,-60 z" style="fill: rgb(211 211 211)"/>
-<path d="M181,-20 L175,-35 L205,-20 z" style="fill: rgb(211 211 211)"/>
-<path d="M120,-40 L105,-35 L99,-60 z" style="fill: rgb(211 211 211)"/>
-<path d="M130,15 L105,-35 L140,0 z" style="fill: rgb(211 211 211)"/>
-<path d="M120,40 L105,35 L130,15 z" style="fill: rgb(211 211 211)"/>
-<path d="M105,35 L120,40 L99,61 z" style="fill: rgb(211 211 211)"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="90" x2="99" y1="-50" y2="-60"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="105" x2="99" y1="-35" y2="-60"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="99" x2="90" y1="61" y2="-50"/>
@@ -171,6 +125,24 @@
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="105" x2="105" y1="-35" y2="35"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="120" x2="105" y1="40" y2="35"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="99" x2="105" y1="61" y2="35"/>
+<circle cx="-50" cy="-50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-41" cy="-60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-41" cy="61" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-20" cy="-40" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-10" cy="15" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="0" cy="0" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="40" cy="20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="41" cy="-60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="41" cy="-70" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="41" cy="-20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="65" cy="-20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="70" cy="-40" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="70" cy="60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-20" cy="40" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="35" cy="35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="35" cy="-35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-35" cy="-35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-35" cy="35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="90" cy="-50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="99" cy="-60" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="99" cy="61" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>

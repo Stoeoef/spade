@@ -7,7 +7,7 @@ use crate::{
 use super::FixedVertexHandle;
 
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// A structure used to speed up common operations on delaunay triangulations like insertion and geometry queries by providing
 /// hints on where to start searching for elements.
@@ -72,7 +72,7 @@ pub trait HintGenerator<S: SpadeNum>: Default {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct LastUsedVertexHintGenerator {
     index: AtomicUsize,
@@ -146,7 +146,7 @@ pub type HierarchyHintGenerator<S> = HierarchyHintGeneratorWithBranchFactor<S, 1
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 #[doc(hidden)]
 pub struct HierarchyHintGeneratorWithBranchFactor<S: SpadeNum, const BRANCH_FACTOR: u32> {

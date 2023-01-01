@@ -5,7 +5,7 @@ use super::iterators::CircularIterator;
 use super::iterators::NextBackFn;
 use super::public_handles::*;
 use crate::{HasPosition, LineSideInfo, Point2};
-use num_traits::{Float, One, Signed};
+use num_traits::{Float, One};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
@@ -159,7 +159,7 @@ impl<'a, V, DE, UE, F, Type: PartialOrd, InnerOuter: InnerOuterMarker> PartialOr
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker>
+impl<'a, V, DE, UE, F, Type: Copy + Default, InnerOuter: InnerOuterMarker>
     DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
 {
     /// Converts this dynamic handle to its fixed variant.
@@ -167,6 +167,20 @@ impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker>
     /// *See also the [handles module](crate::handles)*
     pub fn fix(&self) -> FixedHandleImpl<Type, InnerOuter> {
         self.handle
+    }
+
+    /// Returns the internal index of this element.
+    ///
+    /// Indices of the same handle type are guaranteed to be unique (e.g. different vertices will
+    /// have different indices from each other).
+    ///
+    /// Indices will always be in the interval `0` .. `number_of_elements` (e.g. the number of
+    /// directed edges).
+    ///
+    /// Adding vertices will not change any indices. Vertex removal does affect indices -
+    /// the index of elements may change to swap-fill any gaps that were created.
+    pub fn index(&self) -> usize {
+        self.handle.index()
     }
 }
 
@@ -320,6 +334,14 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F>
 where
     V: HasPosition,
 {
+    /// Returns the start and end position of this edge.
+    ///
+    /// The first returned position is `self.from().position()`, the second is
+    ///  `self.to().position()`.
+    pub fn positions(&self) -> [Point2<<V as HasPosition>::Scalar>; 2] {
+        [self.from().position(), self.to().position()]
+    }
+
     /// Returns the position of the vertex opposite of this edge.
     ///
     /// See also [opposite_vertex()](Self::opposite_vertex()).
@@ -580,10 +602,7 @@ where
 
     /// Returns the triangle's area.
     pub fn area(&self) -> V::Scalar {
-        let [v0, v1, v2] = self.positions();
-        let b = v1.sub(v0);
-        let c = v2.sub(v0);
-        (b.x * c.y - b.y * c.x).abs() * 0.5.into()
+        math::triangle_area(self.positions())
     }
 }
 
@@ -613,21 +632,7 @@ where
     ///
     /// The circumcircle is the unique circle that intersects all three vertices of the face.
     pub fn circumcircle(&self) -> (Point2<V::Scalar>, V::Scalar) {
-        let [v0, v1, v2] = self.positions();
-        let b = v1.sub(v0);
-        let c = v2.sub(v0);
-
-        let one = V::Scalar::one();
-        let two = one + one;
-        let d = two * (b.x * c.y - c.x * b.y);
-        let len_b = b.dot(b);
-        let len_c = c.dot(c);
-        let d_inv: V::Scalar = one / d;
-
-        let x = (len_b * c.y - len_c * b.y) * d_inv;
-        let y = (-len_b * c.x + len_c * b.x) * d_inv;
-        let result = Point2::new(x, y);
-        (result.add(v0), x * x + y * y)
+        math::circumcenter(self.positions())
     }
 
     /// Returns the face's circumcenter.

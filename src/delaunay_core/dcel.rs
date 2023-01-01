@@ -4,7 +4,7 @@ use super::handles::*;
 use optional::Optioned;
 
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
 pub struct EdgeData<DE, UE> {
@@ -18,7 +18,7 @@ impl<DE, UE> EdgeData<DE, UE> {}
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub(super) struct FaceEntry<F> {
     pub(super) adjacent_edge: Optioned<FixedDirectedEdgeHandle>,
@@ -29,7 +29,7 @@ pub(super) struct FaceEntry<F> {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub(super) struct VertexEntry<V> {
     pub(super) data: V,
@@ -40,7 +40,7 @@ pub(super) struct VertexEntry<V> {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub(super) struct EdgeEntry<DE, UE> {
     pub entries: [HalfEdgeEntry; 2],
@@ -82,7 +82,7 @@ impl<DE, UE> EdgeEntry<DE, UE> {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub(super) struct HalfEdgeEntry {
     pub next: FixedDirectedEdgeHandle,
@@ -95,7 +95,7 @@ pub(super) struct HalfEdgeEntry {
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct Dcel<V, DE = (), UE = (), F = ()> {
     pub(super) vertices: Vec<VertexEntry<V>>,
@@ -124,6 +124,12 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.vertices.reserve(num_vertices);
         self.edges.reserve(num_undirected_edges);
         self.faces.reserve(num_faces);
+    }
+
+    pub fn clear(&mut self) {
+        self.vertices.clear();
+        self.edges.clear();
+        self.faces.truncate(1); // Keep outer face
     }
 
     pub fn num_vertices(&self) -> usize {

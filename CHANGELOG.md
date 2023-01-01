@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.1.0] - 2023-01-01
+
+### Added
+ - Added `crate::FloatTriangulations` for additional methods of triangulations over `f32` or `f64`
+ - Added `FloatTriangulation::get_edges_in_rectangle`
+ - Added `FloatTriangulation::get_edges_in_circle`
+ - Added `FloatTriangulation::get_vertices_in_rectangle`
+ - Added `FloatTriangulation::get_vertices_in_circle`
+ - Added `index` function for any fixed and dynamic handle, returning the internal index of the element.
+ - Added missing `DelaunayTriangulation::Clone` implementation
+ - Added `DirectedEdgeHandle::positions`
+ - Added `Triangulation::clear`
+
+### Bugfixes
+ - (breaking fix) `ConstrainedDelaunayTriangulation::can_add_constraint_edge` accidentally returned the wrong result (`true` when it should have returned `false` and vice versa) #75
+
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.
   
@@ -232,6 +248,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.1.0]: https://github.com/Stoeoef/spade/compare/v2.0.0...v2.1.0
 
 [2.0.0]: https://github.com/Stoeoef/spade/compare/v1.8.2...v2.0.0
 

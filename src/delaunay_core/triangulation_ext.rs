@@ -393,7 +393,7 @@ pub trait TriangulationExt: Triangulation {
                 if let (Some(v2), Some(v3)) = (v2, v3) {
                     let v0 = edge.from().position();
                     let v1 = edge.to().position();
-                    //debug_assert!(math::is_ordered_ccw(v2, v1, v0));
+                    debug_assert!(math::is_ordered_ccw(v2, v1, v0));
                     let should_flip = math::contained_in_circumference(v2, v1, v0, v3);
                     result |= should_flip;
 

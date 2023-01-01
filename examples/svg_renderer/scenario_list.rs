@@ -1,6 +1,6 @@
 use super::quicksketch::{
     ArrowType, HorizontalAlignment, Point, Sketch, SketchColor, SketchElement, SketchFill,
-    StrokeStyle, Vector,
+    SketchLayer, StrokeStyle, Vector,
 };
 use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Point2, Vector2};
 use spade::{
@@ -8,7 +8,7 @@ use spade::{
         FixedDirectedEdgeHandle,
         VoronoiVertex::{self, Inner, Outer},
     },
-    ConstrainedDelaunayTriangulation, InsertionError, Triangulation as _,
+    ConstrainedDelaunayTriangulation, FloatTriangulation as _, InsertionError, Triangulation as _,
 };
 
 use crate::{
@@ -561,7 +561,10 @@ pub fn cdt_scenario() -> Sketch {
     let cdt2 = create_cdt(140.0);
     let sketch2 = convert_triangulation(&cdt2, &Default::default());
 
-    sketch.items.extend(sketch2.items);
+    for layer in [SketchLayer::EDGES, SketchLayer::VERTICES] {
+        let layer = layer as usize;
+        sketch.items[layer].extend_from_slice(&sketch2.items[layer]);
+    }
 
     sketch.add(
         SketchElement::text("CDT")
@@ -904,4 +907,69 @@ pub fn project_point_scenario() -> Sketch {
         .set_relative_padding(0.42)
         .set_height(400);
     sketch
+}
+
+pub fn shape_iterator_scenario(use_circle_metric: bool, iterate_vertices: bool) -> Sketch {
+    let t = big_triangulation().unwrap();
+
+    let center = spade::Point2::new(0.0, 2.0);
+    let radius = 30.0;
+    let radius_2 = radius * radius;
+
+    let lower = spade::Point2::new(-35.0, -30.0);
+    let upper = spade::Point2::new(20.0, 55.0);
+
+    let mut vertices = Vec::new();
+    let mut edges = Vec::new();
+    match (use_circle_metric, iterate_vertices) {
+        (true, true) => vertices = t.get_vertices_in_circle(center, radius_2).collect(),
+        (true, false) => edges = t.get_edges_in_circle(center, radius_2).collect(),
+        (false, true) => vertices = t.get_vertices_in_rectangle(lower, upper).collect(),
+        (false, false) => edges = t.get_edges_in_rectangle(lower, upper).collect(),
+    }
+
+    let mut result = convert_triangulation(&t, &Default::default());
+
+    if use_circle_metric {
+        result.add(
+            SketchElement::circle(convert_point(center), radius)
+                .stroke_width(0.5)
+                .stroke_color(SketchColor::TEAL),
+        );
+    } else {
+        let l = convert_point(lower);
+        let u = convert_point(upper);
+
+        result.add_with_layer(
+            SketchElement::path()
+                .move_to(l)
+                .line_to(Point2::new(l.x, u.y))
+                .line_to(u)
+                .line_to(Point2::new(u.x, l.y))
+                .close()
+                .stroke_width(0.7)
+                .stroke_color(SketchColor::TEAL),
+            SketchLayer::BACKGROUND,
+        );
+    }
+
+    for vertex in vertices {
+        result.add_with_layer(
+            SketchElement::circle(convert_point(vertex.position()), 2.0).fill(SketchColor::SALMON),
+            SketchLayer::VERTICES,
+        );
+    }
+
+    for edge in edges {
+        let [from, to] = edge.positions().map(convert_point);
+        result.add_with_layer(
+            SketchElement::line(from, to)
+                .stroke_color(SketchColor::SALMON)
+                .stroke_width(0.71),
+            SketchLayer::EDGES,
+        );
+    }
+
+    result.set_width(500);
+    result
 }

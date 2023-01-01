@@ -8,7 +8,7 @@ pub use super::handle_defs::*;
 use num_traits::Float;
 
 #[cfg(feature = "serde")]
-use serde_crate::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Returns a reference to the single outer face.
 ///
@@ -32,7 +32,7 @@ pub trait InnerOuterMarker:
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct InnerTag;
 
@@ -44,7 +44,7 @@ pub struct InnerTag;
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde")
 )]
 pub struct PossiblyOuterTag;
 

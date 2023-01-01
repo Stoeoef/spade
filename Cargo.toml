@@ -1,6 +1,6 @@
 [package]
 name = "spade"
-version = "2.0.0"
+version = "2.1.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 edition = "2021"
 documentation = "https://docs.rs/spade"
@@ -18,14 +18,14 @@ robust = "0.2"
 num-traits = "0.2"
 optional = "0.5"
 
-[dependencies.serde_crate]
+[dependencies.serde]
 package = "serde"
 optional = true
 version = "1"
 features = ["derive"]
 
 [features]
-serde = ["optional/serde", "serde_crate"]
+serde = ["optional/serde", "dep:serde"]
 
 [workspace]
 members = ["delaunay_compare"]
@@ -34,9 +34,9 @@ members = ["delaunay_compare"]
 approx = "0.5"
 rand = "0.8.3"
 cgmath = "0.18.0"
-svg = "0.10.0"
-float_next_after = "0.1"
-criterion = { version = "0.3.4", features = ["html_reports"] }
+svg = "0.13.0"
+float_next_after = "1"
+criterion = { version = "0.4.0", features = ["html_reports"] }
 
 
 [[bench]]
