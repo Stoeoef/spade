@@ -296,7 +296,9 @@ where
         let hint = self.hint_generator().get_hint(position);
         let hint = self.validate_vertex_handle(hint);
 
-        Some(self.walk_to_nearest_neighbor(hint, position))
+        let vertex = self.walk_to_nearest_neighbor(hint, position);
+        self.hint_generator().notify_vertex_lookup(vertex.fix());
+        Some(vertex)
     }
 }
 
