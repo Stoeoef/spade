@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.0]
+
+### Added
+ - Added `DirectedEdgeHandle::center` and `UndirectedEdgeHandle::center`
+ - Added `UndirectedEdgeHandle::nearest_point`
+ - Adds `UndirectedEdgeHandle::is_constraint_edge` and `DirectedEdgeHandle::is_constraint_edge` (only implemented for edge handles of a CDT)
+
 ## [2.1.0] - 2023-01-01
 
 ### Added

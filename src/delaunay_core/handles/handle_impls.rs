@@ -4,6 +4,7 @@ use super::handle_defs::*;
 use super::iterators::CircularIterator;
 use super::iterators::NextBackFn;
 use super::public_handles::*;
+
 use crate::{HasPosition, LineSideInfo, Point2};
 use num_traits::{Float, One};
 use std::cmp::Ordering;
@@ -546,6 +547,18 @@ where
         let [p1, p2] = self.positions();
         math::distance_2(p1, p2, query_point)
     }
+
+    /// Yields the nearest point on this edge.
+    pub fn nearest_point(&self, query_point: Point2<V::Scalar>) -> Point2<V::Scalar> {
+        let [v0, v1] = self.positions();
+        math::nearest_point(v0, v1, query_point)
+    }
+
+    /// Returns the center of this edge.
+    pub fn center(&self) -> Point2<V::Scalar> {
+        let [v0, v1] = self.positions();
+        v0.add(v1).mul(0.5.into())
+    }
 }
 
 impl<'a, V, DE, UE, InnerOuter, F> AsRef<F> for FaceHandle<'a, InnerOuter, V, DE, UE, F>
@@ -746,8 +759,12 @@ where
 
     /// Yields the nearest point on this edge.
     pub fn nearest_point(&self, query_point: Point2<V::Scalar>) -> Point2<V::Scalar> {
-        let (p1, p2) = (self.from().position(), self.to().position());
-        math::nearest_point(p1, p2, query_point)
+        self.as_undirected().nearest_point(query_point)
+    }
+
+    /// Returns the center of this edge
+    pub fn center(&self) -> Point2<V::Scalar> {
+        self.as_undirected().center()
     }
 }
 
