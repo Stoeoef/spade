@@ -33,6 +33,10 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> Iterator
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.range.size_hint()
     }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.range.nth(n).map(FixedHandleImpl::new)
+    }
 }
 
 impl<Type: Default, InnerOuter: InnerOuterMarker> ExactSizeIterator
@@ -45,6 +49,10 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> DoubleEndedIterator
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.range.next_back().map(FixedHandleImpl::new)
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.range.nth_back(n).map(FixedHandleImpl::new)
     }
 }
 
@@ -85,6 +93,12 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.fixed_iterator.size_hint()
     }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.fixed_iterator
+            .nth(n)
+            .map(|handle| DynamicHandleImpl::new(self.dcel, handle.adjust_inner_outer()))
+    }
 }
 
 impl<'a, V, DE, UE, F, Type, InnerOuter> DoubleEndedIterator
@@ -96,6 +110,12 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         self.fixed_iterator
             .next_back()
+            .map(|handle| DynamicHandleImpl::new(self.dcel, handle.adjust_inner_outer()))
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.fixed_iterator
+            .nth_back(n)
             .map(|handle| DynamicHandleImpl::new(self.dcel, handle.adjust_inner_outer()))
     }
 }

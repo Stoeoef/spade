@@ -20,7 +20,8 @@ macro_rules! type_handle_doc {
             "()]",
             "(crate::Triangulation::",
             $item_type,
-            ")."
+            ").\n\n",
+            "*Note: This iterator specializes `nth` and `nth_back` - those operations run in O(1)*"
         )
     };
 }
