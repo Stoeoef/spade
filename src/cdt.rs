@@ -65,6 +65,20 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
     }
 }
 
+impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, CdtEdge<UE>, F> {
+    /// Returns `true` if this edge is a constraint edge.
+    pub fn is_constraint_edge(&self) -> bool {
+        self.data().is_constraint_edge()
+    }
+}
+
+impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, CdtEdge<UE>, F> {
+    /// Returns `true` if this edge is a constraint edge.
+    pub fn is_constraint_edge(&self) -> bool {
+        self.as_undirected().data().is_constraint_edge()
+    }
+}
+
 /// A two dimensional
 /// [constrained Delaunay triangulation](https://en.wikipedia.org/wiki/Constrained_Delaunay_triangulation).
 ///
@@ -237,7 +251,7 @@ where
             .s
             .vertex(vertex)
             .out_edges()
-            .map(|edge| self.is_constraint_edge(edge.as_undirected().fix()))
+            .map(|edge| edge.is_constraint_edge())
             .filter(|b| *b)
             .count();
         self.num_constraints -= num_removed_constraints;
@@ -257,7 +271,7 @@ where
     /// Checks if two vertices are connected by a constraint edge.
     pub fn exists_constraint(&self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
         self.get_edge_from_neighbors(from, to)
-            .map(|e| e.as_undirected().data().is_constraint_edge())
+            .map(|e| e.is_constraint_edge())
             .unwrap_or(false)
     }
 
@@ -288,9 +302,7 @@ where
         mut line_intersection_iterator: LineIntersectionIterator<V, DE, CdtEdge<UE>, F>,
     ) -> bool {
         line_intersection_iterator.any(|intersection| match intersection {
-            Intersection::EdgeIntersection(edge) => {
-                edge.as_undirected().data().is_constraint_edge()
-            }
+            Intersection::EdgeIntersection(edge) => edge.is_constraint_edge(),
             _ => false,
         })
     }
@@ -325,8 +337,6 @@ where
             VertexOutDirection,
         };
 
-        let from = from;
-        let to = to;
         let mut cur_from = from;
         let line_from = self.s().vertex(cur_from).position();
         let line_to = self.vertex(to).position();
@@ -523,7 +533,7 @@ where
         let num_undirected_edges = self
             .s
             .undirected_edges()
-            .filter(|e| e.data().is_constraint_edge())
+            .filter(|e| e.is_constraint_edge())
             .count();
 
         assert_eq!(num_undirected_edges, self.num_constraints());
