@@ -35,6 +35,34 @@
 <path d="M-10,15 L-35,-35 L0,0 z" style="fill: rgb(211 211 211)"/>
 <path d="M-20,40 L-35,35 L35,35 z" style="fill: rgb(211 211 211)"/>
 <path d="M-35,35 L-20,40 L-41,61 z" style="fill: rgb(211 211 211)"/>
+<path d="M105,-35 L105,35 L90,-50 z" style="fill: rgb(211 211 211)"/>
+<path d="M90,-50 L99,-60 L105,-35 z" style="fill: rgb(211 211 211)"/>
+<path d="M99,61 L90,-50 L105,35 z" style="fill: rgb(211 211 211)"/>
+<path d="M120,-40 L140,0 L105,-35 z" style="fill: rgb(211 211 211)"/>
+<path d="M130,15 L140,0 L175,35 z" style="fill: rgb(211 211 211)"/>
+<path d="M210,60 L99,61 L175,35 z" style="fill: rgb(211 211 211)"/>
+<path d="M180,20 L140,0 L181,-20 z" style="fill: rgb(211 211 211)"/>
+<path d="M181,-20 L140,0 L175,-35 z" style="fill: rgb(211 211 211)"/>
+<path d="M181,-60 L120,-40 L181,-70 z" style="fill: rgb(211 211 211)"/>
+<path d="M99,-60 L181,-70 L120,-40 z" style="fill: rgb(211 211 211)"/>
+<path d="M120,-40 L175,-35 L140,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M205,-20 L180,20 L181,-20 z" style="fill: rgb(211 211 211)"/>
+<path d="M210,-40 L205,-20 L175,-35 z" style="fill: rgb(211 211 211)"/>
+<path d="M181,-60 L210,-40 L175,-35 z" style="fill: rgb(211 211 211)"/>
+<path d="M181,-70 L210,-40 L181,-60 z" style="fill: rgb(211 211 211)"/>
+<path d="M120,40 L175,35 L99,61 z" style="fill: rgb(211 211 211)"/>
+<path d="M180,20 L205,-20 L210,60 z" style="fill: rgb(211 211 211)"/>
+<path d="M205,-20 L210,-40 L210,60 z" style="fill: rgb(211 211 211)"/>
+<path d="M105,-35 L130,15 L105,35 z" style="fill: rgb(211 211 211)"/>
+<path d="M120,40 L130,15 L175,35 z" style="fill: rgb(211 211 211)"/>
+<path d="M180,20 L175,35 L140,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M175,35 L180,20 L210,60 z" style="fill: rgb(211 211 211)"/>
+<path d="M175,-35 L120,-40 L181,-60 z" style="fill: rgb(211 211 211)"/>
+<path d="M181,-20 L175,-35 L205,-20 z" style="fill: rgb(211 211 211)"/>
+<path d="M120,-40 L105,-35 L99,-60 z" style="fill: rgb(211 211 211)"/>
+<path d="M130,15 L105,-35 L140,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M120,40 L105,35 L130,15 z" style="fill: rgb(211 211 211)"/>
+<path d="M105,35 L120,40 L99,61 z" style="fill: rgb(211 211 211)"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="-50" x2="-41" y1="-50" y2="-60"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="-35" x2="-41" y1="-35" y2="-60"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="-41" x2="-50" y1="61" y2="-50"/>

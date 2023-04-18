@@ -4,8 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
-- Fix `nearest_neighbour` hinting
+## [2.2.0] - 2023-04-18
+
+### Added
+ - Added `DirectedEdgeHandle::center` and `UndirectedEdgeHandle::center`
+ - Added `UndirectedEdgeHandle::nearest_point`
+ - Adds `UndirectedEdgeHandle::is_constraint_edge` and `DirectedEdgeHandle::is_constraint_edge` (only implemented for edge handles of a CDT)
+
+## Fix
+- Fix `nearest_neighbor` hinting
 
 ## [2.1.0] - 2023-01-01
 

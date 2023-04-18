@@ -561,7 +561,11 @@ pub fn cdt_scenario() -> Sketch {
     let cdt2 = create_cdt(140.0);
     let sketch2 = convert_triangulation(&cdt2, &Default::default());
 
-    for layer in [SketchLayer::EDGES, SketchLayer::VERTICES] {
+    for layer in [
+        SketchLayer::EDGES,
+        SketchLayer::VERTICES,
+        SketchLayer::BACKGROUND,
+    ] {
         let layer = layer as usize;
         sketch.items[layer].extend_from_slice(&sketch2.items[layer]);
     }
