@@ -146,7 +146,7 @@ impl<S: SpadeNum> HintGenerator<S> for LastUsedVertexHintGenerator {
 /// ```
 pub type HierarchyHintGenerator<S> = HierarchyHintGeneratorWithBranchFactor<S, 16>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
