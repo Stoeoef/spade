@@ -133,6 +133,25 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.faces.truncate(1); // Keep outer face
     }
 
+    pub fn map_undirected_edges<M, UE2>(self, f: M) -> Dcel<V, DE, UE2, F>
+    where
+        M: Fn(UE) -> UE2,
+    {
+        Dcel {
+            vertices: self.vertices,
+            edges: self
+                .edges
+                .into_iter()
+                .map(|edge_data| EdgeEntry {
+                    entries: edge_data.entries,
+                    directed_data: edge_data.directed_data,
+                    undirected_data: f(edge_data.undirected_data),
+                })
+                .collect(),
+            faces: self.faces,
+        }
+    }
+
     pub fn num_vertices(&self) -> usize {
         self.vertices.len()
     }

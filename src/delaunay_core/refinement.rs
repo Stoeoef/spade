@@ -247,6 +247,11 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// By specifying an upper area bound for triangles, the resulting triangle sizes can be made more similar
     /// as any large triangle above the bound will be split into smaller parts.
     ///
+    /// # Examples of different maximum area values
+    #[doc = concat!(include_str!("../../images/refinement_maximum_area_no_limit.svg"))]
+    #[doc = concat!(include_str!("../../images/refinement_maximum_area_200.svg"))]
+    #[doc = concat!(include_str!("../../images/refinement_maximum_area_100.svg"))]
+    ///
     /// Should be set to something larger than [Self::with_min_required_area]. If this method is not called, no upper area
     /// bound check will be performed.
     pub fn with_max_allowed_area(mut self, max_area: S) -> Self {
@@ -534,7 +539,7 @@ where
         let num_initial_vertices: usize = self.num_vertices();
         let num_additional_vertices = parameters
             .max_additional_vertices
-            .unwrap_or_else(|| num_initial_vertices * 10);
+            .unwrap_or(num_initial_vertices * 10);
         let max_allowed_vertices = num_initial_vertices + num_additional_vertices;
 
         let mut refinement_complete = true;

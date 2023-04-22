@@ -267,8 +267,8 @@ where
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
-    dcel: Dcel<V, DE, UE, F>,
-    hint_generator: L,
+    pub(crate) dcel: Dcel<V, DE, UE, F>,
+    pub(crate) hint_generator: L,
 }
 
 impl<V, DE, UE, F, L> DelaunayTriangulation<V, DE, UE, F, L>
@@ -399,5 +399,13 @@ mod test {
         d.insert(Point2::new(0.0, 0.0))?;
         assert!(d.nearest_neighbor(Point2::new(0.0, 1.0)).is_some());
         Ok(())
+    }
+
+    #[test]
+    #[allow(clippy::redundant_clone)]
+    #[allow(unused_must_use)]
+    fn test_clone_is_implemented() {
+        // Just needs to compile
+        DelaunayTriangulation::<Point2<f64>>::new().clone();
     }
 }

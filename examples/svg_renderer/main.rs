@@ -7,6 +7,21 @@ type Result = core::result::Result<(), Box<dyn std::error::Error>>;
 /// Used for rendering SVGs for documentation. These are inlined (via #[doc = include_str!(...)])
 /// into the doc comment of a few items. That makes sure they will be visible even for offline users.
 fn main() -> Result {
+    scenario_list::refinement_maximum_area_scenario(None).save_to_svg(
+        "refinement_maximum_area_no_limit",
+        "images/refinement_maximum_area_no_limit.svg",
+    )?;
+
+    scenario_list::refinement_maximum_area_scenario(Some(200.0)).save_to_svg(
+        "refinement_maximum_area_200",
+        "images/refinement_maximum_area_200.svg",
+    )?;
+
+    scenario_list::refinement_maximum_area_scenario(Some(100.0)).save_to_svg(
+        "refinement_maximum_area_100",
+        "images/refinement_maximum_area_100.svg",
+    )?;
+
     scenario_list::shape_iterator_scenario(true, true).save_to_svg(
         "shape_iterator_circle_vertices",
         "images/shape_iterator_circle_vertices.svg",

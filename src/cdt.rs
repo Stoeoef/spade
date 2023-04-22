@@ -1,8 +1,8 @@
 use crate::{delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator};
 use crate::{handles::*, intersection_iterator::Intersection};
 use crate::{
-    HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator, Point2, Triangulation,
-    TriangulationExt,
+    DelaunayTriangulation, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator,
+    Point2, Triangulation, TriangulationExt,
 };
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -230,6 +230,28 @@ where
         self.s_mut().clear();
         let new_hint_generator = HintGenerator::initialize_from_triangulation(self);
         *self.hint_generator_mut() = new_hint_generator;
+    }
+}
+
+impl<V, DE, UE, F, L> From<DelaunayTriangulation<V, DE, UE, F, L>>
+    for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
+where
+    V: HasPosition,
+    DE: Default,
+    UE: Default,
+    F: Default,
+    L: HintGenerator<<V as HasPosition>::Scalar>,
+{
+    fn from(value: DelaunayTriangulation<V, DE, UE, F, L>) -> Self {
+        let dcel = value.dcel;
+        let s = dcel.map_undirected_edges(|edge| CdtEdge(false, edge));
+        let lookup = value.hint_generator;
+
+        ConstrainedDelaunayTriangulation {
+            s,
+            num_constraints: 0,
+            lookup,
+        }
     }
 }
 

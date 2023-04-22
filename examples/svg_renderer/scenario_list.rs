@@ -1113,3 +1113,28 @@ fn create_angle_limit_cdt() -> Cdt {
     cdt.add_constraint_edges(vertices, true).unwrap();
     cdt
 }
+
+pub fn refinement_maximum_area_scenario(max_area: Option<f64>) -> Sketch {
+    let triangulation = big_triangulation().unwrap();
+    let mut cdt = Cdt::from(triangulation);
+
+    cdt.refine(RefinementParameters::default().with_max_allowed_area(max_area.unwrap_or(2000.)));
+
+    let mut result = convert_refinement_cdt(&mut cdt);
+
+    result.set_width(290);
+    let description = if let Some(max_area) = max_area {
+        format!("Max area: {max_area}")
+    } else {
+        "No max area".to_string()
+    };
+
+    result.add(
+        SketchElement::text(description)
+            .font_size(10.0)
+            .angle(Deg(-33.2))
+            .position(Point2::new(-75.0, -20.0)),
+    );
+
+    result
+}
