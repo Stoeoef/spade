@@ -10,7 +10,6 @@
 //! * Serde support with the `serde` feature.
 
 #![forbid(unsafe_code)]
-#![warn(clippy::all)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(not(fuzzing), warn(missing_docs))]
 
