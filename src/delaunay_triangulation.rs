@@ -356,7 +356,7 @@ mod test {
     use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
 
     #[allow(unused)]
-    #[cfg(all(feature = "serde"))]
+    #[cfg(feature = "serde")]
     // Just needs to compile
     fn check_serde() {
         use serde::{Deserialize, Serialize};

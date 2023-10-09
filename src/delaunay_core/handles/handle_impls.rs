@@ -111,10 +111,7 @@ impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker> Clone
     for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
 {
     fn clone(&self) -> Self {
-        Self {
-            dcel: self.dcel,
-            handle: self.handle,
-        }
+        *self
     }
 }
 
