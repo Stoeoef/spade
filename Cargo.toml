@@ -16,7 +16,6 @@ bench = false
 smallvec = "1"
 robust = "0.2"
 num-traits = "0.2"
-optional = "0.5"
 
 [dependencies.serde]
 package = "serde"
@@ -25,7 +24,7 @@ version = "1"
 features = ["derive"]
 
 [features]
-serde = ["optional/serde", "dep:serde"]
+serde = ["dep:serde"]
 
 [workspace]
 members = ["delaunay_compare"]

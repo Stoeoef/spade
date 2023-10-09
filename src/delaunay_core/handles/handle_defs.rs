@@ -27,38 +27,6 @@ pub struct FixedHandleImpl<Type, InnerOuter: InnerOuterMarker> {
     inner_outer: InnerOuter,
 }
 
-impl<Type: Default, InnerOuter: InnerOuterMarker> optional::Noned
-    for FixedHandleImpl<Type, InnerOuter>
-{
-    fn is_none(&self) -> bool {
-        optional::wrap(self.index).is_none()
-    }
-
-    fn get_none() -> Self {
-        Self {
-            index: optional::Optioned::<_>::none().unpack(),
-            ty: Default::default(),
-            inner_outer: Default::default(),
-        }
-    }
-}
-
-impl<Type: Default, InnerOuter: InnerOuterMarker> optional::OptEq
-    for FixedHandleImpl<Type, InnerOuter>
-{
-    fn opt_eq(&self, other: &Self) -> bool {
-        self.index().opt_eq(&other.index())
-    }
-}
-
-impl<Type: Default, InnerOuter: InnerOuterMarker> optional::OptOrd
-    for FixedHandleImpl<Type, InnerOuter>
-{
-    fn opt_cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.index().opt_cmp(&other.index())
-    }
-}
-
 impl<Type, InnerOuter: InnerOuterMarker> std::fmt::Debug for FixedHandleImpl<Type, InnerOuter> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FixedHandle")
@@ -231,20 +199,5 @@ impl DelaunayElementType for DirectedVoronoiEdgeTag {
 impl DelaunayElementType for UndirectedVoronoiEdgeTag {
     fn num_elements<V, DE, UE, F>(dcel: &Dcel<V, DE, UE, F>) -> usize {
         dcel.num_undirected_edges()
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use optional::Optioned;
-
-    use crate::handles::FixedDirectedEdgeHandle;
-
-    #[test]
-    fn optioned_handle_is_smaller_than_option_type() {
-        let optioned_size = std::mem::size_of::<Optioned<FixedDirectedEdgeHandle>>();
-        let option_size = std::mem::size_of::<Option<FixedDirectedEdgeHandle>>();
-
-        assert!(optioned_size < option_size);
     }
 }
