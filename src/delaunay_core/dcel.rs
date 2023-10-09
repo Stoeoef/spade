@@ -1,7 +1,6 @@
 use super::handles::handle_defs::FixedHandleImpl;
 use super::handles::iterators::*;
 use super::handles::*;
-use optional::Optioned;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -21,7 +20,7 @@ impl<DE, UE> EdgeData<DE, UE> {}
     serde(crate = "serde")
 )]
 pub(super) struct FaceEntry<F> {
-    pub(super) adjacent_edge: Optioned<FixedDirectedEdgeHandle>,
+    pub(super) adjacent_edge: Option<FixedDirectedEdgeHandle>,
     pub(super) data: F,
 }
 
@@ -33,7 +32,7 @@ pub(super) struct FaceEntry<F> {
 )]
 pub(super) struct VertexEntry<V> {
     pub(super) data: V,
-    pub(super) out_edge: Optioned<FixedDirectedEdgeHandle>,
+    pub(super) out_edge: Option<FixedDirectedEdgeHandle>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -247,7 +246,7 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         &self,
         handle: FixedHandleImpl<FaceTag, InnerOuter>,
     ) -> Option<FixedHandleImpl<DirectedEdgeTag, InnerTag>> {
-        self.faces[handle.index()].adjacent_edge.into_option()
+        self.faces[handle.index()].adjacent_edge
     }
 
     pub fn vertex_data<InnerOuter: InnerOuterMarker>(
