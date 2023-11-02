@@ -14,7 +14,7 @@ bench = false
 
 [dependencies]
 smallvec = "1"
-robust = "1.1"
+robust = "1.1.0"
 num-traits = "0.2"
 optional = "0.5"
 
