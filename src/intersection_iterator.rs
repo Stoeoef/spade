@@ -60,12 +60,7 @@ where
     V: HasPosition,
 {
     fn clone(&self) -> Self {
-        use self::Intersection::*;
-        match self {
-            EdgeIntersection(handle) => EdgeIntersection(*handle),
-            VertexIntersection(handle) => VertexIntersection(*handle),
-            EdgeOverlap(handle) => EdgeOverlap(*handle),
-        }
+        *self
     }
 }
 

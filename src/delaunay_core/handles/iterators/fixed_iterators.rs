@@ -71,7 +71,7 @@ where
         DynamicHandleIterator {
             fixed_iterator: FixedHandleIterator::new(Type::num_elements(dcel)),
             dcel,
-            inner_outer: std::marker::PhantomData::default(),
+            inner_outer: std::marker::PhantomData,
         }
     }
 }
