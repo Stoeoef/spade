@@ -23,9 +23,6 @@ optional = true
 version = "1"
 features = ["derive"]
 
-[features]
-serde = ["dep:serde"]
-
 [workspace]
 members = ["delaunay_compare"]
 
