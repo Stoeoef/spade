@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Pending
  - Specializes `nth` and `nth_back` for any vertex, face and edge iterator
 
+## [2.2.1] - 2023-11-03
+
+# Changed
+ - Removed `optional` dependency (#91)
+ - Updated `robust` crate to 1.1.0 (#90)
+
 ## [2.2.0] - 2023-04-18
 
 ### Added
@@ -262,6 +268,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.2.0]: https://github.com/Stoeoef/spade/compare/v2.0.0...v2.2.0
 
 [2.1.0]: https://github.com/Stoeoef/spade/compare/v2.0.0...v2.1.0
 
