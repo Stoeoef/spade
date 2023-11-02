@@ -478,7 +478,6 @@ impl Hull {
             .find(|(index, _)| !self.empty.contains(index))
             .unwrap();
 
-        let first_index = first_index;
         let mut current_index = first_index;
         let first_bucket = self.ceiled_bucket(current_node.angle);
         self.buckets[first_bucket] = current_index;
