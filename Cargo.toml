@@ -30,9 +30,9 @@ members = ["delaunay_compare"]
 approx = "0.5"
 rand = "0.8.3"
 cgmath = "0.18.0"
-svg = "0.13.0"
+svg = "0.14.0"
 float_next_after = "1"
-criterion = { version = "0.4.0", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 
 
 [[bench]]
