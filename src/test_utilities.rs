@@ -6,6 +6,8 @@ use rand::SeedableRng;
 pub const SEED: &[u8; 32] = b"wPYxAkIiHcEmSBAxQFoXFrpYToCe1B71";
 pub const SEED2: &[u8; 32] = b"14LzG37Y9EHTcmLW8vBDqWwtYsCeVVyF";
 
+use alloc::vec::Vec;
+
 pub fn random_points_in_range(range: f64, size: usize, seed: &[u8; 32]) -> Vec<Point2<f64>> {
     let mut rng = rand::rngs::StdRng::from_seed(*seed);
     let range = Uniform::new(-range, range);

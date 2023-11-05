@@ -12,6 +12,8 @@ use crate::HintGenerator;
 use crate::{delaunay_core::Dcel, handles::*};
 use crate::{HasPosition, InsertionError, Point2, TriangulationExt};
 
+use alloc::vec::Vec;
+
 /// Describes a position in a triangulation.
 ///
 /// The position is set in relation to the triangulation's vertices, edges and faces.

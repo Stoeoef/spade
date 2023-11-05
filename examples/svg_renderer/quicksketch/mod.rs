@@ -178,7 +178,7 @@ impl Style {
             stroke_dash_array,
         ])
         .flatten()
-        .chain(std::iter::once(fill))
+        .chain(core::iter::once(fill))
         .collect::<Vec<_>>()
         .join("; ")
     }

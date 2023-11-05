@@ -14,7 +14,7 @@ where
 {
     let range = rand::distributions::Uniform::new_inclusive(-range, range);
     let mut rng = StdRng::from_seed(seed);
-    std::iter::from_fn(move || Some([rng.sample(range), rng.sample(range)]))
+    core::iter::from_fn(move || Some([rng.sample(range), rng.sample(range)]))
 }
 
 pub fn uniform_f64() -> impl Iterator<Item = [f64; 2]> {
@@ -41,5 +41,5 @@ where
 
         Some([last_x, last_y])
     };
-    std::iter::from_fn(step_fn)
+    core::iter::from_fn(step_fn)
 }

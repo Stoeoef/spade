@@ -5,6 +5,8 @@ use super::handles::*;
 
 use smallvec::SmallVec;
 
+use alloc::{vec, vec::Vec};
+
 pub const OUTER_FACE_HANDLE: FixedFaceHandle<PossiblyOuterTag> = new_fixed_face_handle(0);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1307,6 +1309,8 @@ mod test {
     use crate::handles::{InnerTag, VertexHandle};
 
     use super::{Dcel, FixedDirectedEdgeHandle, FixedFaceHandle, FixedVertexHandle};
+
+    use alloc::{vec, vec::Vec};
 
     fn default_triangle() -> Dcel<usize, (), ()> {
         use super::{EdgeEntry, FaceEntry, HalfEdgeEntry, VertexEntry};

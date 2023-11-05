@@ -26,8 +26,8 @@ pub struct IntFuzzPoint {
     y: i32,
 }
 
-impl std::fmt::Debug for IntFuzzPoint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for IntFuzzPoint {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("Point2::new({:?}.0, {:?}.0)", self.x, self.y))
     }
 }

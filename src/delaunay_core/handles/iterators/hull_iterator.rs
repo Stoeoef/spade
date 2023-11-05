@@ -58,6 +58,9 @@ impl<'a, V, DE, UE, F> DoubleEndedIterator for HullIterator<'a, V, DE, UE, F> {
 
 #[cfg(test)]
 mod test {
+
+    use alloc::vec::Vec;
+
     use crate::test_utilities::{random_points_with_seed, SEED};
     use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
 

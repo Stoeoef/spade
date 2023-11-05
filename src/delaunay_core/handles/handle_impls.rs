@@ -6,20 +6,20 @@ use super::iterators::NextBackFn;
 use super::public_handles::*;
 
 use crate::{HasPosition, LineSideInfo, Point2};
+use core::cmp::Ordering;
+use core::fmt::Debug;
+use core::hash::{Hash, Hasher};
 use num_traits::{Float, One};
-use std::cmp::Ordering;
-use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
 
 // Debug implementations
-impl<'a, V, DE, UE, F> std::fmt::Debug for VertexHandle<'a, V, DE, UE, F> {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+impl<'a, V, DE, UE, F> core::fmt::Debug for VertexHandle<'a, V, DE, UE, F> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         write!(f, "VertexHandle({:?})", self.handle.index())
     }
 }
 
 impl<'a, V, DE, UE, F> Debug for DirectedEdgeHandle<'a, V, DE, UE, F> {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         write!(
             f,
             "DirectedEdgeHandle - id: {:?} ({:?} -> {:?})",
@@ -30,8 +30,8 @@ impl<'a, V, DE, UE, F> Debug for DirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> std::fmt::Debug for UndirectedEdgeHandle<'a, V, DE, UE, F> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> ::std::fmt::Result {
+impl<'a, V, DE, UE, F> core::fmt::Debug for UndirectedEdgeHandle<'a, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> ::core::fmt::Result {
         let [v0, v1] = self.vertices();
         write!(
             f,
@@ -43,8 +43,8 @@ impl<'a, V, DE, UE, F> std::fmt::Debug for UndirectedEdgeHandle<'a, V, DE, UE, F
     }
 }
 
-impl<'a, V, DE, UE, F> std::fmt::Debug for FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> ::std::fmt::Result {
+impl<'a, V, DE, UE, F> core::fmt::Debug for FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> ::core::fmt::Result {
         if let Some(inner) = self.as_inner() {
             inner.fmt(f)
         } else {
@@ -53,8 +53,8 @@ impl<'a, V, DE, UE, F> std::fmt::Debug for FaceHandle<'a, PossiblyOuterTag, V, D
     }
 }
 
-impl<'a, V, DE, UE, F> std::fmt::Debug for FaceHandle<'a, InnerTag, V, DE, UE, F> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> ::std::fmt::Result {
+impl<'a, V, DE, UE, F> core::fmt::Debug for FaceHandle<'a, InnerTag, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> ::core::fmt::Result {
         let [v0, v1, v2] = self.vertices();
         write!(
             f,

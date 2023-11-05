@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use core::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Copy)]
 pub struct SketchColor {
@@ -8,7 +8,7 @@ pub struct SketchColor {
 }
 
 impl Display for SketchColor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "rgb({} {} {})", self.red, self.green, self.blue)
     }
 }

@@ -9,10 +9,16 @@
 //! * Supports vertex removal
 //! * Serde support with the `serde` feature.
 
+#![no_std]
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(not(fuzzing), warn(missing_docs))]
+
+#[cfg(feature = "std")]
+extern crate std;
+
+extern crate alloc;
 
 mod cdt;
 mod delaunay_core;

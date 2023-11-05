@@ -1,4 +1,5 @@
-use std::collections::{HashSet, VecDeque};
+use alloc::{collections::VecDeque, vec::Vec};
+use hashbrown::HashSet;
 
 use num_traits::{one, zero, Float};
 use smallvec::smallvec;
@@ -554,6 +555,9 @@ where
 
 #[cfg(test)]
 mod test {
+
+    use alloc::{vec, vec::Vec};
+
     use crate::{
         flood_fill_iterator::{CircleMetric, DistanceMetric, RectangleMetric},
         test_utilities::random_points_with_seed,

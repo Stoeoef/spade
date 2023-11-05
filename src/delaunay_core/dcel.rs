@@ -5,6 +5,8 @@ use super::handles::*;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use alloc::vec::Vec;
+
 #[derive(Default, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
 pub struct EdgeData<DE, UE> {
     directed_data: [DE; 2],

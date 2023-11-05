@@ -24,11 +24,11 @@ where
     EdgeOverlap(DirectedEdgeHandle<'a, V, DE, UE, F>),
 }
 
-impl<'a, V, DE, UE, F> ::std::fmt::Debug for Intersection<'a, V, DE, UE, F>
+impl<'a, V, DE, UE, F> ::core::fmt::Debug for Intersection<'a, V, DE, UE, F>
 where
     V: HasPosition,
 {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         use self::Intersection::*;
         match self {
             EdgeIntersection(handle) => write!(f, "EdgeIntersection({:?})", handle),
@@ -413,6 +413,8 @@ mod test {
     use self::Intersection::*;
     use super::*;
     use crate::{InsertionError, Point2, Triangulation as _};
+
+    use alloc::{vec, vec::Vec};
 
     type Triangulation = crate::DelaunayTriangulation<Point2<f64>>;
 

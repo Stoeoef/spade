@@ -7,6 +7,8 @@ use crate::{
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use alloc::{vec, vec::Vec};
+
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
 ///
 /// CDTs need to store if an undirected edge is a constrained edge. To do so, CDTs don't use
@@ -362,7 +364,7 @@ where
                 VertexOutDirection::EdgeIntersection(edge) => edge,
             };
 
-            let mut border_loop = std::collections::VecDeque::new();
+            let mut border_loop = alloc::collections::VecDeque::new();
 
             border_loop.push_back(first_edge.rev().next().fix());
             border_loop.push_front(first_edge.rev().prev().fix());
@@ -552,6 +554,8 @@ mod test {
     type Cdt = ConstrainedDelaunayTriangulation<Point2<f64>>;
     type Delaunay = DelaunayTriangulation<Point2<f64>>;
 
+    use alloc::{vec, vec::Vec};
+
     #[test]
     fn test_add_single_simple_constraint() -> Result<(), InsertionError> {
         let mut cdt = Cdt::new();
@@ -657,7 +661,7 @@ mod test {
     fn test_add_border_constraint() -> Result<(), InsertionError> {
         let points = random_points_with_seed(1000, SEED);
         let mut cdt = Cdt::new();
-        let mut max_y = -::std::f64::MAX;
+        let mut max_y = -::core::f64::MAX;
         for point in points {
             max_y = max_y.max(point.y);
             cdt.insert(point)?;
@@ -695,7 +699,8 @@ mod test {
         for p in delaunay_points {
             d.insert(p)?;
         }
-        let mut used_vertices = ::std::collections::HashSet::new();
+        let mut used_vertices = ::hashbrown::HashSet::new();
+
         let mut inserted_constraints = Vec::new();
         for v in d.vertices() {
             // Insert only edges that do not touch at the end points if

@@ -2,7 +2,7 @@ pub mod quicksketch;
 mod scenario;
 mod scenario_list;
 
-type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+type Result = core::result::Result<(), Box<dyn std::error::Error>>;
 
 /// Used for rendering SVGs for documentation. These are inlined (via #[doc = include_str!(...)])
 /// into the doc comment of a few items. That makes sure they will be visible even for offline users.

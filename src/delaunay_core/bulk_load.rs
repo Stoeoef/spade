@@ -1,8 +1,10 @@
-use std::cmp::{Ordering, Reverse};
+use core::cmp::{Ordering, Reverse};
 
 use crate::{HasPosition, InsertionError, Point2, Triangulation, TriangulationExt};
 
 use super::{dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle};
+
+use alloc::vec::Vec;
 
 /// An `f64` wrapper implementing `Ord` and `Eq`.
 ///
@@ -469,7 +471,7 @@ impl Hull {
 
         const INVALID: usize = usize::MAX;
         self.buckets
-            .extend(std::iter::repeat(INVALID).take(target_size));
+            .extend(core::iter::repeat(INVALID).take(target_size));
 
         let (first_index, current_node) = self
             .data
@@ -752,6 +754,8 @@ mod test {
     use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation, TriangulationExt};
 
     use super::Hull;
+
+    use alloc::vec::Vec;
 
     #[test]
     fn test_bulk_load_with_small_number_of_vertices() -> Result<(), InsertionError> {
