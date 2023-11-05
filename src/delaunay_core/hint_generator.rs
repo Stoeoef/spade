@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
     DelaunayTriangulation, HasPosition, Point2, SpadeNum, Triangulation, TriangulationExt,
@@ -8,6 +8,8 @@ use super::FixedVertexHandle;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
+use alloc::vec::Vec;
 
 /// A structure used to speed up common operations on delaunay triangulations like insertion and geometry queries by providing
 /// hints on where to start searching for elements.
@@ -287,6 +289,8 @@ mod test {
         handles::FixedVertexHandle, test_utilities, DelaunayTriangulation, InsertionError, Point2,
         Triangulation, TriangulationExt,
     };
+
+    use alloc::vec::Vec;
 
     const BRANCH_FACTOR: u32 = 3;
 

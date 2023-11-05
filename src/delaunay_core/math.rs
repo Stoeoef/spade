@@ -1,5 +1,3 @@
-use std::{error::Error, fmt::Display};
-
 use crate::{HasPosition, LineSideInfo, Point2, SpadeNum};
 use num_traits::Float;
 
@@ -35,13 +33,14 @@ pub enum InsertionError {
     NAN,
 }
 
-impl Display for InsertionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <Self as std::fmt::Debug>::fmt(self, f)
+impl core::fmt::Display for InsertionError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        <Self as core::fmt::Debug>::fmt(self, f)
     }
 }
 
-impl Error for InsertionError {}
+#[cfg(feature = "std")]
+impl std::error::Error for InsertionError {}
 
 /// The smallest allowed coordinate value greater than zero that can be inserted into Delaunay
 /// triangulations. This value is equal to 2<sup>-142</sup>.

@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 ///
 /// This type should usually be either `f32` or `f64`.
 pub trait SpadeNum:
-    Num + PartialOrd + Into<f64> + From<f32> + Copy + Signed + std::fmt::Debug
+    Num + PartialOrd + Into<f64> + From<f32> + Copy + Signed + core::fmt::Debug
 {
 }
 
 impl<T> SpadeNum for T where
-    T: Num + PartialOrd + Into<f64> + From<f32> + Copy + Signed + std::fmt::Debug
+    T: Num + PartialOrd + Into<f64> + From<f32> + Copy + Signed + core::fmt::Debug
 {
 }
 

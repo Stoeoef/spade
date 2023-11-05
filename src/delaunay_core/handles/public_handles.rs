@@ -19,7 +19,7 @@ pub const OUTER_FACE: FixedFaceHandle<PossiblyOuterTag> = dcel_operations::OUTER
 ///
 /// There should be no need to implement this.
 pub trait InnerOuterMarker:
-    Clone + Copy + PartialEq + Eq + PartialOrd + Ord + std::fmt::Debug + Default + std::hash::Hash
+    Clone + Copy + PartialEq + Eq + PartialOrd + Ord + core::fmt::Debug + Default + core::hash::Hash
 {
     fn debug_string() -> &'static str;
 }

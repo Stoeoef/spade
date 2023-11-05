@@ -1,4 +1,4 @@
-use std::fmt::{self, Display, Formatter};
+use core::fmt::{self, Display, Formatter};
 
 use criterion::{measurement::WallTime, BenchmarkGroup, BenchmarkId, Throughput};
 use rand::{distributions::uniform::SampleUniform, Rng, SeedableRng};
@@ -29,7 +29,7 @@ where
 {
     let range = rand::distributions::Uniform::new_inclusive(-range, range);
     let mut rng = rand::rngs::StdRng::from_seed(seed);
-    std::iter::from_fn(move || Some(Point2::new(rng.sample(range), rng.sample(range))))
+    core::iter::from_fn(move || Some(Point2::new(rng.sample(range), rng.sample(range))))
 }
 
 pub fn uniform_f64() -> impl Iterator<Item = Point2<f64>> {
@@ -54,7 +54,7 @@ where
 
         Some(Point2::new(last_x, last_y))
     };
-    std::iter::from_fn(step_fn)
+    core::iter::from_fn(step_fn)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

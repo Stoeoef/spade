@@ -5,7 +5,7 @@ type SpadePoint = spade::Point2<f64>;
 #[derive(Default)]
 pub struct SpadeCrateWithHintGenerator<HintGeneratorType> {
     vertices: Vec<SpadePoint>,
-    _hint_generator_type: std::marker::PhantomData<HintGeneratorType>,
+    _hint_generator_type: core::marker::PhantomData<HintGeneratorType>,
 }
 
 pub type SpadeCrate = SpadeCrateWithHintGenerator<spade::LastUsedVertexHintGenerator>;

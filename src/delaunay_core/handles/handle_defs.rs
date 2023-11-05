@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use core::convert::TryInto;
 
 use super::super::Dcel;
 use super::public_handles::{InnerOuterMarker, PossiblyOuterTag};
@@ -27,8 +27,8 @@ pub struct FixedHandleImpl<Type, InnerOuter: InnerOuterMarker> {
     inner_outer: InnerOuter,
 }
 
-impl<Type, InnerOuter: InnerOuterMarker> std::fmt::Debug for FixedHandleImpl<Type, InnerOuter> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<Type, InnerOuter: InnerOuterMarker> core::fmt::Debug for FixedHandleImpl<Type, InnerOuter> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("FixedHandle")
             .field("index", &self.index)
             .finish()

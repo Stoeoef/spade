@@ -1,5 +1,7 @@
 use crate::{DelaunayTriangulation, Point2, Triangulation, TriangulationExt};
 
+use alloc::{vec, vec::Vec};
+
 fn fuzz_test(vertices: Vec<Point2<f64>>) {
     let mut clone = vertices.clone();
     clone.sort_by(|l, r| l.partial_cmp(r).unwrap());

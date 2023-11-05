@@ -9,6 +9,8 @@ use crate::HintGenerator;
 use crate::Point2;
 use crate::{HasPosition, InsertionError, PositionInTriangulation, Triangulation};
 
+use alloc::{collections::VecDeque, vec::Vec};
+
 impl<T> TriangulationExt for T where T: Triangulation + ?Sized {}
 
 pub enum PositionWhenAllVerticesOnLine {
@@ -261,7 +263,7 @@ pub trait TriangulationExt: Triangulation {
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
         forward_predicate: ForwardPredicate,
         backward_predicate: BackwardPredicate,
-    ) -> std::collections::VecDeque<FixedDirectedEdgeHandle>
+    ) -> VecDeque<FixedDirectedEdgeHandle>
     where
         ForwardPredicate: Fn(
             DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
@@ -270,7 +272,7 @@ pub trait TriangulationExt: Triangulation {
             DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
         ) -> bool,
     {
-        let mut result = std::collections::VecDeque::with_capacity(8);
+        let mut result = VecDeque::with_capacity(8);
         let mut current_edge_forward = self.directed_edge(start_edge);
 
         debug_assert!(current_edge_forward.side_query(position).is_on_left_side());
@@ -635,7 +637,7 @@ pub trait TriangulationExt: Triangulation {
                 vertex_to_remove,
             );
             // Not exactly elegant. IsolateVertexResult should maybe be split into two parts
-            let mut new_edges = std::mem::take(&mut isolation_result.new_edges);
+            let mut new_edges = core::mem::take(&mut isolation_result.new_edges);
             self.legalize_edges_after_removal(&mut new_edges, |edge| {
                 !isolation_result.is_new_edge(edge)
             });
@@ -860,6 +862,8 @@ mod test {
     use rand::distributions::{Distribution, Uniform};
     use rand::{seq::SliceRandom, Rng, SeedableRng};
 
+    use alloc::{vec, vec::Vec};
+
     #[test]
     fn test_empty() {
         let d = DelaunayTriangulation::<Point2<f32>>::default();
@@ -976,7 +980,7 @@ mod test {
     fn test_insert_outside_convex_hull() -> Result<(), InsertionError> {
         const NUM: usize = 100;
         let mut rng = rand::rngs::StdRng::from_seed(*SEED);
-        let range = Uniform::new(0., 2.0 * ::std::f64::consts::PI);
+        let range = Uniform::new(0., 2.0 * ::core::f64::consts::PI);
 
         let mut d = DelaunayTriangulation::<_>::default();
 
