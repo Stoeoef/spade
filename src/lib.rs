@@ -8,6 +8,7 @@
 //! * A 2D constrained Delaunay triangulation: [ConstrainedDelaunayTriangulation]
 //! * Supports vertex removal
 //! * Serde support with the `serde` feature.
+//! * `no_std` support with `default-features = false`
 
 #![no_std]
 #![forbid(unsafe_code)]
