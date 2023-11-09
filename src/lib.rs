@@ -15,6 +15,7 @@
 #![warn(clippy::all)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(not(fuzzing), warn(missing_docs))]
+#![cfg_attr(fuzzing, allow(unused_imports))]
 
 #[cfg(feature = "std")]
 extern crate std;
