@@ -1,6 +1,6 @@
 [package]
 name = "spade"
-version = "2.2.1"
+version = "2.3.0"
 authors = ["Stefan Altmayer <stoeoef@gmail.com>"]
 edition = "2021"
 documentation = "https://docs.rs/spade"
