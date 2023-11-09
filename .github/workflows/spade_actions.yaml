@@ -17,7 +17,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
-
+          args: --no-default-features
+  
   test:
     name: Test Suite
     runs-on: ubuntu-latest
