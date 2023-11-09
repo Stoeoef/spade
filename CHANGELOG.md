@@ -4,12 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-### Pending
- - Specializes `nth` and `nth_back` for any vertex, face and edge iterator
+## [2.3.0] - 2023-11-09
+ - Adds `no_std` support (when using `default-features = false`, #92)
 
 ## [2.2.1] - 2023-11-03
 
 # Changed
+ - Specializes `nth` and `nth_back` for any vertex, face and edge iterator
  - Removed `optional` dependency (#91)
  - Updated `robust` crate to 1.1.0 (#90)
 
@@ -268,6 +269,10 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.3.0]: https://github.com/Stoeoef/spade/compare/v2.2.1...v2.3.0
+
+[2.2.1]: https://github.com/Stoeoef/spade/compare/v2.2.0...v2.2.1
 
 [2.2.0]: https://github.com/Stoeoef/spade/compare/v2.0.0...v2.2.0
 
