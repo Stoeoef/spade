@@ -67,20 +67,6 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
     }
 }
 
-impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, CdtEdge<UE>, F> {
-    /// Returns `true` if this edge is a constraint edge.
-    pub fn is_constraint_edge(&self) -> bool {
-        self.data().is_constraint_edge()
-    }
-}
-
-impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, CdtEdge<UE>, F> {
-    /// Returns `true` if this edge is a constraint edge.
-    pub fn is_constraint_edge(&self) -> bool {
-        self.as_undirected().data().is_constraint_edge()
-    }
-}
-
 /// A two dimensional
 /// [constrained Delaunay triangulation](https://en.wikipedia.org/wiki/Constrained_Delaunay_triangulation).
 ///
