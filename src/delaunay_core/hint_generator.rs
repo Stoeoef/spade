@@ -77,6 +77,8 @@ pub trait HintGenerator<S: SpadeNum>: Default {
     serde(crate = "serde")
 )]
 pub struct LastUsedVertexHintGenerator {
+    // Serde does not implement `(De)Serialize` for `AtomicUsize` in no_std environments.
+    #[cfg_attr(feature = "serde", serde(skip))]
     index: AtomicUsize,
 }
 
