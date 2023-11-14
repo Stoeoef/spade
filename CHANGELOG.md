@@ -6,15 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.3.1] - 2023-11-14
 
-# Fix
- - Fixes compilation issues when using `serde` together with `--no-default-features`
+### Fix
+ - Fixes compilation issues when using `serde` together with `--no-default-features` (#95)
 
 ## [2.3.0] - 2023-11-09
+
+### Added
  - Adds `no_std` support (when using `default-features = false`, #92)
 
 ## [2.2.1] - 2023-11-03
 
-# Changed
+### Changed
  - Specializes `nth` and `nth_back` for any vertex, face and edge iterator
  - Removed `optional` dependency (#91)
  - Updated `robust` crate to 1.1.0 (#90)
@@ -26,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - Added `UndirectedEdgeHandle::nearest_point`
  - Adds `UndirectedEdgeHandle::is_constraint_edge` and `DirectedEdgeHandle::is_constraint_edge` (only implemented for edge handles of a CDT)
 
-## Fix
+### Fix
 - Fix `nearest_neighbor` hinting
 
 ## [2.1.0] - 2023-01-01
@@ -49,7 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.0.0] - 2022-01-29
  This release is focussed on API refinement, performance improvements and usability improvements.
   
- ## General API refinement
+### General API refinement
  Many features of Spade 1 showed too little benefit to legitimize keeping them. Spade 2.0 attempts to slim down the API surface to a few important functions and types and leaves out the more complicated bits to make it more simple to use.
 
 ### Removed features (planned to be re-introduced in an upcoming release)
@@ -87,7 +89,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
  - Renamed `sym` to `rev`
  - Many other smaller changes - they are omitted from this changelog.
 
- ### Migration notes
+### Migration notes
  Keep in mind that not all features have been preserved before attempting to upgrade. Other than that, upgrading should be mostly consist of renaming:
 
   - `FloatDelaunayTriangulation` and `FloatCdt` have been replaced by `DelaunayTriangulation` and `ConstrainedDelaunayTriangulation`
@@ -274,6 +276,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.3.1]: https://github.com/Stoeoef/spade/compare/v2.3.0...v2.3.1
 
 [2.3.0]: https://github.com/Stoeoef/spade/compare/v2.2.1...v2.3.0
 
