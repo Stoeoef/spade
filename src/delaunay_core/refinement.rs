@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use alloc::vec::Vec;
+
 use num_traits::Float;
 
 use crate::{
@@ -940,7 +942,7 @@ mod test {
     #[test]
     fn test_zero_angle_limit_dbg() {
         let limit = AngleLimit::from_deg(0.0);
-        let debug_string = format!("{:?}", limit);
+        let debug_string = alloc::format!("{:?}", limit);
         assert_eq!(debug_string, "AngleLimit { angle limit (deg): 0.0 }");
     }
 

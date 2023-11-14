@@ -3,6 +3,9 @@ use crate::{
     TriangulationExt,
 };
 
+use alloc::vec;
+use alloc::vec::Vec;
+
 fn refinement_parameters() -> RefinementParameters<f64> {
     RefinementParameters::new().with_max_additional_vertices(1000)
 }

@@ -13,21 +13,21 @@ autobenches = false
 bench = false
 
 [features]
-default = [ "std" ]
+default = ["std"]
 std = []
 
 [dependencies]
 smallvec = "1"
 robust = "1.1.0"
 num-traits = "0.2"
-hashbrown  = "0.14.2"
+hashbrown = "0.14.2"
 
 [dependencies.serde]
 package = "serde"
 optional = true
-version = "1"
+version = "1.0.0"
 default-features = false
-features = [ "derive", "alloc" ]
+features = ["derive", "alloc"]
 
 [workspace]
 members = ["delaunay_compare"]
