@@ -1,5 +1,9 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+#[cfg(not(feature = "std"))]
+use hashbrown::{HashMap, HashSet};
+#[cfg(feature = "std")]
+use std::collections::{HashMap, HashSet};
 
+use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 
 use num_traits::Float;
@@ -115,8 +119,8 @@ impl AngleLimit {
     }
 }
 
-impl std::fmt::Debug for AngleLimit {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl alloc::fmt::Debug for AngleLimit {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> alloc::fmt::Result {
         f.debug_struct("AngleLimit")
             .field(
                 "angle limit (deg)",
@@ -141,7 +145,7 @@ enum RefinementHint {
     MustRefine,
 }
 
-/// Controls how a refinement is performed.
+/// Controls how Delaunay refinement is performed.
 ///
 /// Refer to [ConstrainedDelaunayTriangulation::refine] and methods implemented by this type for more details
 /// about which parameters are supported.
@@ -269,7 +273,7 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// in this case - some areas may have become overly refined, others might be overlooked completely. Consider changing
     /// the parameters (most notably the angle limit) if the refinement runs out of vertices.
     ///
-    /// Use [RefinementResult::refinement_complete] to check if the refinement has completed successfully.
+    /// Use [RefinementResult::refinement_complete] to check if the number of additional vertices was sufficient.
     pub fn with_max_additional_vertices(mut self, max_additional_vertices: usize) -> Self {
         self.max_additional_vertices = Some(max_additional_vertices);
         self
@@ -352,8 +356,8 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
             if next_todo_list.is_empty() {
                 break;
             }
-            std::mem::swap(&mut inner_faces, &mut outer_faces);
-            std::mem::swap(&mut next_todo_list, &mut current_todo_list);
+            core::mem::swap(&mut inner_faces, &mut outer_faces);
+            core::mem::swap(&mut next_todo_list, &mut current_todo_list);
 
             return_outer_faces = !return_outer_faces;
         }
@@ -509,7 +513,7 @@ where
     pub fn refine(&mut self, mut parameters: RefinementParameters<V::Scalar>) -> RefinementResult {
         use PositionInTriangulation::*;
 
-        let mut excluded_faces = std::mem::take(&mut parameters.excluded_faces);
+        let mut excluded_faces = core::mem::take(&mut parameters.excluded_faces);
 
         let mut legalize_edges_buffer = Vec::with_capacity(20);
         let mut forcibly_split_segments_buffer = Vec::with_capacity(5);
@@ -542,7 +546,8 @@ where
         let num_additional_vertices = parameters
             .max_additional_vertices
             .unwrap_or(num_initial_vertices * 10);
-        let max_allowed_vertices = num_initial_vertices + num_additional_vertices;
+        let max_allowed_vertices =
+            usize::saturating_add(num_initial_vertices, num_additional_vertices);
 
         let mut refinement_complete = true;
 
@@ -692,6 +697,14 @@ where
                             continue;
                         }
 
+                        if edge.is_constraint_edge() {
+                            // Splitting constraint edges may require updating the "excluded faces" buffer.
+                            // This is a little cumbersome, we'll re-use the existing implementation of edge
+                            // splitting (see function resolve_encroachment).
+                            forcibly_split_segments_buffer.push(edge.fix().as_undirected());
+                            continue;
+                        }
+
                         for edge in [edge, edge.rev()] {
                             if !edge.is_outer_edge() {
                                 legalize_edges_buffer.extend([edge.next().fix(), edge.prev().fix()])
@@ -699,6 +712,9 @@ where
                         }
                     }
                     OnFace(face_under_circumcenter) => {
+                        if parameters.excluded_faces.contains(&face_under_circumcenter) {
+                            continue;
+                        }
                         legalize_edges_buffer.extend(
                             self.face(face_under_circumcenter)
                                 .adjacent_edges()
@@ -845,16 +861,11 @@ where
         let final_position = v0.position().mul(weight0).add(v1.position().mul(weight1));
         let (v0, v1) = (v0.fix(), v1.fix());
 
-        let is_left_side_excluded = segment
-            .face()
-            .as_inner()
-            .map(|face| excluded_faces.contains(&face.fix()));
-
-        let is_right_side_excluded = segment
-            .rev()
-            .face()
-            .as_inner()
-            .map(|face| excluded_faces.contains(&face.fix()));
+        let [is_left_side_excluded, is_right_side_excluded] =
+            [segment.face(), segment.rev().face()].map(|face| {
+                face.as_inner()
+                    .map(|face| excluded_faces.contains(&face.fix()))
+            });
 
         let is_constraint_edge = segment.is_constraint_edge();
 
@@ -929,7 +940,7 @@ fn nearest_power_of_two<S: Float + SpadeNum>(input: S) -> S {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
+    use super::HashSet;
 
     use crate::{
         test_utilities::{random_points_with_seed, SEED},
@@ -1070,7 +1081,7 @@ mod test {
 
         assert_eq!(
             excluded_faces,
-            HashSet::from_iter(std::iter::once(excluded_face))
+            HashSet::from_iter(core::iter::once(excluded_face))
         );
 
         Ok(())

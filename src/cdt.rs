@@ -1098,7 +1098,7 @@ mod test {
 
             const NUM_VERTICES: usize = 51;
             let vertices = (0..NUM_VERTICES).map(|i| {
-                let angle = std::f64::consts::PI * 2.0 * i as f64 / NUM_VERTICES as f64;
+                let angle = core::f64::consts::PI * 2.0 * i as f64 / NUM_VERTICES as f64;
                 let (sin, cos) = angle.sin_cos();
                 Point2::new(sin, cos)
             });
@@ -1121,8 +1121,8 @@ mod test {
     fn test_add_constraint_edges_empty() -> Result<(), InsertionError> {
         let mut cdt = Cdt::new();
 
-        cdt.add_constraint_edges(std::iter::empty(), false)?;
-        cdt.add_constraint_edges(std::iter::empty(), true)?;
+        cdt.add_constraint_edges(core::iter::empty(), false)?;
+        cdt.add_constraint_edges(core::iter::empty(), true)?;
 
         assert_eq!(cdt.num_vertices(), 0);
         assert_eq!(cdt.num_constraints(), 0);

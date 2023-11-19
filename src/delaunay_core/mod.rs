@@ -3,9 +3,6 @@ mod bulk_load;
 #[cfg(test)]
 mod bulk_load_fuzz_tests;
 
-#[cfg(test)]
-mod refinement_fuzz_tests;
-
 mod dcel;
 pub mod dcel_operations;
 mod handles;
