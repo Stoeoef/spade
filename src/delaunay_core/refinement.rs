@@ -23,12 +23,12 @@ use super::{
 /// *See [ConstrainedDelaunayTriangulation::refine]*
 #[derive(Debug, Clone)]
 pub struct RefinementResult {
-    /// A hash set containing all excluded faces at the end of the triangulation.
+    /// A `Vec` containing all outer faces that were excluded from refinement.
     ///
-    /// This set will be empty unless [RefinementParameters::exclude_outer_faces] has been used during refinement.
-    /// In this case, the set contains the outer faces at the end of the triangulation, including any outer faces
+    /// This `Vec` will be empty unless [RefinementParameters::exclude_outer_faces] has been set.
+    /// In this case, the `Vec` contains all finite outer faces, including any additional outer faces
     /// that were created during the refinement.
-    pub excluded_faces: HashSet<FixedFaceHandle<InnerTag>>,
+    pub excluded_faces: Vec<FixedFaceHandle<InnerTag>>,
 
     /// Set to `true` if the refinement could be completed regularly.
     ///
@@ -157,7 +157,7 @@ enum RefinementHint {
 ///
 /// fn refine_cdt(cdt: &mut ConstrainedDelaunayTriangulation<Point2<f64>>) {
 ///     let params = RefinementParameters::<f64>::new()
-///         .exclude_outer_faces(&cdt)
+///         .exclude_outer_faces(true)
 ///         .keep_constraint_edges()
 ///         .with_min_required_area(0.0001)
 ///         .with_max_allowed_area(0.5)
@@ -174,7 +174,7 @@ pub struct RefinementParameters<S: SpadeNum + Float> {
     min_area: Option<S>,
     max_area: Option<S>,
     keep_constraint_edges: bool,
-    excluded_faces: HashSet<FixedFaceHandle<InnerTag>>,
+    exclude_outer_faces: bool,
 }
 
 impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
@@ -184,7 +184,7 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
             angle_limit: AngleLimit::from_radius_to_shortest_edge_ratio(1.0),
             min_area: None,
             max_area: None,
-            excluded_faces: HashSet::new(),
+            exclude_outer_faces: false,
             keep_constraint_edges: false,
         }
     }
@@ -315,59 +315,8 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     ///
     /// *A refinement operation configured to exclude outer faces. All colored faces are considered outer faces and are
     /// ignored during refinement. Note that the inner part of the "A" shape forms a hole and is also excluded.*
-    pub fn exclude_outer_faces<V: HasPosition, DE: Default, UE: Default, F: Default>(
-        mut self,
-        triangulation: &ConstrainedDelaunayTriangulation<V, DE, UE, F>,
-    ) -> Self {
-        if triangulation.all_vertices_on_line() {
-            return self;
-        }
-
-        // Determine excluded faces by "peeling of" outer layers and adding them to an outer layer set.
-        // This needs to be done repeatedly to also get inner "holes" within the triangulation
-        let mut inner_faces = HashSet::new();
-        let mut outer_faces = HashSet::new();
-
-        let mut current_todo_list: Vec<_> =
-            triangulation.convex_hull().map(|edge| edge.rev()).collect();
-        let mut next_todo_list = Vec::new();
-
-        let mut return_outer_faces = true;
-
-        loop {
-            // Every iteration of the outer while loop will peel of the outmost layer and pre-populate the
-            // next, inner layer.
-            while let Some(next_edge) = current_todo_list.pop() {
-                let (list, face_set) = if next_edge.is_constraint_edge() {
-                    // We're crossing a constraint edge - add that face to the *next* todo list
-                    (&mut next_todo_list, &mut inner_faces)
-                } else {
-                    (&mut current_todo_list, &mut outer_faces)
-                };
-
-                if let Some(inner) = next_edge.face().as_inner() {
-                    if face_set.insert(inner.fix()) {
-                        list.push(next_edge.prev().rev());
-                        list.push(next_edge.next().rev());
-                    }
-                }
-            }
-
-            if next_todo_list.is_empty() {
-                break;
-            }
-            core::mem::swap(&mut inner_faces, &mut outer_faces);
-            core::mem::swap(&mut next_todo_list, &mut current_todo_list);
-
-            return_outer_faces = !return_outer_faces;
-        }
-
-        self.excluded_faces = if return_outer_faces {
-            outer_faces
-        } else {
-            inner_faces
-        };
-
+    pub fn exclude_outer_faces(mut self, exclude: bool) -> Self {
+        self.exclude_outer_faces = exclude;
         self
     }
 
@@ -510,10 +459,14 @@ where
     ///
     #[doc(alias = "Refinement")]
     #[doc(alias = "Delaunay Refinement")]
-    pub fn refine(&mut self, mut parameters: RefinementParameters<V::Scalar>) -> RefinementResult {
+    pub fn refine(&mut self, parameters: RefinementParameters<V::Scalar>) -> RefinementResult {
         use PositionInTriangulation::*;
 
-        let mut excluded_faces = core::mem::take(&mut parameters.excluded_faces);
+        let mut excluded_faces = if parameters.exclude_outer_faces {
+            calculate_outer_faces(self)
+        } else {
+            HashSet::new()
+        };
 
         let mut legalize_edges_buffer = Vec::with_capacity(20);
         let mut forcibly_split_segments_buffer = Vec::with_capacity(5);
@@ -698,7 +651,7 @@ where
                         }
 
                         if edge.is_constraint_edge() {
-                            // Splitting constraint edges may require updating the "excluded faces" buffer.
+                            // Splitting constraint edges may require updating the `excluded_faces` set.
                             // This is a little cumbersome, we'll re-use the existing implementation of edge
                             // splitting (see function resolve_encroachment).
                             forcibly_split_segments_buffer.push(edge.fix().as_undirected());
@@ -712,7 +665,7 @@ where
                         }
                     }
                     OnFace(face_under_circumcenter) => {
-                        if parameters.excluded_faces.contains(&face_under_circumcenter) {
+                        if excluded_faces.contains(&face_under_circumcenter) {
                             continue;
                         }
                         legalize_edges_buffer.extend(
@@ -788,7 +741,7 @@ where
         }
 
         RefinementResult {
-            excluded_faces,
+            excluded_faces: excluded_faces.iter().copied().collect(),
             refinement_complete,
         }
     }
@@ -938,6 +891,62 @@ fn nearest_power_of_two<S: Float + SpadeNum>(input: S) -> S {
     input.log2().round().exp2()
 }
 
+fn calculate_outer_faces<V: HasPosition, DE: Default, UE: Default, F: Default, L>(
+    triangulation: &ConstrainedDelaunayTriangulation<V, DE, UE, F, L>,
+) -> HashSet<FixedFaceHandle<InnerTag>>
+where
+    L: HintGenerator<<V as HasPosition>::Scalar>,
+{
+    if triangulation.all_vertices_on_line() {
+        return HashSet::new();
+    }
+
+    // Determine excluded faces by "peeling of" outer layers and adding them to an outer layer set.
+    // This needs to be done repeatedly to also get inner "holes" within the triangulation
+    let mut inner_faces = HashSet::new();
+    let mut outer_faces = HashSet::new();
+
+    let mut current_todo_list: Vec<_> =
+        triangulation.convex_hull().map(|edge| edge.rev()).collect();
+    let mut next_todo_list = Vec::new();
+
+    let mut return_outer_faces = true;
+
+    loop {
+        // Every iteration of the outer while loop will peel of the outmost layer and pre-populate the
+        // next, inner layer.
+        while let Some(next_edge) = current_todo_list.pop() {
+            let (list, face_set) = if next_edge.is_constraint_edge() {
+                // We're crossing a constraint edge - add that face to the *next* todo list
+                (&mut next_todo_list, &mut inner_faces)
+            } else {
+                (&mut current_todo_list, &mut outer_faces)
+            };
+
+            if let Some(inner) = next_edge.face().as_inner() {
+                if face_set.insert(inner.fix()) {
+                    list.push(next_edge.prev().rev());
+                    list.push(next_edge.next().rev());
+                }
+            }
+        }
+
+        if next_todo_list.is_empty() {
+            break;
+        }
+        core::mem::swap(&mut inner_faces, &mut outer_faces);
+        core::mem::swap(&mut next_todo_list, &mut current_todo_list);
+
+        return_outer_faces = !return_outer_faces;
+    }
+
+    if return_outer_faces {
+        outer_faces
+    } else {
+        inner_faces
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::HashSet;
@@ -1066,9 +1075,7 @@ mod test {
             cdt.add_constraint_edge(p1, p2)?;
         }
 
-        let excluded_faces = RefinementParameters::<f64>::new()
-            .exclude_outer_faces(&cdt)
-            .excluded_faces;
+        let excluded_faces = super::calculate_outer_faces(&cdt);
 
         let v2 = cdt.locate_vertex(Point2::new(1.0, 1.0)).unwrap().fix();
         let v0 = cdt.locate_vertex(Point2::new(-1.0, 1.0)).unwrap().fix();
@@ -1104,18 +1111,14 @@ mod test {
 
         let scale_factors = [1.0, 2.0, 3.0, 4.0];
 
-        let mut current_excluded_faces = RefinementParameters::<f64>::new()
-            .exclude_outer_faces(&cdt)
-            .excluded_faces;
+        let mut current_excluded_faces = super::calculate_outer_faces(&cdt);
 
         assert!(current_excluded_faces.is_empty());
 
         for factor in scale_factors {
             cdt.add_constraint_edges(test_shape().iter().map(|p| p.mul(factor)), true)?;
 
-            let next_excluded_faces = RefinementParameters::<f64>::new()
-                .exclude_outer_faces(&cdt)
-                .excluded_faces;
+            let next_excluded_faces = super::calculate_outer_faces(&cdt);
 
             assert!(current_excluded_faces.len() < next_excluded_faces.len());
 
@@ -1133,7 +1136,7 @@ mod test {
 
         let refinement_result = cdt.refine(
             RefinementParameters::new()
-                .exclude_outer_faces(&cdt)
+                .exclude_outer_faces(true)
                 .with_angle_limit(AngleLimit::from_radius_to_shortest_edge_ratio(
                     f64::INFINITY,
                 )),
@@ -1144,7 +1147,7 @@ mod test {
             cdt.num_inner_faces()
         );
 
-        cdt.refine(RefinementParameters::new().exclude_outer_faces(&cdt));
+        cdt.refine(RefinementParameters::new().exclude_outer_faces(true));
 
         Ok(())
     }
