@@ -44,6 +44,15 @@ impl SketchConverter {
     }
 }
 
+fn round(value: f64) -> f64 {
+    const SCALAR: f64 = 40.0;
+    (value * SCALAR).round() / SCALAR
+}
+
+fn round_tuple(x: f64, y: f64) -> (f64, f64) {
+    (round(x), round(y))
+}
+
 impl SketchConverter {
     pub fn convert<S: Into<String>>(unique_prefix: S, sketch: &Sketch) -> Document {
         let mut svg = Group::new();
@@ -138,19 +147,27 @@ impl SketchConverter {
                 style,
             }) => svg.add(
                 Circle::new()
-                    .set("cx", center.x)
-                    .set("cy", center.y)
-                    .set("r", *radius)
+                    .set("cx", round(center.x))
+                    .set("cy", round(center.y))
+                    .set("r", round(*radius))
                     .set("style", style.get_attribute_string(self)),
             ),
             SketchElement::Path(SketchPath { data_points, style }) => {
                 let mut data = Data::new();
                 for point in data_points {
                     match point {
-                        PathPoint::MoveTo(point) => data = data.move_to((point.x, point.y)),
-                        PathPoint::MoveBy(vector) => data = data.move_by((vector.x, vector.y)),
-                        PathPoint::LineTo(point) => data = data.line_to((point.x, point.y)),
-                        PathPoint::LineBy(vector) => data = data.line_by((vector.x, vector.y)),
+                        PathPoint::MoveTo(point) => {
+                            data = data.move_to(round_tuple(point.x, point.y))
+                        }
+                        PathPoint::MoveBy(vector) => {
+                            data = data.move_by(round_tuple(vector.x, vector.y))
+                        }
+                        PathPoint::LineTo(point) => {
+                            data = data.line_to(round_tuple(point.x, point.y))
+                        }
+                        PathPoint::LineBy(vector) => {
+                            data = data.line_by(round_tuple(vector.x, vector.y))
+                        }
                         PathPoint::ArcTo {
                             radii,
                             rotation,
@@ -243,10 +260,10 @@ impl SketchConverter {
     fn add_svg_line(&mut self, svg: Group, from: Point, to: Point, style: &Style) -> Group {
         svg.add(
             Line::new()
-                .set("x1", from.x)
-                .set("y1", from.y)
-                .set("x2", to.x)
-                .set("y2", to.y)
+                .set("x1", round(from.x))
+                .set("y1", round(from.y))
+                .set("x2", round(to.x))
+                .set("y2", round(to.y))
                 .set("style", style.get_attribute_string(self)),
         )
     }

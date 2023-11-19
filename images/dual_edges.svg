@@ -86,17 +86,17 @@
 <circle cx="-55" cy="-25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="50" cy="50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="45" cy="-47" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="28.531135531135533" x2="38.060273972602744" y1="22.945054945054945" y2="26.80821917808219"/>
-<circle cx="28.531135531135533" cy="22.945054945054945" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<circle cx="38.060273972602744" cy="26.80821917808219" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="22.986935866983373" x2="15.629870129870131" y1="-14.798099762470308" y2="-26.242424242424242"/>
-<circle cx="22.986935866983373" cy="-14.798099762470308" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<circle cx="15.629870129870131" cy="-26.242424242424242" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="22.986935866983373" x2="16.72566371681416" y1="-14.798099762470308" y2="-3.6172566371681416"/>
-<circle cx="22.986935866983373" cy="-14.798099762470308" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<circle cx="16.72566371681416" cy="-3.6172566371681416" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="-12.670212765957444" x2="-8.782715185444363" y1="18.5" y2="26.80510846745976"/>
-<circle cx="-12.670212765957444" cy="18.5" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<circle cx="-8.782715185444363" cy="26.80510846745976" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="28.525" x2="38.05" y1="22.95" y2="26.8"/>
+<circle cx="28.525" cy="22.95" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<circle cx="38.05" cy="26.8" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="22.975" x2="15.625" y1="-14.8" y2="-26.25"/>
+<circle cx="22.975" cy="-14.8" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<circle cx="15.625" cy="-26.25" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="22.975" x2="16.725" y1="-14.8" y2="-3.625"/>
+<circle cx="22.975" cy="-14.8" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<circle cx="16.725" cy="-3.625" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<line style="stroke-width: 1.3; stroke: rgb(65 105 225); fill: none" x1="-12.675" x2="-8.775" y1="18.5" y2="26.8"/>
+<circle cx="-12.675" cy="18.5" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
+<circle cx="-8.775" cy="26.8" r="1.3" style="stroke-width: 1; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
 </g>
 </svg>

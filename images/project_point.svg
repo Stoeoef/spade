@@ -9,7 +9,7 @@
 <path d="M-32,-48 L8,-40 L-8,40 L-48,32" style="fill: rgb(143 188 143)"/>
 <path d="M8,-40 L28,-36 L12,44 L-8,40" style="fill: rgb(100 149 237)"/>
 <path d="M68,-28 L28,-36 L12,44 L52,52" style="fill: rgb(250 128 114)"/>
-<line style="stroke-width: 0.5; stroke: rgb(0 0 0); marker-end: url(#project_point_filled_arrow0001); fill: none" x1="0" x2="17.6" y1="0" y2="3.52"/>
+<line style="stroke-width: 0.5; stroke: rgb(0 0 0); marker-end: url(#project_point_filled_arrow0001); fill: none" x1="0" x2="17.6" y1="0" y2="3.525"/>
 <text dy="0" font-size="2" style="fill: rgb(0 0 0)" transform="translate (-7 -2) rotate (0) translate(7 2)" x="-7" y="-2">
 before
 </text>

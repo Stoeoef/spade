@@ -23,15 +23,15 @@
 <text dy="-1.2" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (15 15) rotate (63.434948822922024) translate(-15 -15)" x="15" y="15">
 e2
 </text>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0002); fill: none" x1="26.869504831500294" x2="1.0733126291998991" y1="38.73900966300059" y2="-12.853374741600202"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0002); fill: none" x1="26.875" x2="1.075" y1="38.75" y2="-12.85"/>
 <text dy="5" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (30 0) rotate (26.56505117707799) translate(-30 -0)" x="30" y="0">
 e1
 </text>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0003); fill: none" x1="6.260990336999412" x2="57.8533747416002" y1="-11.869504831500294" y2="13.926687370800101"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0003); fill: none" x1="6.25" x2="57.85" y1="-11.875" y2="13.925"/>
 <text dy="-1.2" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (45 30) rotate (-45) translate(-45 -30)" x="45" y="30">
 e0
 </text>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0004); fill: none" x1="55.05025253169417" x2="31.697056274847714" y1="19.94974746830583" y2="43.30294372515229"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); marker-start: url(#face_adjacent_edges_filled_arrow0004); fill: none" x1="55.05" x2="31.7" y1="19.95" y2="43.3"/>
 <text dy="4" font-size="6" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (34 15) rotate (0) translate(-34 -15)" x="34" y="15">
 face
 </text>
