@@ -107,26 +107,26 @@
 <text dy="-1.7" font-size="7" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (15.5 -49.5) rotate (4.844000375080668) translate(-15.5 49.5)" x="15.5" y="-49.5">
 e5
 </text>
-<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0002); fill: none" x1="36.03214525592762" x2="-11.608572068247366" y1="-47.75998769017563" y2="-51.797336615953164"/>
+<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0002); fill: none" x1="36.025" x2="-11.6" y1="-47.75" y2="-51.8"/>
 <text dy="-1.7" font-size="7" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-34.5 -38.5) rotate (-33.366366001059575) translate(34.5 38.5)" x="-34.5" y="-38.5">
 e4
 </text>
-<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0003); fill: none" x1="-21.516537783378904" x2="-52.995589924432295" y1="-47.05008487436024" y2="-26.31997736683727"/>
+<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0003); fill: none" x1="-21.525" x2="-53" y1="-47.05" y2="-26.325"/>
 <text dy="-1.7" font-size="7" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-61 13.5) rotate (-81.14204123637165) translate(61 -13.5)" x="-61" y="13.5">
 e3
 </text>
-<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0004); fill: none" x1="-56.38586879138406" x2="-66.63043498896425" y1="-16.107341921952262" y2="49.6286245125206"/>
+<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0004); fill: none" x1="-56.375" x2="-66.625" y1="-16.1" y2="49.625"/>
 <text dy="6" font-size="7" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-8.5 51) rotate (-0.9793196543394771) translate(8.5 -51)" x="-8.5" y="51">
 e2
 </text>
-<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0005); fill: none" x1="-58.00131463629098" x2="47.600350569677595" y1="51.84617631856908" y2="50.04101964838158"/>
+<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0005); fill: none" x1="-58" x2="47.6" y1="51.85" y2="50.05"/>
 <text dy="6" font-size="7" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (63 30) rotate (-56.97613244420335) translate(-63 -30)" x="63" y="30">
 e1
 </text>
-<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0006); fill: none" x1="54.90489515535873" x2="74.692027958571" y1="42.45400745329427" y2="12.012264679121529"/>
+<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0006); fill: none" x1="54.9" x2="74.7" y1="42.45" y2="12"/>
 <text dy="-1.7" font-size="7" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (60.5 -18.5) rotate (61.46001481204004) translate(-60.5 18.5)" x="60.5" y="-18.5">
 e0
 </text>
-<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0007); fill: none" x1="71.70005247781015" x2="46.14665267258396" y1="2.093644878554132" y2="-44.8916386342811"/>
+<line style="stroke-width: 1.4; stroke: rgb(65 105 225); marker-start: url(#convex_hull_filled_arrow0007); fill: none" x1="71.7" x2="46.15" y1="2.1" y2="-44.9"/>
 </g>
 </svg>

@@ -7,165 +7,165 @@
 </defs>
 <rect height="100%" style="fill: url(#refinement_maximum_area_no_limit_pattern0001)" width="100%" x="-90.14" y="-62.879999999999995"/>
 <g>
-<path d="M-16.011173,-24.187134 L-2,-24 L-16.609423,-7.43617 z" style="fill: rgb(211 211 211)"/>
-<path d="M5,-12 L15.62987,-26.242424 L30,2 z" style="fill: rgb(211 211 211)"/>
-<path d="M15,39 L12,10 L28.531136,22.945055 z" style="fill: rgb(211 211 211)"/>
-<path d="M15,39 L-0.7347893,37.196453 L12,10 z" style="fill: rgb(211 211 211)"/>
-<path d="M-30,-25 L-34.5,-38.5 L-26.25468,-33.74844 z" style="fill: rgb(211 211 211)"/>
-<path d="M33,-30 L30,2 L15.62987,-26.242424 z" style="fill: rgb(211 211 211)"/>
-<path d="M-5,-42 L-2,-24 L-16.336903,-39.70194 z" style="fill: rgb(211 211 211)"/>
-<path d="M-8.5,51 L-35.004673,51.45307 L-18.153315,36.48357 z" style="fill: rgb(211 211 211)"/>
-<path d="M12,10 L-12.643112,18.245255 L-16.609423,-7.43617 z" style="fill: rgb(211 211 211)"/>
-<path d="M30,2 L48.356995,13.8113985 L28.531136,22.945055 z" style="fill: rgb(211 211 211)"/>
-<path d="M30,2 L60.5,-18.5 L48.356995,13.8113985 z" style="fill: rgb(211 211 211)"/>
-<path d="M-5,-42 L7.7709894,-38.859295 L-2,-24 z" style="fill: rgb(211 211 211)"/>
-<path d="M5,-12 L12,10 L-16.609423,-7.43617 z" style="fill: rgb(211 211 211)"/>
+<path d="M-16,-24.175 L-2,-24 L-16.6,-7.425 z" style="fill: rgb(211 211 211)"/>
+<path d="M5,-12 L15.625,-26.25 L30,2 z" style="fill: rgb(211 211 211)"/>
+<path d="M15,39 L12,10 L28.525,22.95 z" style="fill: rgb(211 211 211)"/>
+<path d="M15,39 L-0.725,37.2 L12,10 z" style="fill: rgb(211 211 211)"/>
+<path d="M-30,-25 L-34.5,-38.5 L-26.25,-33.75 z" style="fill: rgb(211 211 211)"/>
+<path d="M33,-30 L30,2 L15.625,-26.25 z" style="fill: rgb(211 211 211)"/>
+<path d="M-5,-42 L-2,-24 L-16.325,-39.7 z" style="fill: rgb(211 211 211)"/>
+<path d="M-8.5,51 L-35,51.45 L-18.15,36.475 z" style="fill: rgb(211 211 211)"/>
+<path d="M12,10 L-12.65,18.25 L-16.6,-7.425 z" style="fill: rgb(211 211 211)"/>
+<path d="M30,2 L48.35,13.8 L28.525,22.95 z" style="fill: rgb(211 211 211)"/>
+<path d="M30,2 L60.5,-18.5 L48.35,13.8 z" style="fill: rgb(211 211 211)"/>
+<path d="M-5,-42 L7.775,-38.85 L-2,-24 z" style="fill: rgb(211 211 211)"/>
+<path d="M5,-12 L12,10 L-16.6,-7.425 z" style="fill: rgb(211 211 211)"/>
 <path d="M12,10 L5,-12 L30,2 z" style="fill: rgb(211 211 211)"/>
 <path d="M-35,5 L-35,32 L-61,13.5 z" style="fill: rgb(211 211 211)"/>
-<path d="M5,-12 L-16.609423,-7.43617 L-2,-24 z" style="fill: rgb(211 211 211)"/>
+<path d="M5,-12 L-16.6,-7.425 L-2,-24 z" style="fill: rgb(211 211 211)"/>
 <path d="M45,-47 L33,-30 L15.5,-49.5 z" style="fill: rgb(211 211 211)"/>
 <path d="M-30,-25 L-35,5 L-55,-25 z" style="fill: rgb(211 211 211)"/>
 <path d="M-30,-25 L-55,-25 L-34.5,-38.5 z" style="fill: rgb(211 211 211)"/>
 <path d="M-67,52 L-61,13.5 L-35,32 z" style="fill: rgb(211 211 211)"/>
-<path d="M50,50 L34.00234,50.273464 L41.734108,34.51367 z" style="fill: rgb(211 211 211)"/>
-<path d="M28.531136,22.945055 L48.356995,13.8113985 L41.734108,34.51367 z" style="fill: rgb(211 211 211)"/>
+<path d="M50,50 L34,50.275 L41.725,34.525 z" style="fill: rgb(211 211 211)"/>
+<path d="M28.525,22.95 L48.35,13.8 L41.725,34.525 z" style="fill: rgb(211 211 211)"/>
 <path d="M33,-30 L45,-47 L60.5,-18.5 z" style="fill: rgb(211 211 211)"/>
-<path d="M-5,-42 L-14,-52 L1.9428529,-50.64891 z" style="fill: rgb(211 211 211)"/>
-<path d="M-27.362734,-43.20015 L-26.25468,-33.74844 L-34.5,-38.5 z" style="fill: rgb(211 211 211)"/>
+<path d="M-5,-42 L-14,-52 L1.95,-50.65 z" style="fill: rgb(211 211 211)"/>
+<path d="M-27.375,-43.2 L-26.25,-33.75 L-34.5,-38.5 z" style="fill: rgb(211 211 211)"/>
 <path d="M-35,5 L-61,13.5 L-55,-25 z" style="fill: rgb(211 211 211)"/>
-<path d="M-12.643112,18.245255 L12,10 L-0.7347893,37.196453 z" style="fill: rgb(211 211 211)"/>
+<path d="M-12.65,18.25 L12,10 L-0.725,37.2 z" style="fill: rgb(211 211 211)"/>
 <path d="M33,-30 L60.5,-18.5 L30,2 z" style="fill: rgb(211 211 211)"/>
-<path d="M15.62987,-26.242424 L-2,-24 L7.7709894,-38.859295 z" style="fill: rgb(211 211 211)"/>
-<path d="M15,39 L18.004675,50.54693 L7.497663,50.726536 z" style="fill: rgb(211 211 211)"/>
-<path d="M-35,32 L-35.004673,51.45307 L-67,52 z" style="fill: rgb(211 211 211)"/>
-<path d="M-5,-42 L1.9428529,-50.64891 L7.7709894,-38.859295 z" style="fill: rgb(211 211 211)"/>
-<path d="M-35,5 L-16.609423,-7.43617 L-12.643112,18.245255 z" style="fill: rgb(211 211 211)"/>
-<path d="M-16.609423,-7.43617 L-35,5 L-30,-25 z" style="fill: rgb(211 211 211)"/>
-<path d="M15.62987,-26.242424 L5,-12 L-2,-24 z" style="fill: rgb(211 211 211)"/>
-<path d="M33,-30 L15.62987,-26.242424 L15.5,-49.5 z" style="fill: rgb(211 211 211)"/>
-<path d="M18.004675,50.54693 L15,39 L34.00234,50.273464 z" style="fill: rgb(211 211 211)"/>
-<path d="M30,2 L28.531136,22.945055 L12,10 z" style="fill: rgb(211 211 211)"/>
-<path d="M-27.362734,-43.20015 L-14,-52 L-16.336903,-39.70194 z" style="fill: rgb(211 211 211)"/>
-<path d="M41.734108,34.51367 L63,30 L50,50 z" style="fill: rgb(211 211 211)"/>
-<path d="M-5,-42 L-16.336903,-39.70194 L-14,-52 z" style="fill: rgb(211 211 211)"/>
-<path d="M-30,-25 L-26.25468,-33.74844 L-16.011173,-24.187134 z" style="fill: rgb(211 211 211)"/>
-<path d="M15,39 L7.497663,50.726536 L-0.7347893,37.196453 z" style="fill: rgb(211 211 211)"/>
-<path d="M15.5,-49.5 L7.7709894,-38.859295 L1.9428529,-50.64891 z" style="fill: rgb(211 211 211)"/>
-<path d="M7.7709894,-38.859295 L15.5,-49.5 L15.62987,-26.242424 z" style="fill: rgb(211 211 211)"/>
-<path d="M-0.7347893,37.196453 L-18.153315,36.48357 L-12.643112,18.245255 z" style="fill: rgb(211 211 211)"/>
-<path d="M-12.643112,18.245255 L-35,32 L-35,5 z" style="fill: rgb(211 211 211)"/>
-<path d="M34.00234,50.273464 L15,39 L41.734108,34.51367 z" style="fill: rgb(211 211 211)"/>
-<path d="M76,10 L48.356995,13.8113985 L60.5,-18.5 z" style="fill: rgb(211 211 211)"/>
-<path d="M48.356995,13.8113985 L76,10 L63,30 z" style="fill: rgb(211 211 211)"/>
-<path d="M-26.25468,-33.74844 L-16.336903,-39.70194 L-16.011173,-24.187134 z" style="fill: rgb(211 211 211)"/>
-<path d="M-16.336903,-39.70194 L-26.25468,-33.74844 L-27.362734,-43.20015 z" style="fill: rgb(211 211 211)"/>
-<path d="M-16.011173,-24.187134 L-16.609423,-7.43617 L-30,-25 z" style="fill: rgb(211 211 211)"/>
-<path d="M-2,-24 L-16.011173,-24.187134 L-16.336903,-39.70194 z" style="fill: rgb(211 211 211)"/>
-<path d="M-8.5,51 L-0.7347893,37.196453 L7.497663,50.726536 z" style="fill: rgb(211 211 211)"/>
-<path d="M-35,32 L-12.643112,18.245255 L-18.153315,36.48357 z" style="fill: rgb(211 211 211)"/>
-<path d="M-18.153315,36.48357 L-0.7347893,37.196453 L-8.5,51 z" style="fill: rgb(211 211 211)"/>
-<path d="M-35,32 L-18.153315,36.48357 L-35.004673,51.45307 z" style="fill: rgb(211 211 211)"/>
-<path d="M28.531136,22.945055 L41.734108,34.51367 L15,39 z" style="fill: rgb(211 211 211)"/>
-<path d="M63,30 L41.734108,34.51367 L48.356995,13.8113985 z" style="fill: rgb(211 211 211)"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-12.643112206583844" x2="-16.609422492401215" y1="18.24525474188813" y2="-7.436170212765958"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.629870129870131" x2="15.5" y1="-26.242424242424242" y2="-49.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="12" x2="28.531135531135533" y1="10" y2="22.945054945054945"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="15.629870129870131" y1="2" y2="-26.242424242424242"/>
+<path d="M15.625,-26.25 L-2,-24 L7.775,-38.85 z" style="fill: rgb(211 211 211)"/>
+<path d="M15,39 L18,50.55 L7.5,50.725 z" style="fill: rgb(211 211 211)"/>
+<path d="M-35,32 L-35,51.45 L-67,52 z" style="fill: rgb(211 211 211)"/>
+<path d="M-5,-42 L1.95,-50.65 L7.775,-38.85 z" style="fill: rgb(211 211 211)"/>
+<path d="M-35,5 L-16.6,-7.425 L-12.65,18.25 z" style="fill: rgb(211 211 211)"/>
+<path d="M-16.6,-7.425 L-35,5 L-30,-25 z" style="fill: rgb(211 211 211)"/>
+<path d="M15.625,-26.25 L5,-12 L-2,-24 z" style="fill: rgb(211 211 211)"/>
+<path d="M33,-30 L15.625,-26.25 L15.5,-49.5 z" style="fill: rgb(211 211 211)"/>
+<path d="M18,50.55 L15,39 L34,50.275 z" style="fill: rgb(211 211 211)"/>
+<path d="M30,2 L28.525,22.95 L12,10 z" style="fill: rgb(211 211 211)"/>
+<path d="M-27.375,-43.2 L-14,-52 L-16.325,-39.7 z" style="fill: rgb(211 211 211)"/>
+<path d="M41.725,34.525 L63,30 L50,50 z" style="fill: rgb(211 211 211)"/>
+<path d="M-5,-42 L-16.325,-39.7 L-14,-52 z" style="fill: rgb(211 211 211)"/>
+<path d="M-30,-25 L-26.25,-33.75 L-16,-24.175 z" style="fill: rgb(211 211 211)"/>
+<path d="M15,39 L7.5,50.725 L-0.725,37.2 z" style="fill: rgb(211 211 211)"/>
+<path d="M15.5,-49.5 L7.775,-38.85 L1.95,-50.65 z" style="fill: rgb(211 211 211)"/>
+<path d="M7.775,-38.85 L15.5,-49.5 L15.625,-26.25 z" style="fill: rgb(211 211 211)"/>
+<path d="M-0.725,37.2 L-18.15,36.475 L-12.65,18.25 z" style="fill: rgb(211 211 211)"/>
+<path d="M-12.65,18.25 L-35,32 L-35,5 z" style="fill: rgb(211 211 211)"/>
+<path d="M34,50.275 L15,39 L41.725,34.525 z" style="fill: rgb(211 211 211)"/>
+<path d="M76,10 L48.35,13.8 L60.5,-18.5 z" style="fill: rgb(211 211 211)"/>
+<path d="M48.35,13.8 L76,10 L63,30 z" style="fill: rgb(211 211 211)"/>
+<path d="M-26.25,-33.75 L-16.325,-39.7 L-16,-24.175 z" style="fill: rgb(211 211 211)"/>
+<path d="M-16.325,-39.7 L-26.25,-33.75 L-27.375,-43.2 z" style="fill: rgb(211 211 211)"/>
+<path d="M-16,-24.175 L-16.6,-7.425 L-30,-25 z" style="fill: rgb(211 211 211)"/>
+<path d="M-2,-24 L-16,-24.175 L-16.325,-39.7 z" style="fill: rgb(211 211 211)"/>
+<path d="M-8.5,51 L-0.725,37.2 L7.5,50.725 z" style="fill: rgb(211 211 211)"/>
+<path d="M-35,32 L-12.65,18.25 L-18.15,36.475 z" style="fill: rgb(211 211 211)"/>
+<path d="M-18.15,36.475 L-0.725,37.2 L-8.5,51 z" style="fill: rgb(211 211 211)"/>
+<path d="M-35,32 L-18.15,36.475 L-35,51.45 z" style="fill: rgb(211 211 211)"/>
+<path d="M28.525,22.95 L41.725,34.525 L15,39 z" style="fill: rgb(211 211 211)"/>
+<path d="M63,30 L41.725,34.525 L48.35,13.8 z" style="fill: rgb(211 211 211)"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-12.65" x2="-16.6" y1="18.25" y2="-7.425"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.625" x2="15.5" y1="-26.25" y2="-49.5"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="12" x2="28.525" y1="10" y2="22.95"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="15.625" y1="2" y2="-26.25"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="5" y1="2" y2="-12"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-18.153314330604395" x2="-12.643112206583844" y1="36.48356998742192" y2="18.24525474188813"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-0.7347893104057519" x2="12" y1="37.19645426712207" y2="10"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.011173818113104" x2="-16.336902569644337" y1="-24.187133092833143" y2="-39.70193788225629"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.609422492401215" x2="12" y1="-7.436170212765958" y2="10"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-18.15" x2="-12.65" y1="36.475" y2="18.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-0.725" x2="12" y1="37.2" y2="10"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16" x2="-16.325" y1="-24.175" y2="-39.7"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.6" x2="12" y1="-7.425" y2="10"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="-2" y1="-42" y2="-24"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="5" x2="-2" y1="-12" y2="-24"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-67" y1="32" y2="52"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.609422492401215" x2="-2" y1="-7.436170212765958" y2="-24"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35.004674262367914" x2="-18.153314330604395" y1="51.45307135491227" y2="36.48356998742192"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.6" x2="-2" y1="-7.425" y2="-24"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-18.15" y1="51.45" y2="36.475"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-30" y1="5" y2="-25"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-14" x2="-5" y1="-52" y2="-42"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="48.3569955103003" x2="60.5" y1="13.811398148574645" y2="-18.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="48.3569955103003" x2="28.531135531135533" y1="13.811398148574645" y2="22.945054945054945"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="48.35" x2="60.5" y1="13.8" y2="-18.5"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="48.35" x2="28.525" y1="13.8" y2="22.95"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="33" y1="2" y2="-30"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="7.770989215304567" x2="-2" y1="-38.85929614483418" y2="-24"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="7.775" x2="-2" y1="-38.85" y2="-24"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="12" y1="39" y2="10"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="5" x2="12" y1="-12" y2="10"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="12" y1="2" y2="10"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-35" y1="32" y2="5"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-61" y1="32" y2="13.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.011173818113104" x2="-26.25468013352549" y1="-24.187133092833143" y2="-33.748439955491506"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16" x2="-26.25" y1="-24.175" y2="-33.75"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="33" x2="15.5" y1="-30" y2="-49.5"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="60.5" y1="2" y2="-18.5"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-55" y1="5" y2="-25"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-34.5" x2="-26.25468013352549" y1="-38.5" y2="-33.748439955491506"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-34.5" x2="-26.25" y1="-38.5" y2="-33.75"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-55" y1="-25" y2="-25"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-55" x2="-34.5" y1="-25" y2="-38.5"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-67" x2="-61" y1="52" y2="13.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="34.00233713118395" x2="15" y1="50.273464322543866" y2="39"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="50" x2="34.00233713118395" y1="50" y2="50.273464322543866"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="34" x2="15" y1="50.275" y2="39"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="50" x2="34" y1="50" y2="50.275"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="76" x2="63" y1="10" y2="30"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="33" x2="45" y1="-30" y2="-47"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="45" x2="60.5" y1="-47" y2="-18.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-14" x2="1.9428528783509016" y1="-52" y2="-50.648910773021115"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-14" x2="1.95" y1="-52" y2="-50.65"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-34.5" y1="-25" y2="-38.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-34.5" x2="-27.36273383711805" y1="-38.5" y2="-43.200150887751526"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-34.5" x2="-27.375" y1="-38.5" y2="-43.2"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-61" y1="5" y2="13.5"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-61" x2="-55" y1="13.5" y2="-25"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-0.7347893104057519" x2="7.497662868816045" y1="37.19645426712207" y2="50.72653567745614"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-8.5" x2="-35.004674262367914" y1="51" y2="51.45307135491227"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-0.725" x2="7.5" y1="37.2" y2="50.725"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-8.5" x2="-35" y1="51" y2="51.45"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="33" x2="60.5" y1="-30" y2="-18.5"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="60.5" x2="76" y1="-18.5" y2="10"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="7.770989215304567" x2="1.9428528783509016" y1="-38.85929614483418" y2="-50.648910773021115"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="7.775" x2="1.95" y1="-38.85" y2="-50.65"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.5" x2="45" y1="-49.5" y2="-47"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="18.004674262367914" y1="39" y2="50.54692864508773"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="18.004674262367914" x2="7.497662868816045" y1="50.54692864508773" y2="50.72653567745614"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-35.004674262367914" y1="32" y2="51.45307135491227"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35.004674262367914" x2="-67" y1="51.45307135491227" y2="52"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="1.9428528783509016" y1="-42" y2="-50.648910773021115"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="1.9428528783509016" x2="15.5" y1="-50.648910773021115" y2="-49.5"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="5" x2="-16.609422492401215" y1="-12" y2="-7.436170212765958"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-16.609422492401215" y1="5" y2="-7.436170212765958"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-16.609422492401215" y1="-25" y2="-7.436170212765958"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="5" x2="15.629870129870131" y1="-12" y2="-26.242424242424242"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-2" x2="15.629870129870131" y1="-24" y2="-26.242424242424242"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="33" x2="15.629870129870131" y1="-30" y2="-26.242424242424242"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="41.73410769424369" x2="34.00233713118395" y1="34.51367118739755" y2="50.273464322543866"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="28.531135531135533" y1="39" y2="22.945054945054945"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="28.531135531135533" y1="2" y2="22.945054945054945"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-14" x2="-16.336902569644337" y1="-52" y2="-39.70193788225629"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-27.36273383711805" x2="-14" y1="-43.200150887751526" y2="-52"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="41.73410769424369" x2="48.3569955103003" y1="34.51367118739755" y2="13.811398148574645"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="18" y1="39" y2="50.55"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="18" x2="7.5" y1="50.55" y2="50.725"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-35" y1="32" y2="51.45"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-67" y1="51.45" y2="52"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="1.95" y1="-42" y2="-50.65"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="1.95" x2="15.5" y1="-50.65" y2="-49.5"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="5" x2="-16.6" y1="-12" y2="-7.425"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-16.6" y1="5" y2="-7.425"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-16.6" y1="-25" y2="-7.425"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="5" x2="15.625" y1="-12" y2="-26.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-2" x2="15.625" y1="-24" y2="-26.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="33" x2="15.625" y1="-30" y2="-26.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="41.725" x2="34" y1="34.525" y2="50.275"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="28.525" y1="39" y2="22.95"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="28.525" y1="2" y2="22.95"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-14" x2="-16.325" y1="-52" y2="-39.7"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-27.375" x2="-14" y1="-43.2" y2="-52"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="41.725" x2="48.35" y1="34.525" y2="13.8"/>
 <line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="63" x2="50" y1="30" y2="50"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-27.36273383711805" x2="-26.25468013352549" y1="-43.200150887751526" y2="-33.748439955491506"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.336902569644337" x2="-2" y1="-39.70193788225629" y2="-24"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-26.25468013352549" y1="-25" y2="-33.748439955491506"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="7.497662868816045" y1="39" y2="50.72653567745614"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="7.497662868816045" x2="-8.5" y1="50.72653567745614" y2="51"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="7.770989215304567" y1="-42" y2="-38.85929614483418"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.5" x2="7.770989215304567" y1="-49.5" y2="-38.85929614483418"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.629870129870131" x2="7.770989215304567" y1="-26.242424242424242" y2="-38.85929614483418"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="12" x2="-12.643112206583844" y1="10" y2="18.24525474188813"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-12.643112206583844" y1="32" y2="18.24525474188813"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-12.643112206583844" y1="5" y2="18.24525474188813"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="41.73410769424369" y1="39" y2="34.51367118739755"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="34.00233713118395" x2="18.004674262367914" y1="50.273464322543866" y2="50.54692864508773"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="48.3569955103003" y1="2" y2="13.811398148574645"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="76" x2="48.3569955103003" y1="10" y2="13.811398148574645"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="63" x2="48.3569955103003" y1="30" y2="13.811398148574645"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="-16.336902569644337" y1="-42" y2="-39.70193788225629"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-26.25468013352549" x2="-16.336902569644337" y1="-33.748439955491506" y2="-39.70193788225629"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-27.36273383711805" x2="-16.336902569644337" y1="-43.200150887751526" y2="-39.70193788225629"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.609422492401215" x2="-16.011173818113104" y1="-7.436170212765958" y2="-24.187133092833143"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-16.011173818113104" y1="-25" y2="-24.187133092833143"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-2" x2="-16.011173818113104" y1="-24" y2="-24.187133092833143"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="-0.7347893104057519" y1="39" y2="37.19645426712207"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-8.5" x2="-0.7347893104057519" y1="51" y2="37.19645426712207"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-12.643112206583844" x2="-0.7347893104057519" y1="18.24525474188813" y2="37.19645426712207"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-0.7347893104057519" x2="-18.153314330604395" y1="37.19645426712207" y2="36.48356998742192"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-8.5" x2="-18.153314330604395" y1="51" y2="36.48356998742192"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-18.153314330604395" y1="32" y2="36.48356998742192"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="50" x2="41.73410769424369" y1="50" y2="34.51367118739755"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="28.531135531135533" x2="41.73410769424369" y1="22.945054945054945" y2="34.51367118739755"/>
-<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="63" x2="41.73410769424369" y1="30" y2="34.51367118739755"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-27.375" x2="-26.25" y1="-43.2" y2="-33.75"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.325" x2="-2" y1="-39.7" y2="-24"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-26.25" y1="-25" y2="-33.75"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="7.5" y1="39" y2="50.725"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="7.5" x2="-8.5" y1="50.725" y2="51"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="7.775" y1="-42" y2="-38.85"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.5" x2="7.775" y1="-49.5" y2="-38.85"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15.625" x2="7.775" y1="-26.25" y2="-38.85"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="12" x2="-12.65" y1="10" y2="18.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-12.65" y1="32" y2="18.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-12.65" y1="5" y2="18.25"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="41.725" y1="39" y2="34.525"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="34" x2="18" y1="50.275" y2="50.55"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="30" x2="48.35" y1="2" y2="13.8"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="76" x2="48.35" y1="10" y2="13.8"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="63" x2="48.35" y1="30" y2="13.8"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-5" x2="-16.325" y1="-42" y2="-39.7"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-26.25" x2="-16.325" y1="-33.75" y2="-39.7"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-27.375" x2="-16.325" y1="-43.2" y2="-39.7"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-16.6" x2="-16" y1="-7.425" y2="-24.175"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-30" x2="-16" y1="-25" y2="-24.175"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-2" x2="-16" y1="-24" y2="-24.175"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="15" x2="-0.725" y1="39" y2="37.2"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-8.5" x2="-0.725" y1="51" y2="37.2"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-12.65" x2="-0.725" y1="18.25" y2="37.2"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-0.725" x2="-18.15" y1="37.2" y2="36.475"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-8.5" x2="-18.15" y1="51" y2="36.475"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="-35" x2="-18.15" y1="32" y2="36.475"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="50" x2="41.725" y1="50" y2="34.525"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="28.525" x2="41.725" y1="22.95" y2="34.525"/>
+<line style="stroke-width: 1; stroke: rgb(169 169 169); fill: none" x1="63" x2="41.725" y1="30" y2="34.525"/>
 <circle cx="15" cy="39" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="-5" cy="-42" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="30" cy="2" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
@@ -187,25 +187,25 @@
 <circle cx="-8.5" cy="51" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="60.5" cy="-18.5" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="15.5" cy="-49.5" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="18.004674262367914" cy="50.54692864508773" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-35.004674262367914" cy="51.45307135491227" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="1.9428528783509016" cy="-50.648910773021115" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-16.609422492401215" cy="-7.436170212765958" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="15.629870129870131" cy="-26.242424242424242" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="28.531135531135533" cy="22.945054945054945" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-27.36273383711805" cy="-43.200150887751526" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="18" cy="50.55" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-35" cy="51.45" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="1.95" cy="-50.65" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-16.6" cy="-7.425" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="15.625" cy="-26.25" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="28.525" cy="22.95" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-27.375" cy="-43.2" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="63" cy="30" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-26.25468013352549" cy="-33.748439955491506" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="7.497662868816045" cy="50.72653567745614" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="7.770989215304567" cy="-38.85929614483418" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-12.643112206583844" cy="18.24525474188813" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="34.00233713118395" cy="50.273464322543866" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="48.3569955103003" cy="13.811398148574645" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-16.336902569644337" cy="-39.70193788225629" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-16.011173818113104" cy="-24.187133092833143" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-0.7347893104057519" cy="37.19645426712207" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="-18.153314330604395" cy="36.48356998742192" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="41.73410769424369" cy="34.51367118739755" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-26.25" cy="-33.75" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="7.5" cy="50.725" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="7.775" cy="-38.85" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-12.65" cy="18.25" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="34" cy="50.275" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="48.35" cy="13.8" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-16.325" cy="-39.7" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-16" cy="-24.175" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-0.725" cy="37.2" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="-18.15" cy="36.475" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="41.725" cy="34.525" r="0.4" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <text dy="0" font-size="10" style="fill: rgb(0 0 0)" transform="translate (-75 -20) rotate (-33.2) translate(75 20)" x="-75" y="-20">
 No max area
 </text>

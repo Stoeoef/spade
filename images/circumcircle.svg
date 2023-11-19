@@ -86,12 +86,12 @@
 <circle cx="-55" cy="-25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="50" cy="50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="45" cy="-47" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="22.986935866983373" cy="-14.798099762470308" r="18.20327509443587" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
-<circle cx="-15.76946107784431" cy="-30.95508982035928" r="15.426319482739059" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
-<circle cx="-12.670212765957444" cy="18.5" r="26.09347424007792" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
-<circle cx="38.060273972602744" cy="26.80821917808219" r="26.084780146690566" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
-<circle cx="56.07754010695187" cy="-11.695855614973262" r="29.455297639913233" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
-<circle cx="13.972222222222221" cy="-35.91203703703704" r="19.92507237346433" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
-<circle cx="-11.264764764764763" cy="5.288788788788789" r="23.736992030088444" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="22.975" cy="-14.8" r="18.2" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="-15.775" cy="-30.95" r="15.425" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="-12.675" cy="18.5" r="26.1" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="38.05" cy="26.8" r="26.075" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="56.075" cy="-11.7" r="29.45" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="13.975" cy="-35.9" r="19.925" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
+<circle cx="-11.275" cy="5.3" r="23.725" style="stroke-width: 0.5; stroke: rgb(65 105 225); fill: none"/>
 </g>
 </svg>

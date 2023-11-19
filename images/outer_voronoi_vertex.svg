@@ -95,11 +95,11 @@
 <circle cx="-55" cy="-25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="50" cy="50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="45" cy="-47" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#outer_voronoi_vertex_filled_arrow0002); stroke-dasharray: 4 2; fill: none" x1="15.5" x2="18.03329230058542" y1="-49.5" y2="-79.39284914690793"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#outer_voronoi_vertex_filled_arrow0002); stroke-dasharray: 4 2; fill: none" x1="15.5" x2="18.025" y1="-49.5" y2="-79.4"/>
 <circle cx="15.5" cy="-49.5" r="1" style="stroke-width: 0.7; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#outer_voronoi_vertex_filled_arrow0003); stroke-dasharray: 4 2; fill: none" x1="-61" x2="-90.64219359349246" y1="13.5" y2="8.880437362053122"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#outer_voronoi_vertex_filled_arrow0003); stroke-dasharray: 4 2; fill: none" x1="-61" x2="-90.65" y1="13.5" y2="8.875"/>
 <circle cx="-61" cy="13.5" r="1" style="stroke-width: 0.7; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#outer_voronoi_vertex_filled_arrow0004); stroke-dasharray: 4 2; fill: none" x1="63" x2="88.15330848901911" y1="30" y2="46.34965051786242"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#outer_voronoi_vertex_filled_arrow0004); stroke-dasharray: 4 2; fill: none" x1="63" x2="88.15" y1="30" y2="46.35"/>
 <circle cx="63" cy="30" r="1" style="stroke-width: 0.7; stroke: rgb(0 0 0); fill: rgb(173 216 230)"/>
 </g>
 </svg>

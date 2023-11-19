@@ -104,17 +104,17 @@
 <circle cx="-55" cy="-25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="50" cy="50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="45" cy="-47" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0002); fill: none" x1="16.72566371681416" x2="16.228604833140164" y1="-3.6172566371681416" y2="-1.9194336396605132"/>
-<circle cx="16.72566371681416" cy="-3.6172566371681416" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0003); fill: none" x1="-65.6875" x2="-47.41334980744329" y1="18.5" y2="28.692450055369818"/>
-<circle cx="-65.6875" cy="18.5" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0004); fill: none" x1="-16.6390134529148" x2="-18.575054033404317" y1="-7.356502242152466" y2="-9.263267581487153"/>
-<circle cx="-16.6390134529148" cy="-7.356502242152466" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0005); fill: none" x1="19.20253164556962" x2="23.589603011606446" y1="-52.4746835443038" y2="-41.52324017949723"/>
-<circle cx="19.20253164556962" cy="-52.4746835443038" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0006); fill: none" x1="-42.5" x2="-41.2" y1="-11.666666666666668" y2="-13.4"/>
-<circle cx="-42.5" cy="-11.666666666666668" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
-<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0007); fill: none" x1="-42.5" x2="-33.991237263628186" y1="-50.648148148148145" y2="-35.73708050682601"/>
-<circle cx="-42.5" cy="-50.648148148148145" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0002); fill: none" x1="16.725" x2="16.225" y1="-3.625" y2="-1.925"/>
+<circle cx="16.725" cy="-3.625" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0003); fill: none" x1="-65.7" x2="-47.425" y1="18.5" y2="28.7"/>
+<circle cx="-65.7" cy="18.5" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0004); fill: none" x1="-16.65" x2="-18.575" y1="-7.35" y2="-9.275"/>
+<circle cx="-16.65" cy="-7.35" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0005); fill: none" x1="19.2" x2="23.6" y1="-52.475" y2="-41.525"/>
+<circle cx="19.2" cy="-52.475" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0006); fill: none" x1="-42.5" x2="-41.2" y1="-11.675" y2="-13.4"/>
+<circle cx="-42.5" cy="-11.675" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.8; stroke: rgb(250 128 114); marker-end: url(#inner_voronoi_vertex_filled_arrow0007); fill: none" x1="-42.5" x2="-34" y1="-50.65" y2="-35.725"/>
+<circle cx="-42.5" cy="-50.65" r="2" style="stroke-width: 0.8; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
 </g>
 </svg>
