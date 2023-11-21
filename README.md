@@ -1,6 +1,6 @@
 [![Docs](https://docs.rs/spade/badge.svg)](https://docs.rs/spade/)
 [![Crates.io](https://img.shields.io/crates/v/spade.svg)](https://crates.io/crates/spade)
-![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/Stoeoef/spade/Continuous%20integration/master)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/Stoeoef/spade/spade_actions.yaml?branch=master)
 
 # spade
 
