@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.5.0] - yyyy-mm-dd
+
+### Added
+ - Implements natural neighbor interpolation. See type `NaturalNeighbor` for more on this!
+### Fix
+ - Fixes `PointProjection::reversed()` - the method would return a projection that gives sometimes incorrect results.
+
 ## [2.4.1] - 2023-12-01
 
 ### Fix

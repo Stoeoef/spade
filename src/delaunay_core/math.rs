@@ -1,11 +1,12 @@
 use crate::{HasPosition, LineSideInfo, Point2, SpadeNum};
-use num_traits::Float;
+use num_traits::{zero, Float};
 
 /// Indicates a point's projected position relative to an edge.
 ///
 /// This struct is usually the result of calling
 /// [DirectedEdgeHandle::project_point](crate::handles::DirectedEdgeHandle::project_point), refer to its
 /// documentation for more information.
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
 pub struct PointProjection<S> {
     factor: S,
     length_2: S,
@@ -196,11 +197,14 @@ impl<S: SpadeNum> PointProjection<S> {
 
     /// Returns the inverse of this point projection.
     ///
-    /// The inverse projection projects the same point on the *reversed* edge used by the original projection.    
+    /// The inverse projection projects the same point on the *reversed* edge used by the original projection.
+    ///
+    /// This method can return an incorrect projection due to rounding issues if the projected point is close to one of
+    /// the original edge's vertices.
     pub fn reversed(&self) -> Self {
         Self {
-            factor: -self.factor,
-            length_2: -self.length_2,
+            factor: self.length_2 - self.factor,
+            length_2: self.length_2,
         }
     }
 }
@@ -215,7 +219,13 @@ impl<S: SpadeNum + Float> PointProjection<S> {
     /// point lies "before" `self.from`. Analogously, a value close to 1. or greater than 1. is
     /// returned if the projected point is equal to or lies behind `self.to`.
     pub fn relative_position(&self) -> S {
-        self.factor / self.length_2
+        if self.length_2 >= zero() {
+            self.factor / self.length_2
+        } else {
+            let l = -self.length_2;
+            let f = -self.factor;
+            (l - f) / l
+        }
     }
 }
 
@@ -382,6 +392,58 @@ mod test {
     use super::{mitigate_underflow_for_coordinate, validate_coordinate};
     use crate::{InsertionError, Point2};
     use approx::assert_relative_eq;
+
+    #[test]
+    fn test_point_projection() {
+        use super::project_point;
+
+        let from = Point2::new(1.0f64, 1.0);
+        let to = Point2::new(4.0, 5.0);
+        let normal = Point2::new(4.0, -3.0);
+
+        let projection = project_point(from, to, from);
+        let reversed = projection.reversed();
+
+        assert!(!projection.is_before_edge());
+        assert!(!projection.is_behind_edge());
+        assert!(!reversed.is_before_edge());
+        assert!(!reversed.is_behind_edge());
+
+        assert!(projection.is_on_edge());
+        assert!(reversed.is_on_edge());
+
+        assert_eq!(projection.relative_position(), 0.0);
+        assert_eq!(reversed.relative_position(), 1.0);
+
+        assert_eq!(projection, reversed.reversed());
+
+        // Create point which projects onto the mid
+        let mid_point = Point2::new(2.5 + normal.x, 3.0 + normal.y);
+
+        let projection = project_point(from, to, mid_point);
+        assert!(projection.is_on_edge());
+        assert_eq!(projection.relative_position(), 0.5);
+        assert_eq!(projection.reversed().relative_position(), 0.5);
+
+        // Create point which projects onto 20% of the line
+        let fifth = Point2::new(0.8 * from.x + 0.2 * to.x, 0.8 * from.y + 0.2 * to.y);
+        let fifth = Point2::new(fifth.x + normal.x, fifth.y + normal.y);
+        let projection = project_point(from, to, fifth);
+        assert!(projection.is_on_edge());
+        assert_relative_eq!(projection.relative_position(), 0.2);
+        assert_relative_eq!(projection.reversed().relative_position(), 0.8);
+
+        // Check point before / behind
+        let behind_point = Point2::new(0.0, 0.0);
+        let projection = project_point(from, to, behind_point);
+        let reversed = projection.reversed();
+
+        assert!(projection.is_before_edge());
+        assert!(reversed.is_behind_edge());
+
+        assert!(!projection.is_on_edge());
+        assert!(!reversed.is_on_edge());
+    }
 
     #[test]
     fn test_validate_coordinate() {

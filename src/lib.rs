@@ -9,6 +9,7 @@
 //! * Supports vertex removal
 //! * Serde support with the `serde` feature.
 //! * `no_std` support with `default-features = false`
+//! * Natural neighbor interpolation: [NaturalNeighbor]
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -45,6 +46,7 @@ pub use delaunay_core::{
     LastUsedVertexHintGenerator, RefinementParameters, RefinementResult,
 };
 
+pub use crate::delaunay_core::interpolation::{Barycentric, NaturalNeighbor};
 pub use delaunay_core::LineSideInfo;
 pub use triangulation::{FloatTriangulation, PositionInTriangulation, Triangulation};
 

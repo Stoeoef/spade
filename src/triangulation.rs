@@ -8,6 +8,7 @@ use crate::flood_fill_iterator::FloodFillIterator;
 use crate::flood_fill_iterator::RectangleMetric;
 use crate::flood_fill_iterator::VerticesInShapeIterator;
 use crate::iterators::*;
+use crate::Barycentric;
 use crate::HintGenerator;
 use crate::{delaunay_core::Dcel, handles::*};
 use crate::{HasPosition, InsertionError, Point2, TriangulationExt};
@@ -699,6 +700,15 @@ where
         let distance_metric = CircleMetric::new(center, radius_2);
 
         VerticesInShapeIterator::new(FloodFillIterator::new(self, distance_metric, center))
+    }
+
+    /// Used for barycentric interpolation on this triangulation. Refer to the documentation of
+    /// [Barycentric] and [crate::NaturalNeighbor] for more information.
+    ///
+    /// *Note:* In contrast to the other interpolation algorithms, barycentric interpolation also works
+    /// for [crate::ConstrainedDelaunayTriangulation]s.
+    fn barycentric(&self) -> Barycentric<Self> {
+        Barycentric::new(self)
     }
 }
 

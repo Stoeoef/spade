@@ -6,14 +6,15 @@
 
 Delaunay triangulations for the rust ecosystem.
 
-- 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed by a hierarchy
- structure for improved nearest neighbor and insertion performance.
-- Allows both incremental and bulk loading creation of triangulations
-- Support for vertex removal
-- 2D constrained Delaunay triangulation (CDT)
-- [Delaunay refinement](https://en.wikipedia.org/wiki/Delaunay_refinement)
-- Uses precise geometric predicates to prevent incorrect geometries due to rounding issues
-- Supports extracting the Voronoi diagram
+ - 2D [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation), optionally backed 
+   by a hierarchy structure for improved nearest neighbor and insertion performance.
+ - Allows both incremental and bulk loading creation of triangulations
+ - Support for vertex removal
+ - 2D constrained Delaunay triangulation (CDT)
+ - [Delaunay refinement](https://en.wikipedia.org/wiki/Delaunay_refinement)
+ - Uses precise geometric predicates to prevent incorrect geometries due to rounding issues
+ - Supports extracting the Voronoi diagram
+ - Natural neighbor interpolation
 
 ---------------------------
 <img src="images/basic_voronoi.svg" width=60% style="margin-left: auto;margin-right:auto;display:block">
@@ -31,19 +32,10 @@ Project goals, in the order of their importance:
 
 # Roadmap
 
-For Spade 2.x:
- - Add back the removed interpolation methods (natural neighbor interpolation, #67)
-
 For Spade 3:
- - Possibly base `spade` on `nalgebra` as underlying vector and matrix library. Not much else planned yet!
+ - Possibly API simplification by un-supporting non-f64 outputs.
 
-# Project state and contributing
-
-Looking for co-maintainers! Projects with just a single maintainer can be a little unreliable due to the single point of failure. I would love to see this burden being distributed on more shoulders! This is less about *implementing* things but rather about general maintenance tasks, e.g. package updates, minor bug fixes, reviewing PRs, etc...
-
-If you want to contribute, please consider opening an issue first. I'm happy to help out with any questions!
-
-# Performance and comparison to other Delaunay crates
+# Performance and comparison to other crates
 
 Refer to [the delaunay_compare readme](./delaunay_compare/README.md) for some benchmarks and a comparison with other crates.
 

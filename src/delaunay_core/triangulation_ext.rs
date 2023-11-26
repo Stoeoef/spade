@@ -714,7 +714,7 @@ pub trait TriangulationExt: Triangulation {
     /// For more details, refer to
     /// Olivier Devillers. Vertex Removal in Two Dimensional Delaunay Triangulation:
     /// Speed-up by Low Degrees Optimization.
-    /// https://doi.org/10.1016/j.comgeo.2010.10.001
+    /// <https://doi.org/10.1016/j.comgeo.2010.10.001>
     ///
     /// Note that the described low degrees optimization is not yet part of this library.
     fn legalize_edges_after_removal<F>(

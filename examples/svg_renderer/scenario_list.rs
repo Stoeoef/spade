@@ -3,13 +3,17 @@ use super::quicksketch::{
     SketchLayer, StrokeStyle, Vector,
 };
 
+use anyhow::{Context, Result};
+
 use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Point2, Vector2};
+
 use spade::{
     handles::{
         FixedDirectedEdgeHandle,
         VoronoiVertex::{self, Inner, Outer},
     },
-    AngleLimit, FloatTriangulation as _, InsertionError, RefinementParameters, Triangulation as _,
+    AngleLimit, FloatTriangulation as _, HasPosition, InsertionError, RefinementParameters,
+    Triangulation as _,
 };
 
 use crate::{
@@ -972,6 +976,254 @@ pub fn shape_iterator_scenario(use_circle_metric: bool, iterate_vertices: bool) 
 
     result.set_width(500);
     result
+}
+
+pub fn natural_neighbors_scenario() -> Sketch {
+    let triangulation = big_triangulation().unwrap();
+
+    let nn = triangulation.natural_neighbor();
+
+    let mut nns = Vec::new();
+    let query_point = spade::Point2::new(-1.0, 4.0);
+    nn.get_weights(query_point, &mut nns);
+
+    let mut result = convert_triangulation(&triangulation, &Default::default());
+
+    let offsets = [
+        Vector2::new(2.0, 5.0),
+        Vector2::new(-4.0, 6.0),
+        Vector2::new(0.0, 6.0),
+        Vector2::new(1.0, 6.0),
+        Vector2::new(0.0, 8.0),
+        Vector2::new(3.0, 4.0),
+        Vector2::new(5.0, 2.0),
+    ];
+
+    for (index, (neighbor, weight)) in nns.iter().enumerate() {
+        let neighbor = triangulation.vertex(*neighbor);
+        let position = convert_point(neighbor.position());
+        result.add(
+            SketchElement::circle(position, 2.0)
+                .fill(SketchFill::Solid(SketchColor::SALMON))
+                .stroke_width(0.5)
+                .stroke_color(SketchColor::BLACK),
+        );
+        result.add(
+            SketchElement::text(index.to_string())
+                .position(position)
+                .font_size(3.0)
+                .horizontal_alignment(HorizontalAlignment::Middle)
+                .dy(1.15),
+        );
+
+        result.add(
+            SketchElement::text(format!("{:.2}", weight))
+                .position(position + offsets[index])
+                .font_size(5.0),
+        );
+    }
+
+    result.add(
+        SketchElement::circle(convert_point(query_point), 1.5)
+            .fill(SketchFill::Solid(SketchColor::ROYAL_BLUE))
+            .stroke_width(0.2)
+            .stroke_color(SketchColor::BLACK),
+    );
+
+    result.set_view_box_min(Point2::new(-40.0, -30.0));
+    result.set_view_box_max(Point2::new(30.0, 45.0));
+    result.set_width(400);
+    result
+}
+
+/// Only used for internal documentation of natural neighbor area calculation
+pub fn natural_neighbor_area_scenario(include_faces: bool) -> Result<Sketch> {
+    let mut triangulation: Triangulation = Default::default();
+
+    triangulation.insert(VertexType::new(45.0, 30.0))?;
+    triangulation.insert(VertexType::new(7.5, 40.0))?;
+    triangulation.insert(VertexType::new(-45.0, 42.0))?;
+    triangulation.insert(VertexType::new(-55.0, 0.0))?;
+    triangulation.insert(VertexType::new(-32.0, -42.0))?;
+    triangulation.insert(VertexType::new(-2.0, -32.0))?;
+    triangulation.insert(VertexType::new(25.0, -32.0))?;
+
+    triangulation.insert(VertexType::new(70.0, 40.0))?;
+    triangulation.insert(VertexType::new(20.0, 65.0))?;
+    triangulation.insert(VertexType::new(-60.0, 50.0))?;
+    triangulation.insert(VertexType::new(-70.0, -15.5))?;
+    triangulation.insert(VertexType::new(-50.0, -60.0))?;
+    triangulation.insert(VertexType::new(-9.0, -70.0))?;
+    triangulation.insert(VertexType::new(42.0, -50.0))?;
+
+    for edge in triangulation.fixed_undirected_edges() {
+        triangulation.undirected_edge_data_mut(edge).color = SketchColor::LIGHT_GRAY;
+    }
+
+    for face in triangulation.fixed_inner_faces() {
+        triangulation.face_data_mut(face).fill = SketchFill::solid(SketchColor::ANTIQUE_WHITE);
+    }
+
+    let query_vertex = VertexType::new(-5.0, -5.0);
+    let mut nns = Vec::new();
+    triangulation
+        .natural_neighbor()
+        .get_weights(query_vertex.position(), &mut nns);
+
+    for (vertex, _) in &nns {
+        triangulation.vertex_data_mut(*vertex).color = Some(SketchColor::CRIMSON);
+    }
+
+    let mut result = convert_triangulation(&triangulation, &Default::default());
+
+    for (index, (vertex, _)) in nns.iter().enumerate() {
+        let vertex = triangulation.vertex(*vertex);
+        result.add(
+            SketchElement::text(format!("{index}"))
+                .position(convert_point(vertex.position()))
+                .font_size(2.5)
+                .horizontal_alignment(HorizontalAlignment::Middle)
+                .dy(0.9),
+        );
+    }
+
+    for edge in triangulation.undirected_voronoi_edges() {
+        let [v0, v1] = edge.vertices();
+
+        if let (Some(v0), Some(v1)) = (v0.position(), v1.position()) {
+            result.add(
+                SketchElement::line(convert_point(v0), convert_point(v1))
+                    .stroke_color(SketchColor::SALMON)
+                    .stroke_width(0.5),
+            );
+        }
+    }
+
+    let mut circumcenters = Vec::new();
+    for face in triangulation.inner_faces() {
+        let circumcenter = convert_point(face.circumcenter());
+        circumcenters.push(circumcenter);
+
+        result.add(
+            SketchElement::circle(circumcenter, 1.0)
+                .fill(SketchFill::Solid(SketchColor::ROYAL_BLUE)),
+        );
+    }
+
+    if !include_faces {
+        result.add(
+            SketchElement::circle(convert_point(query_vertex.position()), 1.0)
+                .fill(SketchFill::Solid(SketchColor::RED)),
+        );
+    }
+
+    let mut insertion_cell_points = Vec::new();
+    let inserted = triangulation.insert(query_vertex)?;
+    for edge in triangulation
+        .vertex(inserted)
+        .as_voronoi_face()
+        .adjacent_edges()
+    {
+        let context = "Edge was infinite - is insertion position correct?";
+        let from = edge.from().position().context(context)?;
+        let to = edge.to().position().context(context)?;
+        insertion_cell_points.push(convert_point(from));
+
+        result.add(
+            SketchElement::line(convert_point(from), convert_point(to))
+                .stroke_color(SketchColor::ORANGE_RED),
+        );
+    }
+    for cell_point in &insertion_cell_points {
+        result.add(
+            SketchElement::circle(*cell_point, 1.0)
+                .fill(SketchFill::solid(SketchColor::DARK_GREEN)),
+        );
+    }
+
+    if include_faces {
+        let nn3 = convert_point(triangulation.vertex(nns[3].0).position());
+        let nn4 = convert_point(triangulation.vertex(nns[4].0).position());
+        let nn5 = convert_point(triangulation.vertex(nns[5].0).position());
+
+        let last_edge = SketchElement::line(nn3, nn4)
+            .with_arrow_end(ArrowType::FilledArrow)
+            .stroke_color(SketchColor::ROYAL_BLUE)
+            .shift_from(-2.3)
+            .shift_to(-7.0);
+
+        result.add(
+            last_edge
+                .create_adjacent_text("last_edge")
+                .font_size(3.0)
+                .dy(3.5),
+        );
+        result.add(last_edge);
+        let stop_edge = SketchElement::line(nn4, nn5)
+            .with_arrow_end(ArrowType::FilledArrow)
+            .stroke_color(SketchColor::ROYAL_BLUE)
+            .shift_from(-2.3)
+            .shift_to(-7.0);
+        result.add(
+            stop_edge
+                .create_adjacent_text("stop_edge")
+                .font_size(3.0)
+                .dy(3.5),
+        );
+        result.add(stop_edge);
+
+        result.add(
+            SketchElement::text("first")
+                .position(insertion_cell_points[6] + Vector2::new(0.0, 0.0))
+                .dy(3.3)
+                .font_size(2.5),
+        );
+        result.add(
+            SketchElement::text("last")
+                .position(insertion_cell_points[0] + Vector2::new(-5.5, 0.0))
+                .dy(3.0)
+                .font_size(2.5),
+        );
+
+        result.add(
+            SketchElement::text("c2")
+                .position(circumcenters[4] + Vector2::new(-3.5, 0.0))
+                .dy(-1.0)
+                .font_size(2.5),
+        );
+
+        result.add(
+            SketchElement::text("c1")
+                .position(circumcenters[2])
+                .dy(-2.0)
+                .font_size(2.5),
+        );
+
+        result.add(
+            SketchElement::text("c0")
+                .position(circumcenters[3] + Vector2::new(1.5, 0.0))
+                .dy(0.5)
+                .font_size(2.5),
+        );
+
+        let path = SketchElement::path()
+            .move_to(insertion_cell_points[6])
+            .line_to(insertion_cell_points[0])
+            .line_to(circumcenters[4])
+            .line_to(circumcenters[2])
+            .line_to(circumcenters[3])
+            .close()
+            .fill(SketchFill::solid(SketchColor::ORANGE))
+            .opacity(0.75);
+
+        result.add_with_layer(path, SketchLayer::EDGES);
+    }
+
+    result
+        .set_view_box_min(Point2::new(-60.0, -45.0))
+        .set_view_box_max(Point2::new(45.0, 60.0));
+
+    Ok(result)
 }
 
 pub fn refinement_scenario(do_refine: bool) -> Sketch {

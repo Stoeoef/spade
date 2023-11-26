@@ -1,8 +1,10 @@
 use super::delaunay_core::Dcel;
 use crate::{
-    handles::VertexHandle, HasPosition, HintGenerator, LastUsedVertexHintGenerator, Point2,
-    Triangulation, TriangulationExt,
+    handles::VertexHandle, HasPosition, HintGenerator, LastUsedVertexHintGenerator,
+    NaturalNeighbor, Point2, Triangulation, TriangulationExt,
 };
+
+use num_traits::Float;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -58,6 +60,7 @@ use serde::{Deserialize, Serialize};
 /// <tr><td>
 #[doc = concat!(include_str!("../images/lhs.svg"), "</td><td>",include_str!("../images/rhs.svg"), " </td></tr></table>")]
 /// # Extracting geometry information
+///
 /// Spade uses [handles](crate::handles) to extract the triangulation's geometry.
 /// Handles are usually retrieved by inserting a vertex or by iterating.
 ///  
@@ -284,7 +287,7 @@ where
     /// Returns `None` if the triangulation is empty.
     ///
     /// # Runtime
-    /// This method take O(sqrt(n)) on average where n is the number of vertices.
+    /// This method takes `O(sqrt(n))` on average where n is the number of vertices.
     pub fn nearest_neighbor(
         &self,
         position: Point2<<V as HasPosition>::Scalar>,
@@ -315,6 +318,22 @@ where
             dcel: Default::default(),
             hint_generator: Default::default(),
         }
+    }
+}
+
+impl<V, DE, UE, F, L> DelaunayTriangulation<V, DE, UE, F, L>
+where
+    V: HasPosition,
+    DE: Default,
+    UE: Default,
+    F: Default,
+    V::Scalar: Float,
+    L: HintGenerator<<V as HasPosition>::Scalar>,
+{
+    /// Allows using natural neighbor interpolation on this triangulation. Refer to the documentation
+    /// of [NaturalNeighbor] for more information.
+    pub fn natural_neighbor(&self) -> NaturalNeighbor<Self> {
+        NaturalNeighbor::new(self)
     }
 }
 
