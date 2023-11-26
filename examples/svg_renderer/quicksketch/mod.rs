@@ -125,6 +125,7 @@ pub struct Style {
     stroke_color: Option<SketchColor>,
     stroke_style: Option<StrokeStyle>,
     fill: Option<SketchFill>,
+    opacity: Option<f64>,
     marker_start: Option<ArrowType>,
     marker_end: Option<ArrowType>,
 }
@@ -143,6 +144,11 @@ impl Style {
             .stroke_color
             .as_ref()
             .map(|color| format!("stroke: {}", color));
+
+        let opacity = self
+            .opacity
+            .as_ref()
+            .map(|opacity| format!("opacity: {:.2}", opacity));
 
         let fill = format!(
             "fill: {}",
@@ -175,6 +181,7 @@ impl Style {
             stroke_color,
             marker_start,
             marker_end,
+            opacity,
             stroke_dash_array,
         ])
         .flatten()
@@ -353,6 +360,11 @@ impl SketchPath {
 
     pub fn close(mut self) -> Self {
         self.data_points.push(PathPoint::Close);
+        self
+    }
+
+    pub fn opacity(mut self, opacity: f64) -> Self {
+        self.style.opacity = Some(opacity);
         self
     }
 

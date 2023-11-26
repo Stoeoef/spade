@@ -20,7 +20,7 @@ use alloc::vec::Vec;
 /// site.
 ///
 /// Hints can also be given manually by using the `...with_hint` methods (e.g.
-/// [Triangulation::insert_with_hint](crate::Triangulation::insert_with_hint))
+/// [Triangulation::insert_with_hint])
 ///
 /// Usually, you should not need to implement this trait. Spade currently implements two common hint generators that should
 /// fulfill most needs:

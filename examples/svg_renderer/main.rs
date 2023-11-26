@@ -1,12 +1,26 @@
 pub mod quicksketch;
 mod scenario;
 mod scenario_list;
-
-type Result = core::result::Result<(), Box<dyn std::error::Error>>;
+use anyhow::Result;
 
 /// Used for rendering SVGs for documentation. These are inlined (via #[doc = include_str!(...)])
 /// into the doc comment of a few items. That makes sure they will be visible even for offline users.
-fn main() -> Result {
+fn main() -> Result<()> {
+    scenario_list::natural_neighbor_area_scenario(false)?.save_to_svg(
+        "natural_neighbor_insertion_cell",
+        "images/natural_neighbor_insertion_cell.svg",
+    )?;
+
+    scenario_list::natural_neighbor_area_scenario(true)?.save_to_svg(
+        "natural_neighbor_polygon",
+        "images/natural_neighbor_polygon.svg",
+    )?;
+
+    scenario_list::natural_neighbors_scenario().save_to_svg(
+        "natural_neighbor_scenario",
+        "images/natural_neighbor_scenario.svg",
+    )?;
+
     scenario_list::refinement_maximum_area_scenario(None).save_to_svg(
         "refinement_maximum_area_no_limit",
         "images/refinement_maximum_area_no_limit.svg",

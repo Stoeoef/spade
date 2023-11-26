@@ -3,9 +3,10 @@ use spade::{ConstrainedDelaunayTriangulation, DelaunayTriangulation, HasPosition
 
 use crate::convert_point;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct VertexType {
     position: Point,
+    pub color: Option<SketchColor>,
     pub radius: f64,
 }
 
@@ -21,6 +22,7 @@ impl VertexType {
 
         Self {
             position: Point::new(x, y),
+            color: None,
             radius: DEFAULT_CIRCLE_RADIUS,
         }
     }
@@ -34,6 +36,7 @@ impl HasPosition for VertexType {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct UndirectedEdgeType {
     pub color: SketchColor,
 }
@@ -52,7 +55,7 @@ impl Default for UndirectedEdgeType {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct DirectedEdgeType {}
 
 #[derive(Clone, Copy, Debug)]
@@ -166,7 +169,9 @@ where
     for vertex in triangulation.vertices() {
         sketch.add_with_layer(
             SketchElement::circle(convert_point(vertex.position()), vertex.data().radius)
-                .fill(SketchFill::solid(options.vertex_color))
+                .fill(SketchFill::solid(
+                    vertex.data().color.unwrap_or(options.vertex_color),
+                ))
                 .stroke_width(0.5)
                 .stroke_color(options.vertex_stroke_color),
             crate::quicksketch::SketchLayer::VERTICES,

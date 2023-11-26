@@ -33,9 +33,9 @@ impl Eq for FloatOrd {}
 /// Advances in Engineering Software,
 /// Volume 43, Issue 1,
 /// 2012,
-/// https://doi.org/10.1016/j.advengsoft.2011.09.003
+/// <https://doi.org/10.1016/j.advengsoft.2011.09.003>
 ///
-/// Or alternatively: http://cglab.ca/~biniaz/papers/Sweep%20Circle.pdf
+/// Or alternatively: <http://cglab.ca/~biniaz/papers/Sweep%20Circle.pdf>
 ///
 /// # Overview
 ///

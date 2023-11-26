@@ -12,6 +12,7 @@ mod triangulation_ext;
 
 pub mod refinement;
 
+pub mod interpolation;
 pub mod math;
 
 pub use bulk_load::bulk_load;
