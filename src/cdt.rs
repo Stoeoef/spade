@@ -192,12 +192,12 @@ where
         self.is_constraint_edge(edge)
     }
 
-    fn handle_legal_edge_split(&mut self, handles: [FixedUndirectedEdgeHandle; 2]) {
+    fn handle_legal_edge_split(&mut self, handles: [FixedDirectedEdgeHandle; 2]) {
         self.num_constraints += 1;
-        for handle in &handles {
-            if !self.is_constraint_edge(*handle) {
+        for handle in handles.iter().map(|e| e.as_undirected()) {
+            if !self.is_constraint_edge(handle) {
                 self.s
-                    .undirected_edge_data_mut(*handle)
+                    .undirected_edge_data_mut(handle)
                     .make_constraint_edge();
             }
         }
@@ -1168,6 +1168,17 @@ mod test {
         assert_eq!(cdt.num_all_faces(), 1);
         assert_eq!(cdt.num_vertices(), 0);
         assert_eq!(cdt.num_directed_edges(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_cdt_edge_split_degenerate() -> Result<(), InsertionError> {
+        let mut cdt = Cdt::new();
+        cdt.add_constraint_edge(Point2::new(-10.0, -10.0), Point2::new(20.0, -10.0))?;
+        cdt.insert(Point2::new(0.0, -10.0))?;
+
+        assert_eq!(cdt.num_constraints(), 2);
+
         Ok(())
     }
 }

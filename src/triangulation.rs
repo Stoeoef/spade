@@ -72,7 +72,7 @@ pub trait Triangulation: Default {
     }
 
     #[doc(hidden)]
-    fn handle_legal_edge_split(&mut self, _: [FixedUndirectedEdgeHandle; 2]) {}
+    fn handle_legal_edge_split(&mut self, _: [FixedDirectedEdgeHandle; 2]) {}
 
     #[doc(hidden)]
     fn hint_generator(&self) -> &Self::HintGenerator;

@@ -76,9 +76,7 @@ pub trait TriangulationExt: Triangulation {
                             if self.is_defined_legal(edge.as_undirected()) {
                                 // If the edge is defined as legal the resulting edges must
                                 // be redefined as legal
-                                self.handle_legal_edge_split(
-                                    split_parts.map(|edge| edge.as_undirected()),
-                                );
+                                self.handle_legal_edge_split(split_parts);
                             }
                             self.legalize_vertex(new_handle);
 
@@ -164,12 +162,17 @@ pub trait TriangulationExt: Triangulation {
     ) -> InsertionResult {
         match location {
             PositionWhenAllVerticesOnLine::OnEdge(edge) => {
-                let result = dcel_operations::split_edge_when_all_vertices_on_line(
+                let is_constraint_edge = self.is_defined_legal(edge.as_undirected());
+                let (new_edges, new_vertex) = dcel_operations::split_edge_when_all_vertices_on_line(
                     self.s_mut(),
                     edge,
                     new_vertex,
                 );
-                InsertionResult::NewlyInserted(result)
+
+                if is_constraint_edge {
+                    self.handle_legal_edge_split(new_edges);
+                }
+                InsertionResult::NewlyInserted(new_vertex)
             }
             PositionWhenAllVerticesOnLine::OnVertex(vertex) => InsertionResult::Updated(vertex),
             PositionWhenAllVerticesOnLine::NotOnLine(edge) => {

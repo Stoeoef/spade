@@ -460,7 +460,7 @@ pub fn split_edge_when_all_vertices_on_line<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge: FixedDirectedEdgeHandle,
     new_vertex: V,
-) -> FixedVertexHandle
+) -> ([FixedDirectedEdgeHandle; 2], FixedVertexHandle)
 where
     DE: Default,
     UE: Default,
@@ -527,7 +527,7 @@ where
         out_edge: Some(new_edge),
     });
 
-    new_vertex_handle
+    ([edge, new_edge], new_vertex_handle)
 }
 
 /// Splits `edge_handle` only one side. Used to split edges on the convex hull.
@@ -1573,7 +1573,7 @@ mod test {
         let edge = dcel.directed_edges().next().unwrap().fix();
 
         // Test split isolated edge
-        let v2 = super::split_edge_when_all_vertices_on_line(&mut dcel, edge, 2);
+        let (_, v2) = super::split_edge_when_all_vertices_on_line(&mut dcel, edge, 2);
 
         dcel.sanity_check();
 

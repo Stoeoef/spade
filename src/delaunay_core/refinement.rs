@@ -833,7 +833,7 @@ where
 
         if is_constraint_edge {
             // Make sure to update the constraint edges count as required.
-            self.handle_legal_edge_split([e1, e2].map(|edge| edge.as_undirected()));
+            self.handle_legal_edge_split([e1, e2]);
         }
 
         let (h1, h2) = (self.directed_edge(e1), self.directed_edge(e2));
