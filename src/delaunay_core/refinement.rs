@@ -14,8 +14,8 @@ use crate::{
 };
 
 use super::{
-    FaceHandle, FixedFaceHandle, FixedUndirectedEdgeHandle, FixedVertexHandle, InnerTag,
-    TriangulationExt, UndirectedEdgeHandle,
+    DirectedEdgeHandle, FaceHandle, FixedFaceHandle, FixedUndirectedEdgeHandle, FixedVertexHandle,
+    InnerTag, TriangulationExt, UndirectedEdgeHandle,
 };
 
 /// Contains details about the outcome of a refinement procedure.
@@ -812,18 +812,23 @@ where
         };
 
         let final_position = v0.position().mul(weight0).add(v1.position().mul(weight1));
-        let (v0, v1) = (v0.fix(), v1.fix());
+
+        if !validate_constructed_vertex(final_position, segment) {
+            return;
+        }
 
         let [is_left_side_excluded, is_right_side_excluded] =
             [segment.face(), segment.rev().face()].map(|face| {
                 face.as_inner()
-                    .map(|face| excluded_faces.contains(&face.fix()))
+                    .map_or(false, |face| excluded_faces.contains(&face.fix()))
             });
 
         let is_constraint_edge = segment.is_constraint_edge();
 
         // Perform the actual split!
         let segment = segment.fix();
+        let (v0, v1) = (v0.fix(), v1.fix());
+
         let (new_vertex, [e1, e2]) = self.insert_on_edge(segment, final_position.into());
 
         let original_vertices = v0_constraint_vertex
@@ -838,13 +843,13 @@ where
 
         let (h1, h2) = (self.directed_edge(e1), self.directed_edge(e2));
 
-        if is_left_side_excluded == Some(true) {
+        if is_left_side_excluded {
             // Any newly added face on the left becomes an excluded face
             excluded_faces.insert(h1.face().fix().as_inner().unwrap());
             excluded_faces.insert(h2.face().fix().as_inner().unwrap());
         }
 
-        if is_right_side_excluded == Some(true) {
+        if is_right_side_excluded {
             // Any newly added face on the right becomes an excluded face
             excluded_faces.insert(h1.rev().face().fix().as_inner().unwrap());
             excluded_faces.insert(h2.rev().face().fix().as_inner().unwrap());
@@ -874,6 +879,53 @@ where
         encroached_segments_buffer.push_back(e1.as_undirected());
         encroached_segments_buffer.push_back(e2.as_undirected());
     }
+}
+
+/// Check if final_position would violate a ordering constraint. This is needed since final_position is constructed
+/// with imprecise calculations and may not even be representable in the underlying floating point type. In rare cases,
+/// this means that the newly formed triangles would not be ordered ccw.
+/// We'll simply skip these refinements steps as it should only happen for very bad input geometries.
+///
+/// Before (v0 = segment.from(), v1 = segment.to()):
+///     v2
+///   /   \
+/// v0 --> v1
+///   \   /
+///     v3
+///
+/// After (before legalizing) - return if any face would be ordered cw
+///     v2
+///   / |  \
+/// v0 -v-> v1
+///   \ |  /
+///     v3
+fn validate_constructed_vertex<V, DE, UE, F>(
+    final_position: Point2<V::Scalar>,
+    segment: DirectedEdgeHandle<V, DE, UE, F>,
+) -> bool
+where
+    V: HasPosition,
+{
+    use math::is_ordered_ccw;
+    let [v0, v1] = segment.positions();
+
+    if math::validate_vertex(&final_position).is_err() {
+        return false;
+    }
+
+    if let Some(v2) = segment.opposite_position() {
+        if is_ordered_ccw(v0, v2, final_position) || is_ordered_ccw(v2, v1, final_position) {
+            return false;
+        }
+    }
+
+    if let Some(v3) = segment.rev().opposite_position() {
+        if is_ordered_ccw(v3, v0, final_position) || is_ordered_ccw(v1, v3, final_position) {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn is_encroaching_edge<S: SpadeNum + Float>(
@@ -1148,6 +1200,37 @@ mod test {
         );
 
         cdt.refine(RefinementParameters::new().exclude_outer_faces(true));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_failing_refinement() -> Result<(), InsertionError> {
+        // f32 is important - only then, rounding errors will lead to violating the ccw property when
+        // the refinement splits an edge. See issue #96
+        let mut cdt = ConstrainedDelaunayTriangulation::<Point2<f32>>::new();
+
+        #[rustfmt::skip]
+            let vert = [
+                [Point2 { x: -50.023544f32, y: -25.29227 }, Point2 { x: 754.23883, y: -25.29227 }],
+                [Point2 { x: 754.23883, y: 508.68994 }, Point2 { x: -50.023544, y: 508.68994 }],
+                [Point2 { x: -44.20742, y: 316.5185 }, Point2 { x: -50.023544, y: 318.19534 }],
+                [Point2 { x: 11.666269, y: 339.4947 }, Point2 { x: 15.110367, y: 335.44138 }],
+                [Point2 { x: 335.06403, y: 122.91455 }, Point2 { x: 340.15436, y: 132.04283 }],
+                [Point2 { x: 446.92468, y: -6.7025666 }, Point2 { x: 458.70944, y: 14.341333 }],
+                [Point2 { x: 458.70944, y: 14.341333 }, Point2 { x: 471.58313, y: 7.1453195 }],
+                [Point2 { x: 467.80966, y: 0.40460825 }, Point2 { x: 468.6454, y: -0.061800003 }],
+                [Point2 { x: 464.55957, y: -7.3688636 }, Point2 { x: 465.48816, y: -7.890797 }],
+                [Point2 { x: 465.48816, y: -7.890797 }, Point2 { x: 461.57117, y: -14.898027 }],
+                [Point2 { x: 465.42877, y: 10.587858 }, Point2 { x: 453.93112, y: 17.01763 }],
+            ];
+
+        for [start, end] in vert {
+            cdt.add_constraint_edge(start, end)?;
+        }
+
+        cdt.refine(Default::default());
+        cdt.cdt_sanity_check();
 
         Ok(())
     }
