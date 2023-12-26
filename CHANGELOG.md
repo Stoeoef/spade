@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.5.0] - yyyy-mm-dd
+## [2.5.0] - 2023-12-26
 
 ### Added
  - Implements natural neighbor interpolation. See type `NaturalNeighbor` for more on this!
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - Fixes panic during refinement due to rounding errors (see #96)
   - Inserting a vertex onto a constraint edge of a degenerate CDT would not create a new constraint edge.
 
-## [2.4] - 2023-11-19
+## [2.4.0] - 2023-11-19
 
 ### Added
   - Implements Delaunay refinement: Adds `ConstrainedDelaunayTriangulation::refine`, along with `RefinementParameters` to modify the refinement behavior.
@@ -296,6 +296,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.5.0]: https://github.com/Stoeoef/spade/compare/v2.4.1...v2.5.0
 
 [2.4.1]: https://github.com/Stoeoef/spade/compare/v2.4.0...v2.4.1
 
