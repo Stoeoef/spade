@@ -483,17 +483,18 @@ pub trait TriangulationExt: Triangulation {
             out_edge
         };
 
+        let mut loop_counter = self.s().num_directed_edges();
+
         // Invariant: position is on the left side or on the line of edge.
         loop {
+            // Prevent accidental infinite loops (easier to debug). Should never happen
+            if loop_counter == 0 {
+                panic!("Failed to locate position. This is a bug in spade.")
+            }
+            loop_counter -= 1;
+
             let prev = edge.prev();
             if !edge.is_outer_edge() {
-                let prev_query = prev.side_query(target_position);
-                if prev_query.is_on_right_side() {
-                    edge = prev.rev();
-                    query = edge.side_query(target_position);
-                    continue;
-                }
-
                 let next = edge.next();
                 let next_query = next.side_query(target_position);
 
@@ -503,8 +504,14 @@ pub trait TriangulationExt: Triangulation {
                     continue;
                 }
 
-                self.hint_generator()
-                    .notify_vertex_lookup(edge.from().fix());
+                let prev_query = prev.side_query(target_position);
+                if prev_query.is_on_right_side() {
+                    edge = prev.rev();
+                    query = edge.side_query(target_position);
+                    continue;
+                }
+
+                self.hint_generator().notify_vertex_lookup(edge.to().fix());
 
                 // Point must be in triangle or on its lines
                 return match (
