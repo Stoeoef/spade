@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.5.1] - 2023-12-27
+
+### Fix
+ - Locating or inserting vertices into  a CDT could sometimes end up in an infinite loop. See #98.
+
 ## [2.5.0] - 2023-12-26
 
 ### Added
@@ -296,6 +301,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.5.1]: https://github.com/Stoeoef/spade/compare/v2.5.0...v2.5.1
 
 [2.5.0]: https://github.com/Stoeoef/spade/compare/v2.4.1...v2.5.0
 
