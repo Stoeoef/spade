@@ -990,13 +990,13 @@ pub fn natural_neighbors_scenario() -> Sketch {
     let mut result = convert_triangulation(&triangulation, &Default::default());
 
     let offsets = [
+        Vector2::new(5.0, 2.0),
         Vector2::new(2.0, 5.0),
         Vector2::new(-4.0, 6.0),
         Vector2::new(0.0, 6.0),
         Vector2::new(1.0, 6.0),
         Vector2::new(0.0, 8.0),
         Vector2::new(3.0, 4.0),
-        Vector2::new(5.0, 2.0),
     ];
 
     for (index, (neighbor, weight)) in nns.iter().enumerate() {

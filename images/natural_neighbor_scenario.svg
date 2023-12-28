@@ -90,49 +90,49 @@
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (5 -12) rotate (0) translate(-5 12)" x="5" y="-12">
 0
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (7 -7) rotate (0) translate(-7 7)" x="7" y="-7">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (10 -10) rotate (0) translate(-10 10)" x="10" y="-10">
 0.27
 </text>
 <circle cx="12" cy="10" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(250 128 114)"/>
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (12 10) rotate (0) translate(-12 -10)" x="12" y="10">
 1
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (8 16) rotate (0) translate(-8 -16)" x="8" y="16">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (14 15) rotate (0) translate(-14 -15)" x="14" y="15">
 0.48
 </text>
 <circle cx="15" cy="39" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(250 128 114)"/>
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (15 39) rotate (0) translate(-15 -39)" x="15" y="39">
 2
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (15 45) rotate (0) translate(-15 -45)" x="15" y="45">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (11 45) rotate (0) translate(-11 -45)" x="11" y="45">
 0.01
 </text>
 <circle cx="-35" cy="32" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(250 128 114)"/>
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-35 32) rotate (0) translate(35 -32)" x="-35" y="32">
 3
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (-34 38) rotate (0) translate(34 -38)" x="-34" y="38">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (-35 38) rotate (0) translate(35 -38)" x="-35" y="38">
 0.04
 </text>
 <circle cx="-35" cy="5" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(250 128 114)"/>
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-35 5) rotate (0) translate(35 -5)" x="-35" y="5">
 4
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (-35 13) rotate (0) translate(35 -13)" x="-35" y="13">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (-34 11) rotate (0) translate(34 -11)" x="-34" y="11">
 0.19
 </text>
 <circle cx="-30" cy="-25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(250 128 114)"/>
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-30 -25) rotate (0) translate(30 25)" x="-30" y="-25">
 5
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (-27 -21) rotate (0) translate(27 21)" x="-27" y="-21">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (-30 -17) rotate (0) translate(30 17)" x="-30" y="-17">
 0.00
 </text>
 <circle cx="-2" cy="-24" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(250 128 114)"/>
 <text dy="1.15" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-2 -24) rotate (0) translate(2 24)" x="-2" y="-24">
 6
 </text>
-<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (3 -22) rotate (0) translate(-3 22)" x="3" y="-22">
+<text dy="0" font-size="5" style="fill: rgb(0 0 0)" transform="translate (1 -20) rotate (0) translate(-1 20)" x="1" y="-20">
 0.01
 </text>
 <circle cx="-1" cy="4" r="1.5" style="stroke-width: 0.2; stroke: rgb(0 0 0); fill: rgb(65 105 225)"/>
