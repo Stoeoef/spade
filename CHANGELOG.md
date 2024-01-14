@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.0] - 2024-01-14
+
+### Added
+ - Implements `DelaunayTriangulation::bulk_load_stable` (See #77)
+ - Implements `FixedVertexHandle::from_index(usize)`
+
 ## [2.5.1] - 2023-12-27
 
 ### Fix
@@ -301,6 +307,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.6.0]: https://github.com/Stoeoef/spade/compare/v2.5.1...v2.6.0
 
 [2.5.1]: https://github.com/Stoeoef/spade/compare/v2.5.0...v2.5.1
 

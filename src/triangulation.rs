@@ -81,6 +81,22 @@ pub trait Triangulation: Default {
     #[doc(hidden)]
     fn hint_generator_mut(&mut self) -> &mut Self::HintGenerator;
 
+    #[doc(hidden)]
+    fn from_parts(
+        dcel: Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        hint_generator: Self::HintGenerator,
+        num_constraints: usize,
+    ) -> Self;
+
+    #[doc(hidden)]
+    #[allow(clippy::type_complexity)]
+    fn into_parts(
+        self,
+    ) -> (
+        Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        Self::HintGenerator,
+    );
+
     /// Creates a new triangulation.
     ///
     /// A newly created triangulation contains no vertices, no edges and the single

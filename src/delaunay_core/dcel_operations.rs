@@ -311,7 +311,7 @@ where
     // After:
     //
     //  new_prev.rev
-    //  |   ^
+    //  |   ^ <---- new
     //  |  / \
     //  | /   \
     //  V/ new \<---new_next.rev
@@ -1502,6 +1502,17 @@ mod test {
         out_edges.reverse();
         let reversed: Vec<_> = vertex.out_edges().rev().collect();
         assert_eq!(out_edges, reversed);
+    }
+
+    #[test]
+    fn test_swap() {
+        let mut dcel = default_triangle();
+        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let v = FixedVertexHandle::new;
+        for (i0, i1) in [(0, 1), (0, 2), (1, 2), (3, 2), (3, 0), (0, 0), (1, 1)] {
+            dcel.swap_vertices(v(i0), v(i1));
+            dcel.sanity_check();
+        }
     }
 
     #[test]

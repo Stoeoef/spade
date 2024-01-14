@@ -133,6 +133,24 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.faces.truncate(1); // Keep outer face
     }
 
+    pub fn map_vertices<M, V2>(self, f: M) -> Dcel<V2, DE, UE, F>
+    where
+        M: Fn(V) -> V2,
+    {
+        Dcel {
+            vertices: self
+                .vertices
+                .into_iter()
+                .map(|vertex_data| VertexEntry {
+                    data: f(vertex_data.data),
+                    out_edge: vertex_data.out_edge,
+                })
+                .collect(),
+            faces: self.faces,
+            edges: self.edges,
+        }
+    }
+
     pub fn map_undirected_edges<M, UE2>(self, f: M) -> Dcel<V, DE, UE2, F>
     where
         M: Fn(UE) -> UE2,
@@ -334,6 +352,38 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
 
     pub fn fixed_faces(&self) -> FixedFaceIterator {
         FixedFaceIterator::new(self.num_faces())
+    }
+
+    pub fn swap_vertices(&mut self, v0: FixedVertexHandle, v1: FixedVertexHandle) {
+        let out_0 = self.vertices[v0.index()].out_edge;
+        let out_1 = self.vertices[v1.index()].out_edge;
+        self.vertices.swap(v0.index(), v1.index());
+
+        if let Some(mut out_0) = out_0 {
+            loop {
+                let out_entry = self.half_edge_mut(out_0);
+                if out_entry.origin == v1 {
+                    break;
+                }
+
+                out_entry.origin = v1;
+
+                out_0 = out_entry.prev.rev();
+            }
+        }
+
+        if let Some(mut out_1) = out_1 {
+            loop {
+                let out_entry = self.half_edge_mut(out_1);
+                if out_entry.origin == v0 {
+                    break;
+                }
+
+                out_entry.origin = v0;
+
+                out_1 = out_entry.prev.rev();
+            }
+        }
     }
 
     #[cfg(any(test, fuzzing))]
