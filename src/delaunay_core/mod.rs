@@ -31,7 +31,3 @@ pub use line_side_info::LineSideInfo;
 
 pub use handles::iterators;
 pub use handles::*;
-
-pub use math::{
-    validate_coordinate, validate_vertex, InsertionError, MAX_ALLOWED_VALUE, MIN_ALLOWED_VALUE,
-};
