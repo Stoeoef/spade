@@ -2,6 +2,7 @@ use core::convert::TryInto;
 
 use super::super::Dcel;
 use super::public_handles::{InnerOuterMarker, PossiblyOuterTag};
+use super::FixedVertexHandle;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -40,6 +41,23 @@ pub const fn new_fixed_face_handle(index: usize) -> FixedHandleImpl<FaceTag, Pos
         index: index as u32,
         ty: FaceTag,
         inner_outer: PossiblyOuterTag,
+    }
+}
+
+impl FixedVertexHandle {
+    /// Creates a new vertex handle from a `usize`.
+    ///
+    /// Ideally, this method should only be used in advanced scenarios as it allows to create
+    /// invalid vertex handles. When possible, attempt to retrieve handles by other means
+    /// instead (see [crate::handles]).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index >= 2^32`
+    pub fn from_index(index: usize) -> Self {
+        // Preferably, `new` would simply be public. However, that would allow to create a handle
+        // to the outer face marked with `InnerTag` which is bad. Let's only allow vertices for now.
+        Self::new(index)
     }
 }
 

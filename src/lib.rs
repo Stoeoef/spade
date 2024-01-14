@@ -114,6 +114,12 @@ mod test_utilities;
 /// | **Reference**  | [vertices()](Triangulation::vertices()) | [directed_edges()](Triangulation::directed_edges) | [undirected_edges()](Triangulation::undirected_edges()) | [inner_faces()](Triangulation::inner_faces())<br>[all_faces()](Triangulation::all_faces()) |
 /// | **Fixed**      | [fixed_vertices()](Triangulation::fixed_vertices()) | [fixed_directed_edges()](Triangulation::fixed_directed_edges()) | [fixed_undirected_edges()](Triangulation::fixed_undirected_edges()) | [fixed_inner_faces()](Triangulation::fixed_inner_faces())<br> [fixed_faces()](Triangulation::fixed_inner_faces()) |
 ///
+/// # Creating handles directly
+///
+/// In some cases it may be desireable to create vertex handles artificially by providing the index
+/// manually. This can be done by calling [handles::FixedVertexHandle::from_index](from_index(usize)).
+/// Make sure that the provided index is smaller than the number of vertices in the triangulation.
+///
 /// # Converting between reference and fixed handles
 ///
 /// Converting a reference handle into its fixed counterpart is performed via the
