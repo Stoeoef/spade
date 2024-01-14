@@ -144,9 +144,9 @@ pub struct ConstrainedDelaunayTriangulation<
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
-    s: Dcel<V, DE, CdtEdge<UE>, F>,
+    dcel: Dcel<V, DE, CdtEdge<UE>, F>,
     num_constraints: usize,
-    lookup: L,
+    hint_generator: L,
 }
 
 impl<V, DE, UE, F, L> Default for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
@@ -159,9 +159,9 @@ where
 {
     fn default() -> Self {
         ConstrainedDelaunayTriangulation {
-            s: Default::default(),
+            dcel: Default::default(),
             num_constraints: 0,
-            lookup: Default::default(),
+            hint_generator: Default::default(),
         }
     }
 }
@@ -181,11 +181,11 @@ where
     type HintGenerator = L;
 
     fn s(&self) -> &Dcel<V, DE, CdtEdge<UE>, F> {
-        &self.s
+        &self.dcel
     }
 
     fn s_mut(&mut self) -> &mut Dcel<V, DE, CdtEdge<UE>, F> {
-        &mut self.s
+        &mut self.dcel
     }
 
     fn is_defined_legal(&self, edge: FixedUndirectedEdgeHandle) -> bool {
@@ -196,7 +196,7 @@ where
         self.num_constraints += 1;
         for handle in handles.iter().map(|e| e.as_undirected()) {
             if !self.is_constraint_edge(handle) {
-                self.s
+                self.dcel
                     .undirected_edge_data_mut(handle)
                     .make_constraint_edge();
             }
@@ -204,11 +204,11 @@ where
     }
 
     fn hint_generator(&self) -> &Self::HintGenerator {
-        &self.lookup
+        &self.hint_generator
     }
 
     fn hint_generator_mut(&mut self) -> &mut Self::HintGenerator {
-        &mut self.lookup
+        &mut self.hint_generator
     }
 
     fn clear(&mut self) {
@@ -216,6 +216,27 @@ where
         self.s_mut().clear();
         let new_hint_generator = HintGenerator::initialize_from_triangulation(self);
         *self.hint_generator_mut() = new_hint_generator;
+    }
+
+    fn from_parts(
+        dcel: Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        hint_generator: Self::HintGenerator,
+        num_constraints: usize,
+    ) -> Self {
+        Self {
+            dcel,
+            num_constraints,
+            hint_generator,
+        }
+    }
+
+    fn into_parts(
+        self,
+    ) -> (
+        Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        Self::HintGenerator,
+    ) {
+        todo!()
     }
 }
 
@@ -234,9 +255,9 @@ where
         let lookup = value.hint_generator;
 
         ConstrainedDelaunayTriangulation {
-            s,
+            dcel: s,
             num_constraints: 0,
-            lookup,
+            hint_generator: lookup,
         }
     }
 }
@@ -258,7 +279,7 @@ where
     /// This method will invalidate all vertex, edge and face handles.
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
         let num_removed_constraints = self
-            .s
+            .dcel
             .vertex(vertex)
             .out_edges()
             .map(|edge| edge.is_constraint_edge())
@@ -275,7 +296,7 @@ where
 
     /// Returns `true` if a given edge is a constraint edge.
     pub fn is_constraint_edge(&self, edge: FixedUndirectedEdgeHandle) -> bool {
-        self.s.undirected_edge_data(edge).is_constraint_edge()
+        self.dcel.undirected_edge_data(edge).is_constraint_edge()
     }
 
     /// Checks if two vertices are connected by a constraint edge.
@@ -591,7 +612,9 @@ where
 
     fn make_constraint_edge(&mut self, edge: FixedUndirectedEdgeHandle) -> bool {
         if !self.is_constraint_edge(edge) {
-            self.s.undirected_edge_data_mut(edge).make_constraint_edge();
+            self.dcel
+                .undirected_edge_data_mut(edge)
+                .make_constraint_edge();
             self.num_constraints += 1;
             true
         } else {
@@ -602,7 +625,7 @@ where
     #[cfg(test)]
     pub fn cdt_sanity_check(&self) {
         let num_undirected_edges = self
-            .s
+            .dcel
             .undirected_edges()
             .filter(|e| e.is_constraint_edge())
             .count();

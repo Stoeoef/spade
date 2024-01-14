@@ -1,9 +1,10 @@
 use super::delaunay_core::Dcel;
 use crate::{
-    handles::VertexHandle, HasPosition, HintGenerator, LastUsedVertexHintGenerator,
+    handles::VertexHandle, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator,
     NaturalNeighbor, Point2, Triangulation, TriangulationExt,
 };
 
+use alloc::vec::Vec;
 use num_traits::Float;
 
 #[cfg(feature = "serde")]
@@ -303,6 +304,53 @@ where
         self.hint_generator().notify_vertex_lookup(vertex.fix());
         Some(vertex)
     }
+
+    /// Creates a new delaunay triangulation with an efficient bulk loading strategy.
+    ///
+    /// In contrast to [Triangulation::bulk_load], this method will create a triangulation with
+    /// vertices returned *in the same order* as the input vertices.
+    ///
+    /// # Duplicate handling
+    ///
+    /// If two vertices have the same position, only one of them will be included in the final
+    /// triangulation. It is undefined which of them is discarded.
+    ///
+    /// For example, if the input vertices are [v0, v1, v2, v1] (where v1 is duplicated), the
+    /// resulting triangulation will be either
+    /// [v0, v1, v2] or [v0, v2, v1]
+    ///
+    /// Consider checking the triangulation's size after calling this method to ensure that no
+    /// duplicates were present.
+    ///
+    /// # Example
+    /// ```
+    /// # use spade::InsertionError;
+    /// use spade::{DelaunayTriangulation, Point2, Triangulation};
+    ///
+    /// # fn main() -> Result<(), InsertionError> {
+    /// let vertices = vec![
+    ///      Point2::new(0.5, 1.0),
+    ///      Point2::new(-0.5, 2.0),
+    ///      Point2::new(0.2, 3.0),
+    ///      Point2::new(0.0, 4.0),
+    ///      Point2::new(-0.2, 5.0)
+    /// ];
+    /// let triangulation = DelaunayTriangulation::<Point2<f64>>::bulk_load_stable(vertices.clone())?;
+    /// // This assert will not hold for regular bulk loading!
+    /// assert_eq!(triangulation.vertices().map(|v| *v.data()).collect::<Vec<_>>(), vertices);
+    ///
+    /// // This is how you would check for duplicates:
+    /// let duplicates_found = triangulation.num_vertices() < vertices.len();
+    /// assert!(!duplicates_found);
+    /// # Ok(()) }
+    /// ```
+    pub fn bulk_load_stable(elements: Vec<V>) -> Result<Self, InsertionError> {
+        let result: Self =
+            crate::delaunay_core::bulk_load_stable::<_, _, DelaunayTriangulation<_, _, _, _, _>>(
+                elements,
+            )?;
+        Ok(result)
+    }
 }
 
 impl<V, DE, UE, F, L> Default for DelaunayTriangulation<V, DE, UE, F, L>
@@ -365,6 +413,27 @@ where
 
     fn hint_generator_mut(&mut self) -> &mut Self::HintGenerator {
         &mut self.hint_generator
+    }
+
+    fn from_parts(
+        dcel: Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        hint_generator: Self::HintGenerator,
+        num_constraints: usize,
+    ) -> Self {
+        assert_eq!(num_constraints, 0);
+        Self {
+            dcel,
+            hint_generator,
+        }
+    }
+
+    fn into_parts(
+        self,
+    ) -> (
+        Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        Self::HintGenerator,
+    ) {
+        (self.dcel, self.hint_generator)
     }
 }
 

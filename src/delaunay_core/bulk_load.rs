@@ -1,8 +1,9 @@
+use crate::{HasPosition, InsertionError, Point2, Triangulation, TriangulationExt};
 use core::cmp::{Ordering, Reverse};
 
-use crate::{HasPosition, InsertionError, Point2, Triangulation, TriangulationExt};
-
-use super::{dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle};
+use super::{
+    dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle, FixedVertexHandle,
+};
 
 use alloc::vec::Vec;
 
@@ -117,7 +118,6 @@ where
     }
 
     // Get new center that is guaranteed to be within the convex hull
-    //
     let center_positions = || {
         result
             .vertices()
@@ -168,6 +168,111 @@ where
     }
 
     Ok(result)
+}
+
+pub struct PointWithIndex<V> {
+    data: V,
+    index: usize,
+}
+
+impl<V> HasPosition for PointWithIndex<V>
+where
+    V: HasPosition,
+{
+    type Scalar = V::Scalar;
+    fn position(&self) -> Point2<V::Scalar> {
+        self.data.position()
+    }
+}
+
+pub fn bulk_load_stable<V, T, T2>(elements: Vec<V>) -> Result<T, InsertionError>
+where
+    V: HasPosition,
+    T: Triangulation<Vertex = V>,
+    T2: Triangulation<
+        Vertex = PointWithIndex<V>,
+        DirectedEdge = T::DirectedEdge,
+        UndirectedEdge = T::UndirectedEdge,
+        Face = T::Face,
+        HintGenerator = T::HintGenerator,
+    >,
+{
+    let elements = elements
+        .into_iter()
+        .enumerate()
+        .map(|(index, data)| PointWithIndex { index, data })
+        .collect::<Vec<_>>();
+
+    let num_original_elements = elements.len();
+
+    let mut with_indices = bulk_load::<PointWithIndex<V>, T2>(elements)?;
+
+    if with_indices.num_vertices() != num_original_elements {
+        // Handling duplicates is more complicated - we cannot simply swap the elements into
+        // their target position indices as these indices may contain gaps. The following code
+        // fills those gaps.
+        //
+        // Running example: The original indices in with_indices could look like
+        //
+        // [3, 0, 1, 4, 6]
+        //
+        // which indicates that the original elements at indices 2 and 5 were duplicates.
+        let mut no_gap = (0usize..with_indices.num_vertices()).collect::<Vec<_>>();
+
+        // This will be sorted by their original index:
+        // no_gap (before sorting): [0, 1, 2, 3, 4]
+        // keys for sorting       : [3, 0, 1, 4, 6]
+        // no_gap (after sorting) : [1, 2, 0, 3, 4]
+        // sorted keys            : [0, 1, 3, 4, 6]
+        no_gap.sort_unstable_by_key(|elem| {
+            with_indices
+                .vertex(FixedVertexHandle::new(*elem))
+                .data()
+                .index
+        });
+
+        // Now, the sequential target index for FixedVertexHandle(no_gap[i]) is i
+        //
+        // Example:
+        // Vertex index in with_indices: [0, 1, 2, 3, 4]
+        // Original target indices     : [3, 0, 1, 4, 6]
+        // Sequential target index     : [2, 0, 1, 3, 4]
+        for (sequential_index, vertex) in no_gap.into_iter().enumerate() {
+            with_indices
+                .vertex_data_mut(FixedVertexHandle::new(vertex))
+                .index = sequential_index;
+        }
+    }
+
+    // Swap elements until the target order is restored.
+    // The attached indices for each vertex are guaranteed to form a permutation over all index
+    // since gaps are eliminated in the step above.
+    let mut current_index = 0;
+    loop {
+        // Example: The permutation [0 -> 2, 1 -> 0, 2 -> 1, 3 -> 3, 4 -> 4]
+        // (written as [2, 0, 1, 3, 4]) will lead to the following swaps:
+        // Swap 2, 0 (leading to [1, 0, 2, 3, 4])
+        // Swap 1, 0 (leading to [0, 1, 2, 3, 4])
+        // Done
+        let new_index = FixedVertexHandle::new(current_index);
+        let old_index = with_indices.vertex(new_index).data().index;
+        if current_index == old_index {
+            current_index += 1;
+        } else {
+            with_indices
+                .s_mut()
+                .swap_vertices(FixedVertexHandle::new(old_index), new_index);
+        }
+
+        if current_index >= with_indices.num_vertices() {
+            break;
+        }
+    }
+
+    let (dcel, hint_generator) = with_indices.into_parts();
+    let dcel = dcel.map_vertices(|point_with_index| point_with_index.data);
+
+    Ok(T::from_parts(dcel, hint_generator, 0))
 }
 
 #[inline(never)] // Prevent inlining for better profiling data
@@ -826,6 +931,63 @@ mod test {
     }
 
     #[test]
+    fn test_bulk_load_stable() -> Result<(), InsertionError> {
+        const SIZE: usize = 200;
+        let mut vertices = random_points_with_seed(SIZE, SEED2);
+
+        vertices.push(Point2::new(4.0, 4.0));
+        vertices.push(Point2::new(4.0, -4.0));
+        vertices.push(Point2::new(-4.0, 4.0));
+        vertices.push(Point2::new(-4.0, -4.0));
+
+        vertices.push(Point2::new(5.0, 5.0));
+        vertices.push(Point2::new(5.0, -5.0));
+        vertices.push(Point2::new(-5.0, 5.0));
+        vertices.push(Point2::new(-5.0, -5.0));
+
+        vertices.push(Point2::new(6.0, 6.0));
+        vertices.push(Point2::new(6.0, -6.0));
+        vertices.push(Point2::new(-6.0, 6.0));
+        vertices.push(Point2::new(-6.0, -6.0));
+
+        let num_vertices = vertices.len();
+
+        let triangulation = DelaunayTriangulation::<_>::bulk_load_stable(vertices.clone())?;
+        triangulation.sanity_check();
+        assert_eq!(triangulation.num_vertices(), num_vertices);
+
+        for (inserted, original) in triangulation.vertices().zip(vertices) {
+            assert_eq!(inserted.data(), &original);
+        }
+
+        triangulation.sanity_check();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_bulk_load_stable_with_duplicates() -> Result<(), InsertionError> {
+        const SIZE: usize = 200;
+        let mut vertices = random_points_with_seed(SIZE, SEED2);
+        let original = vertices.clone();
+        let duplicates = vertices.iter().copied().take(SIZE / 10).collect::<Vec<_>>();
+        for (index, d) in duplicates.into_iter().enumerate() {
+            vertices.insert(index * 2, d);
+        }
+
+        let triangulation = DelaunayTriangulation::<_>::bulk_load_stable(vertices)?;
+        triangulation.sanity_check();
+        assert_eq!(triangulation.num_vertices(), SIZE);
+
+        for (inserted, original) in triangulation.vertices().zip(original) {
+            assert_eq!(inserted.data(), &original);
+        }
+
+        triangulation.sanity_check();
+        Ok(())
+    }
+
+    #[test]
     fn test_bulk_load() -> Result<(), InsertionError> {
         const SIZE: usize = 9000;
         let mut vertices = random_points_with_seed(SIZE, SEED2);
@@ -850,6 +1012,21 @@ mod test {
         let triangulation = DelaunayTriangulation::<Point2<f64>>::bulk_load(vertices)?;
         triangulation.sanity_check();
         assert_eq!(triangulation.num_vertices(), num_vertices);
+        Ok(())
+    }
+
+    #[test]
+    fn test_same_vertex_bulk_load() -> Result<(), InsertionError> {
+        const SIZE: usize = 100;
+        let mut vertices = random_points_with_seed(SIZE, SEED2);
+
+        for i in 0..SIZE - 5 {
+            vertices.insert(i * 2, Point2::new(0.5, 0.2));
+        }
+
+        let triangulation = DelaunayTriangulation::<Point2<f64>>::bulk_load(vertices)?;
+        triangulation.sanity_check();
+        assert_eq!(triangulation.num_vertices(), SIZE + 1);
         Ok(())
     }
 
