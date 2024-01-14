@@ -89,15 +89,13 @@ pub type FixedFaceHandle<InnerOuter> = FixedHandleImpl<FaceTag, InnerOuter>;
 ///
 /// # Retrieving neighboring edges:
 ///
-/// Use [next()](#method.next), [prev()](#method.prev), [rev()](#method.rev) to access
-/// any adjacent edge:
+/// Use [Self::next], [Self::prev], [Self::rev] to access any adjacent edge:
 ///
 #[doc = include_str!("../../../images/delaunay_directed_edge_details.svg")]
 ///
 /// # Retrieving adjacent faces and vertices
 ///
-/// Use [face()](#method.face), [from()](#method.from()) and [to()](#method.to()) to access the adjacent face and
-/// vertices:
+/// Use [Self::face], [Self::from] and [Self::to] to access the adjacent face and vertices:
 ///
 #[doc = include_str!("../../../images/delaunay_directed_edge_face_and_vertex.svg")]
 ///
@@ -141,10 +139,10 @@ pub type VertexHandle<'a, V, DE = (), UE = (), F = ()> =
 #[doc = include_str!("../../../images/outer_faces.svg")]
 ///
 /// `FaceHandle<'a, InnerTag, ...>` implements some additional methods that require it to be an inner
-/// face - e.g. [vertices()](#method.vertices) will return an array containing exactly 3
+/// face - e.g. [Self::vertices] will return an array containing exactly 3
 /// vertices.
 ///
-/// Use [as_inner()](#method.as_inner) to convert from a *possibly outer* face to an *inner*
+/// Use [Self::as_inner] to convert from a *possibly outer* face to an *inner*
 /// face.
 ///
 /// # Type parameters
