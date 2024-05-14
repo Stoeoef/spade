@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.0] - 2024-MM-DD
+
+### Added
+ - Implements `ConstrainedDelaunayTriangulation::bulk_load_cdt`
+ - Implements `ConstrainedDelaunayTriangulation::bulk_load_cdt_stable`
+
 ## [2.6.0] - 2024-01-14
 
 ### Added

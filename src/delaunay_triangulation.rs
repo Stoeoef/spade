@@ -1,7 +1,7 @@
 use super::delaunay_core::Dcel;
 use crate::{
-    handles::VertexHandle, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator,
-    NaturalNeighbor, Point2, Triangulation, TriangulationExt,
+    delaunay_core::bulk_load, handles::VertexHandle, HasPosition, HintGenerator, InsertionError,
+    LastUsedVertexHintGenerator, NaturalNeighbor, Point2, Triangulation, TriangulationExt,
 };
 
 use alloc::vec::Vec;
@@ -345,10 +345,13 @@ where
     /// # Ok(()) }
     /// ```
     pub fn bulk_load_stable(elements: Vec<V>) -> Result<Self, InsertionError> {
-        let result: Self =
-            crate::delaunay_core::bulk_load_stable::<_, _, DelaunayTriangulation<_, _, _, _, _>>(
-                elements,
-            )?;
+        let mut result: Self = crate::delaunay_core::bulk_load_stable::<
+            _,
+            _,
+            DelaunayTriangulation<_, _, _, _, _>,
+            _,
+        >(bulk_load, elements)?;
+        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
         Ok(result)
     }
 }
@@ -432,8 +435,9 @@ where
     ) -> (
         Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
         Self::HintGenerator,
+        usize,
     ) {
-        (self.dcel, self.hint_generator)
+        (self.dcel, self.hint_generator, 0)
     }
 }
 

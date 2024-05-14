@@ -86,8 +86,8 @@
 <circle cx="-55" cy="-25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="50" cy="50" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
 <circle cx="45" cy="-47" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
-<circle cx="5" cy="-12" r="2" style="fill: rgb(250 128 114)"/>
 <circle cx="12" cy="10" r="2" style="fill: rgb(250 128 114)"/>
+<circle cx="5" cy="-12" r="2" style="fill: rgb(250 128 114)"/>
 <circle cx="30" cy="2" r="2" style="fill: rgb(250 128 114)"/>
 <circle cx="-2" cy="-24" r="2" style="fill: rgb(250 128 114)"/>
 <circle cx="0" cy="2" r="30" style="stroke-width: 0.5; stroke: rgb(0 128 128); fill: none"/>

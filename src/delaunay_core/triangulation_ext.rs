@@ -788,7 +788,7 @@ pub trait TriangulationExt: Triangulation {
     }
 
     #[cfg(any(test, fuzzing))]
-    fn basic_sanity_check(&self) {
+    fn basic_sanity_check(&self, check_convexity: bool) {
         self.s().sanity_check();
         let all_vertices_on_line = self.s().num_faces() <= 1;
 
@@ -828,12 +828,22 @@ pub trait TriangulationExt: Triangulation {
 
             let num_inner_faces = self.s().num_faces() - 1;
             assert_eq!(num_inner_faces * 3, num_inner_edges);
+
+            if check_convexity {
+                for edge in self.convex_hull() {
+                    for vert in self.vertices() {
+                        assert!(edge
+                            .side_query(vert.position())
+                            .is_on_right_side_or_on_line(),);
+                    }
+                }
+            }
         }
     }
 
     #[cfg(any(test, fuzzing))]
     fn sanity_check(&self) {
-        self.basic_sanity_check();
+        self.basic_sanity_check(true);
 
         for edge in self.undirected_edges() {
             let edge = edge.as_directed();

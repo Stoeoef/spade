@@ -1,7 +1,8 @@
 #![no_main]
+mod fuzz_shared;
+use fuzz_shared::FuzzPoint;
 use libfuzzer_sys::fuzz_target;
-
-use spade::{DelaunayTriangulation, Point2, Triangulation, TriangulationExt};
+use spade::{DelaunayTriangulation, Triangulation, TriangulationExt};
 
 fuzz_target!(|data: Vec<FuzzPoint>| {
     for p in &data {
@@ -12,23 +13,6 @@ fuzz_target!(|data: Vec<FuzzPoint>| {
             return;
         }
     }
-    let triangulation = DelaunayTriangulation::<_>::bulk_load(
-        data.iter()
-            .map(|point| Point2::new(point.x as f64, point.y as f64))
-            .collect(),
-    )
-    .unwrap();
+    let triangulation = DelaunayTriangulation::<_>::bulk_load(data.clone()).unwrap();
     triangulation.sanity_check();
 });
-
-#[derive(Clone, Copy, arbitrary::Arbitrary)]
-pub struct FuzzPoint {
-    x: f64,
-    y: f64,
-}
-
-impl core::fmt::Debug for FuzzPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_fmt(format_args!("Point2::new({:?}, {:?})", self.x, self.y))
-    }
-}

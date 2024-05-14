@@ -15,7 +15,7 @@ pub mod refinement;
 pub mod interpolation;
 pub mod math;
 
-pub use bulk_load::{bulk_load, bulk_load_stable};
+pub use bulk_load::{bulk_load, bulk_load_cdt, bulk_load_stable};
 
 pub use triangulation_ext::{RemovalResult, TriangulationExt};
 
