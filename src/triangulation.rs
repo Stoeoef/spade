@@ -95,6 +95,7 @@ pub trait Triangulation: Default {
     ) -> (
         Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
         Self::HintGenerator,
+        usize,
     );
 
     /// Creates a new triangulation.
@@ -169,8 +170,7 @@ pub trait Triangulation: Default {
     #[doc = include_str!("../images/bulk_load_vs_incremental_graph.svg")]
     fn bulk_load(elements: Vec<Self::Vertex>) -> Result<Self, InsertionError> {
         let mut result: Self = crate::delaunay_core::bulk_load(elements)?;
-        let hint_generator = Self::HintGenerator::initialize_from_triangulation(&result);
-        *result.hint_generator_mut() = hint_generator;
+        *result.hint_generator_mut() = Self::HintGenerator::initialize_from_triangulation(&result);
         Ok(result)
     }
 

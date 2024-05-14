@@ -1,9 +1,11 @@
+use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable};
 use crate::{delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator};
 use crate::{handles::*, intersection_iterator::Intersection};
 use crate::{
     DelaunayTriangulation, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator,
     Point2, Triangulation, TriangulationExt,
 };
+
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -235,8 +237,9 @@ where
     ) -> (
         Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
         Self::HintGenerator,
+        usize,
     ) {
-        todo!()
+        (self.dcel, self.hint_generator, self.num_constraints)
     }
 }
 
@@ -270,6 +273,114 @@ where
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
+    /// Efficient bulk loading of a constraint delaunay triangulation, including both vertices and constraint edges.
+    ///
+    /// The edges are given as pairs of vertex indices.
+    ///
+    /// Note that the vertex order is not preserved by this function - iterating through all vertices will not result in
+    /// the same sequence as the input vertices. Use [ConstrainedDelaunayTriangulation::bulk_load_cdt_stable] for a
+    /// slower but order preserving variant.
+    ///
+    /// Input vertices may have the same position. However, only one vertex for each position will be kept. Edges
+    /// that go to a discarded vertex are rerouted and still inserted.
+    /// It is arbitrary which duplicated vertex remains.
+    ///
+    /// # Example
+    /// ```
+    /// # fn main() -> Result<(), spade::InsertionError> {
+    /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
+    /// let mut vertices = vec![
+    ///     Point2::new(0.0, 1.0),
+    ///     Point2::new(1.0, 2.0),
+    ///     Point2::new(3.0, -3.0),
+    ///     Point2::new(-1.0, -2.0),
+    ///     Point2::new(-4.0, -5.0),
+    /// ];
+    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [3, 4]];
+    /// let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices.clone(), edges)?;
+    ///
+    /// assert_eq!(cdt.num_vertices(), 5);
+    /// assert_eq!(cdt.num_constraints(), 4);
+    /// // The order will usually change
+    /// assert_ne!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if any constraint edges overlap. Panics if the edges contain an invalid index (out of range).
+    pub fn bulk_load_cdt(vertices: Vec<V>, edges: Vec<[usize; 2]>) -> Result<Self, InsertionError> {
+        let mut result = bulk_load_cdt(vertices, edges)?;
+        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
+        Ok(result)
+    }
+
+    /// Stable bulk load variant that preserves the input vertex order
+    ///
+    /// The resulting vertex set will be equal to the input vertex set if their positions are all distinct.
+    /// See [ConstrainedDelaunayTriangulation::bulk_load_cdt] for additional details like panic behavior and duplicate
+    /// handling.
+    ///
+    /// # Example
+    /// ```
+    /// # fn main() -> Result<(), spade::InsertionError> {
+    /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
+    /// let mut vertices = vec![
+    ///     Point2::new(0.0, 1.0),
+    ///     Point2::new(1.0, 2.0),
+    ///     Point2::new(3.0, -3.0),
+    ///     Point2::new(-1.0, -2.0),
+    ///     Point2::new(-4.0, -5.0),
+    /// ];
+    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [3, 4]];
+    /// let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices.clone(), edges)?;
+    ///
+    /// // The ordered will be preserved:
+    /// assert_eq!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// It is fine to include vertex positions multiple times. The resulting order will be the same as if
+    /// the duplicates were removed prior to insertion. However, it is unclear *which* duplicates are
+    /// removed - e.g. do not assume that always the first duplicated vertex remains.
+    ///
+    /// ```
+    /// # fn main() -> Result<(), spade::InsertionError> {
+    /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
+    /// let mut vertices = vec![
+    ///     Point2::new(0.0, 1.0),
+    ///     Point2::new(1.0, 2.0), // Duplicate
+    ///     Point2::new(1.0, 2.0),
+    ///     Point2::new(3.0, -3.0),
+    ///     Point2::new(3.0, -3.0), // Duplicate
+    ///     Point2::new(-4.0, -5.0),
+    /// ];
+    /// let mut edges = vec![[0, 1], [2, 3], [4, 5]];
+    /// let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices.clone(), edges)?;
+    ///
+    /// // The choice of deduplicated vertices is arbitrary. In this example, dedup[1] and dedup[2] could
+    /// // have been swapped
+    /// let dedup = [
+    ///     Point2::new(0.0, 1.0),
+    ///     Point2::new(1.0, 2.0),
+    ///     Point2::new(3.0, -3.0),
+    ///     Point2::new(-4.0, -5.0),
+    /// ];
+    /// assert_eq!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), dedup);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn bulk_load_cdt_stable(
+        vertices: Vec<V>,
+        edges: Vec<[usize; 2]>,
+    ) -> Result<Self, InsertionError> {
+        let mut result: Self =
+            bulk_load_stable(move |vertices| bulk_load_cdt(vertices, edges), vertices)?;
+        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
+        Ok(result)
+    }
+
     /// Removes a vertex from the triangulation.
     ///
     /// This operation runs in O(n²), where n is the degree of the
@@ -622,8 +733,13 @@ where
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, fuzzing))]
     pub fn cdt_sanity_check(&self) {
+        self.cdt_sanity_check_with_params(true);
+    }
+
+    #[cfg(any(test, fuzzing))]
+    pub fn cdt_sanity_check_with_params(&self, check_convexity: bool) {
         let num_undirected_edges = self
             .dcel
             .undirected_edges()
@@ -631,12 +747,18 @@ where
             .count();
 
         assert_eq!(num_undirected_edges, self.num_constraints());
-        self.basic_sanity_check();
+
+        if self.num_constraints() == 0 && check_convexity {
+            self.sanity_check();
+        } else {
+            self.basic_sanity_check(check_convexity);
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
+
     use super::ConstrainedDelaunayTriangulation;
     use crate::test_utilities::*;
     use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};

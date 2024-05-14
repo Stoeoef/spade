@@ -1085,7 +1085,7 @@ mod test {
 
         cdt.refine(Default::default());
 
-        cdt.cdt_sanity_check();
+        cdt.cdt_sanity_check_with_params(false);
 
         Ok(())
     }

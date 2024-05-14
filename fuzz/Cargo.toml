@@ -31,3 +31,8 @@ path = "fuzz_targets/bulk_load_int_fuzz.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "bulk_load_cdt_fuzz"
+path = "fuzz_targets/bulk_load_cdt_fuzz.rs"
+test = false
+doc = false
