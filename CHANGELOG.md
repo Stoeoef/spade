@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.7.0] - 2024-MM-DD
+## [2.7.0] - 2024-05-17
 
 ### Added
  - Implements `ConstrainedDelaunayTriangulation::bulk_load_cdt`
@@ -313,6 +313,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.7.0]: https://github.com/Stoeoef/spade/compare/v2.6.0...v2.7.0
 
 [2.6.0]: https://github.com/Stoeoef/spade/compare/v2.5.1...v2.6.0
 
