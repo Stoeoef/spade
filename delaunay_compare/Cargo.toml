@@ -7,13 +7,16 @@ edition = "2018"
 
 [dependencies]
 num-traits = "0.2.14"
-cdt = "0.1" 
+cdt = "0.1"
 delaunator = "1.0.1"
+shapefile = "0.6.0"
 spade = { path = ".." }
+tiny-skia = "0.11.4"
 
 [dev-dependencies]
-criterion = { version = "0.3", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 rand = "0.8"
+anyhow = "1.0.83"
 
 [[bench]]
 name = "delaunay_comparison"
