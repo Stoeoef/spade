@@ -9,7 +9,7 @@ use crate::HintGenerator;
 use crate::Point2;
 use crate::{HasPosition, InsertionError, PositionInTriangulation, Triangulation};
 
-use alloc::{collections::VecDeque, vec::Vec};
+use alloc::vec::Vec;
 
 impl<T> TriangulationExt for T where T: Triangulation + ?Sized {}
 
@@ -252,51 +252,6 @@ pub trait TriangulationExt: Triangulation {
             }
         }
 
-        result
-    }
-
-    fn get_vertex_facing_edges<ForwardPredicate, BackwardPredicate>(
-        &self,
-        start_edge: FixedDirectedEdgeHandle,
-        position: Point2<<Self::Vertex as HasPosition>::Scalar>,
-        forward_predicate: ForwardPredicate,
-        backward_predicate: BackwardPredicate,
-    ) -> VecDeque<FixedDirectedEdgeHandle>
-    where
-        ForwardPredicate: Fn(
-            DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
-        ) -> bool,
-        BackwardPredicate: Fn(
-            DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
-        ) -> bool,
-    {
-        let mut result = VecDeque::with_capacity(8);
-        let mut current_edge_forward = self.directed_edge(start_edge);
-
-        debug_assert!(current_edge_forward.side_query(position).is_on_left_side());
-
-        result.push_back(current_edge_forward.fix());
-
-        loop {
-            current_edge_forward = current_edge_forward.next();
-
-            if forward_predicate(current_edge_forward) {
-                result.push_back(current_edge_forward.fix());
-            } else {
-                break;
-            }
-        }
-
-        let mut current_edge_backward = self.directed_edge(start_edge);
-        loop {
-            current_edge_backward = current_edge_backward.prev();
-
-            if backward_predicate(current_edge_backward) {
-                result.push_front(current_edge_backward.fix());
-            } else {
-                break;
-            }
-        }
         result
     }
 
