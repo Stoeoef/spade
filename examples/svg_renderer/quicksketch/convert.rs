@@ -8,7 +8,7 @@ use svg::node::element::path::Data;
 use svg::node::element::{
     Circle, Definitions, Group, Line, Marker, Path, Pattern, Rectangle, Text,
 };
-use svg::{node::Text as TextNode, Document};
+use svg::Document;
 
 pub struct SketchConverter {
     unique_prefix: String,
@@ -120,8 +120,7 @@ impl SketchConverter {
                 dy,
                 style,
             }) => {
-                let text_node = TextNode::new(text);
-                let mut text = Text::new()
+                let mut text = Text::new(text)
                     .set("x", position.x)
                     .set("y", position.y)
                     .set("style", style.get_attribute_string(self))
@@ -133,8 +132,7 @@ impl SketchConverter {
                             position.x, position.y, angle.0, -position.x, -position.y
                         ),
                     )
-                    .set("dy", *dy)
-                    .add(text_node);
+                    .set("dy", *dy);
                 if let Some(alignment) = horizontal_alignment {
                     text = text.set("text-anchor", alignment.get_svg_value())
                 }

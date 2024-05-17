@@ -1,6 +1,6 @@
 # delaunay_compare
 
-Small benchmark suite for comparing different Delaunay triangulation implementations in rust.
+Small benchmark suite for comparing different (constrained) Delaunay triangulation implementations in rust.
 
 ## Crates under test
 
@@ -10,6 +10,9 @@ Small benchmark suite for comparing different Delaunay triangulation implementat
 
 For spade: Both insertion *with* a lookup structure ("hierarchy") and *without* are being tested.
 The look up structure allows efficient position lookup (e.g. for nearest neighbor searches) on the resulting triangulations but takes additional time to construct.
+
+For spade and cdt: This benchmark suite also contains a constrained Delaunay triangulation (CDT) benchmark that bulk loads a single real data set
+(Europe_coastline.shp) consisting of 2,912,812 input vertices and 2,837,094 constraint edges.
 
 ## Point distributions under test
 
@@ -23,6 +26,8 @@ Two point distributions are tested:
 
  Results are stored in `<repository_root>/target/criterion`.
 
+ For the cdt loading benchmark, run `cargo run --release --example real_data_benchmark`
+
 # Results
 
 For better comparability, measurements are grouped in point sets with less than 14000 vertices ("small") and more than 50000 vertices ("big").
@@ -33,11 +38,32 @@ For better comparability, measurements are grouped in point sets with less than 
 **Insertion times for big point sets:**
 ![Measurements on bigger inputs](lines_big.svg)
 
+## CDT bulk loading
+
+The CDT bulk loading uses real world data consisting of roughly 2.9e6 input vertices and 2.8e6 input constraint edges:
+
+<img src="examples/europe.png" alt="European coastline dataset" style="width:500px">
+
+### CDT Loading times
+
+For completeness, the dataset is both loaded with constraint edges and without (as if it was a regular Delaunay
+triangulation).
+
+The benchmark also includes the stable bulk load variant for spade that keeps the relative vertex order consistent.
+
+| CDT Bulk load            | Spade  | cdt crate |
+|--------------------------|--------|-----------|
+| With constraint edges    | 3668ms | 4032ms    |
+| Without constraint edges | 2897ms | 5668ms    |
+| With stable vertex order | 6502ms | -         |
+
 # Comparison & takeaways
 
- * All libraries are likely fast enough. For most applications it probably doesn't matter if inserting 14000 vertices takes 5.8 or 7.3 *milliseconds*.
+ * All libraries are probably fast enough, depending on the use case. For many applications it probably doesn't matter if inserting 14000 vertices takes 5.8 or 7.3 *milliseconds*.
  * For small triangulations, delaunator and cdt seem to have a slight edge. For big triangulations, spade (without hierarchy) appears to be favorable.
  * Use spade's `HierarchyHintGenerator` only if you really need it - it does come at some additional cost.
+ * The cdt crate seems to be optimized around loading CDTs *with* constraints - loading a triangulation without constraints should be *faster*, not *slower*!
+ * Spade's stable bulk load is not yet optimized and comparably slow - use it with caution!
 
  # Additional feature comparison
 
@@ -49,7 +75,7 @@ bulk loading efficiency is not everything. The libraries also differ in which ot
 | incremental insertion                            |                     ✅                   |                  ❌                |                  ❌                |
 | extracting the Voronoi diagram                   |                     ✅                   |                  ❌                |                  ❌                |
 | Constrained Delaunay triangulations (CDT)        |                     ✅                   |                  ❌                |                  ✅                |
-| bulk loading support for CDTs                    |                     ❌                   |                  ❌                |                  ✅                |
+| bulk loading support for CDTs                    |                     ✅                   |                  ❌                |                  ✅                |
 | lookup structure for efficient searches          |                     ✅                   |                  ❌                |                  ❌                |
 | use robust arithmetic predicates                 |                     ✅                   |                  ✅                |                  ✅                |
 | custom types for edges, faces and vertices       |                     ✅                   |                  ❌                |                  ❌                |
