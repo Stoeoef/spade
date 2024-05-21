@@ -6,6 +6,11 @@ use anyhow::Result;
 /// Used for rendering SVGs for documentation. These are inlined (via #[doc = include_str!(...)])
 /// into the doc comment of a few items. That makes sure they will be visible even for offline users.
 fn main() -> Result<()> {
+    scenario_list::line_intersection_iterator_scenario()?.save_to_svg(
+        "line_intersection_iterator_scenario",
+        "images/line_intersection_iterator_scenario.svg",
+    )?;
+
     scenario_list::natural_neighbor_area_scenario(false)?.save_to_svg(
         "natural_neighbor_insertion_cell",
         "images/natural_neighbor_insertion_cell.svg",

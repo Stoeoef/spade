@@ -721,6 +721,29 @@ where
         }
     }
 
+    /// Returns all constraint edges that would prevent creating a new constraint between two points.
+    pub fn get_conflicting_edges_between_points(
+        &self,
+        from: Point2<<V as HasPosition>::Scalar>,
+        to: Point2<<V as HasPosition>::Scalar>,
+    ) -> impl Iterator<Item = DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
+        LineIntersectionIterator::new(self, from, to)
+            .flat_map(|intersection| intersection.as_edge_intersection())
+            .filter(|e| e.is_constraint_edge())
+    }
+
+    /// Returns all constraint edges that would prevent inserting a new constraint connecting two existing
+    /// vertices.
+    pub fn get_conflicting_edges_between_vertices(
+        &self,
+        from: FixedVertexHandle,
+        to: FixedVertexHandle,
+    ) -> impl Iterator<Item = DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
+        LineIntersectionIterator::new_from_handles(self, from, to)
+            .flat_map(|intersection| intersection.as_edge_intersection())
+            .filter(|e| e.is_constraint_edge())
+    }
+
     fn make_constraint_edge(&mut self, edge: FixedUndirectedEdgeHandle) -> bool {
         if !self.is_constraint_edge(edge) {
             self.dcel

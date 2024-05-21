@@ -231,6 +231,40 @@ impl Default for SketchCircle {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct SketchRectangle {
+    c0: Point,
+    c1: Point,
+    style: Style,
+}
+
+impl SketchRectangle {
+    pub fn fill(mut self, fill: impl Into<SketchFill>) -> Self {
+        self.style.fill = Some(fill.into());
+        self
+    }
+
+    pub fn stroke_width(mut self, width: f64) -> Self {
+        self.style.stroke_width = Some(width);
+        self
+    }
+
+    pub fn stroke_color(mut self, color: SketchColor) -> Self {
+        self.style.stroke_color = Some(color);
+        self
+    }
+
+    pub fn stroke_style(mut self, stroke_style: StrokeStyle) -> Self {
+        self.style.stroke_style = Some(stroke_style);
+        self
+    }
+
+    pub fn opacity(mut self, opacity: f64) -> Self {
+        self.style.opacity = Some(opacity);
+        self
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct SketchText {
     text: String,
     position: Point,
@@ -475,6 +509,7 @@ impl SketchLine {
 pub enum SketchElement {
     Text(SketchText),
     Circle(SketchCircle),
+    Rectangle(SketchRectangle),
     Path(SketchPath),
     Line(SketchLine),
 }
@@ -484,6 +519,14 @@ impl SketchElement {
         SketchCircle {
             center,
             radius,
+            style: Default::default(),
+        }
+    }
+
+    pub fn rectangle(c0: Point, c1: Point) -> SketchRectangle {
+        SketchRectangle {
+            c0,
+            c1,
             style: Default::default(),
         }
     }
@@ -531,6 +574,12 @@ impl From<SketchText> for SketchElement {
 impl From<SketchCircle> for SketchElement {
     fn from(circle: SketchCircle) -> Self {
         SketchElement::Circle(circle)
+    }
+}
+
+impl From<SketchRectangle> for SketchElement {
+    fn from(rectangle: SketchRectangle) -> Self {
+        SketchElement::Rectangle(rectangle)
     }
 }
 

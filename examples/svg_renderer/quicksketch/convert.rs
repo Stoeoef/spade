@@ -1,6 +1,6 @@
 use super::{
     ArrowType, PathPoint, Point, Sketch, SketchCircle, SketchColor, SketchElement, SketchLine,
-    SketchPath, SketchText, Style,
+    SketchPath, SketchRectangle, SketchText, Style,
 };
 use cgmath::num_traits::zero;
 use cgmath::{Bounded, Deg, InnerSpace, Vector2};
@@ -148,6 +148,14 @@ impl SketchConverter {
                     .set("cx", round(center.x))
                     .set("cy", round(center.y))
                     .set("r", round(*radius))
+                    .set("style", style.get_attribute_string(self)),
+            ),
+            SketchElement::Rectangle(SketchRectangle { c0, c1, style }) => svg.add(
+                Rectangle::new()
+                    .set("x", round(c0.x))
+                    .set("y", round(c0.y))
+                    .set("width", round(c1.x - c0.x))
+                    .set("height", round(c1.y - c0.y))
                     .set("style", style.get_attribute_string(self)),
             ),
             SketchElement::Path(SketchPath { data_points, style }) => {
@@ -305,6 +313,7 @@ impl SketchConverter {
                 let offset = Vector2::new(*radius, *radius);
                 (center - offset, center + offset)
             }
+            SketchElement::Rectangle(rect) => (rect.c0, rect.c1),
             SketchElement::Path(SketchPath { data_points, .. }) => {
                 let mut min = Point::max_value();
                 let mut max = Point::min_value();

@@ -48,6 +48,7 @@ pub use delaunay_core::{
 
 pub use crate::delaunay_core::interpolation::{Barycentric, NaturalNeighbor};
 pub use delaunay_core::LineSideInfo;
+pub use intersection_iterator::{Intersection, LineIntersectionIterator};
 pub use triangulation::{FloatTriangulation, PositionInTriangulation, Triangulation};
 
 #[cfg(not(fuzzing))]
