@@ -1390,3 +1390,126 @@ pub fn refinement_maximum_area_scenario(max_area: Option<f64>) -> Sketch {
 
     result
 }
+
+pub fn line_intersection_iterator_scenario() -> Result<Sketch> {
+    use spade::Intersection::*;
+
+    let vertices = vec![
+        VertexType::new(-30.0, -20.0),
+        VertexType::new(0.0, 20.0),
+        VertexType::new(0.0, -20.0),
+        VertexType::new(30.0, 0.0),
+        VertexType::new(14.0, 0.0),
+    ];
+
+    let triangulation = Triangulation::bulk_load_stable(vertices)?;
+
+    let mut result = convert_triangulation(&triangulation, &Default::default());
+
+    for (index, vertex) in triangulation.vertices().enumerate() {
+        result.add(
+            SketchElement::text(format!("v{}", index))
+                .font_size(2.4)
+                .horizontal_alignment(HorizontalAlignment::Middle)
+                .dy(0.85)
+                .position(convert_point(vertex.position())),
+        );
+    }
+
+    fn small_line(from: Point2<f64>, to: Point2<f64>) -> crate::quicksketch::SketchLine {
+        SketchElement::line(from, to)
+            .with_arrow_start(ArrowType::HalfArrow)
+            .stroke_color(SketchColor::ROYAL_BLUE)
+            .shift_from(-4.3)
+            .shift_to(-2.8)
+            .stroke_width(0.6)
+    }
+
+    for intersection in spade::LineIntersectionIterator::new(
+        &triangulation,
+        spade::Point2::new(-30.0, 0.0),
+        spade::Point2::new(40.0, 0.0),
+    ) {
+        println!("{:?}", intersection);
+        match intersection {
+            EdgeIntersection(edge) => {
+                let [from, to] = edge.positions().map(convert_point);
+                let offset = Vector2::new(0.8, 0.0);
+                let from = from + offset;
+                let to = to + offset;
+
+                result.add(small_line(from, to));
+            }
+            VertexIntersection(v) => {
+                result.add(
+                    SketchElement::circle(convert_point(v.position()), v.data().radius - 0.3)
+                        .fill(SketchColor::ROYAL_BLUE),
+                );
+            }
+
+            EdgeOverlap(edge) => {
+                let [from, to] = edge.positions().map(convert_point);
+                let offset = Vector2::new(0.0, -1.0);
+                let from = from + offset;
+                let to = to + offset;
+
+                result.add(small_line(to, from));
+            }
+        }
+    }
+    let intersection_start = Point2::new(-30.0, 0.0);
+    let intersection_end = Point2::new(40.0, 0.0);
+    result.add(
+        SketchElement::line(intersection_start, intersection_end)
+            .stroke_color(SketchColor::SALMON)
+            .with_arrow_end(ArrowType::FilledArrow)
+            .shift_to(-4.0)
+            .stroke_width(0.5)
+            .stroke_style(StrokeStyle::SmallDashed),
+    );
+
+    for (index, point) in [intersection_start, intersection_end]
+        .into_iter()
+        .enumerate()
+    {
+        result.add(SketchElement::circle(point, 1.3).fill(SketchColor::SALMON));
+
+        let text = if index == 0 { "s" } else { "e" };
+
+        result.add(
+            SketchElement::text(text)
+                .position(point)
+                .horizontal_alignment(HorizontalAlignment::Middle)
+                .dy(0.5)
+                .font_size(2.0),
+        );
+    }
+
+    fn add_label(result: &mut Sketch, text: &'static str, position: Point2<f64>) {
+        let offset = Vector2::new(1.5, 2.0);
+        let c0 = position - offset;
+        let c1 = position + offset;
+        let rect = SketchElement::rectangle(c0, c1)
+            .fill(SketchColor::WHITE)
+            .opacity(0.82);
+
+        let text = SketchElement::text(text)
+            .font_size(3.9)
+            .position(position)
+            .horizontal_alignment(HorizontalAlignment::Middle)
+            .dy(1.3);
+
+        result.add(rect);
+        result.add(text);
+    }
+
+    const LABEL_Y: f64 = -3.5;
+
+    add_label(&mut result, "0", Point2::new(-12.0, LABEL_Y));
+    add_label(&mut result, "1", Point2::new(2.4, LABEL_Y));
+    add_label(&mut result, "2", Point2::new(14.0, LABEL_Y));
+    add_label(&mut result, "3", Point2::new(22.0, LABEL_Y));
+    add_label(&mut result, "4", Point2::new(30.0, LABEL_Y));
+
+    Ok(result)
+}

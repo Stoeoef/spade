@@ -1,0 +1,89 @@
+<svg viewBox="-39.33 -26.4 87.96 52.8" width="800" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<pattern height="1" id="line_intersection_iterator_scenario_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
+<line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
+</pattern>
+<marker fill="rgb(65 105 225)" id="line_intersection_iterator_scenario_filled_arrow0002" markerHeight="3" markerWidth="5" orient="auto" refX="4" refY="0.5" stroke="none">
+<path d="M1,0 L4,0 L0,2 z" transform="scale(-1 1) translate (-5 0)"/>
+</marker>
+<marker fill="rgb(65 105 225)" id="line_intersection_iterator_scenario_filled_arrow0003" markerHeight="3" markerWidth="5" orient="auto" refX="4" refY="0.5" stroke="none">
+<path d="M1,0 L4,0 L0,2 z" transform="scale(-1 1) translate (-5 0)"/>
+</marker>
+<marker fill="rgb(65 105 225)" id="line_intersection_iterator_scenario_filled_arrow0004" markerHeight="3" markerWidth="5" orient="auto" refX="4" refY="0.5" stroke="none">
+<path d="M1,0 L4,0 L0,2 z" transform="scale(-1 1) translate (-5 0)"/>
+</marker>
+<marker fill="rgb(250 128 114)" id="line_intersection_iterator_scenario_filled_arrow0005" markerHeight="3" markerWidth="5" orient="auto" refX="0.1" refY="1.5" stroke="none">
+<path d="M0,0 L5,1.5 L0,3 z"/>
+</marker>
+</defs>
+<rect height="100%" style="fill: url(#line_intersection_iterator_scenario_pattern0001)" width="100%" x="-39.33" y="-26.4"/>
+<g>
+<path d="M0,20 L0,-20 L14,0 z" style="fill: rgb(211 211 211)"/>
+<path d="M30,0 L14,0 L0,-20 z" style="fill: rgb(211 211 211)"/>
+<path d="M14,0 L30,0 L0,20 z" style="fill: rgb(211 211 211)"/>
+<path d="M-30,-20 L0,-20 L0,20 z" style="fill: rgb(211 211 211)"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="14" x2="0" y1="0" y2="-20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="14" x2="0" y1="0" y2="20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="0" x2="0" y1="20" y2="-20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="0" x2="30" y1="-20" y2="0"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="30" x2="14" y1="0" y2="0"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="30" x2="0" y1="0" y2="20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="0" x2="-30" y1="20" y2="-20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="-30" x2="0" y1="-20" y2="-20"/>
+<circle cx="-30" cy="-20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="0" cy="20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="0" cy="-20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="30" cy="0" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="14" cy="0" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<text dy="0.85" font-size="2.4" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-30 -20) rotate (0) translate(30 20)" x="-30" y="-20">
+v0
+</text>
+<text dy="0.85" font-size="2.4" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (0 20) rotate (0) translate(-0 -20)" x="0" y="20">
+v1
+</text>
+<text dy="0.85" font-size="2.4" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (0 -20) rotate (0) translate(-0 20)" x="0" y="-20">
+v2
+</text>
+<text dy="0.85" font-size="2.4" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (30 0) rotate (0) translate(-30 -0)" x="30" y="0">
+v3
+</text>
+<text dy="0.85" font-size="2.4" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (14 0) rotate (0) translate(-14 -0)" x="14" y="0">
+v4
+</text>
+<line style="stroke-width: 0.6; stroke: rgb(65 105 225); marker-start: url(#line_intersection_iterator_scenario_filled_arrow0002); fill: none" x1="-1.775" x2="-27.525" y1="16.55" y2="-17.75"/>
+<line style="stroke-width: 0.6; stroke: rgb(65 105 225); marker-start: url(#line_intersection_iterator_scenario_filled_arrow0003); fill: none" x1="0.8" x2="0.8" y1="15.7" y2="-17.2"/>
+<circle cx="14" cy="0" r="1.7" style="fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.6; stroke: rgb(65 105 225); marker-start: url(#line_intersection_iterator_scenario_filled_arrow0004); fill: none" x1="25.7" x2="16.8" y1="-1" y2="-1"/>
+<circle cx="30" cy="0" r="1.7" style="fill: rgb(65 105 225)"/>
+<line style="stroke-width: 0.5; stroke: rgb(250 128 114); marker-end: url(#line_intersection_iterator_scenario_filled_arrow0005); stroke-dasharray: 1 0.5; fill: none" x1="-30" x2="36" y1="0" y2="0"/>
+<circle cx="-30" cy="0" r="1.3" style="fill: rgb(250 128 114)"/>
+<text dy="0.5" font-size="2" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-30 0) rotate (0) translate(30 -0)" x="-30" y="0">
+s
+</text>
+<circle cx="40" cy="0" r="1.3" style="fill: rgb(250 128 114)"/>
+<text dy="0.5" font-size="2" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (40 0) rotate (0) translate(-40 -0)" x="40" y="0">
+e
+</text>
+<rect height="4" style="opacity: 0.82; fill: rgb(255 255 255)" width="3" x="-13.5" y="-5.5"/>
+<text dy="1.3" font-size="3.9" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (-12 -3.5) rotate (0) translate(12 3.5)" x="-12" y="-3.5">
+0
+</text>
+<rect height="4" style="opacity: 0.82; fill: rgb(255 255 255)" width="3" x="0.9" y="-5.5"/>
+<text dy="1.3" font-size="3.9" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (2.4 -3.5) rotate (0) translate(-2.4 3.5)" x="2.4" y="-3.5">
+1
+</text>
+<rect height="4" style="opacity: 0.82; fill: rgb(255 255 255)" width="3" x="12.5" y="-5.5"/>
+<text dy="1.3" font-size="3.9" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (14 -3.5) rotate (0) translate(-14 3.5)" x="14" y="-3.5">
+2
+</text>
+<rect height="4" style="opacity: 0.82; fill: rgb(255 255 255)" width="3" x="20.5" y="-5.5"/>
+<text dy="1.3" font-size="3.9" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (22 -3.5) rotate (0) translate(-22 3.5)" x="22" y="-3.5">
+3
+</text>
+<rect height="4" style="opacity: 0.82; fill: rgb(255 255 255)" width="3" x="28.5" y="-5.5"/>
+<text dy="1.3" font-size="3.9" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (30 -3.5) rotate (0) translate(-30 3.5)" x="30" y="-3.5">
+4
+</text>
+</g>
+</svg>
