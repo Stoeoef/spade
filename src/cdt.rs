@@ -722,6 +722,10 @@ where
     }
 
     /// Returns all constraint edges that would prevent creating a new constraint between two points.
+    ///
+    /// # See also
+    ///
+    /// See also [Self::get_conflicting_edges_between_vertices]
     pub fn get_conflicting_edges_between_points(
         &self,
         from: Point2<<V as HasPosition>::Scalar>,
@@ -734,6 +738,10 @@ where
 
     /// Returns all constraint edges that would prevent inserting a new constraint connecting two existing
     /// vertices.
+    ///
+    /// # See also
+    ///
+    /// See also [Self::get_conflicting_edges_between_points]
     pub fn get_conflicting_edges_between_vertices(
         &self,
         from: FixedVertexHandle,

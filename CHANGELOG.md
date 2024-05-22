@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) 
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.8.0] - 2024-05-22
+
+### Added
+ - Added `LineIntersectionIterator` and `Intersection`
+ - Added `Cdt::get_conflicting_edges_between_vertices` and `Cdt::get_conflicting_edges_between_points`
+
 ## [2.7.0] - 2024-05-17
 
 ### Added
@@ -313,6 +319,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ## 0.1.0 - 2016-09-23
 Initial commit
+
+[2.8.0]: https://github.com/Stoeoef/spade/compare/v2.7.0...v2.8.0
 
 [2.7.0]: https://github.com/Stoeoef/spade/compare/v2.6.0...v2.7.0
 
