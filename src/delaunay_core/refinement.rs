@@ -57,7 +57,7 @@ impl AngleLimit {
     ///
     /// Defaults to 30°. An angle of 0 degrees will disable refining due to small angles.
     ///
-    /// *See also [from_rad](crate::AngleLimit::from_rad)*
+    /// *See also [from_rad](AngleLimit::from_rad)*
     pub fn from_deg(degree: f64) -> Self {
         Self::from_rad(degree.to_radians())
     }
@@ -67,7 +67,7 @@ impl AngleLimit {
     /// Note angles larger than 30 degrees (≈0.52rad = PI / 6) will quickly lead to poor refinement quality.
     /// Passing in an angle of 0rad will disable refining due to small angles.
     ///
-    /// *See also [from_deg](crate::AngleLimit::from_deg)*
+    /// *See also [from_deg](AngleLimit::from_deg)*
     pub fn from_rad(rad: f64) -> Self {
         let sin = rad.sin();
         if sin == 0.0 {
@@ -79,7 +79,7 @@ impl AngleLimit {
 
     /// Returns the radius to shortest edge limit corresponding to this angle limit.
     ///
-    /// See [from_radius_to_shortest_edge_ratio](crate::AngleLimit::from_radius_to_shortest_edge_ratio) for more
+    /// See [from_radius_to_shortest_edge_ratio](AngleLimit::from_radius_to_shortest_edge_ratio) for more
     /// information.
     pub fn radius_to_shortest_edge_limit(&self) -> f64 {
         self.radius_to_shortest_edge_limit
@@ -406,19 +406,19 @@ where
     ///
     /// Refinement will ensure that the resulting triangulation fulfills a few properties:
     ///  - The triangulation's minimum angle will be larger than the angle specified by
-    ///    [with_angle_limit](crate::RefinementParameters::with_angle_limit).<br>
+    ///    [with_angle_limit](RefinementParameters::with_angle_limit).<br>
     ///    *Exception*: Acute input angles (small angles between initial constraint edges) cannot be maximized as the constraint edges
     ///    must be kept intact. The algorithm will, for the most part, leave those places unchanged.<br>
     ///    *Exception*: The refinement will often not be able to increase the minimal angle much above 30 degrees as every newly
     ///    inserted steiner point may create additional skewed triangles.
     ///  - The refinement will fullfil the *Delaunay Property*: Every triangle's circumcenter will not contain any other vertex.<br>
-    ///    *Exception*: Refining with [keep_constraint_edges](crate::RefinementParameters::keep_constraint_edges) cannot restore
+    ///    *Exception*: Refining with [keep_constraint_edges](RefinementParameters::keep_constraint_edges) cannot restore
     ///    the Delaunay property if doing so would require splitting a constraint edge.<br>
-    ///    *Exception*: Refining with [exclude_outer_faces](crate::RefinementParameters::exclude_outer_faces) will not
+    ///    *Exception*: Refining with [exclude_outer_faces](RefinementParameters::exclude_outer_faces) will not
     ///    restore the Delaunay property of any outer face.
-    ///  - Spade allows to specify a [maximum allowed triangle area](crate::RefinementParameters::with_max_allowed_area).
+    ///  - Spade allows to specify a [maximum allowed triangle area](RefinementParameters::with_max_allowed_area).
     ///    The algorithm will attempt to subdivide any triangle with an area larger than this, independent of its smallest angle.
-    ///  - Spade allows to specify a [minimum required triangle area](crate::RefinementParameters::with_min_required_area).
+    ///  - Spade allows to specify a [minimum required triangle area](RefinementParameters::with_min_required_area).
     ///    The refinement will attempt to ignore any triangle with an area smaller than this parameter. This can prevent the
     ///    refinement algorithm from over-refining in some cases.
     ///
@@ -520,12 +520,12 @@ where
         //     the third step in the main loop (see below). We don't simply delete these faces to keep the triangulation's
         //     convexity.
         //
-        // Every iterations performs up to three checks:
+        // Every iteration performs up to three checks:
         //  - First, check if any edges that must be split exists (`forcibly_split_segments_buffer`).
         //  - Second, check if any segment is encroached. If found, resolve the offending encroachment.
         //    Checking segments first makes sure that the algorithm
         //    restores the Delaunay property as quickly as possible.
-        //  - Third, search for skinny triangles. Attempt to insert a new vertex at the triangles circumcenter. If inserting
+        //  - Third, search for skinny triangles. Attempt to insert a new vertex at the triangle's circumcenter. If inserting
         //    such a vertex would encroach any fixed edge, add the encroached edge to the forcibly split segments buffer
         //    and revisit the face later.
         //
@@ -537,7 +537,7 @@ where
                 break;
             }
 
-            // Step 1: Check for forcibly splitted segments.
+            // Step 1: Check for forcibly split segments.
             if let Some(forcibly_split_segment) = forcibly_split_segments_buffer.pop() {
                 self.resolve_encroachment(
                     &mut encroached_segment_candidates,
@@ -881,7 +881,7 @@ where
     }
 }
 
-/// Check if final_position would violate a ordering constraint. This is needed since final_position is constructed
+/// Check if final_position would violate an ordering constraint. This is needed since final_position is constructed
 /// with imprecise calculations and may not even be representable in the underlying floating point type. In rare cases,
 /// this means that the newly formed triangles would not be ordered ccw.
 /// We'll simply skip these refinements steps as it should only happen for very bad input geometries.

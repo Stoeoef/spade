@@ -165,7 +165,7 @@ where
     /// unneeded allocations. `result` will be cleared initially.
     ///
     /// The number of returned elements depends on the query positions location:
-    ///  - `result` will be **empty** if the query position lies outside of the triangulation's convex hull
+    ///  - `result` will be **empty** if the query position lies outside the triangulation's convex hull
     ///  - `result` will contain **a single element** (with weight 1.0) if the query position lies exactly on a vertex
     ///  - `result` will contain **two vertices** if the query point lies exactly on any edge of the triangulation.
     ///  - `result` will contain **exactly three** elements if the query point lies on an inner face of the
@@ -252,7 +252,7 @@ where
     /// `result` will be cleared initially.
     ///
     /// The number of returned natural neighbors depends on the given query position:
-    /// - `result` will be **empty** if the query position lies outside of the triangulation's convex hull
+    /// - `result` will be **empty** if the query position lies outside the triangulation's convex hull
     /// - `result` will contain **exactly one** vertex if the query position is equal to that vertex position.
     /// - `result` will contain **exactly two** entries if the query position lies exactly *on* an edge of the
     ///    convex hull.
@@ -308,7 +308,7 @@ where
 
     /// Interpolates a value at a given position.
     ///
-    /// In contrast to [Self::interpolate], this method has a well defined derivative at each vertex and will
+    /// In contrast to [Self::interpolate], this method has a well-defined derivative at each vertex and will
     /// approximate a linear function in the proximity of any vertex.
     ///
     /// The value to interpolate is given by the `i` parameter. The gradient that defines the derivative at
@@ -318,7 +318,7 @@ where
     /// or adheres to it strongly (values larger than ~2.0) in the vicinity of any vertex. When in doubt, using
     /// a value of 1.0 should result in a good interpolation and is also the fastest.
     ///
-    /// Returns `None` for any point outside of the triangulation's convex hull.
+    /// Returns `None` for any point outside the triangulation's convex hull.
     ///
     /// Refer to [NaturalNeighbor] for more information and a visual example.
     ///
@@ -857,7 +857,7 @@ mod test {
                 .is_none());
         };
 
-        // Check positions outside of the triangulation.
+        // Check positions outside the triangulation.
         for x in [-5.0f64, -4.0, 3.0, 2.0] {
             expect_none(Point2::new(x, 0.5));
             expect_none(Point2::new(x, -0.5));

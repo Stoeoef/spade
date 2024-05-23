@@ -44,7 +44,7 @@ pub enum PositionInTriangulation {
 /// Defines common operations on triangulations.
 ///
 /// These operations are both available for
-/// [ConstrainedDelaunayTriangulations](crate::ConstrainedDelaunayTriangulation) as well as
+/// [ConstrainedDelaunayTriangulations](crate::ConstrainedDelaunayTriangulation) and
 /// regular [DelaunayTriangulations](crate::DelaunayTriangulation).
 pub trait Triangulation: Default {
     /// The triangulation's vertex type.
@@ -160,7 +160,7 @@ pub trait Triangulation: Default {
     /// # Runtime
     ///
     /// This method has a run time of `O(n)` but will run near linearly in practice.
-    /// The runtime can be as worse as `O(n²)` if the inputs are very degenerate, e.g.
+    /// The runtime can be as bad as `O(n²)` if the inputs are very degenerate, e.g.
     /// if all input vertices lie on the same line.
     ///
     /// # Comparison to incremental insertion
@@ -213,7 +213,7 @@ pub trait Triangulation: Default {
         self.s().outer_face()
     }
 
-    /// Converts a fixed directed edge handle handle to a reference directed edge handle.
+    /// Converts a fixed directed edge handle to a reference directed edge handle.
     ///
     /// *See also the [handles](crate::handles) module for more information.*
     fn directed_edge(
@@ -355,7 +355,7 @@ pub trait Triangulation: Default {
 
     /// An iterator visiting all directed voronoi edges.
     ///
-    /// The iterator type is (DirectedVoronoiEdge)[crate::handles::DirectedVoronoiEdge]
+    /// The iterator type is (DirectedVoronoiEdge)[DirectedVoronoiEdge]
     fn directed_voronoi_edges(
         &self,
     ) -> DirectedVoronoiEdgeIterator<
@@ -369,7 +369,7 @@ pub trait Triangulation: Default {
 
     /// An iterator visiting all undirected voronoi edges.
     ///
-    /// The iterator type is (UndirectedVoronoiEdge)[crate::handles::UndirectedVoronoiEdge]
+    /// The iterator type is (UndirectedVoronoiEdge)[UndirectedVoronoiEdge]
     fn undirected_voronoi_edges(
         &self,
     ) -> UndirectedVoronoiEdgeIterator<

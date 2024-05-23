@@ -58,7 +58,7 @@ where
 {
     fn is_edge_inside(&self, points: [Point2<S>; 2]) -> bool {
         let [p0, p1] = points;
-        crate::delaunay_core::math::distance_2(p0, p1, self.center) <= self.radius_2
+        math::distance_2(p0, p1, self.center) <= self.radius_2
     }
 
     fn distance_to_point(&self, point: Point2<S>) -> S {
@@ -93,20 +93,6 @@ where
     S: SpadeNum,
     S: Float,
 {
-    fn distance_to_point(&self, point: Point2<S>) -> S {
-        if self.lower == self.upper {
-            return point.distance_2(self.lower);
-        }
-
-        if self.is_point_inside(point) {
-            zero()
-        } else {
-            let [d0, d1, d2, d3] = self.edges().map(|[p0, p1]| math::distance_2(p0, p1, point));
-
-            d0.min(d1).min(d2).min(d3)
-        }
-    }
-
     fn is_edge_inside(&self, points: [Point2<S>; 2]) -> bool {
         let [from, to] = points;
         if self.is_point_inside(from) || self.is_point_inside(to) {
@@ -137,6 +123,20 @@ where
             }
         }
         false
+    }
+
+    fn distance_to_point(&self, point: Point2<S>) -> S {
+        if self.lower == self.upper {
+            return point.distance_2(self.lower);
+        }
+
+        if self.is_point_inside(point) {
+            zero()
+        } else {
+            let [d0, d1, d2, d3] = self.edges().map(|[p0, p1]| math::distance_2(p0, p1, point));
+
+            d0.min(d1).min(d2).min(d3)
+        }
     }
 }
 

@@ -213,7 +213,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [1.2.0] - 2017-05-13
 ### Changed
   - Bumped compatible `cgmath` and `nalgebra` versions. Unfortunately, due to the way Cargo handles "external dependencies" (thus, dependencies whose types are part of spade's public API like `cgmath` and `nalgebra` Points), this must be considered a breaking change.
-  - `FloatKernel` now works happily with `f32` coordinates. They will be casted to double precision before the kernel evaluates any query, thus, no performance gain results from this. Only the space requirements will differ.
+  - `FloatKernel` now works happily with `f32` coordinates. They will be cast to double precision before the kernel evaluates any query, thus, no performance gain results from this. Only the space requirements will differ.
   
 ## [1.1.0] - 2017-04-12
 ### Deprecated
@@ -313,9 +313,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 ### Changed
  - cgmath dependency bumped to 0.12.*
- - DelaunayTriangulations and some primitives now will only work with two
- dimensional coordinates. Using higher dimensions actually yielded unspecified
- results.
+ - DelaunayTriangulations and some primitives now will only work with two-dimensional 
+   coordinates. Using higher dimensions actually yielded unspecified results.
 
 ## 0.1.0 - 2016-09-23
 Initial commit

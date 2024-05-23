@@ -1,6 +1,6 @@
 //! # Spade
 //!
-//! Delaunay triangulations for the rust eco system.
+//! Delaunay triangulations for the rust ecosystem.
 //!
 //! # Features
 //! * A 2D Delaunay triangulation: [DelaunayTriangulation]
@@ -69,6 +69,7 @@ mod test_utilities;
 /// more limited API.
 ///
 /// # Reference handles
+///
 /// Reference handles come in one of four variants:
 /// * [FaceHandle](handles::FaceHandle)s refer to a single face (triangle) of the triangulation.
 ///   They are used get the triangle's adjacent vertices and edges. They also may refer to
@@ -117,7 +118,7 @@ mod test_utilities;
 ///
 /// # Creating handles directly
 ///
-/// In some cases it may be desireable to create vertex handles artificially by providing the index
+/// In some cases it may be desirable to create vertex handles artificially by providing the index
 /// manually. This can be done by calling [handles::FixedVertexHandle::from_index](from_index(usize)).
 /// Make sure that the provided index is smaller than the number of vertices in the triangulation.
 ///

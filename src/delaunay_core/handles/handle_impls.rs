@@ -12,14 +12,14 @@ use core::hash::{Hash, Hasher};
 use num_traits::{Float, One};
 
 // Debug implementations
-impl<'a, V, DE, UE, F> core::fmt::Debug for VertexHandle<'a, V, DE, UE, F> {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+impl<'a, V, DE, UE, F> Debug for VertexHandle<'a, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "VertexHandle({:?})", self.handle.index())
     }
 }
 
 impl<'a, V, DE, UE, F> Debug for DirectedEdgeHandle<'a, V, DE, UE, F> {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
             "DirectedEdgeHandle - id: {:?} ({:?} -> {:?})",
@@ -30,8 +30,8 @@ impl<'a, V, DE, UE, F> Debug for DirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> core::fmt::Debug for UndirectedEdgeHandle<'a, V, DE, UE, F> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> ::core::fmt::Result {
+impl<'a, V, DE, UE, F> Debug for UndirectedEdgeHandle<'a, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let [v0, v1] = self.vertices();
         write!(
             f,
@@ -43,8 +43,8 @@ impl<'a, V, DE, UE, F> core::fmt::Debug for UndirectedEdgeHandle<'a, V, DE, UE, 
     }
 }
 
-impl<'a, V, DE, UE, F> core::fmt::Debug for FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> ::core::fmt::Result {
+impl<'a, V, DE, UE, F> Debug for FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         if let Some(inner) = self.as_inner() {
             inner.fmt(f)
         } else {
@@ -53,8 +53,8 @@ impl<'a, V, DE, UE, F> core::fmt::Debug for FaceHandle<'a, PossiblyOuterTag, V, 
     }
 }
 
-impl<'a, V, DE, UE, F> core::fmt::Debug for FaceHandle<'a, InnerTag, V, DE, UE, F> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> ::core::fmt::Result {
+impl<'a, V, DE, UE, F> Debug for FaceHandle<'a, InnerTag, V, DE, UE, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let [v0, v1, v2] = self.vertices();
         write!(
             f,
@@ -76,7 +76,7 @@ impl FixedDirectedEdgeHandle {
     /// Returns if this edge is the normalized edge of a directed edge pair.
     ///
     /// For every directed edge pair, one edge is marked as the normalized edge. This information
-    /// is used to hook up a directed edge handle with it's correct half edge storage.
+    /// is used to hook up a directed edge handle with its correct half edge storage.
     #[inline]
     pub(in super::super) fn is_normalized(self) -> bool {
         // Use the last bit to store if this edge is normalized
@@ -249,7 +249,7 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
     /// The oriented next edge shares the same face as this edge.
     /// When traversing the face's edges in oriented order,
     /// this edge is the predecessor of the oriented next edge.
-    /// "Oriented" means counterclockwise for right handed
+    /// "Oriented" means counterclockwise for right-handed
     /// coordinate systems.
     pub fn next(&self) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
         let entry = self.dcel.half_edge(self.handle);
@@ -261,7 +261,7 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
     /// The oriented previous edge shares the same face as this edge.
     /// When traversing the face's edges in oriented order,
     /// this edge is the successor of the oriented previous edge.
-    /// "Oriented" means counterclockwise for right handed
+    /// "Oriented" means counterclockwise for right-handed
     /// coordinate systems.
     pub fn prev(&self) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
         let entry = self.dcel.half_edge(self.handle);
@@ -276,15 +276,15 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
 
     /// Returns the next edge in clockwise direction.
     ///
-    /// Note that this assumes that you use a right handed coordinate system,
+    /// Note that this assumes that you use a right-handed coordinate system,
     /// otherwise the sense of orientation is inverted.
     pub fn cw(&self) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
         self.rev().next()
     }
 
-    /// Returns the next edge in counter clockwise direction.
+    /// Returns the next edge in counterclockwise direction.
     ///
-    /// Note that this assumes that you use a right handed coordinate system,
+    /// Note that this assumes that you use a right-handed coordinate system,
     /// otherwise the sense of orientation is inverted.
     pub fn ccw(&self) -> DirectedEdgeHandle<'a, V, DE, UE, F> {
         self.prev().rev()
@@ -322,7 +322,7 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
 
     /// Converts this edge into its dual voronoi edge.
     ///
-    /// See also [as_delaunay_edge](crate::handles::DirectedVoronoiEdge::as_delaunay_edge).
+    /// See also [as_delaunay_edge](DirectedVoronoiEdge::as_delaunay_edge).
     pub fn as_voronoi_edge(&self) -> DirectedVoronoiEdge<'a, V, DE, UE, F> {
         DirectedVoronoiEdge::new(self.dcel, FixedHandleImpl::new(self.handle.index()))
     }
@@ -591,7 +591,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, InnerTag, V, DE, UE, F> {
     ///
     #[doc = include_str!("../../../images/face_adjacent_edges.svg")]
     ///
-    /// The edges are returned in counter clockwise order.
+    /// The edges are returned in counterclockwise order.
     pub fn adjacent_edges(&self) -> [DirectedEdgeHandle<'a, V, DE, UE, F>; 3] {
         let e1 = self.adjacent_edge();
         let e0 = e1.prev();
@@ -610,7 +610,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, InnerTag, V, DE, UE, F> {
 
     /// Returns the face's three vertices.
     ///
-    /// The vertices are returned in counter clockwise order.
+    /// The vertices are returned in counterclockwise order.
     pub fn vertices(&self) -> [VertexHandle<'a, V, DE, UE, F>; 3] {
         let [e0, e1, e2] = self.adjacent_edges();
         [e0.from(), e1.from(), e2.from()]
@@ -623,7 +623,7 @@ where
 {
     /// Returns the positions of the face's vertices
     ///
-    /// The positions are returned in counter clockwise order.
+    /// The positions are returned in counterclockwise order.
     pub fn positions(&self) -> [Point2<V::Scalar>; 3] {
         let [v0, v1, v2] = self.vertices();
         [v0.position(), v1.position(), v2.position()]
@@ -735,7 +735,7 @@ impl NextBackFn for CCWEdgesNextBackFn {
 impl<'a, V, DE, UE, F> VertexHandle<'a, V, DE, UE, F> {
     /// Returns all directed edges going out of this vertex.
     ///
-    /// The edges are returned in counter clockwise order, beginning at an arbitrary
+    /// The edges are returned in counterclockwise order, beginning at an arbitrary
     /// edge.
     ///
     #[doc = include_str!("../../../images/circular_iterator.svg")]

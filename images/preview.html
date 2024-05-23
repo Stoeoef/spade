@@ -2,10 +2,10 @@
 <!-- Repeatedly loads an svg image. Useful for debugging. -->
 <script type="text/javascript">
     function refresh(node) {
-        var times = 3000;
+        const times = 3000;
 
         (function startRefresh() {
-            var address;
+            let address;
             if (node.src.indexOf('?') > -1)
                 address = node.src.split('?')[0];
             else
@@ -18,12 +18,12 @@
     }
 
     window.onload = function () {
-        var node = document.getElementById('img');
+        const node = document.getElementById('img');
         refresh(node);
 
     }
 </script>
-<img src="line_intersection_iterator_scenario.svg" id="img" />
+<img src="line_intersection_iterator_scenario.svg" id="img" alt="preview image" />
 
 
 </html>

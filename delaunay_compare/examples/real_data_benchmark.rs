@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use anyhow::{Context, Ok};
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
-use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
+use tiny_skia::{Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 fn main() -> anyhow::Result<()> {
     let shape_file_path = "./examples/Europe_coastline.shp";
@@ -51,8 +51,7 @@ fn load_with_spade(vertices: &Vec<Point2<f64>>, edges: &Vec<[usize; 2]>) -> anyh
 
     println!("Loading triangulation (spade)...");
     let now = Instant::now();
-    let cdt =
-        spade::ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices_clone, edges_clone)?;
+    let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices_clone, edges_clone)?;
     println!("Done!");
     println!("{} vertices (without duplicates)", cdt.num_vertices());
     println!("{} undirected edges", cdt.num_undirected_edges());
@@ -69,10 +68,7 @@ fn load_with_spade(vertices: &Vec<Point2<f64>>, edges: &Vec<[usize; 2]>) -> anyh
     let edges_clone = edges.clone();
 
     let now = Instant::now();
-    spade::ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(
-        vertices_clone,
-        edges_clone,
-    )?;
+    ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices_clone, edges_clone)?;
 
     println!(
         "loading time (spade cdt bulk load stable): {}ms",
@@ -82,7 +78,7 @@ fn load_with_spade(vertices: &Vec<Point2<f64>>, edges: &Vec<[usize; 2]>) -> anyh
     let vertices_clone = vertices.clone();
 
     let now = Instant::now();
-    spade::ConstrainedDelaunayTriangulation::<_>::bulk_load(vertices_clone)?;
+    ConstrainedDelaunayTriangulation::<_>::bulk_load(vertices_clone)?;
     println!(
         "loading time (spade without constraints): {}ms",
         now.elapsed().as_millis()

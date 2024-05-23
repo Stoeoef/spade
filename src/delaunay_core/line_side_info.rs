@@ -1,4 +1,4 @@
-/// Describes on which side of a line a a point lies.
+/// Describes on which side of a line a point lies.
 ///
 /// Created by [DirectedEdgeHandle::side_query](crate::handles::DirectedEdgeHandle::side_query)
 #[derive(Debug, Clone, Copy)]
@@ -24,7 +24,7 @@ impl LineSideInfo {
 
     /// Returns `true` if a point lies on the left side of a line.
     ///
-    /// For left handed coordinate systems, this method returns if a point lies on the right side of a line.
+    /// For left-handed coordinate systems, this method returns if a point lies on the right side of a line.
     /// This method returns `false` if the point lies exactly on the line.
     pub fn is_on_left_side(&self) -> bool {
         self.signed_side > 0.0
@@ -32,7 +32,7 @@ impl LineSideInfo {
 
     /// Returns `true` if a point lies on the right side of a line.
     ///
-    /// For left handed coordinate systems, this method returns if a point lies on the left side of a line.
+    /// For left-handed coordinate systems, this method returns if a point lies on the left side of a line.
     /// This method returns `false` if the point lies exactly on the line.
     pub fn is_on_right_side(&self) -> bool {
         self.signed_side < 0.0
@@ -40,7 +40,7 @@ impl LineSideInfo {
 
     /// Returns `true` if a point lies on the left side of a line or is on the line itself.
     ///
-    /// For left handed coordinate systems, this method returns if a point lies on the left side of a line.
+    /// For left-handed coordinate systems, this method returns if a point lies on the left side of a line.
     pub fn is_on_left_side_or_on_line(&self) -> bool {
         self.signed_side >= 0.0
     }

@@ -410,7 +410,7 @@ pub fn delaunay_directed_edge_details_scenario() -> Sketch {
 
     sketch.add(rev_label);
 
-    let next = edge.prev(); // Use prev since SVG uses a left handed coordinate system
+    let next = edge.prev(); // Use prev since SVG uses a left-handed coordinate system
     let next_label = SketchElement::line(from_pos, convert_point(next.from().position()))
         .create_adjacent_text("e.next()")
         .font_size(FONT_SIZE)
@@ -418,7 +418,7 @@ pub fn delaunay_directed_edge_details_scenario() -> Sketch {
 
     sketch.add(next_label);
 
-    let prev = edge.next(); // Use prev since SVG uses a left handed coordinate system
+    let prev = edge.next(); // Use prev since SVG uses a left-handed coordinate system
     let prev_label = SketchElement::line(convert_point(prev.to().position()), to_pos)
         .create_adjacent_text("e.prev()")
         .font_size(FONT_SIZE)
