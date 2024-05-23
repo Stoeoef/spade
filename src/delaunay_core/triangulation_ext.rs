@@ -296,7 +296,7 @@ pub trait TriangulationExt: Triangulation {
     }
 
     /// The Delaunay property refers to the property that no point lies inside
-    /// the circumcircle of any of the triangulation's triangles. Adding a
+    /// the circumcircle of the triangulation's triangles. Adding a
     /// new point into the triangulations may violate this property, this method
     /// "repairs" it by strategically flipping edges until the property
     /// holds again. Every flip produces more "illegal" edges that may have to
@@ -671,7 +671,7 @@ pub trait TriangulationExt: Triangulation {
     ///  - Add all edges of the flip polygon to the invalid list if they were
     ///    newly created. Otherwise, the edge is part of the border loop surrounding
     ///    the hole created after the vertex removal. These are known to be valid and
-    ///    need not to be checked
+    ///    need not be checked
     ///
     /// For more details, refer to
     /// Olivier Devillers. Vertex Removal in Two Dimensional Delaunay Triangulation:
@@ -950,7 +950,7 @@ mod test {
     fn test_insert_outside_convex_hull() -> Result<(), InsertionError> {
         const NUM: usize = 100;
         let mut rng = rand::rngs::StdRng::from_seed(*SEED);
-        let range = Uniform::new(0., 2.0 * ::core::f64::consts::PI);
+        let range = Uniform::new(0., 2.0 * core::f64::consts::PI);
 
         let mut d = DelaunayTriangulation::<_>::default();
 

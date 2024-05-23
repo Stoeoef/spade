@@ -1,6 +1,6 @@
+use crate::{HasPosition, Point2, Triangulation, TriangulationExt};
 use crate::delaunay_core::math;
 use crate::handles::{DirectedEdgeHandle, FixedVertexHandle, VertexHandle};
-use crate::{HasPosition, Point2, Triangulation, TriangulationExt};
 
 /// An iterator over all intersections of a straight line across the triangulation.
 ///
@@ -37,10 +37,10 @@ use crate::{HasPosition, Point2, Triangulation, TriangulationExt};
 /// ];
 ///
 /// let triangulation = DelaunayTriangulation::<_>::bulk_load_stable(vertices)?;
-/// for intersection in spade::LineIntersectionIterator::new(
+/// for intersection in LineIntersectionIterator::new(
 ///     &triangulation,
-///     spade::Point2::new(-30.0, 0.0),
-///     spade::Point2::new(40.0, 0.0),
+///     Point2::new(-30.0, 0.0),
+///     Point2::new(40.0, 0.0),
 /// ) {
 ///     println!("{:?}", intersection);
 /// }
@@ -77,7 +77,7 @@ where
     V: HasPosition,
 {
     /// Indicates that the line is either crossing or touching an existing edge.
-    /// The line's destination will always be either on the edge or on its left side (in a left handed coordinate system).
+    /// The line's destination will always be either on the edge or on its left side (in a right-handed coordinate system).
     EdgeIntersection(DirectedEdgeHandle<'a, V, DE, UE, F>),
     /// Indicates that the line is touching a vertex.
     /// A line beginning or starting on a vertex also generates this intersection. A "line" beginning and starting on the same
@@ -89,11 +89,11 @@ where
     EdgeOverlap(DirectedEdgeHandle<'a, V, DE, UE, F>),
 }
 
-impl<'a, V, DE, UE, F> ::core::fmt::Debug for Intersection<'a, V, DE, UE, F>
+impl<'a, V, DE, UE, F> core::fmt::Debug for Intersection<'a, V, DE, UE, F>
 where
     V: HasPosition,
 {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         use self::Intersection::*;
         match self {
             EdgeIntersection(handle) => write!(f, "EdgeIntersection({:?})", handle),
@@ -336,15 +336,13 @@ where
                 } else {
                     match trace_direction_out_of_vertex(vertex, self.line_to) {
                         VertexOutDirection::ConvexHull => None,
-                        VertexOutDirection::EdgeOverlap(edge) => {
-                            Some(Intersection::EdgeOverlap(edge))
-                        }
+                        VertexOutDirection::EdgeOverlap(edge) => Some(EdgeOverlap(edge)),
                         VertexOutDirection::EdgeIntersection(edge) => {
                             if edge.side_query(self.line_to).is_on_right_side() {
                                 // The target point was skipped over - the iteration can finish
                                 None
                             } else {
-                                Some(Intersection::EdgeIntersection(edge))
+                                Some(EdgeIntersection(edge))
                             }
                         }
                     }

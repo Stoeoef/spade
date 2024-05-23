@@ -40,7 +40,7 @@ Trait `Triangulation` contains *publicly visible* functions that are common for 
 `DCEL` (in `dcel.rs`) implements the underlying doubly connected edge list and all of its major accessor methods (e.g., for accessing vertices, edges and faces).
 `dcel_operations.rs` implements several common operations on a DCEL, e.g. flipping an edge.
 
-`DCEL`, and `dcel_operations` should, in contrast to `Triangulation`, not require a `V: HasPosition` bound anywhere. In other words: DCEL's only care about the *topology* of their elements, not about their actual position. The position is only required once the Delaunay property is evaluated (as part of `TriangulationExt`)
+`DCEL`, and `dcel_operations` should, in contrast to `Triangulation`, not require a `V: HasPosition` bound anywhere. In other words: DCELs only care about the *topology* of their elements, not about their actual position. The position is only required once the Delaunay property is evaluated (as part of `TriangulationExt`)
 
 # Module dependency graph
 

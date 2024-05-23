@@ -133,7 +133,7 @@ pub type VertexHandle<'a, V, DE = (), UE = (), F = ()> =
 ///
 /// Depending on the type parameter, the handle **can refer to the outer face**:
 ///
-/// * `FaceHandle<'a, PossiblyOuterTag, ...>]`: The face may refer to the single outer face.
+/// * `FaceHandle<'a, PossiblyOuterTag, ...>`: The face may refer to the single outer face.
 /// * `FaceHandle<'a, InnerTag, ...>`: The face refers to an inner triangle of the triangulation.
 ///
 #[doc = include_str!("../../../images/outer_faces.svg")]
@@ -191,7 +191,7 @@ pub enum VoronoiVertex<'a, V, DE, UE, F> {
 
     /// Refers to an outer vertex of the voronoi diagram.
     ///
-    /// These vertices don't have a well defined position as they don't have a dual inner
+    /// These vertices don't have a well-defined position as they don't have a dual inner
     /// face in the Delaunay triangulation.
     /// Instead, they are characterized by a dual outer edge (an edge that is part of the
     /// convex hull) of the underlying triangulation.
@@ -242,7 +242,7 @@ where
 
     /// Returns all directed voronoi edges going out of this vertex.
     ///
-    /// The edges are returned in counter clockwise order. Returns `None` if this is an outer
+    /// The edges are returned in counterclockwise order. Returns `None` if this is an outer
     /// voronoi vertex.
     pub fn out_edges(&self) -> Option<[DirectedVoronoiEdge<'a, V, DE, UE, F>; 3]> {
         match self {
@@ -314,7 +314,7 @@ impl<'a, V, DE, UE, F> DirectedVoronoiEdge<'a, V, DE, UE, F> {
 
     /// Returns the directed dual edge of the underlying Delaunay triangulation.
     ///
-    /// The dual edge is always orthogonal to to this edge.
+    /// The dual edge is always orthogonal to this edge.
     ///
     #[doc = include_str!("../../../images/dual_edges.svg")]
     ///
@@ -328,7 +328,7 @@ impl<'a, V, DE, UE, F> DirectedVoronoiEdge<'a, V, DE, UE, F> {
         self.as_delaunay_edge().rev().as_voronoi_edge()
     }
 
-    /// Returns the edge that is connected to this edge in counter clockwise order.
+    /// Returns the edge that is connected to this edge in counterclockwise order.
     ///
     /// See also [prev](Self::prev)
     pub fn next(&self) -> DirectedVoronoiEdge<'a, V, DE, UE, F> {

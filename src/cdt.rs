@@ -69,7 +69,7 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
     }
 }
 
-/// A two dimensional
+/// A two-dimensional
 /// [constrained Delaunay triangulation](https://en.wikipedia.org/wiki/Constrained_Delaunay_triangulation).
 ///
 /// A constrained Delaunay triangulation (CDT) is a triangulation that
@@ -124,7 +124,7 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 ///
 /// # See also
 /// Refer to [Triangulation] for most implemented methods on this type.
-/// Refer to [DelaunayTriangulation](crate::DelaunayTriangulation) for general
+/// Refer to [DelaunayTriangulation](DelaunayTriangulation) for general
 /// information about using Delaunay triangulations.
 #[doc(alias = "CDT")]
 #[derive(Clone)]
@@ -213,13 +213,6 @@ where
         &mut self.hint_generator
     }
 
-    fn clear(&mut self) {
-        self.num_constraints = 0;
-        self.s_mut().clear();
-        let new_hint_generator = HintGenerator::initialize_from_triangulation(self);
-        *self.hint_generator_mut() = new_hint_generator;
-    }
-
     fn from_parts(
         dcel: Dcel<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
         hint_generator: Self::HintGenerator,
@@ -240,6 +233,13 @@ where
         usize,
     ) {
         (self.dcel, self.hint_generator, self.num_constraints)
+    }
+
+    fn clear(&mut self) {
+        self.num_constraints = 0;
+        self.s_mut().clear();
+        let new_hint_generator = HintGenerator::initialize_from_triangulation(self);
+        *self.hint_generator_mut() = new_hint_generator;
     }
 }
 
@@ -308,6 +308,7 @@ where
     /// ```
     ///
     /// # Panics
+    ///
     /// Panics if any constraint edges overlap. Panics if the edges contain an invalid index (out of range).
     pub fn bulk_load_cdt(vertices: Vec<V>, edges: Vec<[usize; 2]>) -> Result<Self, InsertionError> {
         let mut result = bulk_load_cdt(vertices, edges)?;
@@ -479,6 +480,7 @@ where
     /// ```
     ///
     /// # Panics
+    ///
     /// Panics if any of the generated constraints intersects with any other constraint edge.
     pub fn add_constraint_edges(
         &mut self,
@@ -509,6 +511,7 @@ where
     /// Returns `true` if at least one constraint edge was added.
     ///
     /// # Panics
+    ///
     /// Panics if the new constraint edge intersects with an existing
     /// constraint edge. Use [can_add_constraint](Self::can_add_constraint) to check.
     pub fn add_constraint_edge(&mut self, from: V, to: V) -> Result<bool, InsertionError> {
@@ -520,7 +523,7 @@ where
     /// Adds a constraint edge between to vertices.
     ///
     /// Returns `true` if at least one constraint edge was added.
-    /// Note that the given constraint might be splitted into smaller edges
+    /// Note that the given constraint might be split into smaller edges
     /// if a vertex in the triangulation lies exactly on the constraint edge.
     /// Thus, `cdt.exists_constraint(from, to)` is not necessarily `true`
     /// after a call to this function.
@@ -528,6 +531,7 @@ where
     /// Returns false and does nothing if `from == to`.
     ///
     /// # Panics
+    ///
     /// Panics if the new constraint edge intersects an existing
     /// constraint edge.
     pub fn add_constraint(&mut self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
@@ -625,7 +629,7 @@ where
                         let border_loop_vec: Vec<_> = border_loop.into();
 
                         // The last edge of border_loop_vec must be part of the added constraint
-                        // edge. Otherwise remesh_edge_ring will not create an edge between
+                        // edge. Otherwise, remesh_edge_ring will not create an edge between
                         // cur_from and vertex
                         assert_eq!(
                             self.directed_edge(*border_loop_vec.last().unwrap())
@@ -926,7 +930,7 @@ mod test {
     fn test_add_border_constraint() -> Result<(), InsertionError> {
         let points = random_points_with_seed(1000, SEED);
         let mut cdt = Cdt::new();
-        let mut max_y = -::core::f64::MAX;
+        let mut max_y = -f64::MAX;
         for point in points {
             max_y = max_y.max(point.y);
             cdt.insert(point)?;
@@ -959,12 +963,12 @@ mod test {
         }
         let seed = if overlapping { SEED } else { SEED2 };
         let delaunay_points = random_points_in_range(RANGE * 0.9, 80, seed);
-        // Use a delaunay triangulation to "generate" non intersecting constraint edges
+        // Use a delaunay triangulation to "generate" non-intersecting constraint edges
         let mut d = Delaunay::new();
         for p in delaunay_points {
             d.insert(p)?;
         }
-        let mut used_vertices = ::hashbrown::HashSet::new();
+        let mut used_vertices = hashbrown::HashSet::new();
 
         let mut inserted_constraints = Vec::new();
         for v in d.vertices() {
@@ -1159,7 +1163,7 @@ mod test {
     fn fuzz_test_on_grid() -> Result<(), InsertionError> {
         use rand::seq::SliceRandom;
         // Generates points on a grid and randomly connects
-        // them with non intersecting constraints
+        // them with non-intersecting constraints
         let seed = SEED;
         let mut points = Vec::with_capacity((RANGE * RANGE) as usize);
         const RANGE: i64 = 30;

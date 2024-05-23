@@ -59,7 +59,7 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> DoubleEndedIterator
 pub struct DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter> {
     fixed_iterator: FixedHandleIterator<Type, InnerOuter>,
     dcel: &'a Dcel<V, DE, UE, F>,
-    inner_outer: core::marker::PhantomData<InnerOuter>,
+    inner_outer: PhantomData<InnerOuter>,
 }
 
 impl<'a, V, DE, UE, F, Type, InnerOuter> DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter>
@@ -71,7 +71,7 @@ where
         DynamicHandleIterator {
             fixed_iterator: FixedHandleIterator::new(Type::num_elements(dcel)),
             dcel,
-            inner_outer: core::marker::PhantomData,
+            inner_outer: PhantomData,
         }
     }
 }

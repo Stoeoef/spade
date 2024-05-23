@@ -52,7 +52,7 @@ const VERTICES: &[PointWithHeight] = &[
     PointWithHeight::new(5.0, 1.0, 0.2),
 ];
 
-pub fn main() -> anyhow::Result<()> {
+pub fn main() -> Result<()> {
     let mut t = TriangulationType::default();
     for vertex in VERTICES {
         t.insert(*vertex)?;
@@ -146,7 +146,7 @@ pub fn main() -> anyhow::Result<()> {
         );
     }
 
-    fn save_pixmap(pixmap: Pixmap, name: &str) -> anyhow::Result<()> {
+    fn save_pixmap(pixmap: Pixmap, name: &str) -> Result<()> {
         // tiny_skia doesn't support jpg encoding which is required for small file size when embedding this into
         // the documentation. We'll have to convert the data into ImageBuffer from the image crate and then do
         // the jpeg encoding.
@@ -176,7 +176,7 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 fn float_to_color(value: f64) -> [u8; 3] {
-    // mostly AI generated..
+    // mostly AI generated...
     // Converts a hue value in the range 0.0 ..= 1.0 from HLS to RGB
     let value = value.clamp(0.0, 1.0);
 

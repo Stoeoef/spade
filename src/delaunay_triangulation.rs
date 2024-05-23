@@ -10,7 +10,7 @@ use num_traits::Float;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// A two dimensional [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation).
+/// A two-dimensional [Delaunay triangulation](https://en.wikipedia.org/wiki/Delaunay_triangulation).
 ///
 /// A Delaunay triangulation  a triangulation that fulfills the *Delaunay Property*: No
 /// vertex of the triangulation is contained in the
@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Basic Usage
 /// Vertices need to implement the [HasPosition] trait. Spade bundles
-/// the [Point2](crate::Point2) struct for basic use cases.
+/// the [Point2] struct for basic use cases.
 ///
 /// ## Basic example
 ///  ```
@@ -49,15 +49,15 @@ use serde::{Deserialize, Serialize};
 ///     Ok(())
 /// }
 /// ```
-/// ## Right handed and left handed coordinate systems
+/// ## Right handed and left-handed coordinate systems
 /// For simplicity, all method names and their documentation assume that the underlying coordinate system
-/// is right handed (e.g. x axis points to the right, y axis points upwards). If a left handed system
+/// is right-handed (e.g. x-axis points to the right, y-axis points upwards). If a left-handed system
 /// (lhs) is used, any term related to orientation needs to be reversed:
-///  - "left" becomes "right" (example: the face of a directed edge is on the right side for a lhs
+///  - "left" becomes "right" (example: the face of a directed edge is on the right side for a lhs)
 ///  - "counter clock wise" becomes "clockwise" (example: the vertices of a face are returned in clock wise order for a lhs)
 ///  
 /// <table>
-/// <tr><th>left handed system</th><th>right handed system</th></tr>
+/// <tr><th>left-handed system</th><th>right-handed system</th></tr>
 /// <tr><td>
 #[doc = concat!(include_str!("../images/lhs.svg"), "</td><td>",include_str!("../images/rhs.svg"), " </td></tr></table>")]
 /// # Extracting geometry information
@@ -237,7 +237,7 @@ use serde::{Deserialize, Serialize};
 /// - For data sets with uniformly distributed vertices: Use [HierarchyHintGenerator](crate::HierarchyHintGenerator) if
 ///   bulk loading is not applicable.
 /// - For data sets where vertices are inserted in close local proximity (each vertex is not too far away from the
-///   previously inserted vertex): Consider using [LastUsedVertexHintGenerator](crate::LastUsedVertexHintGenerator).
+///   previously inserted vertex): Consider using [LastUsedVertexHintGenerator](LastUsedVertexHintGenerator).
 /// - Try to avoid large custom data types for edges, vertices and faces.
 /// - Using `f64` and `f32` as scalar type will usually end up roughly having the same run time performance.
 /// - Prefer using [bulk_load](Triangulation::bulk_load) over [insert](Triangulation::insert).
@@ -457,7 +457,7 @@ mod test {
 
         fn requires_serde<'de, T: Serialize + Deserialize<'de>>() {}
 
-        type DT<L> = super::DelaunayTriangulation<Point2<f64>, (), (), (), L>;
+        type DT<L> = DelaunayTriangulation<Point2<f64>, (), (), (), L>;
 
         requires_serde::<DT<LastUsedVertexHintGenerator>>();
         requires_serde::<DT<HierarchyHintGenerator<f64>>>();

@@ -16,7 +16,7 @@ use alloc::vec::Vec;
 ///
 /// This is only used as part of bulk loading.
 /// All input coordinates are checked with `validate_coordinate` before they are used, hence
-/// `Ord` and `Eq` should always be well defined.
+/// `Ord` and `Eq` should always be well-defined.
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 struct FloatOrd<S>(S);
 
@@ -277,7 +277,7 @@ where
             //
             // This process is certainly confusing and inefficient but, luckily, rarely required for real inputs.
 
-            // Push the element again, it will popped directly. This seems to be somewhat simpler than
+            // Push the element again, it will be popped directly. This seems to be somewhat simpler than
             // the alternatives.
             elements.push((old_index, skipped));
             hull = loop {
@@ -327,7 +327,7 @@ where
 
         // Note that we don't re-sort the elements according to their distance to the newest center. This doesn't seem to
         // be required for the algorithms performance, probably due to the `center` being close to `initial_center`.
-        // As of now, it is a unclear how to construct point sets that result in a `center` being farther off
+        // As of now, it is unclear how to construct point sets that result in a `center` being farther off
         // `initial center` and what the impact of this would be.
         let center = Point2::new(sum_x, sum_y).mul(<V as HasPosition>::Scalar::from(0.25f32));
 
@@ -484,7 +484,7 @@ where
     let edge = edge.fix();
 
     let new_vertex =
-        super::dcel_operations::create_new_face_adjacent_to_edge(result.s_mut(), edge, element);
+        dcel_operations::create_new_face_adjacent_to_edge(result.s_mut(), edge, element);
     let ccw_walk_start = result.directed_edge(edge).prev().rev().fix();
     let cw_walk_start = result.directed_edge(edge).next().rev().fix();
 
@@ -495,7 +495,7 @@ where
     // up in a strongly *star shaped* triangulation instead of a nice nearly-convex blob of faces.
     //
     // To fix this, the algorithm proceeds by connecting some of the adjacent edges and forming new
-    // faces. A faces is only created if all of its inner angles are less than 90 degrees. This
+    // faces. A face is only created if all of its inner angles are less than 90 degrees. This
     // tends to be a good heuristic that doesn't create too many skewed triangles which would need
     // to be fixed later. Refer to the motivating research paper (see method `bulk_load`) for
     // more information.
@@ -707,10 +707,10 @@ struct Node {
 /// It implements an efficient mapping of (pseudo-)angles to edges. To do so, it stores all inserted
 /// edges in a linked list backed by a vec. Finding an edge belonging to a given angle can always
 /// be done by iterating through this list until the target angle is found.
-/// The entries are stored in a consistent order (either clockwise or counter clockwise)
+/// The entries are stored in a consistent order (either clockwise or counterclockwise)
 ///
 /// This naive sequential search is very slow as it needs to traverse half of the list on average.
-/// To speed things up, the space space of valid angles (the half open interval [0, 1) )
+/// To speed things up, the space of valid angles (the half open interval [0, 1) )
 /// is partitioned into `n` equally sized buckets.
 /// For each bucket, `Hull` stores a reference to the list entry with the *biggest angle* that
 /// still belongs into that bucket. A sequential search will begin at this bucket and has to traverse
@@ -825,7 +825,7 @@ impl Hull {
     /// Such a vertex is guaranteed to have two outgoing edges that are adjacent to the convex hull,
     /// e.g. `e0 -> v -> e1`
     ///
-    /// In this scenarios, the parameters should be set as follows:
+    /// In these scenarios, the parameters should be set as follows:
     /// * `left_angle`: `pseudo_angle(e0.from())`
     /// * `middle_angle`: `pseudo_angle(v.position())`
     /// * `right_angle`: `pseudo_angle(e1.to())`
@@ -896,7 +896,7 @@ impl Hull {
             right_angle = self.data[right_index].angle;
         }
 
-        // Stich the vertex between left_index and right_index
+        // Stitch the vertex between left_index and right_index
         self.data[left_index].right = new_index;
         self.data[right_index].left = new_index;
 
@@ -970,11 +970,11 @@ impl Hull {
 
     /// Looks up what bucket a given pseudo-angle will fall into.
     fn floored_bucket(&self, angle: FloatOrd<f64>) -> usize {
-        ((angle.0 * (self.buckets.len()) as f64).floor() as usize) % self.buckets.len()
+        ((angle.0 * self.buckets.len() as f64).floor() as usize) % self.buckets.len()
     }
 
     fn ceiled_bucket(&self, angle: FloatOrd<f64>) -> usize {
-        ((angle.0 * (self.buckets.len()) as f64).ceil() as usize) % self.buckets.len()
+        ((angle.0 * self.buckets.len() as f64).ceil() as usize) % self.buckets.len()
     }
 
     fn segment(&self, node: &Node) -> Segment {

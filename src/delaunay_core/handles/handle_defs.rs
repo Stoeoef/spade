@@ -12,7 +12,7 @@ pub trait DelaunayElementType: Sized + Default {
 }
 /// Internal type definition that is only exposed for documentation purposes.
 ///
-/// Rust will currently not generate documentation for type definitions depending
+/// Rust will currently not generate documentation for type definitions depending on
 /// `pub(crate)` types, see [#32077](https://github.com/rust-lang/rust/issues/32077).
 ///
 /// Do not use these types. Their removal will not be considered a breaking change.
@@ -105,7 +105,7 @@ impl<Type: Default, InnerOuter: InnerOuterMarker> FixedHandleImpl<Type, InnerOut
 
 /// Internal type definition that is only exposed for documentation purposes.
 ///
-/// Rust will currently not generate documentation for type definitions depending
+/// Rust will currently not generate documentation for type definitions depending on
 /// `pub(crate)` types, see [#32077](https://github.com/rust-lang/rust/issues/32077).
 ///
 /// Do not use these types. Their removal from the public API will not be considered a

@@ -127,9 +127,9 @@ impl<S: SpadeNum> HintGenerator<S> for LastUsedVertexHintGenerator {
 /// A hint generator based on a hierarchy of triangulations optimized for randomly accessing elements of
 /// the triangulation.
 ///
-/// Using this hint generator results in a insertion and lookup performance of O(log(n)) by keeping a
+/// Using this hint generator results in an insertion and lookup performance of O(log(n)) by keeping a
 /// few layers of sparsely populated Delaunay Triangulations. These layers can then be quickly traversed
-/// before diving deeper into the next, more detailed layer where the search is then refined.
+/// before diving deeper into the next, more detailed layer where the search is furthermore refined.
 ///
 /// # Type parameters
 ///  - `S`: The scalar type used by the triangulation

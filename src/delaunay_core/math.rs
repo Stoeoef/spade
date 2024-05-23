@@ -15,19 +15,19 @@ pub struct PointProjection<S> {
 /// The error type used for inserting elements into a triangulation.
 ///
 /// Errors during insertion can only originate from an invalid vertex position. Vertices can
-/// be checked for validity by using [crate::validate_vertex].
+/// be checked for validity by using [validate_vertex].
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
 pub enum InsertionError {
     /// A coordinate value was too small.
     ///
     /// The absolute value of any inserted vertex coordinate must either be zero or greater
-    /// greater than or equal to [crate::MIN_ALLOWED_VALUE].
+    /// than or equal to [MIN_ALLOWED_VALUE].
     TooSmall,
 
     /// A coordinate value was too large.
     ///
     /// The absolute value of any inserted vertex coordinate must be less than or equal to
-    /// [crate::MAX_ALLOWED_VALUE].
+    /// [MAX_ALLOWED_VALUE].
     TooLarge,
 
     /// A coordinate value was NaN.
@@ -64,9 +64,9 @@ impl std::error::Error for InsertionError {}
 // arithmetic is used."
 // Source: Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates
 //
-// This suggests that the limit as is is needlessly tight as spade only requires two of
+// This suggests that the limit as is needlessly tight as spade only requires two of
 // the four implemented predicates. There is unfortunately no motivation given for these
-// limits, hence its not obvious how those would need to be derived.
+// limits, hence it is not obvious how those would need to be derived.
 pub const MIN_ALLOWED_VALUE: f64 = 1.793662034335766e-43; // 1.0 * 2^-142
 
 /// The largest allowed coordinate value that can be inserted into Delaunay triangulations.
@@ -282,7 +282,7 @@ where
     let v3 = to_robust_coord(v3);
     let p = to_robust_coord(p);
 
-    // incircle expects all vertices to be ordered CW for right handed systems.
+    // incircle expects all vertices to be ordered CW for right-handed systems.
     // For consistency, the public interface of this method will expect the points to be
     // ordered ccw.
     robust::incircle(v3, v2, v1, p) < 0.0
@@ -612,9 +612,9 @@ mod test {
         let v3 = Point2::new(a3.sin(), a3.cos()).mul(2.).add(offset);
         assert!(super::side_query(v1, v2, v3).is_on_left_side());
         assert!(contained_in_circumference(v1, v2, v3, offset));
-        let shrunk = (v1.sub(offset)).mul(0.9).add(offset);
+        let shrunk = v1.sub(offset).mul(0.9).add(offset);
         assert!(contained_in_circumference(v1, v2, v3, shrunk));
-        let expanded = (v1.sub(offset)).mul(1.1).add(offset);
+        let expanded = v1.sub(offset).mul(1.1).add(offset);
         assert!(!contained_in_circumference(v1, v2, v3, expanded));
         assert!(!contained_in_circumference(
             v1,

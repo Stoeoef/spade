@@ -906,7 +906,7 @@ where
     UE: Default,
     F: Default,
 {
-    // All edges are oriented counter clockwise
+    // All edges are oriented counterclockwise
     //
     // Original triangle:
     //       v1
