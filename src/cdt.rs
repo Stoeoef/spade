@@ -1,15 +1,16 @@
+use alloc::{vec, vec::Vec};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable};
+use crate::intersection_iterator::{trace_direction_out_of_edge, EdgeOutDirection};
 use crate::{delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator};
 use crate::{handles::*, intersection_iterator::Intersection};
 use crate::{
     DelaunayTriangulation, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator,
     Point2, Triangulation, TriangulationExt,
 };
-
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
-use alloc::{vec, vec::Vec};
 
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
 ///
@@ -94,7 +95,6 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 /// the usual Delaunay triangulation, refer to `DelaunayTriangulation`
 /// for more information about type parameters, iteration, performance
 /// and more examples.
-
 ///
 /// # Example
 ///
@@ -152,12 +152,12 @@ pub struct ConstrainedDelaunayTriangulation<
 }
 
 impl<V, DE, UE, F, L> Default for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
-where
-    V: HasPosition,
-    DE: Default,
-    UE: Default,
-    F: Default,
-    L: HintGenerator<<V as HasPosition>::Scalar>,
+    where
+        V: HasPosition,
+        DE: Default,
+        UE: Default,
+        F: Default,
+        L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     fn default() -> Self {
         ConstrainedDelaunayTriangulation {
@@ -169,12 +169,12 @@ where
 }
 
 impl<V, DE, UE, F, L> Triangulation for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
-where
-    V: HasPosition,
-    DE: Default,
-    UE: Default,
-    F: Default,
-    L: HintGenerator<<V as HasPosition>::Scalar>,
+    where
+        V: HasPosition,
+        DE: Default,
+        UE: Default,
+        F: Default,
+        L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     type Vertex = V;
     type DirectedEdge = DE;
@@ -244,13 +244,13 @@ where
 }
 
 impl<V, DE, UE, F, L> From<DelaunayTriangulation<V, DE, UE, F, L>>
-    for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
-where
-    V: HasPosition,
-    DE: Default,
-    UE: Default,
-    F: Default,
-    L: HintGenerator<<V as HasPosition>::Scalar>,
+for ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
+    where
+        V: HasPosition,
+        DE: Default,
+        UE: Default,
+        F: Default,
+        L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     fn from(value: DelaunayTriangulation<V, DE, UE, F, L>) -> Self {
         let dcel = value.dcel;
@@ -266,12 +266,12 @@ where
 }
 
 impl<V, DE, UE, F, L> ConstrainedDelaunayTriangulation<V, DE, UE, F, L>
-where
-    V: HasPosition,
-    DE: Default,
-    UE: Default,
-    F: Default,
-    L: HintGenerator<<V as HasPosition>::Scalar>,
+    where
+        V: HasPosition,
+        DE: Default,
+        UE: Default,
+        F: Default,
+        L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     /// Efficient bulk loading of a constraint delaunay triangulation, including both vertices and constraint edges.
     ///
@@ -484,7 +484,7 @@ where
     /// Panics if any of the generated constraints intersects with any other constraint edge.
     pub fn add_constraint_edges(
         &mut self,
-        vertices: impl IntoIterator<Item = V>,
+        vertices: impl IntoIterator<Item=V>,
         closed: bool,
     ) -> Result<(), InsertionError> {
         let mut iter = vertices.into_iter();
@@ -535,23 +535,20 @@ where
     /// Panics if the new constraint edge intersects an existing
     /// constraint edge.
     pub fn add_constraint(&mut self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
-        use super::intersection_iterator::{
-            trace_direction_out_of_edge, trace_direction_out_of_vertex, EdgeOutDirection,
-            VertexOutDirection,
-        };
+        use super::intersection_iterator::{trace_direction_out_of_vertex, VertexOutDirection};
 
         if from == to {
             return false;
         }
 
+        let initial_num_constraints = self.num_constraints();
         let mut cur_from = from;
         let line_from = self.s().vertex(cur_from).position();
         let line_to = self.vertex(to).position();
-        let mut result = false;
 
-        'conflict_regions_loop: loop {
+        loop {
             if cur_from == to {
-                return result;
+                break;
             }
 
             let first_intersection =
@@ -563,163 +560,168 @@ where
                 VertexOutDirection::EdgeOverlap(edge) => {
                     cur_from = edge.to().fix();
                     let edge = edge.fix().as_undirected();
-                    result |= self.make_constraint_edge(edge);
+                    self.make_constraint_edge(edge);
                     continue;
                 }
                 VertexOutDirection::EdgeIntersection(edge) => edge,
             };
 
-            let mut border_loop = alloc::collections::VecDeque::new();
+            cur_from = self.handle_conflict_region(cur_from, line_from, line_to, first_edge.fix());
+        }
 
-            border_loop.push_back(first_edge.rev().next().fix());
-            border_loop.push_front(first_edge.rev().prev().fix());
+        self.num_constraints != initial_num_constraints
+    }
 
-            let mut required_rotation = 2;
+    fn handle_conflict_region(
+        &mut self,
+        cur_from: FixedVertexHandle,
+        line_from: Point2<<V as HasPosition>::Scalar>,
+        line_to: Point2<<V as HasPosition>::Scalar>,
+        first_edge: FixedDirectedEdgeHandle,
+    ) -> FixedVertexHandle {
+        let mut border_loop = alloc::collections::VecDeque::new();
 
-            let mut current_edge = first_edge;
+        let mut current_edge = self.directed_edge(first_edge);
+        border_loop.push_back(current_edge.rev().next().fix());
+        border_loop.push_front(current_edge.rev().prev().fix());
 
-            let mut faces_to_remove: Vec<FixedFaceHandle<InnerTag>> =
-                vec![first_edge.rev().face().as_inner().unwrap().fix()];
-            let mut edges_to_remove: Vec<FixedUndirectedEdgeHandle> =
-                vec![first_edge.as_undirected().fix()];
+        let mut required_rotation = 2;
 
-            let check_for_constraint_intersection = |edge| {
-                assert!(
-                    !self.is_constraint_edge(edge),
-                    "Error - constraint edges must not intersect each other"
-                );
-            };
+        let mut faces_to_remove: Vec<FixedFaceHandle<InnerTag>> =
+            vec![current_edge.rev().face().as_inner().unwrap().fix()];
+        let mut edges_to_remove: Vec<FixedUndirectedEdgeHandle> =
+            vec![current_edge.as_undirected().fix()];
 
-            check_for_constraint_intersection(current_edge.as_undirected().fix());
+        let check_for_constraint_intersection = |edge| {
+            assert!(
+                !self.is_constraint_edge(edge),
+                "Error - constraint edges must not intersect each other"
+            );
+        };
 
-            loop {
-                match trace_direction_out_of_edge(current_edge, line_from, line_to) {
-                    EdgeOutDirection::NoIntersection | EdgeOutDirection::ConvexHull => {
-                        panic!("Constraint edge does not end in a vertex. This is a bug.")
+        check_for_constraint_intersection(current_edge.as_undirected().fix());
+
+        loop {
+            match trace_direction_out_of_edge(current_edge, line_from, line_to) {
+                EdgeOutDirection::NoIntersection | EdgeOutDirection::ConvexHull => {
+                    panic!("Constraint edge does not end in a vertex. This is a bug.")
+                }
+                EdgeOutDirection::EdgeIntersection(edge) => {
+                    check_for_constraint_intersection(edge.as_undirected().fix());
+
+                    let next = edge.rev().next();
+
+                    if next == current_edge {
+                        border_loop.push_front(edge.rev().prev().fix());
+                    } else {
+                        required_rotation += 1;
+                        assert_eq!(next.next(), current_edge);
+                        border_loop.push_back(next.fix());
                     }
-                    EdgeOutDirection::EdgeIntersection(edge) => {
-                        check_for_constraint_intersection(edge.as_undirected().fix());
+                    let edge_fixed = edge.fix();
+                    edges_to_remove.push(edge_fixed.as_undirected());
+                    faces_to_remove.push(edge.rev().face().as_inner().unwrap().fix());
+                    current_edge = edge;
+                    continue;
+                }
+                EdgeOutDirection::VertexIntersection(vertex) => {
+                    let vertex_fixed = vertex.fix();
+                    border_loop.push_front(current_edge.next().fix());
+                    border_loop.push_back(current_edge.prev().fix());
+                    faces_to_remove.push(current_edge.face().as_inner().unwrap().fix());
 
-                        let next = edge.rev().next();
+                    // We arrived at another vertex and need to close the constraint region
+                    // We'll implicitly add an edge from cur_from to vertex that will be
+                    // marked as constraint edge later
 
-                        if next == current_edge {
-                            border_loop.push_front(edge.rev().prev().fix());
-                        } else {
-                            required_rotation += 1;
-                            assert_eq!(next.next(), current_edge);
-                            border_loop.push_back(next.fix());
-                        }
-                        let edge_fixed = edge.fix();
-                        edges_to_remove.push(edge_fixed.as_undirected());
-                        faces_to_remove.push(edge.rev().face().as_inner().unwrap().fix());
-                        current_edge = edge;
-                        continue;
-                    }
-                    EdgeOutDirection::VertexIntersection(vertex) => {
-                        let vertex_fixed = vertex.fix();
-                        border_loop.push_front(current_edge.next().fix());
-                        border_loop.push_back(current_edge.prev().fix());
-                        faces_to_remove.push(current_edge.face().as_inner().unwrap().fix());
+                    border_loop.rotate_right(required_rotation);
+                    let border_loop_vec: Vec<_> = border_loop.into();
 
-                        // We arrived at another vertex and need to close the constraint region
-                        // We'll implicitly add an edge from cur_from to vertex that will be
-                        // marked as constraint edge later
+                    // The last edge of border_loop_vec must be part of the added constraint
+                    // edge. Otherwise, remesh_edge_ring will not create an edge between
+                    // cur_from and vertex
+                    assert_eq!(
+                        self.directed_edge(*border_loop_vec.last().unwrap())
+                            .from()
+                            .fix(),
+                        cur_from
+                    );
 
-                        border_loop.rotate_right(required_rotation);
-                        let border_loop_vec: Vec<_> = border_loop.into();
-
-                        // The last edge of border_loop_vec must be part of the added constraint
-                        // edge. Otherwise, remesh_edge_ring will not create an edge between
-                        // cur_from and vertex
-                        assert_eq!(
-                            self.directed_edge(*border_loop_vec.last().unwrap())
-                                .from()
-                                .fix(),
-                            cur_from
-                        );
-
-                        // Remesh border loop
-                        let mut isolation_result =
-                            super::delaunay_core::dcel_operations::remesh_edge_ring(
-                                self.s_mut(),
-                                border_loop_vec,
-                                edges_to_remove,
-                                faces_to_remove,
-                            );
-
-                        // Mark constraint edge
-                        let target_vertex = self.s().vertex(vertex_fixed);
-                        let constraint_edge_index = isolation_result
-                            .new_edges
-                            .iter()
-                            .copied()
-                            .position(|edge| {
-                                self.s()
-                                    .undirected_edge(edge)
-                                    .vertices()
-                                    .contains(&target_vertex)
-                            })
-                            .unwrap();
-
-                        let constraint_edge = isolation_result.new_edges[constraint_edge_index];
-                        debug_assert!(self
-                            .s()
-                            .undirected_edge(constraint_edge)
-                            .vertices()
-                            .iter()
-                            .any(|v| v.fix() == cur_from));
-
-                        let constraint_edge = self.s().undirected_edge(constraint_edge).fix();
-
-                        result |= self.make_constraint_edge(constraint_edge);
-
-                        // Don't mark the new constraint edge for legalization
-                        isolation_result
-                            .new_edges
-                            .swap_remove(constraint_edge_index);
-
-                        // All flipped edges need to legalized.
-                        while let Some(edge) = isolation_result.new_edges.pop() {
-                            let edge_handle = self.directed_edge(edge.as_directed());
-                            let e2 = edge_handle.prev();
-                            let e4 = edge_handle.rev().prev();
-                            let left = e2.from().position();
-                            let right = e4.from().position();
-                            let from = edge_handle.from().position();
-                            let to = edge_handle.to().position();
-
-                            if crate::delaunay_core::math::contained_in_circumference(
-                                from, to, left, right,
-                            ) {
-                                let mut push_if_flip_candidate =
-                                    |edge: FixedUndirectedEdgeHandle| {
-                                        if isolation_result.is_new_edge(edge)
-                                            && edge != constraint_edge
-                                        {
-                                            isolation_result.new_edges.push(edge);
-                                        }
-                                    };
-
-                                let e1 = edge_handle.next();
-                                let e3 = edge_handle.rev().next();
-
-                                push_if_flip_candidate(e1.fix().as_undirected());
-                                push_if_flip_candidate(e2.fix().as_undirected());
-                                push_if_flip_candidate(e3.fix().as_undirected());
-                                push_if_flip_candidate(e4.fix().as_undirected());
-
-                                crate::delaunay_core::dcel_operations::flip_cw(self.s_mut(), edge);
-                            }
-                        }
-                        crate::delaunay_core::dcel_operations::cleanup_isolated_vertex(
+                    // Remesh border loop
+                    let mut isolation_result =
+                        super::delaunay_core::dcel_operations::remesh_edge_ring(
                             self.s_mut(),
-                            &mut isolation_result,
+                            border_loop_vec,
+                            edges_to_remove,
+                            faces_to_remove,
                         );
 
-                        cur_from = vertex_fixed;
+                    // Mark constraint edge
+                    let target_vertex = self.s().vertex(vertex_fixed);
+                    let constraint_edge_index = isolation_result
+                        .new_edges
+                        .iter()
+                        .copied()
+                        .position(|edge| {
+                            self.s()
+                                .undirected_edge(edge)
+                                .vertices()
+                                .contains(&target_vertex)
+                        })
+                        .unwrap();
 
-                        continue 'conflict_regions_loop;
+                    let constraint_edge = isolation_result.new_edges[constraint_edge_index];
+                    debug_assert!(self
+                        .s()
+                        .undirected_edge(constraint_edge)
+                        .vertices()
+                        .iter()
+                        .any(|v| v.fix() == cur_from));
+
+                    let constraint_edge = self.s().undirected_edge(constraint_edge).fix();
+                    self.make_constraint_edge(constraint_edge);
+
+                    // Don't mark the new constraint edge for legalization
+                    isolation_result
+                        .new_edges
+                        .swap_remove(constraint_edge_index);
+
+                    // All flipped edges need to legalized.
+                    while let Some(edge) = isolation_result.new_edges.pop() {
+                        let edge_handle = self.directed_edge(edge.as_directed());
+                        let e2 = edge_handle.prev();
+                        let e4 = edge_handle.rev().prev();
+                        let left = e2.from().position();
+                        let right = e4.from().position();
+                        let from = edge_handle.from().position();
+                        let to = edge_handle.to().position();
+
+                        if crate::delaunay_core::math::contained_in_circumference(
+                            from, to, left, right,
+                        ) {
+                            let mut push_if_flip_candidate = |edge: FixedUndirectedEdgeHandle| {
+                                if isolation_result.is_new_edge(edge) && edge != constraint_edge {
+                                    isolation_result.new_edges.push(edge);
+                                }
+                            };
+
+                            let e1 = edge_handle.next();
+                            let e3 = edge_handle.rev().next();
+
+                            push_if_flip_candidate(e1.fix().as_undirected());
+                            push_if_flip_candidate(e2.fix().as_undirected());
+                            push_if_flip_candidate(e3.fix().as_undirected());
+                            push_if_flip_candidate(e4.fix().as_undirected());
+
+                            crate::delaunay_core::dcel_operations::flip_cw(self.s_mut(), edge);
+                        }
                     }
+                    crate::delaunay_core::dcel_operations::cleanup_isolated_vertex(
+                        self.s_mut(),
+                        &mut isolation_result,
+                    );
+
+                    return vertex_fixed;
                 }
             }
         }
@@ -734,7 +736,7 @@ where
         &self,
         from: Point2<<V as HasPosition>::Scalar>,
         to: Point2<<V as HasPosition>::Scalar>,
-    ) -> impl Iterator<Item = DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
+    ) -> impl Iterator<Item=DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
         LineIntersectionIterator::new(self, from, to)
             .flat_map(|intersection| intersection.as_edge_intersection())
             .filter(|e| e.is_constraint_edge())
@@ -750,7 +752,7 @@ where
         &self,
         from: FixedVertexHandle,
         to: FixedVertexHandle,
-    ) -> impl Iterator<Item = DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
+    ) -> impl Iterator<Item=DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
         LineIntersectionIterator::new_from_handles(self, from, to)
             .flat_map(|intersection| intersection.as_edge_intersection())
             .filter(|e| e.is_constraint_edge())
@@ -793,12 +795,15 @@ where
 
 #[cfg(test)]
 mod test {
+    use alloc::{vec, vec::Vec};
 
-    use super::ConstrainedDelaunayTriangulation;
-    use crate::test_utilities::*;
-    use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
     use rand::distributions::{Distribution, Uniform};
     use rand::{Rng, SeedableRng};
+
+    use crate::test_utilities::*;
+    use crate::{DelaunayTriangulation, InsertionError, Point2, Triangulation};
+
+    use super::ConstrainedDelaunayTriangulation;
 
     type Cdt = ConstrainedDelaunayTriangulation<Point2<f64>>;
     type Delaunay = DelaunayTriangulation<Point2<f64>>;
@@ -822,8 +827,6 @@ mod test {
 
         Ok(())
     }
-
-    use alloc::{vec, vec::Vec};
 
     #[test]
     fn test_add_single_simple_constraint() -> Result<(), InsertionError> {
@@ -1122,8 +1125,8 @@ mod test {
         rng: &mut R,
         line_dir: Point2<f64>,
     ) -> Vec<Point2<f64>>
-    where
-        R: Rng,
+        where
+            R: Rng,
     {
         let mut result = Vec::with_capacity(num_points);
         let range = Uniform::new(-range, range);
