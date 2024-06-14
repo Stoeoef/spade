@@ -8,6 +8,8 @@ description = "Delaunay triangulations for the rust ecosystem"
 repository = "https://github.com/Stoeoef/spade"
 license = "MIT OR Apache-2.0"
 autobenches = false
+categories = ["algorithms", "data-structures", "graphics", "mathematics", "science::geo"]
+keywords = ["Delaunay", "CDT", "geometry", "triangulation", "voronoi"]
 
 [lib]
 bench = false
@@ -17,7 +19,7 @@ default = ["std"]
 std = []
 
 [dependencies]
-smallvec = "1"
+smallvec = "1.13"
 robust = "1.1.0"
 num-traits = "0.2"
 hashbrown = "0.14.2"
