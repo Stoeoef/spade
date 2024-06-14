@@ -1,0 +1,66 @@
+<svg viewBox="-10 -43.4 96 76.8" width="450" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<pattern height="1" id="add_constraint_and_split_added_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
+<line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
+</pattern>
+</defs>
+<rect height="100%" style="fill: url(#add_constraint_and_split_added_pattern0001)" width="100%" x="-10" y="-43.4"/>
+<g>
+<path d="M20,20 L20,-7.375 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M60,20 L45,25 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
+<path d="M38.525,-4.925 L60,-2.1 L45,25 z" style="fill: rgb(211 211 211)"/>
+<path d="M50,-34 L60,-2.1 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M45,25 L20,20 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M76,0 L60,20 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
+<path d="M20,20 L0,-10 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
+<path d="M0,-10 L20,-30 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
+<path d="M20,-30 L32,-35 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
+<path d="M32,-35 L38.525,-4.925 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
+<path d="M32,-35 L50,-34 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M50,-34 L60,-30 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
+<path d="M60,-30 L76,0 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="32" y1="-34" y2="-35"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="60" y1="-34" y2="-30"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="38.525" x2="45" y1="-4.925" y2="25"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="45" x2="60" y1="25" y2="-2.1"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="32" y1="-30" y2="-35"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="38.525" x2="60" y1="-4.925" y2="-2.1"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="20" x2="38.525" y1="-7.375" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="60" x2="60" y1="-2.1" y2="20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="60" x2="45" y1="20" y2="25"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="45" x2="20" y1="25" y2="20"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="20" x2="20" y1="20" y2="-7.375"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="60" x2="76" y1="-30" y2="0"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="76" x2="60" y1="0" y2="20"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="0" y1="20" y2="-10"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="0" x2="20" y1="-10" y2="-30"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="0" x2="20" y1="-10" y2="-7.375"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="20" x2="20" y1="-30" y2="-7.375"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="32" x2="20" y1="-35" y2="-7.375"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="38.525" y1="20" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="32" x2="38.525" y1="-35" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="38.525" y1="-34" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="60" y1="-34" y2="-2.1"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="60" x2="60" y1="-30" y2="-2.1"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="76" x2="60" y1="0" y2="-2.1"/>
+<circle cx="0" cy="-10" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="76" cy="0" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="20" cy="20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="20" cy="-30" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="45" cy="25" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="32" cy="-35" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="60" cy="20" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="60" cy="-30" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="50" cy="-34" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="20" cy="-7.375" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="38.525" cy="-4.925" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<circle cx="60" cy="-2.1" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
+<text dy="1" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (0 -10) rotate (0) translate(-0 10)" x="0" y="-10">
+0
+</text>
+<text dy="1" font-size="3" style="fill: rgb(0 0 0)" text-anchor="middle" transform="translate (76 0) rotate (0) translate(-76 -0)" x="76" y="0">
+1
+</text>
+</g>
+</svg>

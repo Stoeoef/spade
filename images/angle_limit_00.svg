@@ -1,11 +1,11 @@
 <svg viewBox="-5.477960964140946 -55.178403760945045 60.93553156969135 115.1764404664855" width="200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <defs>
-<pattern height="1" id="angle_limit_0_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<pattern height="1" id="angle_limit_00_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
 <line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
 <line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
 </pattern>
 </defs>
-<rect height="100%" style="fill: url(#angle_limit_0_pattern0001)" width="100%" x="-5.477960964140946" y="-55.178403760945045"/>
+<rect height="100%" style="fill: url(#angle_limit_00_pattern0001)" width="100%" x="-5.477960964140946" y="-55.178403760945045"/>
 <g>
 <path d="M6.4,49.6 L0,50 L0,0 z" style="fill: rgb(211 211 211)"/>
 <path d="M18.8,46.325 L6.4,49.6 L0,0 z" style="fill: rgb(211 211 211)"/>

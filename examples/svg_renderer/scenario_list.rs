@@ -1,19 +1,14 @@
-use super::quicksketch::{
-    ArrowType, HorizontalAlignment, Point, Sketch, SketchColor, SketchElement, SketchFill,
-    SketchLayer, StrokeStyle, Vector,
-};
-
 use anyhow::{Context, Result};
-
 use cgmath::{Angle, Bounded, Deg, EuclideanSpace, InnerSpace, Point2, Vector2};
 
+use spade::handles::FixedVertexHandle;
 use spade::{
     handles::{
         FixedDirectedEdgeHandle,
         VoronoiVertex::{self, Inner, Outer},
     },
-    AngleLimit, FloatTriangulation as _, HasPosition, InsertionError, RefinementParameters,
-    Triangulation as _,
+    AngleLimit, FloatTriangulation as _, HasPosition, InsertionError, Intersection,
+    LineIntersectionIterator, RefinementParameters, Triangulation as _,
 };
 
 use crate::{
@@ -22,6 +17,11 @@ use crate::{
         convert_triangulation, Cdt, ConversionOptions, DirectedEdgeType, EdgeMode, FaceType,
         Triangulation, UndirectedEdgeType, VertexType,
     },
+};
+
+use super::quicksketch::{
+    ArrowType, HorizontalAlignment, Point, Sketch, SketchColor, SketchElement, SketchFill,
+    SketchLayer, StrokeStyle, Vector,
 };
 
 fn big_triangulation() -> Result<Triangulation, InsertionError> {
@@ -1430,7 +1430,6 @@ pub fn line_intersection_iterator_scenario() -> Result<Sketch> {
         spade::Point2::new(-30.0, 0.0),
         spade::Point2::new(40.0, 0.0),
     ) {
-        println!("{:?}", intersection);
         match intersection {
             EdgeIntersection(edge) => {
                 let [from, to] = edge.positions().map(convert_point);
@@ -1511,5 +1510,68 @@ pub fn line_intersection_iterator_scenario() -> Result<Sketch> {
     add_label(&mut result, "3", Point2::new(22.0, LABEL_Y));
     add_label(&mut result, "4", Point2::new(30.0, LABEL_Y));
 
+    Ok(result)
+}
+
+pub enum TryAddConstraintScenario {
+    BaseCdt,
+    SplitAll,
+}
+
+pub fn try_add_constraint_scenario(scenario: TryAddConstraintScenario) -> Result<Sketch> {
+    let mut cdt = get_cdt_for_try_add_constraint()?;
+
+    let v = |index| FixedVertexHandle::from_index(index);
+
+    match scenario {
+        TryAddConstraintScenario::BaseCdt => {}
+        TryAddConstraintScenario::SplitAll => {
+            cdt.add_constraint_and_split(v(0), v(1), |pos| pos.into());
+        }
+    }
+
+    for edge in cdt.fixed_undirected_edges() {
+        if cdt.is_constraint_edge(edge) {
+            cdt.undirected_edge_data_mut(edge).data_mut().color = SketchColor::DARK_RED;
+        }
+    }
+
+    let mut new_edges = Vec::new();
+    for intersection in LineIntersectionIterator::new_from_handles(&cdt, v(0), v(1)) {
+        if let Intersection::EdgeOverlap(e) = intersection {
+            new_edges.push(e.fix().as_undirected())
+        }
+    }
+
+    let mut result = convert_triangulation(&cdt, &Default::default());
+
+    for vertex in cdt.vertices().take(2) {
+        result.add(
+            SketchElement::text(vertex.index().to_string())
+                .position(convert_point(vertex.position()))
+                .font_size(3.0)
+                .horizontal_alignment(HorizontalAlignment::Middle)
+                .dy(1.0),
+        );
+    }
+
+    result.set_width(450);
+    Ok(result)
+}
+
+fn get_cdt_for_try_add_constraint() -> Result<Cdt> {
+    let vertices = vec![
+        VertexType::new(0.0, -10.0),
+        VertexType::new(76.0, 0.0),
+        VertexType::new(20.0, 20.0),
+        VertexType::new(20.0, -30.0),
+        VertexType::new(45.0, 25.0),
+        VertexType::new(32.0, -35.0),
+        VertexType::new(60.0, 20.0),
+        VertexType::new(60.0, -30.0),
+        VertexType::new(50.0, -34.0),
+    ];
+
+    let result = Cdt::bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]])?;
     Ok(result)
 }

@@ -567,7 +567,7 @@ pub trait Triangulation: Default {
     ///
     /// The edges are returned in clockwise order as seen from any point in the triangulation.
     ///
-    #[doc = include_str!("../images/convex_hull_scenario.svg")]
+    #[doc = include_str!("../images/convex_hull.svg")]
     ///
     /// *A triangulation with its convex hull being highlighted. `e0` .. `e5` denote the returned
     /// edges in clockwise order.*
