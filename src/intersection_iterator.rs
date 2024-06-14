@@ -1,6 +1,6 @@
-use crate::{HasPosition, Point2, Triangulation, TriangulationExt};
 use crate::delaunay_core::math;
 use crate::handles::{DirectedEdgeHandle, FixedVertexHandle, VertexHandle};
+use crate::{HasPosition, Point2, Triangulation, TriangulationExt};
 
 /// An iterator over all intersections of a straight line across the triangulation.
 ///
