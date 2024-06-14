@@ -1,11 +1,11 @@
 <svg viewBox="-10.480000000000002 -10.480000000000002 120.96000000000001 120.96000000000001" width="360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <defs>
-<pattern height="1" id="exclude_refined_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<pattern height="1" id="exclude_outer_faces_refined_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
 <line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
 <line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
 </pattern>
 </defs>
-<rect height="100%" style="fill: url(#exclude_refined_pattern0001)" width="100%" x="-10.480000000000002" y="-10.480000000000002"/>
+<rect height="100%" style="fill: url(#exclude_outer_faces_refined_pattern0001)" width="100%" x="-10.480000000000002" y="-10.480000000000002"/>
 <g>
 <path d="M10,75 L0,100 L0,0 z" style="fill: rgb(210 180 140)"/>
 <path d="M15.475,59.975 L20.225,59.575 L18.225,64.425 z" style="fill: rgb(211 211 211)"/>
@@ -16,13 +16,13 @@
 <path d="M35,55 L35,60 L30,55 z" style="fill: rgb(211 211 211)"/>
 <path d="M30,60 L35,60 L37.5,67.5 z" style="fill: rgb(210 180 140)"/>
 <path d="M10,75 L0,0 L12.725,67.475 z" style="fill: rgb(210 180 140)"/>
-<path d="M30,20 L35.475,35.025 L24.525,35.025 z" style="fill: rgb(211 211 211)"/>
+<path d="M55,55 L40,47.5 L60,45 z" style="fill: rgb(210 180 140)"/>
 <path d="M85,90 L80,90 L85,85 z" style="fill: rgb(211 211 211)"/>
 <path d="M20,75 L40,75 L0,100 z" style="fill: rgb(210 180 140)"/>
 <path d="M0,100 L40,75 L70,85 z" style="fill: rgb(210 180 140)"/>
 <path d="M47.275,67.475 L45,75 L38.725,71.2 z" style="fill: rgb(211 211 211)"/>
 <path d="M30,20 L0,0 L100,0 z" style="fill: rgb(210 180 140)"/>
-<path d="M55,55 L40,47.5 L60,45 z" style="fill: rgb(210 180 140)"/>
+<path d="M30,20 L35.475,35.025 L24.525,35.025 z" style="fill: rgb(211 211 211)"/>
 <path d="M25,60 L30,55 L30,60 z" style="fill: rgb(211 211 211)"/>
 <path d="M20.85,55.55 L22.2,51.7 L25,55 z" style="fill: rgb(211 211 211)"/>
 <path d="M44.525,59.975 L41.775,64.425 L39.775,59.575 z" style="fill: rgb(211 211 211)"/>

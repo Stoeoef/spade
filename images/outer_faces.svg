@@ -1,11 +1,11 @@
 <svg viewBox="-57.2 -41.45 114.4 97.9" width="400" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <defs>
-<pattern height="1" id="outer_face_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
+<pattern height="1" id="outer_faces_pattern0001" patternTransform="rotate(63.512 0 0) scale(2)" patternUnits="userSpaceOnUse" width="1">
 <line stroke="rgb(255 255 255)" stroke-width="1.01" x1="0" x2="0" y1="-0.1" y2="1.1"/>
 <line stroke="rgb(211 211 211)" stroke-width="1.01" x1="1" x2="1" y1="-0.1" y2="1.1"/>
 </pattern>
 </defs>
-<rect height="100%" style="fill: url(#outer_face_pattern0001)" width="100%" x="-57.2" y="-41.45"/>
+<rect height="100%" style="fill: url(#outer_faces_pattern0001)" width="100%" x="-57.2" y="-41.45"/>
 <g>
 <path d="M40,-35 L50,10 L-20,0 z" style="fill: rgb(211 211 211)"/>
 <path d="M-50,50 L-20,0 L35,45 z" style="fill: rgb(211 211 211)"/>
