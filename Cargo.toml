@@ -56,3 +56,6 @@ shapefile = "0.6.0"
 [[bench]]
 name = "benchmarks"
 harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
