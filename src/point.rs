@@ -116,7 +116,7 @@ impl<S: SpadeNum> From<(S, S)> for Point2<S> {
     }
 }
 
-/// An object with position.
+/// An object with a position.
 ///
 /// Vertices need to implement this trait to allow being inserted into triangulations.
 pub trait HasPosition {
