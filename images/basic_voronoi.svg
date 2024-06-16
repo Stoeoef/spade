@@ -117,13 +117,13 @@
 <line style="stroke-width: 1; stroke: rgb(65 105 225); fill: none" x1="-42.5" x2="-76.6" y1="-11.675" y2="11.075"/>
 <line style="stroke-width: 1; stroke: rgb(65 105 225); fill: none" x1="-20.15" x2="-42.5" y1="-37.4" y2="-50.65"/>
 <line style="stroke-width: 1; stroke: rgb(65 105 225); fill: none" x1="-42.5" x2="-42.5" y1="-50.65" y2="-11.675"/>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="-42.5" x2="-150.5" y1="-50.65" y2="-214.65"/>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="-76.6" x2="-384.6" y1="11.075" y2="-36.925"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="-42.5" x2="-60.65" y1="-50.65" y2="-78.2"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="-76.6" x2="-101.3" y1="11.075" y2="7.225"/>
 <line style="stroke-width: 1; stroke: rgb(65 105 225); fill: none" x1="-6.5" x2="38.05" y1="168.55" y2="26.8"/>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="-6.5" x2="1.5" y1="168.55" y2="636.55"/>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="50.275" x2="210.275" y1="21.725" y2="125.725"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="NaN" x2="NaN" y1="NaN" y2="NaN"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="50.275" x2="108.95" y1="21.725" y2="59.875"/>
 <line style="stroke-width: 1; stroke: rgb(65 105 225); fill: none" x1="64.35" x2="19.2" y1="-20.6" y2="-52.475"/>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="64.35" x2="292.35" y1="-20.6" y2="-144.6"/>
-<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="17.325" x2="37.325" y1="-71.15" y2="-307.15"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="64.35" x2="111.8" y1="-20.6" y2="-46.4"/>
+<line style="stroke-width: 1; stroke: rgb(65 105 225); stroke-dasharray: 4 2; fill: none" x1="17.325" x2="18" y1="-71.15" y2="-79.125"/>
 </g>
 </svg>
