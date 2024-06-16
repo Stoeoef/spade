@@ -31,6 +31,12 @@ version = "1.0.0"
 default-features = false
 features = ["derive", "alloc"]
 
+[dependencies.mint]
+package = "mint"
+optional = true
+default-features = false
+version = "0.5.9"
+
 [workspace]
 members = ["delaunay_compare"]
 
