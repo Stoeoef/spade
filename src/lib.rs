@@ -10,6 +10,15 @@
 //! * Serde support with the `serde` feature.
 //! * `no_std` support with `default-features = false`
 //! * Natural neighbor interpolation: [NaturalNeighbor]
+//!
+//! # Cargo features
+//!
+//! These features are disabled by default and need to be enabled in your `Cargo.toml`:
+//!  - `serde`: Enable (de)serialization of (constrained) Delaunay triangulations with the
+//!    [Serde](https://docs.rs/serde/latest/serde/) crate
+//!  - `mint`: Enables rudimentary [mint](https://docs.rs/mint/latest/mint/) interoperability by
+//!    implementing the `From` and `Into` conversion traits between `spade::Point2` and
+//!    `mint::Point2`. Also implements [HasPosition] for `mint::Point2`.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -59,6 +68,8 @@ pub use delaunay_core::TriangulationExt;
 
 pub(crate) use delaunay_core::RemovalResult;
 
+#[cfg(feature = "mint")]
+mod mint_support;
 #[cfg(test)]
 mod test_utilities;
 

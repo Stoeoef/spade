@@ -183,6 +183,9 @@ pub fn basic_voronoi_example() -> Sketch {
     let mut sketch = convert_triangulation(&triangulation, &Default::default());
     const LINE_COLOR: SketchColor = SketchColor::ROYAL_BLUE;
 
+    // Apply some handcrafted scaling values to all infinite directions to fix some weird SVG
+    // issues when displaying this graphic in the README preview from lib.rs
+    let mut voronoi_edge_offsets = vec![8.0, 54.0, 70.0, 0.0, 25.0, 33.0];
     for edge in triangulation.undirected_voronoi_edges() {
         match edge.vertices() {
             [Inner(from), Inner(to)] => {
@@ -197,10 +200,11 @@ pub fn basic_voronoi_example() -> Sketch {
             [Inner(from), Outer(edge)] | [Outer(edge), Inner(from)] => {
                 let from = convert_point(from.circumcenter());
                 let to_direction = edge.direction_vector();
-                let to_direction = Vector::new(to_direction.x, to_direction.y);
+                let to_direction = Vector::new(to_direction.x, to_direction.y).normalize();
 
+                let individual_offset = voronoi_edge_offsets.pop().unwrap();
                 sketch.add(
-                    SketchElement::line(from, from + to_direction * 4.0)
+                    SketchElement::line(from, from + to_direction * individual_offset)
                         .stroke_color(LINE_COLOR)
                         .stroke_style(StrokeStyle::Dashed),
                 );

@@ -339,7 +339,7 @@ where
     None
 }
 
-pub struct PointWithIndex<V> {
+pub(crate) struct PointWithIndex<V> {
     data: V,
     index: usize,
 }
