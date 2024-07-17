@@ -15,7 +15,7 @@ pub mod refinement;
 pub mod interpolation;
 pub mod math;
 
-pub use bulk_load::{bulk_load, bulk_load_cdt, bulk_load_stable};
+pub use bulk_load::{bulk_load, bulk_load_cdt, bulk_load_stable, bulk_load_stable_with_indices};
 
 pub use triangulation_ext::{RemovalResult, TriangulationExt};
 
@@ -24,6 +24,8 @@ pub use hint_generator::{
     HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
     LastUsedVertexHintGenerator,
 };
+
+pub use bulk_load::PointWithIndex;
 
 pub use refinement::{AngleLimit, RefinementParameters, RefinementResult};
 

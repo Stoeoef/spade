@@ -1,7 +1,6 @@
 use super::delaunay_core::Dcel;
 use crate::{
-    delaunay_core::bulk_load, handles::VertexHandle, HasPosition, HintGenerator, InsertionError,
-    LastUsedVertexHintGenerator, NaturalNeighbor, Point2, Triangulation, TriangulationExt,
+    delaunay_core::bulk_load, handles::VertexHandle, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator, NaturalNeighbor, Point2, PointWithIndex, Triangulation, TriangulationExt
 };
 
 use alloc::vec::Vec;
@@ -346,6 +345,24 @@ where
     /// ```
     pub fn bulk_load_stable(elements: Vec<V>) -> Result<Self, InsertionError> {
         let mut result: Self = crate::delaunay_core::bulk_load_stable::<
+            _,
+            _,
+            DelaunayTriangulation<_, _, _, _, _>,
+            _,
+        >(bulk_load, elements)?;
+        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
+        Ok(result)
+    }
+
+    /// Creates a new delaunay triangulation with an efficient bulk loading strategy. But you 
+    /// provide the indices. 
+    /// 
+    /// # Duplicate handling
+    /// 
+    /// This still applies, and is described fully in the [Self::bulk_load_stable] docs
+    ///
+    pub fn bulk_load_stable_with_indices(elements: Vec<PointWithIndex<V>>) -> Result<Self, InsertionError> {
+        let mut result: Self = crate::delaunay_core::bulk_load_stable_with_indices::<
             _,
             _,
             DelaunayTriangulation<_, _, _, _, _>,
