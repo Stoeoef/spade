@@ -45,6 +45,7 @@ pub use delaunay_core::{
     AngleLimit, HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
     LastUsedVertexHintGenerator, RefinementParameters, RefinementResult,
 };
+
 pub use crate::delaunay_core::interpolation::{Barycentric, NaturalNeighbor};
 pub use delaunay_core::LineSideInfo;
 pub use intersection_iterator::{Intersection, LineIntersectionIterator};

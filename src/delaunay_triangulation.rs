@@ -1,6 +1,7 @@
 use super::delaunay_core::Dcel;
 use crate::{
-    delaunay_core::bulk_load, handles::VertexHandle, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator, NaturalNeighbor, Point2, Triangulation, TriangulationExt
+    delaunay_core::bulk_load, handles::VertexHandle, HasPosition, HintGenerator, InsertionError,
+    LastUsedVertexHintGenerator, NaturalNeighbor, Point2, Triangulation, TriangulationExt,
 };
 
 use alloc::vec::Vec;
