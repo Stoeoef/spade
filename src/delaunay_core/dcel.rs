@@ -133,11 +133,10 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.faces.truncate(1); // Keep outer face
     }
 
-    pub fn vertex_by_index(&self, index: usize) -> Option<VertexHandle<V, DE, UE, F>> {
+    pub fn get_vertex(&self, index: usize) -> Option<VertexHandle<V, DE, UE, F>> {
         match self.vertices.get(index) {
             Some(_) => {
-                let handle = FixedVertexHandle::new(index);
-                Some(DynamicHandleImpl::new(self, handle))
+                Some(DynamicHandleImpl::new(self, FixedVertexHandle::new(index)))
             },
             None => None,
         }

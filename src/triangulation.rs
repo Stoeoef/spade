@@ -323,13 +323,12 @@ pub trait Triangulation: Default {
     }
 
     /// Get a vertex by its index
-    #[allow(clippy::type_complexity)]
-    fn vertex_by_index(
+    fn get_vertex(
         &self,
         index: usize,
     ) -> Option<VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>>
     {
-        self.s().vertex_by_index(index)
+        self.s().get_vertex(index)
     }
 
     /// An iterator visiting all faces.

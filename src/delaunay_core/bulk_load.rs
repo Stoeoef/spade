@@ -339,8 +339,6 @@ where
     None
 }
 
-/// Data type to store a vertex and its index
-#[derive(Clone, Copy, Debug)]
 pub struct PointWithIndex<V> {
     data: V,
     index: usize,
@@ -378,27 +376,6 @@ where
         .map(|(index, data)| PointWithIndex { index, data })
         .collect::<Vec<_>>();
 
-    return bulk_load_stable_with_indices(constructor, elements);
-}
-
-/// Advise to only use this when your data set doesn't include duplicates,
-/// duplicates are filtered and indexes moved to fill their place
-pub fn bulk_load_stable_with_indices<V, T, T2, Constructor>(
-    constructor: Constructor,
-    elements: Vec<PointWithIndex<V>>,
-) -> Result<T, InsertionError>
-where
-    V: HasPosition,
-    T: Triangulation<Vertex = V>,
-    T2: Triangulation<
-        Vertex = PointWithIndex<V>,
-        DirectedEdge = T::DirectedEdge,
-        UndirectedEdge = T::UndirectedEdge,
-        Face = T::Face,
-        HintGenerator = T::HintGenerator,
-    >,
-    Constructor: FnOnce(Vec<PointWithIndex<V>>) -> Result<T2, InsertionError>,
-{
     let num_original_elements = elements.len();
 
     let mut with_indices = constructor(elements)?;
@@ -1094,7 +1071,7 @@ mod test {
 
     use crate::{
         ConstrainedDelaunayTriangulation, DelaunayTriangulation, InsertionError, Point2,
-        PointWithIndex, Triangulation, TriangulationExt,
+        Triangulation, TriangulationExt,
     };
 
     use super::Hull;
@@ -1232,56 +1209,6 @@ mod test {
 
         Ok(())
     }
-
-    // #[test]
-    // fn test_bulk_load_stable_with_indices() -> Result<(), InsertionError> {
-    //     const SIZE: usize = 200;
-    //     let mut vertices: Vec<PointWithIndex<Point2<f64>>> = random_points_with_seed(SIZE, SEED2)
-    //         .iter()
-    //         .enumerate()
-    //         .map(|(index, point)| PointWithIndex { index, data: *point })
-    //         .collect();
-
-    //     vertices.push(PointWithIndex {
-    //         index: 2,
-    //         data: Point2::new(4.0, -4.0),
-    //     });
-    //     vertices.push(PointWithIndex {
-    //         index: 3,
-    //         data: Point2::new(-4.0, 4.0),
-    //     });
-    //     vertices.push(PointWithIndex {
-    //         index: 6,
-    //         data: Point2::new(5.0, -5.0),
-    //     });
-    //     vertices.push(PointWithIndex {
-    //         index: 7,
-    //         data: Point2::new(-5.0, 5.0),
-    //     });
-    //     vertices.push(PointWithIndex {
-    //         index: 10,
-    //         data: Point2::new(6.0, -6.0),
-    //     });
-    //     vertices.push(PointWithIndex {
-    //         index: 11,
-    //         data: Point2::new(-6.0, 6.0),
-    //     });
-
-    //     let num_vertices = vertices.len();
-
-    //     let triangulation =
-    //         DelaunayTriangulation::<_>::bulk_load_stable_with_indices(vertices.clone())?;
-    //     // triangulation.sanity_check();
-    //     assert_eq!(triangulation.num_vertices(), num_vertices);
-
-    //     for (inserted, original) in triangulation.vertices().zip(vertices) {
-    //         assert_eq!(inserted.data(), &original.data);
-    //     }
-
-    //     triangulation.sanity_check();
-
-    //     Ok(())
-    // }
 
     fn small_cdt_vertices() -> Vec<Point2<f64>> {
         vec![

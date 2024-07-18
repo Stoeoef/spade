@@ -50,8 +50,6 @@ pub use delaunay_core::LineSideInfo;
 pub use intersection_iterator::{Intersection, LineIntersectionIterator};
 pub use triangulation::{FloatTriangulation, PositionInTriangulation, Triangulation};
 
-pub use delaunay_core::PointWithIndex;
-
 #[cfg(not(fuzzing))]
 pub(crate) use delaunay_core::TriangulationExt;
 
