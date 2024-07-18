@@ -323,8 +323,8 @@ pub trait Triangulation: Default {
     }
 
     /// Get a vertex by its index
-    /// 
-    /// To get the handle, wrap your local index in a FixedVertexHandle: 
+    ///
+    /// To get the handle, wrap your local index in a FixedVertexHandle:
     /// ```
     /// let handle = FixedVertexHandle::from_index(my_index)
     /// ```
