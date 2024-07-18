@@ -322,6 +322,19 @@ pub trait Triangulation: Default {
         self.s().fixed_vertices()
     }
 
+    /// Get a vertex by its index
+    ///
+    /// To get the handle, wrap your local index in a FixedVertexHandle:
+    /// `let handle = FixedVertexHandle::from_index(my_index);`
+    #[allow(clippy::type_complexity)]
+    fn get_vertex(
+        &self,
+        handle: FixedVertexHandle,
+    ) -> Option<VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>>
+    {
+        self.s().get_vertex(handle)
+    }
+
     /// An iterator visiting all faces.
     ///
     /// The first returned face is the outer face, all other faces will be inner faces.
