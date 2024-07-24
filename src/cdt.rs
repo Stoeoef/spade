@@ -1706,6 +1706,37 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    pub fn infinite_loop_2() -> Result<(), InsertionError> {
+        let lines = [
+            [
+                Point2::new(0.9296344883099084, 0.03071359966930065),
+                Point2::new(0.26031306872107085, 0.34491289915959455),
+            ],
+            [
+                Point2::new(0.7384289920396423, 0.4981747664368982),
+                Point2::new(0.06543525273452533, 0.34139896206401854),
+            ],
+            [
+                Point2::new(0.9535295221136963, 0.9114305148801416),
+                Point2::new(0.8306091165247367, 0.08959389670590667),
+            ],
+        ];
+
+        let mut cdt = ConstrainedDelaunayTriangulation::<Point2<f64>>::new();
+
+        for [a, b] in lines {
+            let a = cdt.insert(a)?;
+            let b = cdt.insert(b)?;
+
+            cdt.add_constraint_and_split(a, b, |v| v);
+        }
+
+        // This insertion used to fail as the position could not be located
+        cdt.insert(Point2::new(0.5138795569454557, 0.3186272217036502))?;
+        Ok(())
+    }
+
     fn get_cdt_for_try_add_constraint() -> Result<Cdt, InsertionError> {
         let vertices = vec![
             Point2::new(0.0, -10.0),
