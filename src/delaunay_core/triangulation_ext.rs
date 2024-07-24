@@ -13,11 +13,37 @@ use alloc::vec::Vec;
 
 impl<T> TriangulationExt for T where T: Triangulation + ?Sized {}
 
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Hash, Eq, PartialEq)]
 pub enum PositionWhenAllVerticesOnLine {
     OnEdge(FixedDirectedEdgeHandle),
     OnVertex(FixedVertexHandle),
     NotOnLine(FixedDirectedEdgeHandle),
     ExtendingLine(FixedVertexHandle),
+}
+
+impl PositionWhenAllVerticesOnLine {
+    fn to_regular_position_in_triangulation<T: Triangulation>(
+        self,
+        triangulation: &T,
+    ) -> PositionInTriangulation
+    where
+        T::Vertex: HasPosition,
+    {
+        use PositionWhenAllVerticesOnLine::*;
+        match self {
+            OnEdge(edge) => PositionInTriangulation::OnEdge(edge),
+            OnVertex(v) => PositionInTriangulation::OnVertex(v),
+            NotOnLine(edge) => PositionInTriangulation::OutsideOfConvexHull(edge),
+            ExtendingLine(v) => {
+                let out_edge = triangulation
+                    .vertex(v)
+                    .out_edge()
+                    .expect("Could not find an out edge. This is a bug in spade.")
+                    .fix();
+                PositionInTriangulation::OutsideOfConvexHull(out_edge)
+            }
+        }
+    }
 }
 
 pub enum InsertionResult {
@@ -99,7 +125,7 @@ pub trait TriangulationExt: Triangulation {
     }
 
     fn locate_when_all_vertices_on_line(
-        &mut self,
+        &self,
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) -> PositionWhenAllVerticesOnLine {
         use PositionWhenAllVerticesOnLine::*;
@@ -423,24 +449,56 @@ pub trait TriangulationExt: Triangulation {
             };
         }
 
-        let start = self.validate_vertex_handle(start);
+        if self.all_vertices_on_line() {
+            return self
+                .locate_when_all_vertices_on_line(target_position)
+                .to_regular_position_in_triangulation(self);
+        }
 
+        let start = self.validate_vertex_handle(start);
         let closest_vertex = self.walk_to_nearest_neighbor(start, target_position);
 
-        let out_edge = closest_vertex
+        // From here on spade attempts to find the location by inspecting the neighborhood of
+        // the closest vertex and iteratively getting closer to the target position.
+        // For regular Delaunay triangulations, the vertex should always be on an adjacent edge or
+        // face (or on the closest vertex itself).
+        // However, that doesn't hold for CDTs - these can have arbitrarily many faces between the
+        // closest vertex and the target position. Thus, a "walk" to cross the remaining distance
+        // is necessary. In addition, `walk_to_nearest_neighbor` does not use precise arithmetics -
+        // it may fail to always report the real closest vertex. The algorithm below only uses
+        // precise queries and should always return the correct answer.
+        //
+        // It works like this:
+        // 1. Choose an arbitrary vertex V (closest_vertex in this case, but can be anything).
+        // 2. Rotate around this vertex until we find the angle segment in which the target
+        //    position lies:     V
+        //                      / \
+        //                   e0/   \e1
+        //                    /__e2_\
+        //                   .\     / .
+        //                  .  \   /   .
+        //                 .     O  <---.--- "opposite" vertex
+        //                .              .
+        //                   T      target position T lies between the segment spanned by the
+        //                   ^----- outgoing edges e0 and e1
+        //
+        // 4. If the segment spans a triangle that contains the target position, we're done - the
+        //    target lies in the face lined by e0, e1 and e2
+        // 3. Otherwise, set V to the _opposite vertex_ (O in the diagram above), Then, go to step 2
+
+        // e0 implicitly defines the rotation vertex V: It is always e0.from(). The segment is
+        // adjacent to this edge iff `rotate_ccw == true` (see below)
+        let mut e0 = closest_vertex
             .out_edge()
             .expect("No out edge found. This is a bug.");
 
-        let mut query = out_edge.side_query(target_position);
-        let mut edge = if query.is_on_right_side() {
-            out_edge.rev()
-        } else {
-            out_edge
-        };
+        let mut e0_query = e0.side_query(target_position);
+
+        // Choose the rotation direction (CW or CCW) to minimize the angle distance to the target
+        // position.
+        let mut rotate_ccw = e0_query.is_on_left_side_or_on_line();
 
         let mut loop_counter = self.s().num_directed_edges();
-
-        // Invariant: position is on the left side or on the line of edge.
         loop {
             // Prevent accidental infinite loops (easier to debug). Should never happen
             if loop_counter == 0 {
@@ -448,106 +506,82 @@ pub trait TriangulationExt: Triangulation {
             }
             loop_counter -= 1;
 
-            let prev = edge.prev();
-            if !edge.is_outer_edge() {
-                let next = edge.next();
-                let next_query = next.side_query(target_position);
+            let [from, to] = e0.vertices();
+            if from.position() == target_position {
+                self.hint_generator().notify_vertex_lookup(from.fix());
+                return PositionInTriangulation::OnVertex(from.fix());
+            }
+            if to.position() == target_position {
+                self.hint_generator().notify_vertex_lookup(to.fix());
+                return PositionInTriangulation::OnVertex(to.fix());
+            }
 
-                if next_query.is_on_right_side() {
-                    edge = next.rev();
-                    query = edge.side_query(target_position);
-                    continue;
+            if e0_query.is_on_line() {
+                if e0.is_outer_edge() {
+                    e0 = e0.rev();
                 }
 
-                let prev_query = prev.side_query(target_position);
-                if prev_query.is_on_right_side() {
-                    edge = prev.rev();
-                    query = edge.side_query(target_position);
-                    continue;
-                }
+                // Special case: the current_edge is collinear with the target position.
+                // This means no segment exists that could be used to advance the rotation vertex.
+                // Instead, the algorithm changes to rotate around current_edge.prev().from()
+                // Since the triangulation is not degenerate, this vertex cannot have an out edge
+                // that is collinear.
+                e0 = e0.prev();
+                e0_query = e0.side_query(target_position);
+                rotate_ccw = e0_query.is_on_left_side_or_on_line();
+                continue;
+            }
 
-                self.hint_generator().notify_vertex_lookup(edge.to().fix());
-
-                // Point must be in triangle or on its lines
-                return match (
-                    query.is_on_line(),
-                    next_query.is_on_line(),
-                    prev_query.is_on_line(),
-                ) {
-                    // Point lies on no line and must be inside the face
-                    (false, false, false) => {
-                        PositionInTriangulation::OnFace(next.face().fix().adjust_inner_outer())
-                    }
-                    // Point lies on exactly one line
-                    (false, false, true) => PositionInTriangulation::OnEdge(prev.fix()),
-                    (false, true, false) => PositionInTriangulation::OnEdge(next.fix()),
-                    (true, false, false) => PositionInTriangulation::OnEdge(edge.fix()),
-                    // Point lies on exactly two lines. Since the edges cannot be collinear,
-                    // the point lies on the intersection
-                    (false, true, true) => PositionInTriangulation::OnVertex(prev.from().fix()),
-                    (true, false, true) => PositionInTriangulation::OnVertex(edge.from().fix()),
-                    (true, true, false) => PositionInTriangulation::OnVertex(next.from().fix()),
-                    (true, true, true) => panic!("Invalid triangle. This is a bug"),
-                };
+            // Delineates the other side of the segment
+            let e1 = if rotate_ccw {
+                e0
             } else {
-                // Edge is part of the convex hull
-                if query.is_on_line() {
-                    let rev = edge.rev();
-                    if rev.is_outer_edge() {
-                        // Both edge and its rev are part of the convex hull,
-                        // hence all points must lie on a line
-                        return self.locate_if_all_points_on_line(rev, target_position);
-                    }
-                    // Triangulation is not degenerated. Just continue with the
-                    // inner triangle
-                    edge = rev;
-                    continue;
-                } else {
-                    self.hint_generator()
-                        .notify_vertex_lookup(edge.from().fix());
-                    return PositionInTriangulation::OutsideOfConvexHull(edge.fix());
-                }
-            }
-        }
-    }
+                // Reverse the edge to ensure that the current segment is adjacent.
+                e0.rev()
+            };
 
-    fn locate_if_all_points_on_line(
-        &self,
-        start_edge: DirectedEdgeHandle<
-            Self::Vertex,
-            Self::DirectedEdge,
-            Self::UndirectedEdge,
-            Self::Face,
-        >,
-        position: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) -> PositionInTriangulation {
-        let mut current_edge = start_edge;
+            let Some(face) = e1.face().as_inner() else {
+                self.hint_generator().notify_vertex_lookup(e1.from().fix());
+                return PositionInTriangulation::OutsideOfConvexHull(e1.fix());
+            };
 
-        let current_projection = start_edge.project_point(position);
+            // rotate around `V = current_edge.from()` (see diagram above)
+            // The current segment is spanned by `current_edge` and `rotated`
+            let rotated = if rotate_ccw { e0.ccw() } else { e0.cw() };
 
-        if current_projection.is_before_edge() {
-            current_edge = current_edge.rev();
-        }
-
-        loop {
-            if current_edge.from().position() == position {
-                return PositionInTriangulation::OnVertex(current_edge.from().fix());
-            }
-            if current_edge.to().position() == position {
-                return PositionInTriangulation::OnVertex(current_edge.to().fix());
+            let rotated_query = rotated.side_query(target_position);
+            if rotated_query.is_on_line() || rotated_query.is_on_left_side() == rotate_ccw {
+                // Segment does not contain the target vertex. Continue rotating.
+                e0 = rotated;
+                e0_query = rotated_query;
+                continue;
             }
 
-            let current_projection = current_edge.project_point(position);
+            // Stores the last edge that is adjacent to the segment triangle
+            let e2 = if rotate_ccw { e1.next() } else { e1.prev() };
 
-            if current_projection.is_behind_edge() {
-                if current_edge.next() == current_edge.rev() {
-                    return PositionInTriangulation::OutsideOfConvexHull(current_edge.fix());
-                }
-                current_edge = current_edge.next();
-            } else {
-                // 0.0 <= current_projection <= 1.0
-                return PositionInTriangulation::OnEdge(current_edge.fix());
+            let e2_query = e2.side_query(target_position);
+            if e2_query.is_on_line() {
+                self.hint_generator().notify_vertex_lookup(e2.to().fix());
+                return PositionInTriangulation::OnEdge(e2.fix());
             }
+            if e2_query.is_on_left_side() {
+                self.hint_generator().notify_vertex_lookup(e2.to().fix());
+                return PositionInTriangulation::OnFace(face.fix());
+            }
+
+            // Check if an opposite vertex ("O" in the diagram above) exists. Otherwise, just
+            // rotate around any vertex from e2 instead.
+            e0 = e2.rev();
+            e0_query = e2_query.reversed();
+            if !e0.is_outer_edge() {
+                // Opposite vertex exists - use any of its out edges and use that for the next
+                // rotation.
+                e0 = e0.prev();
+                e0_query = e0.side_query(target_position);
+            }
+
+            rotate_ccw = e0_query.is_on_left_side_or_on_line();
         }
     }
 
@@ -1061,7 +1095,7 @@ mod test {
             d.sanity_check();
         }
 
-        for i in -10..10 {
+        for i in -0..10 {
             d.insert(Point2::new(f64::from(i), 0.5 * f64::from(i)))?;
             d.sanity_check();
         }
@@ -1430,6 +1464,46 @@ mod test {
             triangulation.locate(Point2::new(1.0, 1.0)),
             PositionInTriangulation::NoTriangulation
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_locate_with_two_vertices() -> Result<(), InsertionError> {
+        let mut triangulation = DelaunayTriangulation::<_>::default();
+        let p0 = Point2::new(0.0, 0.0);
+        let v0 = triangulation.insert(p0)?;
+        let p1 = Point2::new(1.0, 1.0);
+        let v1 = triangulation.insert(p1)?;
+
+        assert_eq!(
+            triangulation.locate(p0),
+            PositionInTriangulation::OnVertex(v0)
+        );
+        assert_eq!(
+            triangulation.locate(p1),
+            PositionInTriangulation::OnVertex(v1)
+        );
+        let on_edge = triangulation.locate(Point2::new(0.5, 0.5));
+        match on_edge {
+            PositionInTriangulation::OnEdge(_) => {}
+            _ => panic!("Expected OnEdge(_), was {:?}", on_edge),
+        }
+
+        let hull0 = triangulation.locate(Point2::new(0.0, 1.0));
+        let hull1 = triangulation.locate(Point2::new(0.0, -1.0));
+        let hull2 = triangulation.locate(Point2::new(-1.0, -1.0));
+        let hull3 = triangulation.locate(Point2::new(2.0, 2.0));
+
+        let [e0, e1, _, _] = [hull0, hull1, hull2, hull3].map(|hull| {
+            if let PositionInTriangulation::OutsideOfConvexHull(edge) = hull {
+                edge
+            } else {
+                panic!("Expected OutsideConvexHull, was {:?}", hull)
+            }
+        });
+
+        assert_eq!(e0, e1.rev());
+
         Ok(())
     }
 
