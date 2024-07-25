@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.10.0] - 2024-07-25
+
+### Added
+
+- Added basic `mint` support via the `mint` feature
+- Implements `Triangulation::get_vertex(FixedVertexHandle)` (See #106)
+
+### Fix
+
+- Fixes potential crash when inserting / locating vertices (See #107)
+
 ## [2.9.0] - 2024-06-14
 
 ### Added
@@ -436,7 +447,9 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 Initial commit
 
-[2.8.0]: https://github.com/Stoeoef/spade/compare/v2.8.0...v2.9.0
+[2.10.0]: https://github.com/Stoeoef/spade/compare/v2.9.0...v2.10.0
+
+[2.9.0]: https://github.com/Stoeoef/spade/compare/v2.8.0...v2.9.0
 
 [2.8.0]: https://github.com/Stoeoef/spade/compare/v2.7.0...v2.8.0
 
