@@ -242,7 +242,7 @@ pub trait TriangulationExt: Triangulation {
         let ccw_walk_start = self.directed_edge(convex_hull_edge).prev().rev().fix();
         let cw_walk_start = self.directed_edge(convex_hull_edge).next().rev().fix();
 
-        self.legalize_edge(convex_hull_edge);
+        self.legalize_edge(convex_hull_edge, false);
 
         let mut current_edge = ccw_walk_start;
         loop {
@@ -254,7 +254,7 @@ pub trait TriangulationExt: Triangulation {
                     self.s_mut(),
                     current_edge,
                 );
-                self.legalize_edge(current_edge);
+                self.legalize_edge(current_edge, false);
                 current_edge = new_edge;
             } else {
                 break;
@@ -271,7 +271,7 @@ pub trait TriangulationExt: Triangulation {
                     self.s_mut(),
                     current_edge,
                 );
-                self.legalize_edge(next_fix);
+                self.legalize_edge(next_fix, false);
                 current_edge = new_edge;
             } else {
                 break;
@@ -317,7 +317,7 @@ pub trait TriangulationExt: Triangulation {
             .collect();
 
         for edge_to_legalize in edges {
-            self.legalize_edge(edge_to_legalize);
+            self.legalize_edge(edge_to_legalize, false);
         }
     }
 
@@ -337,7 +337,10 @@ pub trait TriangulationExt: Triangulation {
     /// four sided polygon.
     ///
     /// Returns `true` if at least one edge was flipped. This will always include the initial edge.
-    fn legalize_edge(&mut self, edge: FixedDirectedEdgeHandle) -> bool {
+    ///
+    /// Some additional checks are performed if `fully_legalize` is `true`. This is more costly
+    /// and often not required.
+    fn legalize_edge(&mut self, edge: FixedDirectedEdgeHandle, fully_legalize: bool) -> bool {
         let mut edges: SmallVec<[FixedDirectedEdgeHandle; 8]> = Default::default();
         edges.push(edge);
 
@@ -379,12 +382,17 @@ pub trait TriangulationExt: Triangulation {
                     result |= should_flip;
 
                     if should_flip {
-                        let e1 = edge.rev().next().fix();
-                        let e2 = edge.rev().prev().fix();
+                        edges.push(edge.rev().next().fix());
+                        edges.push(edge.rev().prev().fix());
+
+                        if fully_legalize {
+                            // Check all adjacent edges of the input edge. This is more costly but
+                            // can fix Delaunay violations that lie on the left side of this edge.
+                            edges.push(edge.next().fix());
+                            edges.push(edge.prev().fix());
+                        }
 
                         dcel_operations::flip_cw(self.s_mut(), e.as_undirected());
-                        edges.push(e1);
-                        edges.push(e2);
                     }
                 }
             }

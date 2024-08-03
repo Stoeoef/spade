@@ -44,6 +44,11 @@ impl<UE> CdtEdge<UE> {
         self.0 = true;
     }
 
+    fn unmake_constraint_edge(&mut self) {
+        assert!(self.is_constraint_edge());
+        self.0 = false;
+    }
+
     /// Returns the wrapped undirected edge data type.
     pub fn data(&self) -> &UE {
         &self.1
@@ -736,6 +741,23 @@ where
             self.sanity_check();
         } else {
             self.basic_sanity_check(check_convexity);
+        }
+    }
+
+    /// Removes a constraint edge.
+    ///
+    /// Does nothing and returns `false` if the given edge is not a constraint edge.
+    /// Otherwise, the edge is unmarked and the Delaunay property is restored in its vicinity.
+    pub fn remove_constraint_edge(&mut self, edge: FixedUndirectedEdgeHandle) -> bool {
+        if self.is_constraint_edge(edge) {
+            self.dcel
+                .undirected_edge_data_mut(edge)
+                .unmake_constraint_edge();
+            self.num_constraints -= 1;
+            self.legalize_edge(edge.as_directed(), true);
+            true
+        } else {
+            false
         }
     }
 
@@ -1810,6 +1832,30 @@ mod test {
         assert_eq!(cdt.num_vertices(), initial_num_vertices);
         assert_eq!(cdt.num_constraints(), initial_num_constraints);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_constraint_edge() -> Result<(), InsertionError> {
+        let mut cdt = get_cdt_for_try_add_constraint()?;
+        for edge in cdt.fixed_undirected_edges() {
+            cdt.remove_constraint_edge(edge);
+        }
+        assert_eq!(cdt.num_constraints, 0);
+        cdt.sanity_check();
+
+        let added_edges = cdt.try_add_constraint(
+            FixedVertexHandle::from_index(0),
+            FixedVertexHandle::from_index(1),
+        );
+        assert_eq!(added_edges.len(), 1);
+
+        assert!(cdt.remove_constraint_edge(added_edges.first().unwrap().as_undirected()));
+        assert_eq!(cdt.num_constraints, 0);
+        cdt.sanity_check();
+
+        Ok(())
+    }
         Ok(())
     }
 
