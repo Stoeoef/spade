@@ -489,7 +489,7 @@ where
     let cw_walk_start = result.directed_edge(edge).next().rev().fix();
 
     // Check if the edge that was just connected requires legalization
-    result.legalize_edge(edge);
+    result.legalize_edge(edge, false);
 
     // At this stage the new vertex was successfully inserted. However, insertions like this will end
     // up in a strongly *star shaped* triangulation instead of a nice nearly-convex blob of faces.
