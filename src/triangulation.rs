@@ -395,6 +395,10 @@ pub trait Triangulation: Default {
     }
 
     /// Returns information about the location of a point in a triangulation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the target point has any `NAN` coordinate.
     fn locate(
         &self,
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
@@ -406,6 +410,10 @@ pub trait Triangulation: Default {
     /// Locates a vertex at a given position.
     ///
     /// Returns `None` if the point could not be found.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the target point has any `NAN` coordinate.
     #[allow(clippy::type_complexity)]
     fn locate_vertex(
         &self,
@@ -440,6 +448,10 @@ pub trait Triangulation: Default {
     /// The hint should be a vertex close to the position that
     /// is being looked up.
     ///
+    /// # Panics
+    ///
+    /// Panics if the target vertex has any `NAN` coordinate.
+    ///
     /// *See also [locate](Triangulation::locate), [locate_vertex](Triangulation::locate_vertex)*
     fn locate_with_hint(
         &self,
@@ -473,6 +485,10 @@ pub trait Triangulation: Default {
     /// # Handle invalidation
     /// This method will invalidate all vertex, edge and face handles
     /// upon successful removal.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the target position has any `NAN` coordinate.
     ///
     /// *See also [remove](Triangulation::remove)*
     fn locate_and_remove(
