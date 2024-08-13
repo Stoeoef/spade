@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.12.0] - 2024-08-13
+
+### Fix
+
+- Fixes potential crash of `ConstrainedDelaunayTriangulation::add_constraint_and_split`. This could
+  only happen in rare situations if a newly inserted split point would lie very close to other vertices or edges of the
+  triangulation. See #111
+- **Potentially breaking**: `Triangulation::locate`, `Triangulation::locate_with_hint`,
+  `Triangulation::locate_vertex` and `Triangulation::locate_and_remove` will all panic if called with a position with a
+  `NAN` coordinate. The previous behavior was inconsistent - the methods would either crash or return a nonsensical
+  result.
+
 ## [2.11.0] - 2024-08-03
 
 ### Added
@@ -456,6 +468,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 ## 0.1.0 - 2016-09-23
 
 Initial commit
+
+[2.12.0]: https://github.com/Stoeoef/spade/compare/v2.11.0...v2.12.0
 
 [2.11.0]: https://github.com/Stoeoef/spade/compare/v2.10.0...v2.11.0
 
