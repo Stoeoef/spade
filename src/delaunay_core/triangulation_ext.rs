@@ -448,6 +448,10 @@ pub trait TriangulationExt: Triangulation {
         target_position: Point2<<Self::Vertex as HasPosition>::Scalar>,
         start: FixedVertexHandle,
     ) -> PositionInTriangulation {
+        let pos = target_position.to_f64();
+        assert!(!f64::is_nan(pos.x));
+        assert!(!f64::is_nan(pos.y));
+
         if self.num_vertices() < 2 {
             return match self.vertices().next() {
                 Some(single_vertex) if single_vertex.position() == target_position => {
@@ -951,6 +955,23 @@ mod test {
         assert_eq!(d.all_faces().count(), 1);
         assert_eq!(d.inner_faces().count(), 0);
         Ok(())
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_locate_nan_empty() {
+        let d = DelaunayTriangulation::<Point2<f64>>::default();
+        d.locate(Point2::new(0.0, f64::NAN));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_locate_nan() {
+        let points = random_points_with_seed(20, SEED);
+        let d = DelaunayTriangulation::<Point2<f64>>::bulk_load(points);
+        if let Ok(d) = d {
+            d.locate(Point2::new(0.0, f64::NAN));
+        }
     }
 
     #[test]
