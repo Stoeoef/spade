@@ -1,11 +1,10 @@
-use alloc::vec;
 use alloc::vec::Vec;
 
 use num_traits::{Float, NumCast};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::cdt::GroupEnd::Existing;
+use crate::cdt::ConflictRegionEnd::{EdgeOverlap, Existing};
 use crate::delaunay_core::dcel_operations::flip_cw;
 use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable};
 use crate::{
@@ -609,14 +608,6 @@ where
 
         let first = self.directed_edge(*first);
 
-        if first.to().fix() == target_vertex {
-            // Special case: This function is also used to handle constraint edges that fully
-            // _overlap_ an existing edge. This makes it easier to return all created edges in their
-            // correct order. This will be designated by a "conflict region" consisting of a single
-            // edge that ends at the target vertex (which should not happen otherwise).
-            return Some(first.fix());
-        }
-
         // These refer to the two edges that go out of the constraint edge origin initially.
         // They are used below but need to be defined declared here to appease the borrow checker.
         let first_border_edge = first.rev().prev().fix();
@@ -849,9 +840,9 @@ where
 
         // Phase 1: Add all pending split vertices directly.
         for region in initial_conflict_regions {
-            match region.group_end {
-                Existing(v) => vertices_to_connect.push(v),
-                GroupEnd::NewVertex(new_vertex, edge) => {
+            let group_end_vertex = match region.group_end {
+                Existing(v) => v,
+                ConflictRegionEnd::NewVertex(new_vertex, edge) => {
                     let new_handle = self
                         .insert(new_vertex)
                         .expect("Failed to insert vertex as expected. This is a bug in spade.");
@@ -865,9 +856,12 @@ where
                     // vertex
                     temporarily_removed.push([old_from, new_handle]);
                     temporarily_removed.push([new_handle, old_to]);
-                    vertices_to_connect.push(new_handle);
+                    new_handle
                 }
-            }
+                EdgeOverlap(edge) => self.directed_edge(edge).to().fix(),
+            };
+
+            vertices_to_connect.push(group_end_vertex);
         }
 
         let mut result = Vec::new();
@@ -905,6 +899,7 @@ where
         let mut all_regions_intact = true;
         let mut conflict_groups = Vec::new();
         let mut current_group = Vec::new();
+        let mut ignore_next_vertex = false;
         for intersection in LineIntersectionIterator::new_from_handles(self, from, to) {
             match intersection {
                 Intersection::EdgeIntersection(edge) => {
@@ -926,8 +921,10 @@ where
 
                                 let conflict_edges = core::mem::take(&mut current_group);
 
-                                let group_end = group_end
-                                    .unwrap_or(GroupEnd::NewVertex(new_vertex, edge.fix()));
+                                let group_end = group_end.unwrap_or(ConflictRegionEnd::NewVertex(
+                                    new_vertex,
+                                    edge.fix(),
+                                ));
 
                                 conflict_groups.push(InitialConflictRegion {
                                     conflict_edges,
@@ -938,6 +935,10 @@ where
                     }
                 }
                 Intersection::VertexIntersection(v) => {
+                    if ignore_next_vertex {
+                        ignore_next_vertex = false;
+                        continue;
+                    }
                     let group_end = Existing(v.fix());
                     let conflict_edges = core::mem::take(&mut current_group);
                     conflict_groups.push(InitialConflictRegion {
@@ -947,9 +948,13 @@ where
                 }
                 Intersection::EdgeOverlap(edge) => {
                     conflict_groups.push(InitialConflictRegion {
-                        conflict_edges: vec![edge.fix()],
-                        group_end: Existing(edge.to().fix()),
+                        conflict_edges: Vec::new(),
+                        group_end: EdgeOverlap(edge.fix()),
                     });
+                    // The next intersection is going to be edge.to(). It would be incorrect to
+                    // create a conflict region from that vertex as that region is already handled
+                    // by the GroupEnd::EdgeOverlap cases
+                    ignore_next_vertex = true;
                 }
             }
         }
@@ -961,7 +966,7 @@ where
         &self,
         conflict_edge: DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>,
         split_position: Point2<<V as HasPosition>::Scalar>,
-    ) -> (Option<GroupEnd<V>>, bool) {
+    ) -> (Option<ConflictRegionEnd<V>>, bool) {
         // Not every split vertex may lead to a conflict region that will properly contain the
         // split vertex. This can happen as not all split positions can be represented precisely.
         //
@@ -1005,7 +1010,7 @@ where
             let mut last_edge = None;
             let target_vertex = match group_end {
                 Existing(v) => v,
-                GroupEnd::NewVertex(v, conflict_edge) => {
+                ConflictRegionEnd::NewVertex(v, conflict_edge) => {
                     let (new_vertex, [e0, e1]) = self.insert_on_edge(conflict_edge, v);
                     let e1_handle = self.directed_edge(e1);
                     // edge_in / edge_out refer to the edge going into / out of the newly split off
@@ -1026,6 +1031,13 @@ where
 
                     self.handle_legal_edge_split([e0, e1]);
                     new_vertex
+                }
+                EdgeOverlap(edge) => {
+                    constraint_edges.push(edge);
+                    last_vertex = Some(self.directed_edge(edge).to().fix());
+                    // No need to resolve conflict regions - there are no conflicting edges in the
+                    // GroupEnd::EdgeOverlap case
+                    continue;
                 }
             };
 
@@ -1147,8 +1159,17 @@ where
     }
 }
 
-enum GroupEnd<V> {
+/// Describes all possible ways in which conflict regions which are created while adding a
+/// constraint edge may end.
+enum ConflictRegionEnd<V> {
+    /// Conflict group ends with an existing vertex
     Existing(FixedVertexHandle),
+    /// Special case of "Existing" - the constraint edge overlaps any existing edge which implies
+    /// that the conflict group also ends on an existing vertex.
+    /// However, it makes sense to handle this specially to prevent having to look up the overlapped
+    /// edge later.
+    EdgeOverlap(FixedDirectedEdgeHandle),
+    /// The conflict region ends in a vertex that does not exist yet.
     NewVertex(V, FixedDirectedEdgeHandle),
 }
 
@@ -1158,7 +1179,7 @@ enum GroupEnd<V> {
 /// inserting the missing vertex.
 struct InitialConflictRegion<V> {
     conflict_edges: Vec<FixedDirectedEdgeHandle>,
-    group_end: GroupEnd<V>,
+    group_end: ConflictRegionEnd<V>,
 }
 
 enum ConflictResolution<V> {
@@ -1949,11 +1970,18 @@ mod test {
         let from = FixedVertexHandle::from_index(0);
         let to = FixedVertexHandle::from_index(1);
 
+        // Is expected to fail (return an empty list)
         let edges = cdt.try_add_constraint(from, to);
-
-        assert_eq!(edges.len(), 0);
+        assert_eq!(edges, Vec::new());
         assert_eq!(cdt.num_vertices(), initial_num_vertices);
         assert_eq!(cdt.num_constraints(), initial_num_constraints);
+
+        let from = FixedVertexHandle::from_index(2);
+        let to = FixedVertexHandle::from_index(3);
+
+        // Try to add on top of an existing edge
+        let edges = cdt.try_add_constraint(from, to);
+        assert_eq!(edges.len(), 1);
 
         Ok(())
     }
@@ -2030,6 +2058,53 @@ mod test {
             constraint_edges,
             vec![[0, 6], [1, 6], [2, 3], [4, 6], [5, 6]]
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_2() -> Result<(), InsertionError> {
+        let edges = [
+            [
+                Point2 {
+                    x: 18.69314193725586,
+                    y: 19.589109420776367,
+                },
+                Point2 {
+                    x: 18.69314193725586,
+                    y: 20.40362548828125,
+                },
+            ],
+            [
+                Point2 {
+                    x: 19.507659912109375,
+                    y: 20.40362548828125,
+                },
+                Point2 {
+                    x: 17.878625869750977,
+                    y: 18.774595260620117,
+                },
+            ],
+            [
+                Point2 {
+                    x: 20.322175979614258,
+                    y: 21.218143463134766,
+                },
+                Point2 {
+                    x: 15.435077667236328,
+                    y: 16.331045150756836,
+                },
+            ],
+        ];
+        let mut cdt: ConstrainedDelaunayTriangulation<Point2<f64>> =
+            ConstrainedDelaunayTriangulation::new();
+        for edge in edges {
+            let point_a = cdt.insert(edge[0])?;
+            let point_b = cdt.insert(edge[1])?;
+            cdt.cdt_sanity_check();
+            cdt.add_constraint_and_split(point_a, point_b, |v| v);
+            cdt.cdt_sanity_check();
+        }
 
         Ok(())
     }
