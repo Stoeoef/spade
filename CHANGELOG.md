@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.12.1] - 2024-09-09
+
+### Fix
+
+- Fixes #113. This could lead to rare crashes when calling `ConstrainedDelaunayTriangulation::add_constraint_and_split`
+
 ## [2.12.0] - 2024-08-13
 
 ### Fix
@@ -468,6 +474,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 ## 0.1.0 - 2016-09-23
 
 Initial commit
+
+[2.12.1]: https://github.com/Stoeoef/spade/compare/v2.12.0...v2.12.1
 
 [2.12.0]: https://github.com/Stoeoef/spade/compare/v2.11.0...v2.12.0
 

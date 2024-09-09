@@ -842,10 +842,13 @@ where
         for region in initial_conflict_regions {
             let group_end_vertex = match region.group_end {
                 Existing(v) => v,
-                ConflictRegionEnd::NewVertex(new_vertex, edge) => {
-                    let new_handle = self
-                        .insert(new_vertex)
-                        .expect("Failed to insert vertex as expected. This is a bug in spade.");
+                ConflictRegionEnd::ConstraintEdgeSplit(new_vertex, edge) => {
+                    let new_handle = match new_vertex {
+                        Ok(new_vertex) => self
+                            .insert(new_vertex)
+                            .expect("Failed to insert vertex as expected. This is a bug in spade."),
+                        Err(handle) => handle,
+                    };
 
                     let [old_from, old_to] = self.directed_edge(edge).vertices().map(|v| v.fix());
                     // The conflict edge can prevent the forced insertion to the split vertex.
@@ -905,32 +908,43 @@ where
                 Intersection::EdgeIntersection(edge) => {
                     if !edge.is_constraint_edge() {
                         current_group.push(edge.fix());
-                    } else {
-                        match conflict_resolver(edge) {
-                            ConflictResolution::Cancel => {
-                                return (Vec::new(), true);
-                            }
-                            ConflictResolution::Split(new_vertex) => {
-                                let position = new_vertex.position();
-                                let (group_end, is_valid) =
-                                    self.verify_split_position(edge, position);
+                        continue;
+                    }
 
-                                // A region is considered to be intact if the split vertex lies
-                                // within the region and not outside or on its border.
-                                all_regions_intact &= is_valid;
+                    // The new constraint intersects an existing constraint edge. Start conflict
+                    // resolution.
+                    match conflict_resolver(edge) {
+                        ConflictResolution::Cancel => {
+                            return (Vec::new(), true);
+                        }
+                        ConflictResolution::Split(new_vertex) => {
+                            let position = new_vertex.position();
+                            let (overlap_vertex, is_valid) =
+                                self.verify_split_position(edge, position);
 
-                                let conflict_edges = core::mem::take(&mut current_group);
+                            // A region is considered to be intact if the split vertex lies
+                            // within the region and not outside or on its border.
+                            all_regions_intact &= is_valid;
 
-                                let group_end = group_end.unwrap_or(ConflictRegionEnd::NewVertex(
-                                    new_vertex,
-                                    edge.fix(),
-                                ));
+                            let conflict_edges = core::mem::take(&mut current_group);
 
-                                conflict_groups.push(InitialConflictRegion {
-                                    conflict_edges,
-                                    group_end,
-                                });
-                            }
+                            // overlap_vertex.is_some() indicates that the split position
+                            // overlaps an existing vertex. This can happen due to rounding
+                            // errors and needs some special handling
+                            ignore_next_vertex = overlap_vertex.is_some();
+
+                            let group_end_vertex =
+                                overlap_vertex.map(|h| Err(h)).unwrap_or(Ok(new_vertex));
+
+                            let group_end = ConflictRegionEnd::ConstraintEdgeSplit(
+                                group_end_vertex,
+                                edge.fix(),
+                            );
+
+                            conflict_groups.push(InitialConflictRegion {
+                                conflict_edges,
+                                group_end,
+                            });
                         }
                     }
                 }
@@ -966,7 +980,7 @@ where
         &self,
         conflict_edge: DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>,
         split_position: Point2<<V as HasPosition>::Scalar>,
-    ) -> (Option<ConflictRegionEnd<V>>, bool) {
+    ) -> (Option<FixedVertexHandle>, bool) {
         // Not every split vertex may lead to a conflict region that will properly contain the
         // split vertex. This can happen as not all split positions can be represented precisely.
         //
@@ -989,7 +1003,7 @@ where
                 let is_valid = conflict_edge.is_part_of_convex_hull();
                 (None, is_valid)
             }
-            PositionInTriangulation::OnVertex(v) => (Some(Existing(v)), false),
+            PositionInTriangulation::OnVertex(v) => (Some(v), false),
             PositionInTriangulation::NoTriangulation => unreachable!(),
         }
     }
@@ -1010,7 +1024,12 @@ where
             let mut last_edge = None;
             let target_vertex = match group_end {
                 Existing(v) => v,
-                ConflictRegionEnd::NewVertex(v, conflict_edge) => {
+                ConflictRegionEnd::ConstraintEdgeSplit(v, conflict_edge) => {
+                    let v = v.expect(
+                        "Expected a new vertex for insertion. \
+                    An existing vertex should be handled by the fallback routine. \
+                    This is a bug in spade.",
+                    );
                     let (new_vertex, [e0, e1]) = self.insert_on_edge(conflict_edge, v);
                     let e1_handle = self.directed_edge(e1);
                     // edge_in / edge_out refer to the edge going into / out of the newly split off
@@ -1169,8 +1188,12 @@ enum ConflictRegionEnd<V> {
     /// However, it makes sense to handle this specially to prevent having to look up the overlapped
     /// edge later.
     EdgeOverlap(FixedDirectedEdgeHandle),
-    /// The conflict region ends in a vertex that does not exist yet.
-    NewVertex(V, FixedDirectedEdgeHandle),
+    /// The conflict region ends in a vertex that splits an existing constraint edge. Usually, this
+    /// vertex is constructed anew and given by the `Ok` case.
+    /// In rare cases, the split vertex may be an existing vertex that does not lie exactly on the
+    /// line due to rounding issues. This is indicated by the `Err` case. The constraint edge that
+    /// should be split is the second field.
+    ConstraintEdgeSplit(Result<V, FixedVertexHandle>, FixedDirectedEdgeHandle),
 }
 
 /// Represents a conflict region that does not yet fully exist as a vertex may be missing. This can
@@ -2105,6 +2128,53 @@ mod test {
             cdt.add_constraint_and_split(point_a, point_b, |v| v);
             cdt.cdt_sanity_check();
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_3() -> Result<(), InsertionError> {
+        let edges = [
+            [
+                Point2 {
+                    x: -11.673287,
+                    y: -28.37192,
+                },
+                Point2 {
+                    x: -16.214716,
+                    y: -43.81278,
+                },
+            ],
+            [
+                Point2 {
+                    x: 7.4022045,
+                    y: -51.355137,
+                },
+                Point2 {
+                    x: -13.92232,
+                    y: -36.01863,
+                },
+            ],
+        ];
+
+        // `f32` is important. This makes the intersection of the two edges coincide with an
+        // existing vertex, triggering an edge case.
+        let mut cdt: ConstrainedDelaunayTriangulation<Point2<f32>> =
+            ConstrainedDelaunayTriangulation::new();
+        let mut returned_constraint_edge_counts = Vec::new();
+        for edge in edges {
+            let point_a = cdt.insert(edge[0])?;
+            let point_b = cdt.insert(edge[1])?;
+            returned_constraint_edge_counts
+                .push(cdt.add_constraint_and_split(point_a, point_b, |v| v).len());
+            cdt.cdt_sanity_check();
+        }
+
+        // Usually, 4 constraints should be present. However, due to the overlap of the intersection
+        // point, the second call to `add_constraint_and_split` does not add 2 constraint edges.
+        // See issue #113 for more information
+        assert_eq!(cdt.num_constraints, 3);
+        assert_eq!(returned_constraint_edge_counts, vec![1, 1]);
 
         Ok(())
     }
