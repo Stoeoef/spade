@@ -11,7 +11,7 @@ use crate::{HasPosition, InsertionError, PositionInTriangulation, Triangulation}
 
 use alloc::vec::Vec;
 
-impl<T> TriangulationExt for T where T: Triangulation + ?Sized {}
+impl<T> TriangulationExt for T where T: Triangulation {}
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Hash, Eq, PartialEq)]
 pub enum PositionWhenAllVerticesOnLine {
