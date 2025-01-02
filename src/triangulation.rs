@@ -368,7 +368,7 @@ pub trait Triangulation: Default {
 
     /// An iterator visiting all directed voronoi edges.
     ///
-    /// The iterator type is (DirectedVoronoiEdge)[DirectedVoronoiEdge]
+    /// The iterator type is [DirectedVoronoiEdge]
     fn directed_voronoi_edges(
         &self,
     ) -> DirectedVoronoiEdgeIterator<
@@ -382,7 +382,7 @@ pub trait Triangulation: Default {
 
     /// An iterator visiting all undirected voronoi edges.
     ///
-    /// The iterator type is (UndirectedVoronoiEdge)[UndirectedVoronoiEdge]
+    /// The iterator type is [UndirectedVoronoiEdge]
     fn undirected_voronoi_edges(
         &self,
     ) -> UndirectedVoronoiEdgeIterator<
