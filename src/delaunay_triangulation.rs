@@ -297,7 +297,7 @@ where
             return None;
         }
 
-        let hint = self.hint_generator().get_hint(position);
+        let hint = self.hint_generator().get_hint(position, self);
         let hint = self.validate_vertex_handle(hint);
 
         let vertex = self.walk_to_nearest_neighbor(hint, position);

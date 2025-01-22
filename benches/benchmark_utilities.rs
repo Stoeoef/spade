@@ -3,14 +3,16 @@ use core::fmt::{self, Display, Formatter};
 use criterion::{measurement::WallTime, BenchmarkGroup, BenchmarkId, Throughput};
 use rand::{distributions::uniform::SampleUniform, Rng, SeedableRng};
 use spade::{
-    DelaunayTriangulation, HierarchyHintGenerator, LastUsedVertexHintGenerator, Point2, SpadeNum,
-    Triangulation,
+    DelaunayTriangulation, HierarchyHintGenerator, JumpAndWalkHintGenerator,
+    LastUsedVertexHintGenerator, Point2, SpadeNum, Triangulation,
 };
 
 type LastUsedTriangulation =
     DelaunayTriangulation<Point2<f64>, (), (), (), LastUsedVertexHintGenerator>;
 type HierarchyTriangulation =
     DelaunayTriangulation<Point2<f64>, (), (), (), HierarchyHintGenerator<f64>>;
+type JumpAndWalkTriangulation =
+    DelaunayTriangulation<Point2<f64>, (), (), (), JumpAndWalkHintGenerator>;
 
 pub const SEED: &[u8; 32] = b"\xfb\xdc\x4e\xa0\x30\xde\x82\xba\x69\x97\x3c\x52\x49\x4d\x00\xca
 \x5c\x21\xa3\x8d\x5c\xf2\x34\x4e\x58\x7d\x80\x16\x66\x23\x30";
@@ -61,6 +63,7 @@ where
 pub enum CreationMethod {
     BulkLoad,
     Incremental,
+    JumpAndWalk,
 }
 
 impl Display for CreationMethod {
@@ -68,6 +71,7 @@ impl Display for CreationMethod {
         f.write_str(match self {
             CreationMethod::BulkLoad => "bulk loading",
             CreationMethod::Incremental => "incremental loading",
+            CreationMethod::JumpAndWalk => "jump and walk",
         })
     }
 }
@@ -82,6 +86,7 @@ pub enum SampleSize {
 pub enum HintGeneratorType {
     LastUsedVertex,
     Hierarchy,
+    JumpAndWalk,
 }
 
 impl Display for HintGeneratorType {
@@ -89,6 +94,7 @@ impl Display for HintGeneratorType {
         f.write_str(match self {
             HintGeneratorType::LastUsedVertex => "last used vertex heuristic",
             HintGeneratorType::Hierarchy => "hierarchy lookup",
+            HintGeneratorType::JumpAndWalk => "jump and walk",
         })
     }
 }
@@ -127,6 +133,7 @@ impl CreationBenchConfig {
                 let data = self.get_distribution().take(*size).collect::<Vec<_>>();
                 match self.creation_method {
                     CreationMethod::BulkLoad => b.iter(|| self.bulk_load(data.clone())),
+                    CreationMethod::JumpAndWalk => b.iter(|| self.bulk_load(data.clone())),
                     CreationMethod::Incremental => b.iter(|| self.sequential_load(data.clone())),
                 }
             });
@@ -165,6 +172,9 @@ impl CreationBenchConfig {
             HintGeneratorType::Hierarchy => {
                 HierarchyTriangulation::bulk_load(data).unwrap();
             }
+            HintGeneratorType::JumpAndWalk => {
+                HierarchyTriangulation::bulk_load(data).unwrap();
+            }
         };
     }
 
@@ -178,6 +188,12 @@ impl CreationBenchConfig {
             }
             HintGeneratorType::Hierarchy => {
                 let mut triangulation = HierarchyTriangulation::new();
+                for point in data {
+                    triangulation.insert(point).unwrap();
+                }
+            }
+            HintGeneratorType::JumpAndWalk => {
+                let mut triangulation = JumpAndWalkTriangulation::new();
                 for point in data {
                     triangulation.insert(point).unwrap();
                 }

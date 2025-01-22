@@ -403,7 +403,7 @@ pub trait Triangulation: Default {
         &self,
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) -> PositionInTriangulation {
-        let hint = self.hint_generator().get_hint(point);
+        let hint = self.hint_generator().get_hint(point, self);
         self.locate_with_hint_option_core(point, Some(hint))
     }
 

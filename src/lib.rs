@@ -52,7 +52,7 @@ pub use crate::delaunay_core::math::{
 
 pub use delaunay_core::{
     AngleLimit, HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
-    LastUsedVertexHintGenerator, RefinementParameters, RefinementResult,
+    JumpAndWalkHintGenerator, LastUsedVertexHintGenerator, RefinementParameters, RefinementResult,
 };
 
 pub use crate::delaunay_core::interpolation::{Barycentric, NaturalNeighbor};

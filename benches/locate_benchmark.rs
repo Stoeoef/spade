@@ -3,8 +3,8 @@ use std::time::Duration;
 use criterion::{measurement::WallTime, BenchmarkGroup, Criterion};
 use rand::distributions::uniform::SampleUniform;
 use spade::{
-    DelaunayTriangulation, HierarchyHintGeneratorWithBranchFactor, HintGenerator, Point2, SpadeNum,
-    Triangulation,
+    DelaunayTriangulation, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
+    JumpAndWalkHintGenerator, Point2, SpadeNum, Triangulation,
 };
 
 use crate::benchmark_utilities::{uniform_distribution, uniform_f64, SEED2};
@@ -55,6 +55,13 @@ pub fn locate_benchmark(c: &mut Criterion) {
             uniform_f64(),
         );
     }
+
+    single_locate_benchmark::<JumpAndWalkHintGenerator, _, _>(
+        &mut group,
+        "locate (jump and walk)".to_string(),
+        RANGE,
+        uniform_f64(),
+    );
 
     single_hierarchy::<2>(&mut group);
     single_hierarchy::<3>(&mut group);

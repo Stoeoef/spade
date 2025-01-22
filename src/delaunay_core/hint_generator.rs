@@ -1,4 +1,7 @@
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    f64,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use crate::{
     DelaunayTriangulation, HasPosition, Point2, SpadeNum, Triangulation, TriangulationExt,
@@ -31,7 +34,11 @@ pub trait HintGenerator<S: SpadeNum>: Default {
     /// Returns a vertex handle that should be close to a given position.
     ///
     /// The returned vertex handle may be invalid.
-    fn get_hint(&self, position: Point2<S>) -> FixedVertexHandle;
+    fn get_hint<TR: Triangulation<Vertex = V>, V: HasPosition<Scalar = S>>(
+        &self,
+        position: Point2<S>,
+        triangulation: &TR,
+    ) -> FixedVertexHandle;
 
     /// Notifies the hint generator that an element was looked up
     fn notify_vertex_lookup(&self, vertex: FixedVertexHandle);
@@ -91,7 +98,11 @@ impl Clone for LastUsedVertexHintGenerator {
 }
 
 impl<S: SpadeNum> HintGenerator<S> for LastUsedVertexHintGenerator {
-    fn get_hint(&self, _: Point2<S>) -> FixedVertexHandle {
+    fn get_hint<TR: Triangulation<Vertex = V>, V: HasPosition<Scalar = S>>(
+        &self,
+        _: Point2<S>,
+        _triangulation: &TR,
+    ) -> FixedVertexHandle {
         FixedVertexHandle::new(self.index.load(Ordering::Relaxed))
     }
 
@@ -172,7 +183,11 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> Default
 impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
     for HierarchyHintGeneratorWithBranchFactor<S, BRANCH_FACTOR>
 {
-    fn get_hint(&self, position: Point2<S>) -> FixedVertexHandle {
+    fn get_hint<TR: Triangulation<Vertex = V>, V: HasPosition<Scalar = S>>(
+        &self,
+        position: Point2<S>,
+        _triangulation: &TR,
+    ) -> FixedVertexHandle {
         let mut nearest = FixedVertexHandle::new(0);
         for layer in self.hierarchy.iter().rev().skip(1) {
             nearest = layer.walk_to_nearest_neighbor(nearest, position).fix();
@@ -283,6 +298,80 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
     }
 }
 
+/// Using the Jump-and-Walk algorithm to find points.
+#[derive(Default, Debug)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde")
+)]
+pub struct JumpAndWalkHintGenerator;
+
+impl<S: SpadeNum> HintGenerator<S> for JumpAndWalkHintGenerator {
+    fn get_hint<TR: Triangulation<Vertex = V>, V: HasPosition<Scalar = S>>(
+        &self,
+        position: Point2<S>,
+        triangulation: &TR,
+    ) -> FixedVertexHandle {
+        let mut vertices = triangulation.s().vertices();
+        let Some(first) = vertices.next() else {
+            panic!("no vertices");
+        };
+        let len = vertices.len();
+        let step = (len / approx_cube_root(len)).max(1);
+
+        // Jump
+        let mut best_dist_2 = first.position().distance_2(position);
+        let mut best_vert = first.fix();
+        for vert in vertices.step_by(step) {
+            let dist_2 = vert.position().distance_2(position);
+            if dist_2 < best_dist_2 {
+                best_dist_2 = dist_2;
+                best_vert = vert.fix();
+            }
+        }
+
+        best_vert
+    }
+
+    fn notify_vertex_lookup(&self, _vertex: FixedVertexHandle) {}
+    fn notify_vertex_inserted(&mut self, _vertex: FixedVertexHandle, _vertex_position: Point2<S>) {}
+    fn notify_vertex_removed(
+        &mut self,
+        _swapped_in_point: Option<Point2<S>>,
+        _vertex: FixedVertexHandle,
+        _vertex_position: Point2<S>,
+    ) {
+    }
+
+    fn initialize_from_triangulation<TR, V>(_triangulation: &TR) -> Self
+    where
+        TR: Triangulation<Vertex = V>,
+        V: HasPosition<Scalar = S>,
+    {
+        Self
+    }
+}
+
+fn approx_cube_root(value: usize) -> usize {
+    const LEADING_ZEROS_TO_GUESS: [u32; 64] = [
+        1905390, 1512309, 1200320, 952695, 756155, 600160, 476348, 378078, 300080, 238174, 189039,
+        150040, 119087, 94520, 75020, 59544, 47260, 37510, 29772, 23630, 18755, 14886, 11815, 9378,
+        7443, 5908, 4689, 3722, 2954, 2345, 1861, 1477, 1173, 931, 739, 587, 466, 370, 294, 233,
+        185, 147, 117, 93, 74, 59, 47, 37, 30, 24, 19, 15, 12, 10, 8, 6, 5, 4, 3, 3, 2, 2, 2, 1,
+    ];
+    if value < 2 {
+        return value;
+    }
+    let index = value.leading_zeros() as usize;
+    let mut guess = LEADING_ZEROS_TO_GUESS[index] as usize;
+
+    // One iteration of Newton's method.
+    guess = (value / (guess * guess) + guess * 2) / 3;
+
+    guess
+}
+
 #[cfg(test)]
 mod test {
     use rand::{prelude::SliceRandom, RngCore, SeedableRng};
@@ -291,6 +380,8 @@ mod test {
         handles::FixedVertexHandle, test_utilities, DelaunayTriangulation, InsertionError, Point2,
         Triangulation, TriangulationExt,
     };
+
+    use super::approx_cube_root;
 
     use alloc::vec::Vec;
 
@@ -371,5 +462,18 @@ mod test {
             hierarchy_sanity_check(&triangulation);
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_approx_cube_root() {
+        for i in 0usize.. {
+            let Some(i3) = (i * i).checked_mul(i) else {
+                break;
+            };
+            let sut = approx_cube_root(i3);
+            // Tolerance of 0.015% of the input.
+            let tolerance = i3 / 6859;
+            assert!(sut.abs_diff(i) <= tolerance, "{sut} ~= {i}");
+        }
     }
 }

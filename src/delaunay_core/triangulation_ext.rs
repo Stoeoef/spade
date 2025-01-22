@@ -217,7 +217,7 @@ pub trait TriangulationExt: Triangulation {
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
         hint: Option<FixedVertexHandle>,
     ) -> PositionInTriangulation {
-        let start = hint.unwrap_or_else(|| self.hint_generator().get_hint(point));
+        let start = hint.unwrap_or_else(|| self.hint_generator().get_hint(point, self));
         self.locate_with_hint_fixed_core(point, start)
     }
 
