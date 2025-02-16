@@ -1469,4 +1469,26 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_bulk_load_with_flat_triangle() -> Result<(), InsertionError> {
+        let dt = DelaunayTriangulation::<Point2<f64>>::bulk_load(vec![
+            Point2::new(-0.4583333333333335, 0.0035353982507333875),
+            Point2::new(-0.44401041666666685, 0.09000381880347848),
+            Point2::new(-0.4296875000000002, 0.17647223935622358),
+            Point2::new(-0.4153645833333336, 0.26294065990896864),
+            Point2::new(-0.40104166666666696, 0.34940908046171376),
+            Point2::new(-0.34375, 0.4242340611633537),
+            Point2::new(-0.2864583333333335, 0.48354314550173816),
+            Point2::new(-0.22916666666666696, 0.5220359027883882),
+            Point2::new(-0.171875, 0.5605286600750382),
+            Point2::new(-0.11458333333333348, 0.5743482879175245),
+            Point2::new(-0.05729166666666696, 0.5864208547026089),
+        ])?;
+        dt.sanity_check();
+        let tri = dt.inner_faces().nth(4).unwrap();
+        let [p0, p1, p2] = tri.positions();
+        assert!(crate::delaunay_core::math::side_query(p0, p1, p2).is_on_left_side());
+        Ok(())
+    }
 }
