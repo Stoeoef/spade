@@ -820,7 +820,7 @@ where
         let [is_left_side_excluded, is_right_side_excluded] =
             [segment.face(), segment.rev().face()].map(|face| {
                 face.as_inner()
-                    .map_or(false, |face| excluded_faces.contains(&face.fix()))
+                    .is_some_and(|face| excluded_faces.contains(&face.fix()))
             });
 
         let is_constraint_edge = segment.is_constraint_edge();

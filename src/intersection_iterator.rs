@@ -89,7 +89,7 @@ where
     EdgeOverlap(DirectedEdgeHandle<'a, V, DE, UE, F>),
 }
 
-impl<'a, V, DE, UE, F> core::fmt::Debug for Intersection<'a, V, DE, UE, F>
+impl<V, DE, UE, F> core::fmt::Debug for Intersection<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -103,7 +103,7 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F> PartialEq for Intersection<'a, V, DE, UE, F>
+impl<V, DE, UE, F> PartialEq for Intersection<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -118,9 +118,9 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F> Copy for Intersection<'a, V, DE, UE, F> where V: HasPosition {}
+impl<V, DE, UE, F> Copy for Intersection<'_, V, DE, UE, F> where V: HasPosition {}
 
-impl<'a, V, DE, UE, F> Clone for Intersection<'a, V, DE, UE, F>
+impl<V, DE, UE, F> Clone for Intersection<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {

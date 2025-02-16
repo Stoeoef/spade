@@ -101,8 +101,8 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F, Type, InnerOuter> DoubleEndedIterator
-    for DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type, InnerOuter> DoubleEndedIterator
+    for DynamicHandleIterator<'_, V, DE, UE, F, Type, InnerOuter>
 where
     Type: DelaunayElementType,
     InnerOuter: InnerOuterMarker,
@@ -120,8 +120,8 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F, Type, InnerOuter> ExactSizeIterator
-    for DynamicHandleIterator<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type, InnerOuter> ExactSizeIterator
+    for DynamicHandleIterator<'_, V, DE, UE, F, Type, InnerOuter>
 where
     Type: DelaunayElementType,
     InnerOuter: InnerOuterMarker,

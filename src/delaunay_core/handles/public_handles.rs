@@ -343,7 +343,7 @@ impl<'a, V, DE, UE, F> DirectedVoronoiEdge<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> DirectedVoronoiEdge<'a, V, DE, UE, F>
+impl<V, DE, UE, F> DirectedVoronoiEdge<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {

@@ -57,7 +57,6 @@ impl std::error::Error for InsertionError {}
 ///
 /// *See also [validate_coordinate], [validate_vertex], [MAX_ALLOWED_VALUE],
 /// [crate::Triangulation::insert], [mitigate_underflow]*
-
 // Implementation note: These numbers come from the paper of Jonathan Richard Shewchuk:
 // "The four predicates implemented for this report will not overflow nor underflow if
 // their inputs have exponents in the range -[142, 201] and IEEE-745 double precision
