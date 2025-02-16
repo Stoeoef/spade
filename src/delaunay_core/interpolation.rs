@@ -486,7 +486,14 @@ where
             let cur_nn = self.triangulation.directed_edge(*cur_nn);
 
             let [from, to] = cur_nn.positions();
-            insertion_cell.push(math::circumcenter([to, from, position]).0);
+            insertion_cell.push(
+                math::circumcenter([
+                    to.sub(position),
+                    from.sub(position),
+                    Point2::new(zero(), zero()),
+                ])
+                .0,
+            );
         }
 
         let mut total_area = zero(); // Used to normalize weights at the end
@@ -524,7 +531,15 @@ where
                 // out edge of the current natural neighbor.
                 //
                 // The natural_neighbor_polygon.svg refers to this variable as `c0`, `c1`, and `c2`.
-                let current = last_edge.face().as_inner().unwrap().circumcenter();
+                let vertices = last_edge
+                    .face()
+                    .as_inner()
+                    .unwrap()
+                    .positions()
+                    .map(|p| p.sub(position));
+
+                let current = math::circumcenter(vertices).0;
+
                 positive_area = positive_area + last.x * current.y;
                 negative_area = negative_area + last.y * current.x;
 
@@ -668,6 +683,9 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::io;
+
+    use anyhow::Context;
     use approx::assert_ulps_eq;
 
     use crate::test_utilities::{random_points_in_range, random_points_with_seed, SEED, SEED2};
@@ -890,6 +908,62 @@ mod test {
             assert_ulps_eq!(value, r2, epsilon = 0.001);
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_nan_issue() -> Result<(), InsertionError> {
+        let vertices = vec![
+            Point2 {
+                x: 2273118.4147972693,
+                y: 6205168.575915335,
+            },
+            Point2 {
+                x: 2273118.2119929367,
+                y: 6205168.6854697745,
+            },
+            Point2 {
+                x: 2273118.1835989403,
+                y: 6205168.653506873,
+            },
+            Point2 {
+                x: 2273118.2647345643,
+                y: 6205169.082690307,
+            },
+            Point2 {
+                x: 2273118.105938253,
+                y: 6205168.163882839,
+            },
+            Point2 {
+                x: 2273117.7264146665,
+                y: 6205168.718028998,
+            },
+            Point2 {
+                x: 2273118.0946678743,
+                y: 6205169.148656867,
+            },
+            Point2 {
+                x: 2273118.3779900977,
+                y: 6205168.1644559605,
+            },
+            Point2 {
+                x: 2273117.71105166,
+                y: 6205168.459413756,
+            },
+            Point2 {
+                x: 2273118.30732556,
+                y: 6205169.130634655,
+            },
+        ];
+
+        let delaunay = DelaunayTriangulation::<_>::bulk_load(vertices)?;
+
+        let nns = delaunay.natural_neighbor();
+        let result: f64 = nns
+            .interpolate(|_| 1.0, Point2::new(2273118.2, 6205168.666666667))
+            .unwrap();
+
+        assert!(!result.is_nan());
         Ok(())
     }
 }

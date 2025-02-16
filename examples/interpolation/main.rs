@@ -1,5 +1,5 @@
 use anyhow::*;
-use image::{ImageBuffer, Rgba};
+use image::{buffer::ConvertBuffer, ImageBuffer, Rgb, Rgba};
 use std::io::{Cursor, Write};
 
 use base64::Engine;
@@ -152,8 +152,10 @@ pub fn main() -> Result<()> {
         // the jpeg encoding.
         let (width, height) = (pixmap.width(), pixmap.height());
         let data = pixmap.take();
-        let buffer = ImageBuffer::<Rgba<u8>, _>::from_vec(width, height, data)
+        let buffer_with_alpha = ImageBuffer::<Rgba<u8>, _>::from_vec(width, height, data)
             .context("Failed to convert to ImageBuffer")?;
+        // Get rid of the alpha component which isn't supported by jpeg
+        let buffer: ImageBuffer<Rgb<u8>, _> = buffer_with_alpha.convert();
 
         let mut data_jpeg: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         buffer.write_to(&mut data_jpeg, image::ImageFormat::Jpeg)?;

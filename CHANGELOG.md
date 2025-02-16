@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.13.0] - 2025-02-20
+
+### Fix
+ - Fixes #124
+ - Increases MSRV to 1.56.1
+
 ## [2.12.1] - 2024-09-09
 
 ### Fix
@@ -474,6 +480,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 ## 0.1.0 - 2016-09-23
 
 Initial commit
+
+[2.13.0]: https://github.com/Stoeoef/spade/compare/v2.12.1...v2.13.0
 
 [2.12.1]: https://github.com/Stoeoef/spade/compare/v2.12.0...v2.12.1
 

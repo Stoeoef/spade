@@ -717,11 +717,13 @@ where
     }
 
     #[cfg(any(test, fuzzing))]
+    #[allow(missing_docs)]
     pub fn cdt_sanity_check(&self) {
         self.cdt_sanity_check_with_params(true);
     }
 
     #[cfg(any(test, fuzzing))]
+    #[allow(missing_docs)]
     pub fn cdt_sanity_check_with_params(&self, check_convexity: bool) {
         let num_undirected_edges = self
             .dcel
