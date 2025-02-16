@@ -250,8 +250,7 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
             }
 
             let prev_num_vertices = last_layer_size as u32;
-            // Divide by BRANCH_FACTOR and round up
-            let max_num_vertices = (prev_num_vertices + BRANCH_FACTOR - 1) / BRANCH_FACTOR;
+            let max_num_vertices = prev_num_vertices.div_ceil(BRANCH_FACTOR);
             if triangulation.num_vertices() as u32 > max_num_vertices {
                 // The layer contains too many elements. Remove the last.
                 let vertex_to_pop = FixedVertexHandle::new(triangulation.num_vertices() - 1);

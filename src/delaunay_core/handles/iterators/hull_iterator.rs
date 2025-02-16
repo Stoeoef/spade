@@ -50,7 +50,7 @@ impl<'a, V, DE, UE, F> Iterator for HullIterator<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> DoubleEndedIterator for HullIterator<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> DoubleEndedIterator for HullIterator<'_, V, DE, UE, F> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner_iterator.next_back()
     }

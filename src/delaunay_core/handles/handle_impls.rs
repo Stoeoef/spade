@@ -12,13 +12,13 @@ use core::hash::{Hash, Hasher};
 use num_traits::{Float, One};
 
 // Debug implementations
-impl<'a, V, DE, UE, F> Debug for VertexHandle<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> Debug for VertexHandle<'_, V, DE, UE, F> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "VertexHandle({:?})", self.handle.index())
     }
 }
 
-impl<'a, V, DE, UE, F> Debug for DirectedEdgeHandle<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> Debug for DirectedEdgeHandle<'_, V, DE, UE, F> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
@@ -30,7 +30,7 @@ impl<'a, V, DE, UE, F> Debug for DirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> Debug for UndirectedEdgeHandle<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> Debug for UndirectedEdgeHandle<'_, V, DE, UE, F> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let [v0, v1] = self.vertices();
         write!(
@@ -43,7 +43,7 @@ impl<'a, V, DE, UE, F> Debug for UndirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> Debug for FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> {
+impl<V, DE, UE, F> Debug for FaceHandle<'_, PossiblyOuterTag, V, DE, UE, F> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         if let Some(inner) = self.as_inner() {
             inner.fmt(f)
@@ -53,7 +53,7 @@ impl<'a, V, DE, UE, F> Debug for FaceHandle<'a, PossiblyOuterTag, V, DE, UE, F> 
     }
 }
 
-impl<'a, V, DE, UE, F> Debug for FaceHandle<'a, InnerTag, V, DE, UE, F> {
+impl<V, DE, UE, F> Debug for FaceHandle<'_, InnerTag, V, DE, UE, F> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let [v0, v1, v2] = self.vertices();
         write!(
@@ -107,58 +107,58 @@ impl FixedDirectedEdgeHandle {
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker> Clone
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker> Clone
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker> Copy
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: Copy, InnerOuter: InnerOuterMarker> Copy
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
 }
 
-impl<'a, V, DE, UE, F, Type: PartialEq, InnerOuter: InnerOuterMarker> PartialEq
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: PartialEq, InnerOuter: InnerOuterMarker> PartialEq
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
     fn eq(&self, other: &Self) -> bool {
         self.handle == other.handle
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Eq, InnerOuter: InnerOuterMarker> Eq
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: Eq, InnerOuter: InnerOuterMarker> Eq
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
 }
 
-impl<'a, V, DE, UE, F, Type: Hash, InnerOuter: InnerOuterMarker> Hash
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: Hash, InnerOuter: InnerOuterMarker> Hash
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
     fn hash<HA: Hasher>(&self, state: &mut HA) {
         self.handle.hash(state);
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Ord, InnerOuter: InnerOuterMarker> Ord
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: Ord, InnerOuter: InnerOuterMarker> Ord
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
     fn cmp(&self, other: &Self) -> Ordering {
         self.handle.cmp(&other.handle)
     }
 }
 
-impl<'a, V, DE, UE, F, Type: PartialOrd, InnerOuter: InnerOuterMarker> PartialOrd
-    for DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: PartialOrd, InnerOuter: InnerOuterMarker> PartialOrd
+    for DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.handle.partial_cmp(&other.handle)
     }
 }
 
-impl<'a, V, DE, UE, F, Type: Copy + Default, InnerOuter: InnerOuterMarker>
-    DynamicHandleImpl<'a, V, DE, UE, F, Type, InnerOuter>
+impl<V, DE, UE, F, Type: Copy + Default, InnerOuter: InnerOuterMarker>
+    DynamicHandleImpl<'_, V, DE, UE, F, Type, InnerOuter>
 {
     /// Converts this dynamic handle to its fixed variant.
     ///
@@ -201,7 +201,7 @@ impl FixedFaceHandle<PossiblyOuterTag> {
     }
 }
 
-impl<'a, V, DE, UE, F> AsRef<DE> for DirectedEdgeHandle<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> AsRef<DE> for DirectedEdgeHandle<'_, V, DE, UE, F> {
     fn as_ref(&self) -> &DE {
         self.data()
     }
@@ -328,7 +328,7 @@ impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F>
+impl<V, DE, UE, F> DirectedEdgeHandle<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -432,7 +432,7 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, CdtEdge<UE>, F> {
+impl<V, DE, UE, F> DirectedEdgeHandle<'_, V, DE, CdtEdge<UE>, F> {
     /// Returns `true` if this edge is a constraint edge.
     pub fn is_constraint_edge(self) -> bool {
         self.as_undirected().is_constraint_edge()
@@ -488,7 +488,7 @@ impl<'a, V, DE, UE, F> UndirectedVoronoiEdge<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> AsRef<UE> for UndirectedEdgeHandle<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> AsRef<UE> for UndirectedEdgeHandle<'_, V, DE, UE, F> {
     fn as_ref(&self) -> &UE {
         self.data()
     }
@@ -527,7 +527,7 @@ impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, UE, F>
+impl<V, DE, UE, F> UndirectedEdgeHandle<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -546,7 +546,7 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, UE, F>
+impl<V, DE, UE, F> UndirectedEdgeHandle<'_, V, DE, UE, F>
 where
     V: HasPosition,
     V::Scalar: Float,
@@ -570,14 +570,14 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F> UndirectedEdgeHandle<'a, V, DE, CdtEdge<UE>, F> {
+impl<V, DE, UE, F> UndirectedEdgeHandle<'_, V, DE, CdtEdge<UE>, F> {
     /// Returns `true` if this edge is a constraint edge.
     pub fn is_constraint_edge(self) -> bool {
         self.data().is_constraint_edge()
     }
 }
 
-impl<'a, V, DE, UE, InnerOuter, F> AsRef<F> for FaceHandle<'a, InnerOuter, V, DE, UE, F>
+impl<V, DE, UE, InnerOuter, F> AsRef<F> for FaceHandle<'_, InnerOuter, V, DE, UE, F>
 where
     InnerOuter: InnerOuterMarker,
 {
@@ -617,7 +617,7 @@ impl<'a, V, DE, UE, F> FaceHandle<'a, InnerTag, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> FaceHandle<'a, InnerTag, V, DE, UE, F>
+impl<V, DE, UE, F> FaceHandle<'_, InnerTag, V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -700,13 +700,13 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F> AsRef<V> for VertexHandle<'a, V, DE, UE, F> {
+impl<V, DE, UE, F> AsRef<V> for VertexHandle<'_, V, DE, UE, F> {
     fn as_ref(&self) -> &V {
         self.data()
     }
 }
 
-impl<'a, V, DE, UE, F> VertexHandle<'a, V, DE, UE, F>
+impl<V, DE, UE, F> VertexHandle<'_, V, DE, UE, F>
 where
     V: HasPosition,
 {
@@ -775,7 +775,7 @@ impl<'a, V, DE, UE, F> VertexHandle<'a, V, DE, UE, F> {
     }
 }
 
-impl<'a, V, DE, UE, F> DirectedEdgeHandle<'a, V, DE, UE, F>
+impl<V, DE, UE, F> DirectedEdgeHandle<'_, V, DE, UE, F>
 where
     V: HasPosition,
     V::Scalar: Float,
@@ -796,7 +796,7 @@ where
     }
 }
 
-impl<'a, V, DE, UE, F, InnerOuter: InnerOuterMarker> FaceHandle<'a, InnerOuter, V, DE, UE, F> {
+impl<V, DE, UE, F, InnerOuter: InnerOuterMarker> FaceHandle<'_, InnerOuter, V, DE, UE, F> {
     /// Returns a reference to the data associated with this face.
     pub fn data(&self) -> &F {
         self.dcel.face_data(self.handle)
