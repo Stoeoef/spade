@@ -486,7 +486,14 @@ where
             let cur_nn = self.triangulation.directed_edge(*cur_nn);
 
             let [from, to] = cur_nn.positions();
-            insertion_cell.push(math::circumcenter([to, from, position]).0);
+            insertion_cell.push(
+                math::circumcenter([
+                    to.sub(position),
+                    from.sub(position),
+                    Point2::new(zero(), zero()),
+                ])
+                .0,
+            );
         }
 
         let mut total_area = zero(); // Used to normalize weights at the end
@@ -524,7 +531,16 @@ where
                 // out edge of the current natural neighbor.
                 //
                 // The natural_neighbor_polygon.svg refers to this variable as `c0`, `c1`, and `c2`.
-                let current = last_edge.face().as_inner().unwrap().circumcenter();
+                let vertices = last_edge
+                    .face()
+                    .as_inner()
+                    .unwrap()
+                    .positions()
+                    .map(|p| p.sub(position));
+
+                let current = math::circumcenter(vertices).0;
+                last_edge.face();
+
                 positive_area = positive_area + last.x * current.y;
                 negative_area = negative_area + last.y * current.x;
 
