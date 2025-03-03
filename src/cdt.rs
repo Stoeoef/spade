@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::fmt::Formatter;
 
 use num_traits::{Float, NumCast};
 #[cfg(feature = "serde")]
@@ -13,8 +14,8 @@ use crate::{
 };
 use crate::{handles::*, intersection_iterator::Intersection};
 use crate::{
-    DelaunayTriangulation, HasPosition, HintGenerator, InsertionError, LastUsedVertexHintGenerator,
-    Point2, Triangulation, TriangulationExt,
+    mitigate_underflow, DelaunayTriangulation, HasPosition, HintGenerator, InsertionError,
+    LastUsedVertexHintGenerator, Point2, Triangulation, TriangulationExt,
 };
 
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
@@ -547,7 +548,7 @@ where
     /// around that.
     pub fn add_constraint(&mut self, from: FixedVertexHandle, to: FixedVertexHandle) -> bool {
         let initial_num_constraints = self.num_constraints();
-        self.try_add_constraint_inner(from, to, |_| panic!("Constraint edges must not intersect."));
+        self.resolve_splitting_constraint_request(from, to, None);
 
         self.num_constraints != initial_num_constraints
     }
@@ -725,13 +726,13 @@ where
     #[cfg(any(test, fuzzing))]
     #[allow(missing_docs)]
     pub fn cdt_sanity_check_with_params(&self, check_convexity: bool) {
-        let num_undirected_edges = self
+        let num_constraints = self
             .dcel
             .undirected_edges()
             .filter(|e| e.is_constraint_edge())
             .count();
 
-        assert_eq!(num_undirected_edges, self.num_constraints());
+        assert_eq!(num_constraints, self.num_constraints());
 
         if self.num_constraints() == 0 && check_convexity {
             self.sanity_check();
@@ -799,109 +800,19 @@ where
         from: FixedVertexHandle,
         to: FixedVertexHandle,
     ) -> Vec<FixedDirectedEdgeHandle> {
-        self.try_add_constraint_inner(from, to, |_| ConflictResolution::Cancel)
+        // Identify all potential constraint edge intersections (conflicts). This must be done
+        // beforehand in case that the caller chooses to cancel the operation if any conflict is
+        // detected. No mutation should happen in this case.
+        // The list of conflicts regions will be empty if a conflict occurred
+        let initial_conflict_regions = self.get_conflict_resolutions(from, to);
+        self.resolve_conflict_groups(initial_conflict_regions)
     }
 
-    fn try_add_constraint_inner<R>(
+    fn get_conflict_resolutions(
         &mut self,
         from: FixedVertexHandle,
         to: FixedVertexHandle,
-        mut conflict_resolver: R,
-    ) -> Vec<FixedDirectedEdgeHandle>
-    where
-        R: FnMut(DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>) -> ConflictResolution<V>,
-    {
-        // Constraint edges are added with a two-pass approach:
-        // - First, identify potential constraint edge intersections (conflicts). This must be done
-        //   beforehand in case that the caller chooses to `ConflictResolution::Cancel` the
-        //   operation - no mutation should have happened at this stage.
-        let (initial_conflict_regions, all_regions_intact) =
-            self.get_conflict_resolutions(from, to, &mut conflict_resolver);
-        // - Second, apply the conflict resolutions, e.g. by inserting new split points and by
-        //   rotating non-constraint edges that intersect the new constraint edge (see function
-        //   `resolve_conflict_region`).
-
-        if all_regions_intact {
-            self.resolve_conflict_groups(to, initial_conflict_regions)
-        } else {
-            self.add_splitting_constraint_edge_fallback(initial_conflict_regions)
-        }
-    }
-
-    /// Fallback routine to add splitting constraints that cannot be added via the fast path.
-    ///
-    /// This routine simply adds all split vertices first and then adds any missing constraints.
-    /// This avoids edge cases that can arise when the split point for a constraint
-    /// intersection lies "too far" off the conflict edge due to imprecise calculations.
-    fn add_splitting_constraint_edge_fallback(
-        &mut self,
-        initial_conflict_regions: Vec<InitialConflictRegion<V>>,
-    ) -> Vec<FixedDirectedEdgeHandle> {
-        let mut vertices_to_connect = Vec::new();
-        let mut temporarily_removed = Vec::new();
-
-        // Phase 1: Add all pending split vertices directly.
-        for region in initial_conflict_regions {
-            let group_end_vertex = match region.group_end {
-                Existing(v) => v,
-                ConflictRegionEnd::ConstraintEdgeSplit(new_vertex, edge) => {
-                    let new_handle = match new_vertex {
-                        Ok(new_vertex) => self
-                            .insert(new_vertex)
-                            .expect("Failed to insert vertex as expected. This is a bug in spade."),
-                        Err(handle) => handle,
-                    };
-
-                    let [old_from, old_to] = self.directed_edge(edge).vertices().map(|v| v.fix());
-                    // The conflict edge can prevent the forced insertion to the split vertex.
-                    // It will be removed temporarily
-                    self.remove_constraint_edge(edge.as_undirected());
-
-                    // Re-add the temporarily removed edge later as if it was split by the new
-                    // vertex
-                    temporarily_removed.push([old_from, new_handle]);
-                    temporarily_removed.push([new_handle, old_to]);
-                    new_handle
-                }
-                EdgeOverlap(edge) => self.directed_edge(edge).to().fix(),
-            };
-
-            vertices_to_connect.push(group_end_vertex);
-        }
-
-        let mut result = Vec::new();
-        let mut last_vertex = None;
-
-        // Phase 2: Add all constraint edges
-        for vertex in vertices_to_connect {
-            if let Some(last_vertex) = last_vertex {
-                let new_edges = self.try_add_constraint(last_vertex, vertex);
-                // try_add_constraint should always succeed as any conflicting edge should have been
-                // removed temporarily
-                assert_ne!(new_edges, Vec::new());
-                result.extend(new_edges);
-            }
-
-            last_vertex = Some(vertex);
-        }
-
-        for [from, to] in temporarily_removed {
-            self.try_add_constraint(from, to);
-        }
-
-        result
-    }
-
-    fn get_conflict_resolutions<R>(
-        &mut self,
-        from: FixedVertexHandle,
-        to: FixedVertexHandle,
-        conflict_resolver: &mut R,
-    ) -> (Vec<InitialConflictRegion<V>>, bool)
-    where
-        R: FnMut(DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>) -> ConflictResolution<V>,
-    {
-        let mut all_regions_intact = true;
+    ) -> Vec<InitialConflictRegion> {
         let mut conflict_groups = Vec::new();
         let mut current_group = Vec::new();
         let mut ignore_next_vertex = false;
@@ -913,42 +824,7 @@ where
                         continue;
                     }
 
-                    // The new constraint intersects an existing constraint edge. Start conflict
-                    // resolution.
-                    match conflict_resolver(edge) {
-                        ConflictResolution::Cancel => {
-                            return (Vec::new(), true);
-                        }
-                        ConflictResolution::Split(new_vertex) => {
-                            let position = new_vertex.position();
-                            let (overlap_vertex, is_valid) =
-                                self.verify_split_position(edge, position);
-
-                            // A region is considered to be intact if the split vertex lies
-                            // within the region and not outside or on its border.
-                            all_regions_intact &= is_valid;
-
-                            let conflict_edges = core::mem::take(&mut current_group);
-
-                            // overlap_vertex.is_some() indicates that the split position
-                            // overlaps an existing vertex. This can happen due to rounding
-                            // errors and needs some special handling
-                            ignore_next_vertex = overlap_vertex.is_some();
-
-                            let group_end_vertex =
-                                overlap_vertex.map(|h| Err(h)).unwrap_or(Ok(new_vertex));
-
-                            let group_end = ConflictRegionEnd::ConstraintEdgeSplit(
-                                group_end_vertex,
-                                edge.fix(),
-                            );
-
-                            conflict_groups.push(InitialConflictRegion {
-                                conflict_edges,
-                                group_end,
-                            });
-                        }
-                    }
+                    return Vec::new();
                 }
                 Intersection::VertexIntersection(v) => {
                     if ignore_next_vertex {
@@ -975,87 +851,244 @@ where
             }
         }
 
-        (conflict_groups, all_regions_intact)
+        conflict_groups
     }
 
-    fn verify_split_position(
+    fn resolve_splitting_constraint_request(
+        &mut self,
+        mut from: FixedVertexHandle,
+        to: FixedVertexHandle,
+        vertex_constructor: Option<&dyn Fn(Point2<f64>) -> V>,
+    ) -> Vec<FixedDirectedEdgeHandle> {
+        let mut result = Vec::new();
+        let mut conflict_edges = Vec::new();
+        let mut legalize_buffer = Vec::new();
+        let mut iterator = LineIntersectionIterator::new_from_handles(self, from, to);
+        iterator.next();
+
+        // This methods adds a constraint edge between two vertices. Any existing constraint edge that would intersect
+        // is being split (or results in a panic). This can lead to a few special cases, see below for more information.
+        //
+        // Other than that, this method implements a "fast path" for adding a constraint edge if no existing edge is
+        // being intersected. The fast path does not need to identify the whole conflict region again as those
+        // edges are being tracked.
+        while let Some(intersection) = iterator.next() {
+            match intersection {
+                Intersection::EdgeOverlap(edge) => {
+                    result.push(edge.fix());
+                    from = edge.to().fix();
+                }
+                Intersection::EdgeIntersection(mut edge) => {
+                    if !edge.is_constraint_edge() {
+                        // No conflict. Add edge to conflict edge list for later resolution (fast path)
+                        conflict_edges.push(edge.fix());
+                        continue;
+                    }
+                    // Slow path. We have found a conflict which needs to be resolved.
+                    let [p0, p1] = edge.positions().map(|p| p.to_f64());
+
+                    let from_pos = self.vertex(from).position().to_f64();
+                    let to_pos = self.vertex(to).position().to_f64();
+
+                    // Perform all intersection operations on `f64` to avoid precision issues as much as
+                    // possible.
+                    let line_intersection = get_edge_intersections(p0, p1, from_pos, to_pos);
+                    let line_intersection = mitigate_underflow(line_intersection);
+                    let new_vertex = vertex_constructor
+                        .expect("The new constraint edge intersects an existing constraint edge.")(
+                        line_intersection,
+                    );
+
+                    // The position might have changed slightly for f32 vertices.
+                    // Ensure to use this rounded position for all further calculations.
+                    let position = new_vertex.position();
+
+                    // Now comes the yucky part. In most cases, the split vertex is precise enough and lies
+                    // far away from any other vertex or edge. It will reside either directly on the
+                    // split edge or on one of its neighboring faces. Such a vertex can be used directly
+                    // as splitting the constraint won't create any invalid geometry (after legalizing).
+                    // Otherwise, we'll use a close alternative vertex that is known to introduce no
+                    // inconsistencies.
+                    let alternative_vertex = self.validate_split_position(edge, position);
+
+                    let final_vertex =
+                        if let Some((alternative_vertex, is_end_vertex)) = alternative_vertex {
+                            if !is_end_vertex {
+                                // An opposite vertex needs some adjustment to the set of constraint edges
+                                let is_on_same_side = edge.opposite_vertex().map(|v| v.fix())
+                                    == Some(alternative_vertex);
+                                if !is_on_same_side {
+                                    edge = edge.rev();
+                                }
+                                // This face ("(c)" marks constraint edges):
+                                //          |\
+                                //          | \
+                                // edge(c)->|  a <-- alternative vertex
+                                //          | /
+                                //          |/
+                                //
+                                // Becomes this face:
+                                //          |\
+                                //          | \<-(c)
+                                //    edge->|  a
+                                //          | /<-(c)
+                                //          |/
+
+                                let prev = edge.prev().fix();
+                                let next = edge.next().fix();
+
+                                let edge = edge.fix();
+                                self.undirected_edge_data_mut(edge.as_undirected())
+                                    .unmake_constraint_edge();
+                                self.num_constraints -= 1;
+
+                                self.make_constraint_edge(prev.as_undirected());
+                                self.make_constraint_edge(next.as_undirected());
+
+                                legalize_buffer.push(edge.as_undirected());
+                                self.legalize_edges_after_removal(&mut legalize_buffer, |_| false);
+                            }
+
+                            alternative_vertex
+                        } else {
+                            let edge = edge.fix();
+                            let (new_vertex, [e0, e1]) = self.insert_on_edge(edge, new_vertex);
+                            self.handle_legal_edge_split([e0, e1]);
+                            self.legalize_vertex(new_vertex);
+                            new_vertex
+                        };
+
+                    // Earlier versions of this code attempted to re-use the list of conflict edges for
+                    // efficiency gains. However, due to the necessary legalization, any number of conflict
+                    // edges may have been flipped and needs to be recalculated. The simplest way is to call
+                    // try_add_constraint.
+                    let previous_region = self.try_add_constraint(from, final_vertex);
+                    // Ensure that this call really added a constraint edge. There shouldn't be any constraint
+                    // edge in the way.
+                    assert!(!previous_region.is_empty() || from == final_vertex);
+                    result.extend(previous_region);
+                    conflict_edges.clear();
+
+                    from = final_vertex;
+                    // Reset the line iterator to ensure we are following the line out of the split position.
+                    // This will be slightly offset from the original line but prevent inconsistent conflict
+                    // edge detections.
+                    iterator = LineIntersectionIterator::new_from_handles(self, from, to);
+
+                    // Skip The first intersection as it will be the split vertex
+                    iterator.next();
+                }
+                Intersection::VertexIntersection(vertex) => {
+                    // Fast path. Happens if no constraint edge in this conflict region needed to be split.
+                    // Re-use the collected list of conflict edges.
+                    let vertex = vertex.fix();
+                    let copy = core::mem::take(&mut conflict_edges);
+                    let new_edge = self.resolve_conflict_region(copy, vertex);
+                    result.extend(new_edge);
+                    iterator = LineIntersectionIterator::new_from_handles(self, vertex, to);
+                    iterator.next();
+                    from = vertex;
+                }
+            }
+        }
+
+        for edge in &result {
+            self.make_constraint_edge(edge.as_undirected());
+        }
+
+        result
+    }
+
+    fn validate_split_position(
         &self,
         conflict_edge: DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>,
         split_position: Point2<<V as HasPosition>::Scalar>,
-    ) -> (Option<FixedVertexHandle>, bool) {
+    ) -> Option<(FixedVertexHandle, bool)> {
         // Not every split vertex may lead to a conflict region that will properly contain the
         // split vertex. This can happen as not all split positions can be represented precisely.
         //
         // Instead, these vertices will be handled by a slower fallback routine.
         //
         // A split position is considered to be valid if it lies either *on* the edge that was split
-        // or *within any of the edges neighboring faces*.
-        match self.locate_with_hint(split_position, conflict_edge.from().fix()) {
+        // or *within any of the neighboring faces*. We know that connecting to that new vertex won't
+        // lead to any inconsistent geometry.
+        //
+        // If the split position is not valid, we will *instead* use the closest vertex that is
+        // either the start or end vertex of the conflict edge or one of its opposites.
+        //
+        // Returns Some((..., `true`)) if the alternative vertex is either `conflict_edge.from` or
+        // `conflict_edge.to`. This is important as, in case an opposite vertex is chosen, the set of
+        // constraint edges needs to be adjusted slightly.
+        let is_valid = match self.locate_with_hint(split_position, conflict_edge.from().fix()) {
             PositionInTriangulation::OnEdge(real_edge) => {
-                let is_valid = real_edge.as_undirected() == conflict_edge.fix().as_undirected();
-                (None, is_valid)
+                real_edge.as_undirected() == conflict_edge.fix().as_undirected()
             }
             PositionInTriangulation::OnFace(face) => {
                 let face = face.adjust_inner_outer();
-                let is_valid =
-                    face == conflict_edge.face().fix() || face == conflict_edge.rev().face().fix();
-                (None, is_valid)
+                face == conflict_edge.face().fix() || face == conflict_edge.rev().face().fix()
             }
             PositionInTriangulation::OutsideOfConvexHull(_) => {
-                let is_valid = conflict_edge.is_part_of_convex_hull();
-                (None, is_valid)
+                conflict_edge.is_part_of_convex_hull()
             }
-            PositionInTriangulation::OnVertex(v) => (Some(v), false),
+            PositionInTriangulation::OnVertex(_) => false,
             PositionInTriangulation::NoTriangulation => unreachable!(),
+        };
+
+        if is_valid {
+            None
+        } else {
+            let split_position = split_position.to_f64();
+            let [d_from, d_to] = [conflict_edge.from(), conflict_edge.to()]
+                .map(|v| v.position().to_f64().distance_2(split_position));
+
+            let mut min_distance = d_from;
+            let mut min_vertex = conflict_edge.from();
+            let mut is_end_vertex = true;
+            if d_to < min_distance {
+                min_distance = d_to;
+                min_vertex = conflict_edge.to();
+            }
+
+            if let Some(opposite) = conflict_edge.opposite_vertex() {
+                let d_left = opposite.position().to_f64().distance_2(split_position);
+
+                if d_left < min_distance {
+                    min_distance = d_left;
+                    min_vertex = conflict_edge.next().to();
+
+                    is_end_vertex = false;
+                }
+            }
+
+            if let Some(opposite) = conflict_edge.rev().opposite_vertex() {
+                let d_right = opposite.position().to_f64().distance_2(split_position);
+
+                if d_right < min_distance {
+                    min_vertex = conflict_edge.rev().next().to();
+                    is_end_vertex = false;
+                }
+            }
+
+            Some((min_vertex.fix(), is_end_vertex))
         }
     }
 
     fn resolve_conflict_groups(
         &mut self,
-        final_vertex: FixedVertexHandle,
-        conflict_groups: Vec<InitialConflictRegion<V>>,
+        conflict_groups: Vec<InitialConflictRegion>,
     ) -> Vec<FixedDirectedEdgeHandle> {
         let mut constraint_edges = Vec::new();
-        let mut last_vertex = None;
 
         for InitialConflictRegion {
             conflict_edges,
             group_end,
         } in conflict_groups
         {
-            let mut last_edge = None;
             let target_vertex = match group_end {
                 Existing(v) => v,
-                ConflictRegionEnd::ConstraintEdgeSplit(v, conflict_edge) => {
-                    let v = v.expect(
-                        "Expected a new vertex for insertion. \
-                    An existing vertex should be handled by the fallback routine. \
-                    This is a bug in spade.",
-                    );
-                    let (new_vertex, [e0, e1]) = self.insert_on_edge(conflict_edge, v);
-                    let e1_handle = self.directed_edge(e1);
-                    // edge_in / edge_out refer to the edge going into / out of the newly split off
-                    // vertex.
-                    let edge_out = e1_handle.ccw();
-                    let edge_in = e1_handle.cw();
-
-                    if Some(edge_in.to().fix()) == last_vertex {
-                        constraint_edges.push(edge_in.fix().rev());
-                    }
-
-                    if edge_out.to().fix() == final_vertex {
-                        // The edge reaches the target vertex - we're done! However, this can
-                        // sometimes omit to make the last edge a constraint. This special case
-                        // fixes that issue.
-                        last_edge = Some(edge_out.fix());
-                    }
-
-                    self.handle_legal_edge_split([e0, e1]);
-                    new_vertex
-                }
                 EdgeOverlap(edge) => {
                     constraint_edges.push(edge);
-                    last_vertex = Some(self.directed_edge(edge).to().fix());
+
                     // No need to resolve conflict regions - there are no conflicting edges in the
                     // GroupEnd::EdgeOverlap case
                     continue;
@@ -1063,9 +1096,6 @@ where
             };
 
             constraint_edges.extend(self.resolve_conflict_region(conflict_edges, target_vertex));
-            constraint_edges.extend(last_edge);
-
-            last_vertex = Some(target_vertex);
         }
 
         for edge in &constraint_edges {
@@ -1156,7 +1186,7 @@ where
     /// Thus, iterating a `LineIntersectionIterator::new_from_handles(&cdt, from, to)` will often
     /// not return only `Intersection::EdgeOverlap` as would be expected. Instead, use the returned
     /// `Vec` to identify the edges that form the new constraint.
-    /// The absolute deviation from the correct position should be minimal, especially when using
+    /// The absolute deviation from the correct position should be small, especially when using
     /// `f64` coordinates as storage type.
     pub fn add_constraint_and_split<C>(
         &mut self,
@@ -1167,22 +1197,21 @@ where
     where
         C: Fn(Point2<<V as HasPosition>::Scalar>) -> V,
     {
-        let from_pos = self.vertex(from).position();
-        let to_pos = self.vertex(to).position();
+        let r = &|p: Point2<f64>| {
+            let [x, y] = [p.x, p.y].map(|s| {
+                <<V as HasPosition>::Scalar as NumCast>::from(s)
+                    .unwrap_or_else(|| (s as f32).into())
+            });
+            vertex_constructor(Point2::new(x, y))
+        };
 
-        self.try_add_constraint_inner(from, to, |edge| {
-            let [p0, p1] = edge.positions();
-            let line_intersection = get_edge_intersections(p0, p1, from_pos, to_pos);
-            let new_vertex = vertex_constructor(line_intersection);
-            assert_eq!(new_vertex.position(), line_intersection);
-            ConflictResolution::Split(new_vertex)
-        })
+        self.resolve_splitting_constraint_request(from, to, Some(r))
     }
 }
 
 /// Describes all possible ways in which conflict regions which are created while adding a
 /// constraint edge may end.
-enum ConflictRegionEnd<V> {
+enum ConflictRegionEnd {
     /// Conflict group ends with an existing vertex
     Existing(FixedVertexHandle),
     /// Special case of "Existing" - the constraint edge overlaps any existing edge which implies
@@ -1190,26 +1219,33 @@ enum ConflictRegionEnd<V> {
     /// However, it makes sense to handle this specially to prevent having to look up the overlapped
     /// edge later.
     EdgeOverlap(FixedDirectedEdgeHandle),
-    /// The conflict region ends in a vertex that splits an existing constraint edge. Usually, this
-    /// vertex is constructed anew and given by the `Ok` case.
-    /// In rare cases, the split vertex may be an existing vertex that does not lie exactly on the
-    /// line due to rounding issues. This is indicated by the `Err` case. The constraint edge that
-    /// should be split is the second field.
-    ConstraintEdgeSplit(Result<V, FixedVertexHandle>, FixedDirectedEdgeHandle),
+}
+
+impl core::fmt::Debug for ConflictRegionEnd {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Existing(handle) => write!(f, "Existing({handle:?})"),
+            EdgeOverlap(edge) => write!(f, "EdgeOverlap({edge:?})"),
+        }
+    }
 }
 
 /// Represents a conflict region that does not yet fully exist as a vertex may be missing. This can
 /// happen if adding a constraint edge should split any intersecting existing edge.
 /// This will eventually be turned into a "real" conflict group (described as a list of edges) by
 /// inserting the missing vertex.
-struct InitialConflictRegion<V> {
+struct InitialConflictRegion {
     conflict_edges: Vec<FixedDirectedEdgeHandle>,
-    group_end: ConflictRegionEnd<V>,
+    group_end: ConflictRegionEnd,
 }
 
-enum ConflictResolution<V> {
-    Cancel,
-    Split(V),
+impl core::fmt::Debug for InitialConflictRegion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("InitialConflictRegion")
+            .field("conflict_edges", &self.conflict_edges)
+            .field("group_end", &self.group_end)
+            .finish()
+    }
 }
 
 pub fn get_edge_intersections<S: SpadeNum + Float>(
@@ -1250,6 +1286,9 @@ pub fn get_edge_intersections<S: SpadeNum + Float>(
 
 #[cfg(test)]
 mod test {
+    use approx::assert_abs_diff_eq;
+    use proptest::prelude::*;
+
     use alloc::{vec, vec::Vec};
 
     use rand::distributions::{Distribution, Uniform};
@@ -2034,60 +2073,6 @@ mod test {
     }
 
     #[test]
-    fn edge_intersection_precision_test() -> Result<(), InsertionError> {
-        let edges = [
-            [
-                Point2::new(17.064112, -17.96008),
-                Point2::new(16.249594, -17.145563),
-            ],
-            [
-                Point2::new(-25.290726, -24.435482),
-                Point2::new(-5.6608872, -24.435482),
-            ],
-            [
-                Point2::new(17.878626, -18.774595),
-                Point2::new(15.435078, -16.331045),
-            ],
-        ];
-        let mut cdt: ConstrainedDelaunayTriangulation<Point2<f32>> =
-            ConstrainedDelaunayTriangulation::new();
-
-        for edge in edges.iter() {
-            let point_a = cdt.insert(edge[0])?;
-            let point_b = cdt.insert(edge[1])?;
-
-            // The intersection calculation of the last edge is susceptible to floating point
-            // inaccuracies. Spade has a fallback routine that is more costly but should handle
-            // these more robustly. This test is set up to trigger this routine.
-            cdt.add_constraint_and_split(point_a, point_b, |v| v);
-            cdt.cdt_sanity_check();
-        }
-
-        assert_eq!(cdt.num_vertices(), 7);
-
-        // Gather all constraint edges as [from, to] index tuples
-        let mut constraint_edges = cdt
-            .undirected_edges()
-            .filter(|e| e.is_constraint_edge())
-            .map(|e| e.vertices().map(|v| v.index()))
-            .collect::<Vec<_>>();
-
-        // Normalize to make comparison order-independent
-        for edge_pair in &mut constraint_edges {
-            edge_pair.sort();
-        }
-        constraint_edges.sort();
-
-        // Manually checked for correctness...
-        assert_eq!(
-            constraint_edges,
-            vec![[0, 6], [1, 6], [2, 3], [4, 6], [5, 6]]
-        );
-
-        Ok(())
-    }
-
-    #[test]
     fn edge_intersection_precision_test_2() -> Result<(), InsertionError> {
         let edges = [
             [
@@ -2181,13 +2166,215 @@ mod test {
         Ok(())
     }
 
-    fn check_returned_edges(
-        cdt: &mut ConstrainedDelaunayTriangulation<Point2<f64>>,
+    #[test]
+    fn edge_intersection_precision_test_4() -> Result<(), InsertionError> {
+        let points = [
+            (1.0f32, 1.0f32),
+            (63.137257, 87.04635),
+            (1.0, 37.488983),
+            (59.171143, 97.93353),
+            (68.78571, 71.541046),
+        ];
+
+        run_proptest(&points)
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_5() -> Result<(), InsertionError> {
+        let points = [
+            (12.645211, 67.07809),
+            (49.93318, 15.726259),
+            (22.433575, 53.597496),
+            (6.3033395, 32.111538),
+            (89.09958, 1.0720834),
+        ];
+        run_proptest(&points)
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_6() -> Result<(), InsertionError> {
+        let points = [
+            (32.944817, 13.24526),
+            (91.99222, 22.252642),
+            (12.645211, 67.07809),
+            (49.93318, 15.726259),
+            (22.433575, 53.597496),
+            (6.3033395, 32.111538),
+            (89.09958, 1.0720834),
+        ];
+        run_proptest(&points)
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_7() {
+        let edges = [
+            (
+                Point2 {
+                    x: 15.435077667236328,
+                    y: 16.331045150756836,
+                },
+                Point2 {
+                    x: 20.322175979614258,
+                    y: 21.218143463134766,
+                },
+            ),
+            (
+                Point2 {
+                    x: 18.69314193725586,
+                    y: 19.589109420776367,
+                },
+                Point2 {
+                    x: 19.507659912109375,
+                    y: 20.40362548828125,
+                },
+            ),
+            (
+                Point2 {
+                    x: 19.507659912109375,
+                    y: 21.218143463134766,
+                },
+                Point2 {
+                    x: 19.507659912109375,
+                    y: 20.40362548828125,
+                },
+            ),
+            (
+                Point2 {
+                    x: 17.878625869750977,
+                    y: 18.774595260620117,
+                },
+                Point2 {
+                    x: 19.507659912109375,
+                    y: 20.40362548828125,
+                },
+            ),
+        ];
+        let mut cdt: ConstrainedDelaunayTriangulation<Point2<f64>> =
+            ConstrainedDelaunayTriangulation::new();
+        for edge in edges {
+            let point_a = cdt.insert(edge.0).unwrap();
+            let point_b = cdt.insert(edge.1).unwrap();
+            cdt.add_constraint_and_split(point_a, point_b, |v| v);
+            cdt.cdt_sanity_check();
+        }
+    }
+
+    #[test]
+    fn foo() -> Result<(), InsertionError> {
+        let vertices = [
+            Point2::new(43.44877, 78.04408),
+            Point2::new(43.498154, 81.00147),
+            Point2::new(42.54009, 79.197945),
+            Point2::new(42.702503, 77.25916),
+            Point2::new(43.033974, 76.91306),
+            Point2::new(43.843018, 76.06832),
+            Point2::new(43.72607, 77.74121),
+            Point2::new(42.55491, 79.02104),
+        ];
+        let mut cdt = ConstrainedDelaunayTriangulation::<Point2<f32>>::new();
+
+        for point in vertices {
+            cdt.insert(point)?;
+        }
+
+        let v = |n| FixedVertexHandle::from_index(n);
+
+        cdt.add_constraint(v(0), v(4));
+        cdt.add_constraint(v(1), v(6));
+        cdt.add_constraint(v(2), v(7));
+        cdt.add_constraint(v(3), v(4));
+        cdt.add_constraint(v(4), v(5));
+        cdt.add_constraint(v(5), v(6));
+        cdt.add_constraint(v(7), v(3));
+        cdt.add_constraint(v(6), v(7));
+
+        cdt.cdt_sanity_check();
+        Ok(())
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_8() -> Result<(), InsertionError> {
+        let points = [
+            (43.44877, 78.04408),
+            (15.193367, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (41.485252, 91.78975),
+            (49.090862, 1.0),
+            (43.498154, 81.00147),
+            (1.0, 1.0),
+            (23.288902, 97.52936),
+            (75.59119, 42.91933),
+            (25.808325, 97.32154),
+        ];
+        run_proptest(&points)
+    }
+
+    fn run_proptest(points: &[(f32, f32)]) -> Result<(), InsertionError> {
+        let mut cdt = ConstrainedDelaunayTriangulation::<Point2<f32>>::new();
+
+        let mut last_handle = None;
+        for &(x, y) in points {
+            let next_handle = cdt.insert(Point2::new(x, y))?;
+            if let Some(last_handle) = last_handle {
+                let edges = cdt.add_constraint_and_split(last_handle, next_handle, |p| p);
+                if !edges.is_empty() {
+                    check_returned_edges(&cdt, &edges, last_handle, next_handle);
+                }
+            }
+            last_handle = Some(next_handle);
+
+            cdt.cdt_sanity_check();
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_9() -> Result<(), InsertionError> {
+        let points = [
+            (17.315233, 1.0),
+            (36.59658, 1.0),
+            (1.0, 62.270954),
+            (1.0, 1.0),
+            (38.64656, 24.732662),
+        ];
+
+        run_proptest(&points)
+    }
+
+    #[test]
+    fn edge_intersection_precision_test_10() -> Result<(), InsertionError> {
+        let points = [
+            (57.128956, 53.16448),
+            (78.60271, 71.51385),
+            (94.13138, 1.0),
+            (1.0, 1.0),
+            (65.829636, 82.399826),
+            (84.53016, 25.01849),
+            (1.0, 1.0),
+            (52.712097, 98.32006),
+            (77.15014, 51.253986),
+            (94.362755, 59.469707),
+            (44.423584, 69.76751),
+            (1.0, 1.0),
+            (72.84374, 64.58434),
+            (27.416088, 88.37326),
+        ];
+
+        run_proptest(&points)
+    }
+
+    fn check_returned_edges<S: crate::SpadeNum>(
+        cdt: &ConstrainedDelaunayTriangulation<Point2<S>>,
         edges: &[FixedDirectedEdgeHandle],
         first_vertex: FixedVertexHandle,
         last_vertex: FixedVertexHandle,
     ) {
         cdt.cdt_sanity_check();
+
+        let first_pos = cdt.vertex(first_vertex).position().to_f64();
+        let last_pos = cdt.vertex(last_vertex).position().to_f64();
 
         let last = edges.last().expect("Edges cannot be empty");
         let last = cdt.directed_edge(*last);
@@ -2197,9 +2384,38 @@ mod test {
         for edge in edges {
             let edge = cdt.directed_edge(*edge);
             assert_eq!(edge.from().fix(), current_from);
+            let position = edge.to().position().to_f64();
+            let distance =
+                crate::delaunay_core::math::distance_2(first_pos, last_pos, position).sqrt();
+            // We'll use some arbitrary epsilon that will just barely passes the test suite.
+            // It doesn't seem to matter too much in practice as the distance is still small.
+            assert_abs_diff_eq!(distance, 0.0, epsilon = 3.0e-2f64);
             current_from = edge.to().fix();
         }
 
         assert_eq!(last.to().fix(), last_vertex);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1000))]
+        #[test]
+        #[ignore]
+        fn test_add_constraint_and_split(points in proptest::collection::vec((1.0f32..100.0f32, 1.0f32..100.0f32), 0..100)) {
+            let mut cdt = ConstrainedDelaunayTriangulation::<Point2<f32>>::new();
+
+            let mut last_handle = None;
+            for (x, y) in points {
+                let next_handle = cdt.insert(Point2::new(x,y)).unwrap();
+                if let Some(last_handle) = last_handle {
+                    let edges = cdt.add_constraint_and_split(last_handle, next_handle, |p|p);
+                    if !edges.is_empty() {
+                        check_returned_edges(&cdt, &edges, last_handle, next_handle);
+                    }
+                }
+                last_handle = Some(next_handle);
+                cdt.cdt_sanity_check();
+            }
+
+        }
     }
 }
