@@ -875,7 +875,8 @@ mod test {
     use crate::{
         handles::FixedVertexHandle, DelaunayTriangulation, InsertionError, Point2, Triangulation,
     };
-    use rand::distributions::{Distribution, Uniform};
+    use rand::distr::Distribution;
+    use rand::distr::Uniform;
     use rand::{seq::SliceRandom, Rng, SeedableRng};
 
     use alloc::{vec, vec::Vec};
@@ -1010,10 +1011,10 @@ mod test {
     }
 
     #[test]
-    fn test_insert_outside_convex_hull() -> Result<(), InsertionError> {
+    fn test_insert_outside_convex_hull() -> anyhow::Result<()> {
         const NUM: usize = 100;
         let mut rng = rand::rngs::StdRng::from_seed(*SEED);
-        let range = Uniform::new(0., 2.0 * core::f64::consts::PI);
+        let range = Uniform::new(0., 2.0 * core::f64::consts::PI)?;
 
         let mut d = DelaunayTriangulation::<_>::default();
 
@@ -1334,20 +1335,20 @@ mod test {
     }
 
     #[test]
-    fn test_removal_and_insertion() -> Result<(), InsertionError> {
+    fn test_removal_and_insertion() -> anyhow::Result<()> {
         let points = random_points_with_seed(1000, SEED);
         let mut d = DelaunayTriangulation::<_>::bulk_load(points)?;
 
         let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         for _ in 0..1000 {
-            if rng.gen() {
+            if rng.random() {
                 // Insert new random point
-                let x = rng.gen();
-                let y = rng.gen();
+                let x = rng.random();
+                let y = rng.random();
                 d.insert(Point2::new(x, y))?;
             } else {
                 // Remove random point
-                let range = Uniform::new(1, d.num_vertices());
+                let range = Uniform::new(1, d.num_vertices())?;
                 let handle = range.sample(&mut rng);
                 d.remove(FixedVertexHandle::new(handle));
             }
@@ -1450,7 +1451,7 @@ mod test {
         }
         let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         while triangulation.num_vertices() > 3 {
-            if rng.gen() {
+            if rng.random() {
                 triangulation.remove(FixedVertexHandle::new(1));
             } else {
                 triangulation.remove(FixedVertexHandle::new(2));

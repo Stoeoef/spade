@@ -1291,7 +1291,8 @@ mod test {
 
     use alloc::{vec, vec::Vec};
 
-    use rand::distributions::{Distribution, Uniform};
+    use rand::distr::{Distribution, Uniform};
+    use rand::seq::IndexedRandom as _;
     use rand::{Rng, SeedableRng};
 
     use crate::delaunay_core::{FixedDirectedEdgeHandle, TriangulationExt};
@@ -1640,7 +1641,7 @@ mod test {
         R: Rng,
     {
         let mut result = Vec::with_capacity(num_points);
-        let range = Uniform::new(-range, range);
+        let range = Uniform::new(-range, range).unwrap();
         for _ in 0..num_points {
             let factor = range.sample(rng);
             result.push(line_dir.mul(factor as f64));
@@ -1663,7 +1664,7 @@ mod test {
             let to = ps[1];
             let from = cdt.insert(from)?;
             let to = cdt.insert(to)?;
-            let should_add_constraint: bool = rng.gen();
+            let should_add_constraint: bool = rng.random();
             if from != to && should_add_constraint {
                 cdt.add_constraint(from, to);
             }
@@ -1674,7 +1675,7 @@ mod test {
     }
 
     #[test]
-    fn fuzz_test_on_grid() -> Result<(), InsertionError> {
+    fn fuzz_test_on_grid() -> anyhow::Result<()> {
         use rand::seq::SliceRandom;
         // Generates points on a grid and randomly connects
         // them with non-intersecting constraints
@@ -1693,7 +1694,7 @@ mod test {
         for p in points {
             cdt.insert(p)?;
         }
-        let range = Uniform::new(-RANGE, RANGE);
+        let range = Uniform::new(-RANGE, RANGE)?;
         let directions_and_offset = [
             (Point2::new(1.0, 0.0), Point2::new(0.0, 1.0)),
             (Point2::new(0.0, 1.0), Point2::new(1.0, 0.0)),
