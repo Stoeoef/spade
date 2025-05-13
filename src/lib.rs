@@ -84,7 +84,7 @@ mod test_utilities;
 /// Reference handles come in one of four variants:
 /// * [FaceHandle](handles::FaceHandle)s refer to a single face (triangle) of the triangulation.
 ///   They are used get the triangle's adjacent vertices and edges. They also may refer to
-///    the single outer face.
+///   the single outer face.
 /// * [VertexHandle](handles::VertexHandle)s refer to a single vertex of the triangulation. They
 ///   allow to retrieve the vertex position and its outgoing edges.
 /// * [DirectedEdgeHandle](handles::DirectedEdgeHandle)s refer to a single directed edge. They

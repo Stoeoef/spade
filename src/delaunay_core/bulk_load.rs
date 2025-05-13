@@ -788,7 +788,7 @@ impl Hull {
 
         const INVALID: usize = usize::MAX;
         self.buckets
-            .extend(core::iter::repeat(INVALID).take(target_size));
+            .extend(core::iter::repeat_n(INVALID, target_size));
 
         let (first_index, current_node) = self
             .data
