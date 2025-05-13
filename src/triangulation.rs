@@ -496,7 +496,7 @@ pub trait Triangulation: Default {
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
     ) -> Option<Self::Vertex> {
         match self.locate_with_hint_option_core(point, None) {
-            PositionInTriangulation::OnVertex(handle) => Some(self.remove_and_notify(handle)),
+            PositionInTriangulation::OnVertex(handle) => Some(self.remove(handle)),
             _ => None,
         }
     }

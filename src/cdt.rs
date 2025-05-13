@@ -236,6 +236,29 @@ where
         }
     }
 
+    /// Removes a vertex from the triangulation.
+    ///
+    /// This operation runs in O(n²), where n is the degree of the
+    /// removed vertex.
+    ///
+    /// # Handle invalidation
+    /// This method will invalidate all vertex, edge and face handles.
+    fn remove(&mut self, vertex: FixedVertexHandle) -> V {
+        let removed_constraints = self
+            .dcel
+            .vertex(vertex)
+            .out_edges()
+            .filter(|edge| edge.is_constraint_edge())
+            .map(|e| e.as_undirected().fix())
+            .collect::<Vec<_>>();
+
+        for e in removed_constraints {
+            self.remove_constraint_edge(e);
+        }
+
+        self.remove_and_notify(vertex)
+    }
+
     fn into_parts(
         self,
     ) -> (
@@ -393,23 +416,15 @@ where
         Ok(result)
     }
 
-    /// Removes a vertex from the triangulation.
-    ///
-    /// This operation runs in O(n²), where n is the degree of the
-    /// removed vertex.
-    ///
     /// # Handle invalidation
-    /// This method will invalidate all vertex, edge and face handles.
+    /// See [Triangulation::remove]. This function was accidentally implemented separately for CDTs and will be removed in future releases.
+    /// Use the method from the trait instead.
+    #[deprecated(
+        since = "2.14.0",
+        note = "Please use `remove` from trait `Triangulation` instead."
+    )]
     pub fn remove(&mut self, vertex: FixedVertexHandle) -> V {
-        let num_removed_constraints = self
-            .dcel
-            .vertex(vertex)
-            .out_edges()
-            .map(|edge| edge.is_constraint_edge())
-            .filter(|b| *b)
-            .count();
-        self.num_constraints -= num_removed_constraints;
-        self.remove_and_notify(vertex)
+        <Self as Triangulation>::remove(self, vertex)
     }
 
     /// Returns the number of constraint edges.
@@ -2047,6 +2062,30 @@ mod test {
         // Try to add on top of an existing edge
         let edges = cdt.try_add_constraint(from, to);
         assert_eq!(edges.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_vertex_respects_constraints() -> Result<(), InsertionError> {
+        let mut triangulation =
+            ConstrainedDelaunayTriangulation::<Point2<f32>>::bulk_load_cdt_stable(
+                vec![
+                    Point2::new(-1.0, 0.0),
+                    Point2::new(0.0, 0.0),
+                    Point2::new(0.0, 1.0),
+                    Point2::new(1.0, 1.0),
+                ],
+                vec![[0, 1], [1, 2], [2, 3]],
+            )?;
+
+        let mut copy = triangulation.clone();
+
+        triangulation.remove(FixedVertexHandle::from_index(1));
+        triangulation.cdt_sanity_check();
+
+        copy.locate_and_remove(Point2::new(0.0, 0.0));
+        copy.cdt_sanity_check();
 
         Ok(())
     }
