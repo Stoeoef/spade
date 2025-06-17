@@ -1,4 +1,9 @@
+#[cfg(not(feature = "std"))]
 use core::sync::atomic::{AtomicUsize, Ordering};
+#[cfg(feature = "std")]
+use std::cell::Cell;
+#[cfg(feature = "std")]
+use std::thread_local;
 
 use crate::{
     DelaunayTriangulation, HasPosition, Point2, SpadeNum, Triangulation, TriangulationExt,
@@ -78,25 +83,54 @@ pub trait HintGenerator<S: SpadeNum>: Default {
 )]
 pub struct LastUsedVertexHintGenerator {
     // Serde does not implement `(De)Serialize` for `AtomicUsize` in no_std environments.
+    #[cfg(not(feature = "std"))]
     #[cfg_attr(feature = "serde", serde(skip))]
     index: AtomicUsize,
 }
 
+#[cfg(feature = "std")]
+thread_local! {
+    static LAST_USED_INDEX: Cell<usize> = const { Cell::new(0) };
+}
+
 impl Clone for LastUsedVertexHintGenerator {
     fn clone(&self) -> Self {
-        Self {
-            index: AtomicUsize::new(self.index.load(Ordering::Relaxed)),
+        #[cfg(not(feature = "std"))]
+        {
+            Self {
+                index: AtomicUsize::new(self.index.load(Ordering::Relaxed)),
+            }
+        }
+        #[cfg(feature = "std")]
+        {
+            // Uses a thread-local cell to store the last used index
+            Self {}
         }
     }
 }
 
 impl<S: SpadeNum> HintGenerator<S> for LastUsedVertexHintGenerator {
     fn get_hint(&self, _: Point2<S>) -> FixedVertexHandle {
-        FixedVertexHandle::new(self.index.load(Ordering::Relaxed))
+        #[cfg(not(feature = "std"))]
+        {
+            FixedVertexHandle::new(self.index.load(Ordering::Relaxed))
+        }
+        #[cfg(feature = "std")]
+        {
+            let idx = LAST_USED_INDEX.get();
+            FixedVertexHandle::new(idx)
+        }
     }
 
     fn notify_vertex_lookup(&self, vertex: FixedVertexHandle) {
-        self.index.store(vertex.index(), Ordering::Relaxed);
+        #[cfg(not(feature = "std"))]
+        {
+            self.index.store(vertex.index(), Ordering::Relaxed);
+        }
+        #[cfg(feature = "std")]
+        {
+            LAST_USED_INDEX.replace(vertex.index());
+        }
     }
 
     fn notify_vertex_inserted(&mut self, vertex: FixedVertexHandle, _: Point2<S>) {
