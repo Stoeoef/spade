@@ -150,6 +150,10 @@ where
     Ok(result)
 }
 
+/// Returns the [`ConstrainedDelaunayTriangulation`].
+///
+/// Conflicting edges are ignored and returned.
+/// If any conflicting edge is returned, this means input is incorrect and you may want to look into fixing it.
 pub fn bulk_load_cdt<V, DE, UE, F, L>(
     elements: Vec<V>,
     mut edges: Vec<[usize; 2]>,
@@ -161,12 +165,36 @@ where
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
+    try_bulk_load_cdt(elements, edges).map(|(cdt, _)| cdt)
+}
+
+/// Returns the [`ConstrainedDelaunayTriangulation`].
+///
+/// Conflicting edges are ignored and returned.
+/// If any conflicting edge is returned, this means input is incorrect and you may want to look into fixing it.
+pub fn try_bulk_load_cdt<V, DE, UE, F, L>(
+    elements: Vec<V>,
+    mut edges: Vec<[usize; 2]>,
+) -> Result<
+    (
+        ConstrainedDelaunayTriangulation<V, DE, UE, F, L>,
+        Vec<[usize; 2]>,
+    ),
+    InsertionError,
+>
+where
+    V: HasPosition,
+    DE: Default,
+    UE: Default,
+    F: Default,
+    L: HintGenerator<<V as HasPosition>::Scalar>,
+{
     if elements.is_empty() {
-        return Ok(ConstrainedDelaunayTriangulation::new());
+        return Ok((ConstrainedDelaunayTriangulation::new(), Vec::new()));
     }
 
     if edges.is_empty() {
-        return bulk_load(elements);
+        return bulk_load(elements).map(|cdt| (cdt, Vec::new()));
     }
 
     let mut point_sum = Point2::<f64>::new(0.0, 0.0);
@@ -232,7 +260,7 @@ where
     let mut next_constraint = edges.pop();
 
     let mut buffer = Vec::new();
-
+    let mut failed_constraints = Vec::new();
     let mut add_constraints_for_new_vertex =
         |result: &mut ConstrainedDelaunayTriangulation<V, DE, UE, F, L>, index| {
             while let Some([from, to]) = next_constraint {
@@ -241,7 +269,9 @@ where
                     let [new_from, new_to] =
                         [from, to].map(|v| FixedVertexHandle::new(old_to_new[v]));
                     // Insert constraint edge
-                    result.add_constraint(new_from, new_to);
+                    if result.try_add_constraint(new_from, new_to).is_empty() {
+                        failed_constraints.push([from, to]);
+                    }
                     next_constraint = edges.pop();
                 } else {
                     break;
@@ -251,7 +281,7 @@ where
 
     let mut hull = loop {
         let Some((old_index, next)) = elements.pop() else {
-            return Ok(result);
+            return Ok((result, failed_constraints));
         };
         result.insert(next)?;
         add_constraints_for_new_vertex(&mut result, old_index);
@@ -282,7 +312,7 @@ where
             elements.push((old_index, skipped));
             hull = loop {
                 let Some((old_index, next)) = elements.pop() else {
-                    return Ok(result);
+                    return Ok((result, failed_constraints));
                 };
                 result.insert(next)?;
                 add_constraints_for_new_vertex(&mut result, old_index);
@@ -302,7 +332,7 @@ where
         hull_sanity_check(&result, &hull);
     }
 
-    Ok(result)
+    Ok((result, failed_constraints))
 }
 
 fn try_get_hull_center<V, T>(result: &T) -> Option<Point2<f64>>

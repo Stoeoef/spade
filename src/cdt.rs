@@ -7,16 +7,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::cdt::ConflictRegionEnd::{EdgeOverlap, Existing};
 use crate::delaunay_core::dcel_operations::flip_cw;
-use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable};
+use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable, try_bulk_load_cdt};
+use crate::{
+    cdt, mitigate_underflow, DelaunayTriangulation, HasPosition, HintGenerator, InsertionError,
+    LastUsedVertexHintGenerator, Point2, Triangulation, TriangulationExt,
+};
 use crate::{
     delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator, PositionInTriangulation,
     SpadeNum,
 };
 use crate::{handles::*, intersection_iterator::Intersection};
-use crate::{
-    mitigate_underflow, DelaunayTriangulation, HasPosition, HintGenerator, InsertionError,
-    LastUsedVertexHintGenerator, Point2, Triangulation, TriangulationExt,
-};
 
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
 ///
@@ -410,10 +410,27 @@ where
         vertices: Vec<V>,
         edges: Vec<[usize; 2]>,
     ) -> Result<Self, InsertionError> {
-        let mut result: Self =
-            bulk_load_stable(move |vertices| bulk_load_cdt(vertices, edges), vertices)?;
+        Self::try_bulk_load_cdt_stable(vertices, edges).map(|(cdt, _)| cdt)
+    }
+
+    /// See [Self::bulk_load_cdt_stable]
+    pub fn try_bulk_load_cdt_stable(
+        vertices: Vec<V>,
+        edges: Vec<[usize; 2]>,
+    ) -> Result<(Self, Vec<[usize; 2]>), InsertionError> {
+        let mut conflicting_edges = Vec::new();
+        let mut result: Self = bulk_load_stable(
+            |vertices| match try_bulk_load_cdt(vertices, edges) {
+                Ok((cdt, new_conflicting_edges)) => {
+                    conflicting_edges = new_conflicting_edges;
+                    Ok(cdt)
+                }
+                Err(e) => Err(e),
+            },
+            vertices,
+        )?;
         *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
-        Ok(result)
+        Ok((result, conflicting_edges))
     }
 
     /// # Handle invalidation
@@ -1993,6 +2010,26 @@ mod test {
         ];
 
         Cdt::bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]])
+    }
+
+    #[test]
+    fn get_try_cdt_for_duplicate_vertices() -> Result<(), InsertionError> {
+        let vertices = vec![
+            Point2::new(0.0, -10.0),
+            Point2::new(76.0, 0.0),
+            Point2::new(76.0, 0.0), // Duplicated vertex
+            Point2::new(20.0, -30.0),
+            Point2::new(45.0, 25.0),
+            Point2::new(32.0, -35.0),
+            Point2::new(60.0, 20.0),
+            Point2::new(60.0, -30.0),
+            Point2::new(50.0, -34.0),
+        ];
+        let (_, conflicting_edges) =
+            Cdt::try_bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]])?;
+        // Hardcoded values, may change if CDT algorithm change
+        assert_eq!(&conflicting_edges, &[[6, 7,], [4, 5,]]);
+        Ok(())
     }
 
     #[test]
