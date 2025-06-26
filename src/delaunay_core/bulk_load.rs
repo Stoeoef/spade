@@ -152,11 +152,14 @@ where
 
 /// Returns the [`ConstrainedDelaunayTriangulation`].
 ///
-/// Conflicting edges are ignored and returned.
-/// If any conflicting edge is returned, this means input is incorrect and you may want to look into fixing it.
+/// Panics if it encounters any conflicting edges. See [try_bulk_load_cdt] for a non-panicking version.
+///
+/// # See also
+///
+/// See also [ConstrainedDelaunayTriangulation::bulk_load_cdt]
 pub fn bulk_load_cdt<V, DE, UE, F, L>(
     elements: Vec<V>,
-    mut edges: Vec<[usize; 2]>,
+    edges: Vec<[usize; 2]>,
 ) -> Result<ConstrainedDelaunayTriangulation<V, DE, UE, F, L>, InsertionError>
 where
     V: HasPosition,
@@ -165,23 +168,21 @@ where
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
-    try_bulk_load_cdt(elements, edges).map(|(cdt, _)| cdt)
+    try_bulk_load_cdt(elements, edges, |e| {
+        panic!("Conflicting edge encountered: {};{}", e[0], e[1])
+    })
 }
 
-/// Returns the [`ConstrainedDelaunayTriangulation`].
+/// Efficient bulk loading of a constraint delaunay triangulation, including both vertices and constraint edges.
+/// See [ConstrainedDelaunayTriangulation::bulk_load_cdt] for a related example and documentation.
 ///
-/// Conflicting edges are ignored and returned.
-/// If any conflicting edge is returned, this means input is incorrect and you may want to look into fixing it.
+/// This function does not panic if any two constraints intersect.
+/// It will instead call `on_conflict_found` on all edges that could not be added as they intersect a previously added constraint.
 pub fn try_bulk_load_cdt<V, DE, UE, F, L>(
     elements: Vec<V>,
     mut edges: Vec<[usize; 2]>,
-) -> Result<
-    (
-        ConstrainedDelaunayTriangulation<V, DE, UE, F, L>,
-        Vec<[usize; 2]>,
-    ),
-    InsertionError,
->
+    mut on_conflict_found: impl FnMut([usize; 2]),
+) -> Result<ConstrainedDelaunayTriangulation<V, DE, UE, F, L>, InsertionError>
 where
     V: HasPosition,
     DE: Default,
@@ -190,11 +191,11 @@ where
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     if elements.is_empty() {
-        return Ok((ConstrainedDelaunayTriangulation::new(), Vec::new()));
+        return Ok(ConstrainedDelaunayTriangulation::new());
     }
 
     if edges.is_empty() {
-        return bulk_load(elements).map(|cdt| (cdt, Vec::new()));
+        return bulk_load(elements);
     }
 
     let mut point_sum = Point2::<f64>::new(0.0, 0.0);
@@ -260,7 +261,6 @@ where
     let mut next_constraint = edges.pop();
 
     let mut buffer = Vec::new();
-    let mut failed_constraints = Vec::new();
     let mut add_constraints_for_new_vertex =
         |result: &mut ConstrainedDelaunayTriangulation<V, DE, UE, F, L>, index| {
             while let Some([from, to]) = next_constraint {
@@ -270,7 +270,7 @@ where
                         [from, to].map(|v| FixedVertexHandle::new(old_to_new[v]));
                     // Insert constraint edge
                     if result.try_add_constraint(new_from, new_to).is_empty() {
-                        failed_constraints.push([from, to]);
+                        on_conflict_found([from, to]);
                     }
                     next_constraint = edges.pop();
                 } else {
@@ -281,7 +281,7 @@ where
 
     let mut hull = loop {
         let Some((old_index, next)) = elements.pop() else {
-            return Ok((result, failed_constraints));
+            return Ok(result);
         };
         result.insert(next)?;
         add_constraints_for_new_vertex(&mut result, old_index);
@@ -312,7 +312,7 @@ where
             elements.push((old_index, skipped));
             hull = loop {
                 let Some((old_index, next)) = elements.pop() else {
-                    return Ok((result, failed_constraints));
+                    return Ok(result);
                 };
                 result.insert(next)?;
                 add_constraints_for_new_vertex(&mut result, old_index);
@@ -332,7 +332,7 @@ where
         hull_sanity_check(&result, &hull);
     }
 
-    Ok((result, failed_constraints))
+    Ok(result)
 }
 
 fn try_get_hull_center<V, T>(result: &T) -> Option<Point2<f64>>

@@ -9,14 +9,14 @@ use crate::cdt::ConflictRegionEnd::{EdgeOverlap, Existing};
 use crate::delaunay_core::dcel_operations::flip_cw;
 use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable, try_bulk_load_cdt};
 use crate::{
-    cdt, mitigate_underflow, DelaunayTriangulation, HasPosition, HintGenerator, InsertionError,
-    LastUsedVertexHintGenerator, Point2, Triangulation, TriangulationExt,
-};
-use crate::{
     delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator, PositionInTriangulation,
     SpadeNum,
 };
 use crate::{handles::*, intersection_iterator::Intersection};
+use crate::{
+    mitigate_underflow, DelaunayTriangulation, HasPosition, HintGenerator, InsertionError,
+    LastUsedVertexHintGenerator, Point2, Triangulation, TriangulationExt,
+};
 
 /// Undirected edge type of a [ConstrainedDelaunayTriangulation] (CDT).
 ///
@@ -345,7 +345,42 @@ where
     ///
     /// Panics if any constraint edges overlap. Panics if the edges contain an invalid index (out of range).
     pub fn bulk_load_cdt(vertices: Vec<V>, edges: Vec<[usize; 2]>) -> Result<Self, InsertionError> {
-        let mut result = bulk_load_cdt(vertices, edges)?;
+        let mut result = bulk_load_cdt(vertices, edges).unwrap();
+        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
+        Ok(result)
+    }
+
+    /// Same behaviour as [bulk_load_cdt], but rather than panicking,
+    /// ignores and calls the parameter function `on_conflict_found` for each conflicting edges encountered.
+    ///
+    /// # Example
+    /// ```
+    /// # fn main() -> Result<(), spade::InsertionError> {
+    /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
+    /// let mut vertices = vec![
+    ///     Point2::new(0.0, 1.0),
+    ///     Point2::new(1.0, 2.0),
+    ///     Point2::new(3.0, -3.0),
+    ///     Point2::new(-1.0, -2.0),
+    ///     Point2::new(-4.0, -5.0),
+    /// ];
+    /// let mut conflicting_edges = Vec::new();
+    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [3, 4]];
+    /// let cdt = ConstrainedDelaunayTriangulation::<_>::try_bulk_load_cdt(vertices.clone(), edges, |e| conflicting_edges.push(e))?;
+    ///
+    /// assert_eq!(cdt.num_vertices(), 5);
+    /// assert_eq!(cdt.num_constraints(), 4);
+    /// // The order will usually change
+    /// assert_ne!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn try_bulk_load_cdt(
+        vertices: Vec<V>,
+        edges: Vec<[usize; 2]>,
+        on_conflict_found: impl FnMut([usize; 2]),
+    ) -> Result<Self, InsertionError> {
+        let mut result = try_bulk_load_cdt(vertices, edges, on_conflict_found)?;
         *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
         Ok(result)
     }
@@ -406,31 +441,31 @@ where
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # See also
+    ///
+    /// See also [Self::try_bulk_load_cdt_stable]
     pub fn bulk_load_cdt_stable(
         vertices: Vec<V>,
         edges: Vec<[usize; 2]>,
     ) -> Result<Self, InsertionError> {
-        Self::try_bulk_load_cdt_stable(vertices, edges).map(|(cdt, _)| cdt)
+        Self::try_bulk_load_cdt_stable(vertices, edges, |e| {
+            panic!("Conflicting edge encountered: {};{}", e[0], e[1])
+        })
     }
 
     /// See [Self::bulk_load_cdt_stable]
     pub fn try_bulk_load_cdt_stable(
         vertices: Vec<V>,
         edges: Vec<[usize; 2]>,
-    ) -> Result<(Self, Vec<[usize; 2]>), InsertionError> {
-        let mut conflicting_edges = Vec::new();
+        on_conflict_found: impl FnMut([usize; 2]),
+    ) -> Result<Self, InsertionError> {
         let mut result: Self = bulk_load_stable(
-            |vertices| match try_bulk_load_cdt(vertices, edges) {
-                Ok((cdt, new_conflicting_edges)) => {
-                    conflicting_edges = new_conflicting_edges;
-                    Ok(cdt)
-                }
-                Err(e) => Err(e),
-            },
+            |vertices| try_bulk_load_cdt(vertices, edges, on_conflict_found),
             vertices,
         )?;
         *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
-        Ok((result, conflicting_edges))
+        Ok(result)
     }
 
     /// # Handle invalidation
@@ -2025,10 +2060,13 @@ mod test {
             Point2::new(60.0, -30.0),
             Point2::new(50.0, -34.0),
         ];
-        let (_, conflicting_edges) =
-            Cdt::try_bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]])?;
+        let mut conflicting_edges = Vec::new();
+        let cdt = Cdt::try_bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]], |e| {
+            conflicting_edges.push(e)
+        })?;
         // Hardcoded values, may change if CDT algorithm change
         assert_eq!(&conflicting_edges, &[[6, 7,], [4, 5,]]);
+        assert_eq!(cdt.num_constraints, 1);
         Ok(())
     }
 
