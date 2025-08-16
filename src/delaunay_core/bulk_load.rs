@@ -219,6 +219,13 @@ where
     F: Default,
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
+    // Refer to `fn bulk_load` for an explanation of the algorithm. The stable variant only has two differences:
+    // - Vertices are deduplicated before being inserted. This is a little tricky as edge indices and sort indices
+    //   need to remain valid. See `sort_and_dedup`.
+    // - Once duplicates are removed, vertices are put directly into the resulting CDT instead of pushing them
+    //   sequentially. They remain in their original order. Then, just like the unstable variant, they are
+    //   connected one at a time, beginning with the vertex closes to their average position.
+
     if elements.is_empty() {
         return Ok(ConstrainedDelaunayTriangulation::new());
     }

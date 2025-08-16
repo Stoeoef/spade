@@ -356,7 +356,7 @@ where
         bulk_load_cdt(vertices, edges)
     }
 
-    /// Same behavior as [bulk_load_cdt], but rather than panicking,
+    /// Same behavior as [Self::bulk_load_cdt], but rather than panicking,
     /// skips and calls the parameter function `on_conflict_found` whenever a conflict occurs.
     ///
     /// For any conflicting pair of constraint edges it is unspecified which constraint is reported.
