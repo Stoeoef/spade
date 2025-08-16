@@ -5,10 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.13.1] - 2025-04-03
+## [2.15.0] - 2025-08-16
+
+### Added
+ - Implements `ConstrainedDelaunayTriangulation::try_bulk_load_cdt` for loading CDTs without panicking
+   if any constraints intersect (#137)
+
+### Changed
+ - `ConstrainedDelaunayTriangulation::bulk_load_cdt` does load all vertices in order by default ("stable").
+ - `ConstrainedDelaunayTriangulation::bulk_load_cdt_stable` is deprecated. Use `...::bulk_load_cdt` instead which
+    behaves exactly the same.
+ - Optimized implementation of now stable `ConstrainedDelaunayTriangulation::bulk_load_cdt`. It is nearly as fast
+   as its unstable alternative, `Triangulation::bulk_load`.
+ - Bulk loading a triangulation with a `HierarchyHintGenerator` does not load the hierarchy sequentially but uses
+   bulk loading. This should speed up creating such triangulations.
+
+## Fixed
+ - Fixes various panics related to bulk loading very exotic vertex sets.
+
+## [2.14.0] - 2025-04-03
 
 ### Fix
- - Fixes #116 and #119
+ - Fixes #116 and #130
 
 ## [2.13.0] - 2025-02-20
 
@@ -486,7 +504,9 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 
 Initial commit
 
-[2.13.1]: https://github.com/Stoeoef/spade/compare/v2.13.0...v2.13.1
+[2.15.0]: https://github.com/Stoeoef/spade/compare/v2.14.0...v2.15.0
+
+[2.14.0]: https://github.com/Stoeoef/spade/compare/v2.13.0...v2.14.0
 
 [2.13.0]: https://github.com/Stoeoef/spade/compare/v2.12.1...v2.13.0
 
