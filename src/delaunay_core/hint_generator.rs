@@ -224,6 +224,12 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
         vertex: FixedVertexHandle,
         _vertex_position: Point2<S>,
     ) {
+        if self.num_elements_of_base_triangulation == 1 {
+            // Special case: Triangulation has become empty
+            *self = Default::default();
+            return;
+        }
+
         let index = vertex.index() as u32;
 
         let mut current_divisor = BRANCH_FACTOR;
@@ -275,9 +281,32 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
         V: HasPosition<Scalar = S>,
     {
         let mut result = Self::default();
-        for vertex in triangulation.vertices() {
-            result.notify_vertex_inserted(vertex.fix(), vertex.position());
+
+        if triangulation.num_vertices() == 0 {
+            return result;
         }
+
+        let mut current_step = BRANCH_FACTOR as usize;
+        loop {
+            let vertices = triangulation
+                .vertices()
+                .map(|v| v.position())
+                .step_by(current_step)
+                .collect::<Vec<_>>();
+
+            result.hierarchy.push(
+                DelaunayTriangulation::bulk_load_stable(vertices)
+                    .expect("Failed to load hierarchy layer."),
+            );
+
+            if current_step >= triangulation.num_vertices() {
+                break;
+            }
+
+            current_step *= BRANCH_FACTOR as usize;
+        }
+
+        result.num_elements_of_base_triangulation = triangulation.num_vertices();
         result
     }
 }
@@ -306,13 +335,30 @@ mod test {
     #[test]
     fn hierarchy_hint_generator_test() -> Result<(), InsertionError> {
         let vertices = test_utilities::random_points_with_seed(1025, test_utilities::SEED);
-        let triangulation = HierarchyTriangulation::bulk_load(vertices)?;
+        let triangulation = HierarchyTriangulation::bulk_load(vertices.clone())?;
 
+        hierarchy_sanity_check(&triangulation);
+
+        // Test sequential load
+        let mut triangulation = HierarchyTriangulation::new();
+        for vertex in vertices {
+            triangulation.insert(vertex)?;
+        }
         hierarchy_sanity_check(&triangulation);
         Ok(())
     }
 
     fn hierarchy_sanity_check(triangulation: &HierarchyTriangulation) {
+        let expected_len = if triangulation.num_vertices() <= 1 {
+            triangulation.num_vertices()
+        } else {
+            (triangulation.num_vertices() as f64)
+                .log(BRANCH_FACTOR as f64)
+                .ceil() as usize
+        };
+
+        assert_eq!(triangulation.hint_generator.hierarchy.len(), expected_len);
+
         for vertex in triangulation.vertices() {
             let position = vertex.position();
             let base_index = vertex.fix().index() as u32;
@@ -349,7 +395,7 @@ mod test {
 
         for size in 1..20 {
             let vertices = test_utilities::random_points_with_seed(1 + size * 26, &seed_fn());
-            let triangulation = HierarchyTriangulation::bulk_load(vertices)?;
+            let triangulation = HierarchyTriangulation::bulk_load_stable(vertices)?;
             hierarchy_sanity_check(&triangulation);
         }
         Ok(())
