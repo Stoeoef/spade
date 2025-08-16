@@ -185,7 +185,7 @@ pub trait Triangulation: Default {
     fn vertex(
         &self,
         handle: FixedVertexHandle,
-    ) -> VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
+    ) -> VertexHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
         self.s().vertex(handle)
     }
 
@@ -200,8 +200,14 @@ pub trait Triangulation: Default {
     fn face<InnerOuter: InnerOuterMarker>(
         &self,
         handle: FixedFaceHandle<InnerOuter>,
-    ) -> FaceHandle<InnerOuter, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
-    {
+    ) -> FaceHandle<
+        '_,
+        InnerOuter,
+        Self::Vertex,
+        Self::DirectedEdge,
+        Self::UndirectedEdge,
+        Self::Face,
+    > {
         self.s().face(handle)
     }
 
@@ -209,6 +215,7 @@ pub trait Triangulation: Default {
     fn outer_face(
         &self,
     ) -> FaceHandle<
+        '_,
         PossiblyOuterTag,
         Self::Vertex,
         Self::DirectedEdge,
@@ -224,7 +231,7 @@ pub trait Triangulation: Default {
     fn directed_edge(
         &self,
         handle: FixedDirectedEdgeHandle,
-    ) -> DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    ) -> DirectedEdgeHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
     {
         DirectedEdgeHandle::new(self.s(), handle)
     }
@@ -235,7 +242,7 @@ pub trait Triangulation: Default {
     fn undirected_edge(
         &self,
         handle: FixedUndirectedEdgeHandle,
-    ) -> UndirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    ) -> UndirectedEdgeHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
     {
         UndirectedEdgeHandle::new(self.s(), handle)
     }
@@ -291,7 +298,7 @@ pub trait Triangulation: Default {
     /// The iterator type is [DirectedEdgeHandle].
     fn directed_edges(
         &self,
-    ) -> DirectedEdgeIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    ) -> DirectedEdgeIterator<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
     {
         self.s().directed_edges()
     }
@@ -301,8 +308,13 @@ pub trait Triangulation: Default {
     /// The iterator type is [UndirectedEdgeHandle]
     fn undirected_edges(
         &self,
-    ) -> UndirectedEdgeIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
-    {
+    ) -> UndirectedEdgeIterator<
+        '_,
+        Self::Vertex,
+        Self::DirectedEdge,
+        Self::UndirectedEdge,
+        Self::Face,
+    > {
         self.s().undirected_edges()
     }
 
@@ -316,7 +328,8 @@ pub trait Triangulation: Default {
     /// The iterator type is [VertexHandle]
     fn vertices(
         &self,
-    ) -> VertexIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
+    ) -> VertexIterator<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    {
         self.s().vertices()
     }
 
@@ -335,7 +348,7 @@ pub trait Triangulation: Default {
     fn get_vertex(
         &self,
         handle: FixedVertexHandle,
-    ) -> Option<VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>>
+    ) -> Option<VertexHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>>
     {
         self.s().get_vertex(handle)
     }
@@ -348,7 +361,7 @@ pub trait Triangulation: Default {
     /// *See also [inner_faces()](Triangulation::inner_faces())*
     fn all_faces(
         &self,
-    ) -> FaceIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
+    ) -> FaceIterator<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
         self.s().faces()
     }
 
@@ -357,7 +370,8 @@ pub trait Triangulation: Default {
     /// The iterator type is [FaceHandle<InnerTag, ...>](FaceHandle).
     fn inner_faces(
         &self,
-    ) -> InnerFaceIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
+    ) -> InnerFaceIterator<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    {
         self.s().inner_faces()
     }
 
@@ -366,7 +380,7 @@ pub trait Triangulation: Default {
     /// The iterator type is [VoronoiFace]
     fn voronoi_faces(
         &self,
-    ) -> VoronoiFaceIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
+    ) -> VoronoiFaceIterator<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>
     {
         VoronoiFaceIterator::new(self.s())
     }
@@ -377,6 +391,7 @@ pub trait Triangulation: Default {
     fn directed_voronoi_edges(
         &self,
     ) -> DirectedVoronoiEdgeIterator<
+        '_,
         Self::Vertex,
         Self::DirectedEdge,
         Self::UndirectedEdge,
@@ -391,6 +406,7 @@ pub trait Triangulation: Default {
     fn undirected_voronoi_edges(
         &self,
     ) -> UndirectedVoronoiEdgeIterator<
+        '_,
         Self::Vertex,
         Self::DirectedEdge,
         Self::UndirectedEdge,
@@ -423,7 +439,7 @@ pub trait Triangulation: Default {
     fn locate_vertex(
         &self,
         point: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) -> Option<VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>>
+    ) -> Option<VertexHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>>
     {
         match self.locate(point) {
             PositionInTriangulation::OnVertex(vertex) => Some(self.vertex(vertex)),
@@ -442,7 +458,7 @@ pub trait Triangulation: Default {
         from: FixedVertexHandle,
         to: FixedVertexHandle,
     ) -> Option<
-        DirectedEdgeHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
+        DirectedEdgeHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face>,
     > {
         self.s().get_edge_from_neighbors(from, to)
     }
@@ -609,7 +625,7 @@ pub trait Triangulation: Default {
     /// *See also [convex_hull_size](Triangulation::convex_hull_size)*
     fn convex_hull(
         &self,
-    ) -> HullIterator<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
+    ) -> HullIterator<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
         {
             HullIterator::new(self.s())
         }
@@ -660,7 +676,8 @@ where
         &self,
         lower: Point2<<Self::Vertex as HasPosition>::Scalar>,
         upper: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) -> EdgesInShapeIterator<Self, RectangleMetric<<Self::Vertex as HasPosition>::Scalar>> {
+    ) -> EdgesInShapeIterator<'_, Self, RectangleMetric<<Self::Vertex as HasPosition>::Scalar>>
+    {
         let distance_metric = RectangleMetric::new(lower, upper);
         let center = lower.add(upper).mul(0.5f32.into());
         EdgesInShapeIterator {
@@ -691,7 +708,7 @@ where
         &self,
         center: Point2<<Self::Vertex as HasPosition>::Scalar>,
         radius_2: <Self::Vertex as HasPosition>::Scalar,
-    ) -> EdgesInShapeIterator<Self, CircleMetric<<Self::Vertex as HasPosition>::Scalar>> {
+    ) -> EdgesInShapeIterator<'_, Self, CircleMetric<<Self::Vertex as HasPosition>::Scalar>> {
         let metric = CircleMetric::new(center, radius_2);
         EdgesInShapeIterator {
             inner_iter: FloodFillIterator::new(self, metric, center),
@@ -717,7 +734,8 @@ where
         &self,
         lower: Point2<<Self::Vertex as HasPosition>::Scalar>,
         upper: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) -> VerticesInShapeIterator<Self, RectangleMetric<<Self::Vertex as HasPosition>::Scalar>> {
+    ) -> VerticesInShapeIterator<'_, Self, RectangleMetric<<Self::Vertex as HasPosition>::Scalar>>
+    {
         let distance_metric = RectangleMetric::new(lower, upper);
         let center = lower.add(upper).mul(0.5f32.into());
 
@@ -746,7 +764,8 @@ where
         &self,
         center: Point2<<Self::Vertex as HasPosition>::Scalar>,
         radius_2: <Self::Vertex as HasPosition>::Scalar,
-    ) -> VerticesInShapeIterator<Self, CircleMetric<<Self::Vertex as HasPosition>::Scalar>> {
+    ) -> VerticesInShapeIterator<'_, Self, CircleMetric<<Self::Vertex as HasPosition>::Scalar>>
+    {
         let distance_metric = CircleMetric::new(center, radius_2);
 
         VerticesInShapeIterator::new(FloodFillIterator::new(self, distance_metric, center))
@@ -757,7 +776,7 @@ where
     ///
     /// *Note:* In contrast to the other interpolation algorithms, barycentric interpolation also works
     /// for [crate::ConstrainedDelaunayTriangulation]s.
-    fn barycentric(&self) -> Barycentric<Self> {
+    fn barycentric(&self) -> Barycentric<'_, Self> {
         Barycentric::new(self)
     }
 }

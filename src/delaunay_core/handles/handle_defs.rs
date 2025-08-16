@@ -173,8 +173,7 @@ pub struct DirectedVoronoiEdgeTag;
 )]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
 pub struct UndirectedVoronoiEdgeTag;
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
-pub struct VoronoiVertexTag;
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Hash)]
 pub struct VoronoiFaceTag;
 

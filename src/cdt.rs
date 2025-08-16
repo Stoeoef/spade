@@ -705,7 +705,7 @@ where
         &self,
         from: Point2<<V as HasPosition>::Scalar>,
         to: Point2<<V as HasPosition>::Scalar>,
-    ) -> impl Iterator<Item = DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
+    ) -> impl Iterator<Item = DirectedEdgeHandle<'_, V, DE, CdtEdge<UE>, F>> {
         LineIntersectionIterator::new(self, from, to)
             .flat_map(|intersection| intersection.as_edge_intersection())
             .filter(|e| e.is_constraint_edge())
@@ -721,7 +721,7 @@ where
         &self,
         from: FixedVertexHandle,
         to: FixedVertexHandle,
-    ) -> impl Iterator<Item = DirectedEdgeHandle<V, DE, CdtEdge<UE>, F>> {
+    ) -> impl Iterator<Item = DirectedEdgeHandle<'_, V, DE, CdtEdge<UE>, F>> {
         LineIntersectionIterator::new_from_handles(self, from, to)
             .flat_map(|intersection| intersection.as_edge_intersection())
             .filter(|e| e.is_constraint_edge())

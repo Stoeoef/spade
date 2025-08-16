@@ -457,7 +457,7 @@ pub trait TriangulationExt: Triangulation {
         &self,
         start: FixedVertexHandle,
         position: Point2<<Self::Vertex as HasPosition>::Scalar>,
-    ) -> VertexHandle<Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
+    ) -> VertexHandle<'_, Self::Vertex, Self::DirectedEdge, Self::UndirectedEdge, Self::Face> {
         let start_position = self.vertex(start).position();
 
         if start_position == position {

@@ -197,7 +197,7 @@ where
         delaunay: &T,
         from: FixedVertexHandle,
         to: FixedVertexHandle,
-    ) -> LineIntersectionIterator<V, DE, UE, F>
+    ) -> LineIntersectionIterator<'_, V, DE, UE, F>
     where
         T: Triangulation<Vertex = V, DirectedEdge = DE, UndirectedEdge = UE, Face = F>,
     {

@@ -7,14 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use alloc::vec::Vec;
 
-#[derive(Default, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
-pub struct EdgeData<DE, UE> {
-    directed_data: [DE; 2],
-    pub undirected_data: UE,
-}
-
-impl<DE, UE> EdgeData<DE, UE> {}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(
     feature = "serde",
@@ -133,7 +125,7 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.faces.truncate(1); // Keep outer face
     }
 
-    pub fn get_vertex(&self, handle: FixedVertexHandle) -> Option<VertexHandle<V, DE, UE, F>> {
+    pub fn get_vertex(&self, handle: FixedVertexHandle) -> Option<VertexHandle<'_, V, DE, UE, F>> {
         (handle.index() < self.vertices.len()).then(|| self.vertex(handle))
     }
 
@@ -190,7 +182,7 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.faces.len()
     }
 
-    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<V, DE, UE, F> {
+    pub fn vertex(&self, handle: FixedVertexHandle) -> VertexHandle<'_, V, DE, UE, F> {
         DynamicHandleImpl::new(self, handle)
     }
 
@@ -203,18 +195,18 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
     pub fn directed_edge(
         &self,
         handle: FixedDirectedEdgeHandle,
-    ) -> DirectedEdgeHandle<V, DE, UE, F> {
+    ) -> DirectedEdgeHandle<'_, V, DE, UE, F> {
         DirectedEdgeHandle::new(self, handle)
     }
 
     pub fn undirected_edge(
         &self,
         handle: FixedUndirectedEdgeHandle,
-    ) -> UndirectedEdgeHandle<V, DE, UE, F> {
+    ) -> UndirectedEdgeHandle<'_, V, DE, UE, F> {
         UndirectedEdgeHandle::new(self, handle)
     }
 
-    pub fn outer_face(&self) -> FaceHandle<PossiblyOuterTag, V, DE, UE, F> {
+    pub fn outer_face(&self) -> FaceHandle<'_, PossiblyOuterTag, V, DE, UE, F> {
         let outer_face = super::dcel_operations::OUTER_FACE_HANDLE;
         self.face(outer_face)
     }
@@ -267,7 +259,7 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
     pub fn face<InnerOuter: InnerOuterMarker>(
         &self,
         handle: FixedHandleImpl<FaceTag, InnerOuter>,
-    ) -> DynamicHandleImpl<V, DE, UE, F, FaceTag, InnerOuter> {
+    ) -> DynamicHandleImpl<'_, V, DE, UE, F, FaceTag, InnerOuter> {
         DynamicHandleImpl::new(self, handle)
     }
 
@@ -310,7 +302,7 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         &self,
         from: FixedVertexHandle,
         to: FixedVertexHandle,
-    ) -> Option<DirectedEdgeHandle<V, DE, UE, F>> {
+    ) -> Option<DirectedEdgeHandle<'_, V, DE, UE, F>> {
         let vertex = self.vertex(from);
         for edge in vertex.out_edges() {
             if edge.to().fix() == to.adjust_inner_outer() {
@@ -328,15 +320,15 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         self.vertices[handle.index()].data = data;
     }
 
-    pub fn directed_edges(&self) -> DirectedEdgeIterator<V, DE, UE, F> {
+    pub fn directed_edges(&self) -> DirectedEdgeIterator<'_, V, DE, UE, F> {
         DirectedEdgeIterator::new(self)
     }
 
-    pub fn undirected_edges(&self) -> UndirectedEdgeIterator<V, DE, UE, F> {
+    pub fn undirected_edges(&self) -> UndirectedEdgeIterator<'_, V, DE, UE, F> {
         UndirectedEdgeIterator::new(self)
     }
 
-    pub fn vertices(&self) -> VertexIterator<V, DE, UE, F> {
+    pub fn vertices(&self) -> VertexIterator<'_, V, DE, UE, F> {
         VertexIterator::new(self)
     }
 
@@ -344,11 +336,11 @@ impl<V, DE, UE, F> Dcel<V, DE, UE, F> {
         FixedVertexIterator::new(self.num_vertices())
     }
 
-    pub fn faces(&self) -> FaceIterator<V, DE, UE, F> {
+    pub fn faces(&self) -> FaceIterator<'_, V, DE, UE, F> {
         FaceIterator::new(self)
     }
 
-    pub fn inner_faces(&self) -> InnerFaceIterator<V, DE, UE, F> {
+    pub fn inner_faces(&self) -> InnerFaceIterator<'_, V, DE, UE, F> {
         let mut iterator = InnerFaceIterator::new(self);
         iterator.next(); // Skip the outer face
         iterator

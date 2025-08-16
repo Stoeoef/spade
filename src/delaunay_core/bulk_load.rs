@@ -1,5 +1,5 @@
 use core::f64;
-use core::{panic, usize};
+use core::panic;
 
 use crate::delaunay_core::math;
 use crate::delaunay_core::triangulation_ext::VertexToInsert;

@@ -294,7 +294,7 @@ where
     pub fn nearest_neighbor(
         &self,
         position: Point2<<V as HasPosition>::Scalar>,
-    ) -> Option<VertexHandle<V, DE, UE, F>> {
+    ) -> Option<VertexHandle<'_, V, DE, UE, F>> {
         if self.num_vertices() == 0 {
             return None;
         }
@@ -397,7 +397,7 @@ where
 {
     /// Allows using natural neighbor interpolation on this triangulation. Refer to the documentation
     /// of [NaturalNeighbor] for more information.
-    pub fn natural_neighbor(&self) -> NaturalNeighbor<Self> {
+    pub fn natural_neighbor(&self) -> NaturalNeighbor<'_, Self> {
         NaturalNeighbor::new(self)
     }
 }
