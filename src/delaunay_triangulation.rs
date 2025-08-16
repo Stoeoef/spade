@@ -364,8 +364,8 @@ where
         let dcel = dcel.map_undirected_edges(|cdt_edge| cdt_edge.deconstruct().1);
         assert_eq!(num_constraints, 0);
         DelaunayTriangulation {
-            dcel: dcel,
-            hint_generator: hint_generator,
+            dcel,
+            hint_generator,
         }
     }
 }

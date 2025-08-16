@@ -320,7 +320,7 @@ where
 
     let mut require_convexity = true;
 
-    while let Some(next_index) = elements_iter.next() {
+    for next_index in elements_iter {
         // Optimization: Once all edges are inserted, convexity isn't required anymore.
         require_convexity &= !edges.is_empty();
 
@@ -678,7 +678,7 @@ where
         );
 
         if cfg!(any(fuzzing, test)) {
-            hull_sanity_check(result, &hull);
+            hull_sanity_check(result, hull);
         }
     }
 
