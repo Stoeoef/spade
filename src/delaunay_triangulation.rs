@@ -4,9 +4,8 @@ use crate::{
     InsertionError, LastUsedVertexHintGenerator, NaturalNeighbor, Point2, Triangulation,
     TriangulationExt,
 };
-
+use alloc::vec;
 use alloc::vec::Vec;
-use std::vec;
 
 use num_traits::Float;
 
