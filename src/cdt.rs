@@ -414,19 +414,6 @@ where
         Self::bulk_load_cdt(vertices, edges)
     }
 
-    /// Deprecated. [Self::try_bulk_load_cdt] instead which is now stable by default.
-    #[deprecated(
-        since = "1.15.0",
-        note = "Use try_bulk_load_cdt instead. It is now stable by default."
-    )]
-    pub fn try_bulk_load_cdt_stable(
-        vertices: Vec<V>,
-        edges: Vec<[usize; 2]>,
-        on_conflict_found: impl FnMut([usize; 2]),
-    ) -> Result<Self, InsertionError> {
-        try_bulk_load_cdt(vertices, edges, on_conflict_found)
-    }
-
     /// # Handle invalidation
     /// See [Triangulation::remove]. This function was accidentally implemented separately for CDTs and will be removed in future releases.
     /// Use the method from the trait to avoid breakage.
