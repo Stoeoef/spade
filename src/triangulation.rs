@@ -9,6 +9,7 @@ use crate::flood_fill_iterator::RectangleMetric;
 use crate::flood_fill_iterator::VerticesInShapeIterator;
 use crate::iterators::*;
 use crate::Barycentric;
+use crate::DelaunayTriangulation;
 use crate::HintGenerator;
 use crate::{delaunay_core::Dcel, handles::*};
 use crate::{HasPosition, InsertionError, Point2, TriangulationExt};
@@ -169,9 +170,13 @@ pub trait Triangulation: Default {
     /// more efficient very quickly.
     #[doc = include_str!("../images/bulk_load_vs_incremental_graph.svg")]
     fn bulk_load(elements: Vec<Self::Vertex>) -> Result<Self, InsertionError> {
-        let mut result: Self = crate::delaunay_core::bulk_load(elements)?;
-        *result.hint_generator_mut() = Self::HintGenerator::initialize_from_triangulation(&result);
-        Ok(result)
+        let with_incorrect_hint_generator: DelaunayTriangulation<_, _, _, _> =
+            crate::delaunay_core::bulk_load(elements)?;
+        let hint_generator =
+            Self::HintGenerator::initialize_from_triangulation(&with_incorrect_hint_generator);
+        let (dcel, _, _) = with_incorrect_hint_generator.into_parts();
+
+        Ok(Self::from_parts(dcel, hint_generator, 0))
     }
 
     /// Converts a fixed vertex handle to a reference vertex handle.

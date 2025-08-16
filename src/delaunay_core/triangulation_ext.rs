@@ -5,6 +5,8 @@ use super::dcel_operations::IsolateVertexResult;
 use super::handles::*;
 use super::math;
 
+use crate::delaunay_core::dcel_operations::append_unconnected_vertex;
+use crate::delaunay_core::Dcel;
 use crate::HintGenerator;
 use crate::Point2;
 use crate::{HasPosition, InsertionError, PositionInTriangulation, Triangulation};
@@ -19,6 +21,41 @@ pub enum PositionWhenAllVerticesOnLine {
     OnVertex(FixedVertexHandle),
     NotOnLine(FixedDirectedEdgeHandle),
     ExtendingLine(FixedVertexHandle),
+}
+
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Hash, Eq, PartialEq)]
+pub enum VertexToInsert<V> {
+    NewVertex(V),
+    ExistingVertex(FixedVertexHandle),
+}
+
+impl<V> VertexToInsert<V> {
+    pub fn into_vertex(self) -> V {
+        match self {
+            VertexToInsert::NewVertex(v) => v,
+            VertexToInsert::ExistingVertex(_) => panic!("Cannot convert existing vertex to vertex"),
+        }
+    }
+
+    pub fn position<DE, UE, F>(
+        &self,
+        dcel: &Dcel<V, DE, UE, F>,
+    ) -> Point2<<V as HasPosition>::Scalar>
+    where
+        V: HasPosition,
+    {
+        match self {
+            VertexToInsert::NewVertex(v) => v.position(),
+            VertexToInsert::ExistingVertex(handle) => dcel.vertex(*handle).position(),
+        }
+    }
+
+    pub fn resolve<DE, UE, F>(self, dcel: &mut Dcel<V, DE, UE, F>) -> FixedVertexHandle {
+        match self {
+            VertexToInsert::NewVertex(v) => append_unconnected_vertex(dcel, v),
+            VertexToInsert::ExistingVertex(handle) => handle,
+        }
+    }
 }
 
 impl PositionWhenAllVerticesOnLine {
@@ -64,7 +101,7 @@ pub trait TriangulationExt: Triangulation {
     ) -> Result<FixedVertexHandle, InsertionError> {
         math::validate_vertex(&t)?;
         let position = t.position();
-        let result = self.insert_with_hint_option_impl(t, hint);
+        let result = self.insert_with_hint_option_impl(VertexToInsert::NewVertex(t), hint);
 
         self.hint_generator_mut()
             .notify_vertex_inserted(result, position);
@@ -73,16 +110,16 @@ pub trait TriangulationExt: Triangulation {
 
     fn insert_with_hint_option_impl(
         &mut self,
-        t: Self::Vertex,
+        t: VertexToInsert<Self::Vertex>,
         hint: Option<FixedVertexHandle>,
     ) -> FixedVertexHandle {
         use PositionInTriangulation::*;
 
         let insertion_result = match self.num_vertices() {
-            0 => return dcel_operations::insert_first_vertex(self.s_mut(), t),
-            1 => self.insert_second_vertex(t),
+            0 => return dcel_operations::append_unconnected_vertex(self.s_mut(), t.into_vertex()),
+            1 => self.insert_second_vertex(t.into_vertex()),
             _ => {
-                let pos = t.position();
+                let pos = t.position(self.s());
 
                 if self.all_vertices_on_line() {
                     let location = self.locate_when_all_vertices_on_line(pos);
@@ -90,14 +127,19 @@ pub trait TriangulationExt: Triangulation {
                 } else {
                     let position_in_triangulation = self.locate_with_hint_option_core(pos, hint);
                     match position_in_triangulation {
-                        OutsideOfConvexHull(edge) => InsertionResult::NewlyInserted(
-                            self.insert_outside_of_convex_hull(edge, t),
-                        ),
+                        OutsideOfConvexHull(edge) => {
+                            let resolved = t.resolve(self.s_mut());
+                            InsertionResult::NewlyInserted(
+                                self.insert_outside_of_convex_hull(edge, resolved),
+                            )
+                        }
                         OnFace(face) => {
-                            InsertionResult::NewlyInserted(self.insert_into_face(face, t))
+                            let resolved = t.resolve(self.s_mut());
+                            InsertionResult::NewlyInserted(self.insert_into_face(face, resolved))
                         }
                         OnEdge(edge) => {
-                            let (new_handle, split_parts) = self.insert_on_edge(edge, t);
+                            let new_handle = t.resolve(self.s_mut());
+                            let split_parts = self.insert_on_edge(edge, new_handle);
 
                             if self.is_defined_legal(edge.as_undirected()) {
                                 // If the edge is defined as legal the resulting edges must
@@ -109,7 +151,7 @@ pub trait TriangulationExt: Triangulation {
                             InsertionResult::NewlyInserted(new_handle)
                         }
                         OnVertex(vertex) => {
-                            self.s_mut().update_vertex(vertex, t);
+                            self.s_mut().update_vertex(vertex, t.into_vertex());
                             InsertionResult::Updated(vertex)
                         }
                         NoTriangulation => panic!("Error during vertex lookup. This is a bug."),
@@ -142,7 +184,7 @@ pub trait TriangulationExt: Triangulation {
             return NotOnLine(edge.fix().rev());
         }
 
-        let mut vertices: Vec<_> = self.vertices().collect();
+        let mut vertices: Vec<_> = self.vertices().filter(|v| v.out_edge().is_some()).collect();
         vertices.sort_by(|left, right| left.position().partial_cmp(&right.position()).unwrap());
 
         let index_to_insert =
@@ -176,7 +218,8 @@ pub trait TriangulationExt: Triangulation {
             return InsertionResult::Updated(first_vertex);
         }
 
-        let second_vertex = dcel_operations::insert_second_vertex(self.s_mut(), vertex);
+        let second_vertex = dcel_operations::append_unconnected_vertex(self.s_mut(), vertex);
+        dcel_operations::setup_initial_two_vertices(self.s_mut(), first_vertex, second_vertex);
 
         InsertionResult::NewlyInserted(second_vertex)
     }
@@ -184,12 +227,13 @@ pub trait TriangulationExt: Triangulation {
     fn insert_when_all_vertices_on_line(
         &mut self,
         location: PositionWhenAllVerticesOnLine,
-        new_vertex: Self::Vertex,
+        new_vertex: VertexToInsert<Self::Vertex>,
     ) -> InsertionResult {
         match location {
             PositionWhenAllVerticesOnLine::OnEdge(edge) => {
+                let new_vertex = new_vertex.resolve(self.s_mut());
                 let is_constraint_edge = self.is_defined_legal(edge.as_undirected());
-                let (new_edges, new_vertex) = dcel_operations::split_edge_when_all_vertices_on_line(
+                let new_edges = dcel_operations::split_edge_when_all_vertices_on_line(
                     self.s_mut(),
                     edge,
                     new_vertex,
@@ -202,10 +246,12 @@ pub trait TriangulationExt: Triangulation {
             }
             PositionWhenAllVerticesOnLine::OnVertex(vertex) => InsertionResult::Updated(vertex),
             PositionWhenAllVerticesOnLine::NotOnLine(edge) => {
+                let new_vertex = new_vertex.resolve(self.s_mut());
                 let result = self.insert_outside_of_convex_hull(edge, new_vertex);
                 InsertionResult::NewlyInserted(result)
             }
             PositionWhenAllVerticesOnLine::ExtendingLine(end_vertex) => {
+                let new_vertex = new_vertex.resolve(self.s_mut());
                 let result = dcel_operations::extend_line(self.s_mut(), end_vertex, new_vertex);
                 InsertionResult::NewlyInserted(result)
             }
@@ -224,9 +270,9 @@ pub trait TriangulationExt: Triangulation {
     fn insert_outside_of_convex_hull(
         &mut self,
         convex_hull_edge: FixedDirectedEdgeHandle,
-        new_vertex: Self::Vertex,
+        new_vertex: FixedVertexHandle,
     ) -> FixedVertexHandle {
-        let position = new_vertex.position();
+        let position = self.vertex(new_vertex).position();
 
         assert!(self
             .directed_edge(convex_hull_edge)
@@ -284,7 +330,7 @@ pub trait TriangulationExt: Triangulation {
     fn insert_into_face(
         &mut self,
         face: FixedFaceHandle<InnerTag>,
-        t: Self::Vertex,
+        t: FixedVertexHandle,
     ) -> FixedVertexHandle {
         let new_handle = dcel_operations::insert_into_triangle(self.s_mut(), t, face);
         self.legalize_vertex(new_handle);
@@ -294,13 +340,12 @@ pub trait TriangulationExt: Triangulation {
     fn insert_on_edge(
         &mut self,
         edge: FixedDirectedEdgeHandle,
-        new_vertex: Self::Vertex,
-    ) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2]) {
+        new_vertex: FixedVertexHandle,
+    ) -> [FixedDirectedEdgeHandle; 2] {
         let edge_handle = self.directed_edge(edge);
         if edge_handle.is_outer_edge() {
-            let (new_vertex, [e0, e1]) =
-                dcel_operations::split_half_edge(self.s_mut(), edge.rev(), new_vertex);
-            (new_vertex, [e1.rev(), e0.rev()])
+            let [e0, e1] = dcel_operations::split_half_edge(self.s_mut(), edge.rev(), new_vertex);
+            [e1.rev(), e0.rev()]
         } else if edge_handle.rev().is_outer_edge() {
             dcel_operations::split_half_edge(self.s_mut(), edge, new_vertex)
         } else {

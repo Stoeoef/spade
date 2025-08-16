@@ -297,7 +297,7 @@ where
 pub fn create_new_face_adjacent_to_edge<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge: FixedDirectedEdgeHandle,
-    new_vertex: V,
+    new_vertex_handle: FixedVertexHandle,
 ) -> FixedVertexHandle
 where
     DE: Default,
@@ -327,7 +327,6 @@ where
     let new_prev_handle = FixedUndirectedEdgeHandle::new(dcel.num_undirected_edges() + 1);
 
     let new_face_handle = FixedFaceHandle::<PossiblyOuterTag>::new(dcel.num_faces());
-    let new_vertex_handle = FixedVertexHandle::new(dcel.num_vertices());
 
     let new_next = HalfEdgeEntry {
         next: new_prev_handle.normalized(),
@@ -374,10 +373,7 @@ where
         data: F::default(),
     });
 
-    dcel.vertices.push(VertexEntry {
-        data: new_vertex,
-        out_edge: Some(new_prev_handle.normalized()),
-    });
+    dcel.vertices[new_vertex_handle.index()].out_edge = Some(new_prev_handle.normalized());
 
     *dcel.half_edge_mut(edge) = HalfEdgeEntry {
         prev: new_prev_handle.normalized(),
@@ -397,7 +393,7 @@ where
 pub fn extend_line<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     end_vertex: FixedVertexHandle,
-    new_vertex: V,
+    new_vertex_handle: FixedVertexHandle,
 ) -> FixedVertexHandle
 where
     DE: Default,
@@ -423,7 +419,6 @@ where
     let new_edge = FixedDirectedEdgeHandle::new_normalized(dcel.num_undirected_edges());
     let new_edge_rev = new_edge.rev();
 
-    let new_vertex_handle = FixedVertexHandle::new(dcel.num_vertices());
     let face = out_edge.face().fix();
 
     let out_edge = out_edge.fix();
@@ -448,10 +443,7 @@ where
         },
     ));
 
-    dcel.vertices.push(VertexEntry {
-        data: new_vertex,
-        out_edge: Some(new_edge),
-    });
+    dcel.vertices[new_vertex_handle.index()].out_edge = Some(new_edge);
 
     new_vertex_handle
 }
@@ -459,8 +451,8 @@ where
 pub fn split_edge_when_all_vertices_on_line<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge: FixedDirectedEdgeHandle,
-    new_vertex: V,
-) -> ([FixedDirectedEdgeHandle; 2], FixedVertexHandle)
+    new_vertex_handle: FixedVertexHandle,
+) -> [FixedDirectedEdgeHandle; 2]
 where
     DE: Default,
     UE: Default,
@@ -476,7 +468,6 @@ where
     let rev_prev = rev.prev().fix();
 
     let to = edge.to().fix();
-    let new_vertex_handle = FixedVertexHandle::new(dcel.vertices.len());
 
     let face = edge.face().fix();
     let edge = edge.fix();
@@ -522,12 +513,9 @@ where
         },
     ));
 
-    dcel.vertices.push(VertexEntry {
-        data: new_vertex,
-        out_edge: Some(new_edge),
-    });
+    dcel.vertices[new_vertex_handle.index()].out_edge = Some(new_edge);
 
-    ([edge, new_edge], new_vertex_handle)
+    [edge, new_edge]
 }
 
 /// Splits `edge_handle` only one side. Used to split edges on the convex hull.
@@ -540,8 +528,8 @@ where
 pub fn split_half_edge<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
-    new_vertex_data: V,
-) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2])
+    new_vertex_handle: FixedVertexHandle,
+) -> [FixedDirectedEdgeHandle; 2]
 where
     DE: Default,
     UE: Default,
@@ -607,8 +595,6 @@ where
     let e2 = FixedDirectedEdgeHandle::new_normalized(dcel.edges.len() + 1);
     let t2 = e2.rev();
 
-    let nv = FixedVertexHandle::new(dcel.vertices.len());
-
     let edge1 = HalfEdgeEntry {
         next: e2,
         prev: edge_next,
@@ -620,13 +606,13 @@ where
         next: edge_prev,
         prev: edge_handle,
         face: f1,
-        origin: nv,
+        origin: new_vertex_handle,
     };
 
     let edge2 = HalfEdgeEntry {
         next: edge_next,
         prev: e1,
-        origin: nv,
+        origin: new_vertex_handle,
         face: nf,
     };
 
@@ -642,15 +628,10 @@ where
         data: Default::default(),
     };
 
-    let new_vertex_entry = VertexEntry {
-        data: new_vertex_data,
-        out_edge: Some(e2),
-    };
-
     dcel.edges.push(EdgeEntry::new(edge1, twin1));
     dcel.edges.push(EdgeEntry::new(edge2, twin2));
     dcel.faces.push(new_face);
-    dcel.vertices.push(new_vertex_entry);
+    dcel.vertices[new_vertex_handle.index()].out_edge = Some(e2);
 
     dcel.half_edge_mut(edge_twin_prev).next = t2;
 
@@ -661,12 +642,12 @@ where
     dcel.half_edge_mut(edge_handle).next = t1;
 
     dcel.half_edge_mut(edge_next).face = nf;
-    dcel.half_edge_mut(edge_twin).origin = nv;
+    dcel.half_edge_mut(edge_twin).origin = new_vertex_handle;
 
     dcel.vertices[to.index()].out_edge = Some(e2.rev());
     dcel.faces[f1.index()].adjacent_edge = Some(edge_handle);
 
-    (nv, [edge_handle, e2])
+    [edge_handle, e2]
 }
 
 /// Splits `edge_handle`, introducing 6 new half edges, two new faces and one
@@ -677,8 +658,8 @@ where
 pub fn split_edge<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     edge_handle: FixedDirectedEdgeHandle,
-    new_vertex: V,
-) -> (FixedVertexHandle, [FixedDirectedEdgeHandle; 2])
+    new_vertex_handle: FixedVertexHandle,
+) -> [FixedDirectedEdgeHandle; 2]
 where
     DE: Default,
     UE: Default,
@@ -742,7 +723,7 @@ where
     let tn = twin.next;
     let tp = twin.prev;
 
-    let v0 = FixedVertexHandle::new(dcel.vertices.len());
+    let v0 = new_vertex_handle;
     let v1 = edge.origin;
     let v2 = dcel.half_edge(tp).origin;
     let v3 = twin.origin;
@@ -804,11 +785,6 @@ where
         face: f0,
     };
 
-    let new_vertex_entry = VertexEntry {
-        out_edge: Some(t0),
-        data: new_vertex,
-    };
-
     let face2 = FaceEntry {
         adjacent_edge: Some(e2),
         data: F::default(),
@@ -836,7 +812,7 @@ where
     dcel.half_edge_mut(tn).next = e1;
     dcel.half_edge_mut(ep).prev = t3;
 
-    dcel.vertices.push(new_vertex_entry);
+    dcel.vertices[new_vertex_handle.index()].out_edge = Some(t0);
     dcel.vertices[v3.index()].out_edge = Some(e2);
 
     dcel.faces[f0.index()].adjacent_edge = Some(e0);
@@ -844,31 +820,30 @@ where
     dcel.faces.push(face2);
     dcel.faces.push(face3);
 
-    (v0.adjust_inner_outer(), [e0, e2.rev()])
+    [e0, e2.rev()]
 }
 
-pub fn insert_first_vertex<V, DE, UE, F>(
+pub fn append_unconnected_vertex<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
     vertex: V,
 ) -> FixedVertexHandle {
-    assert!(dcel.vertices.is_empty());
+    let result = FixedVertexHandle::new(dcel.vertices.len());
     dcel.vertices.push(VertexEntry {
         data: vertex,
         out_edge: None,
     });
-    FixedVertexHandle::new(0)
+
+    result
 }
 
-pub fn insert_second_vertex<V, DE, UE, F>(
+pub fn setup_initial_two_vertices<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
-    vertex: V,
-) -> FixedVertexHandle
-where
+    first_vertex: FixedVertexHandle,
+    second_vertex: FixedVertexHandle,
+) where
     DE: Default,
     UE: Default,
 {
-    let first_vertex = FixedVertexHandle::new(0);
-    let second_vertex = FixedVertexHandle::new(1);
     let normalized = FixedDirectedEdgeHandle::new_normalized(0);
     let not_normalized = normalized.rev();
 
@@ -887,18 +862,14 @@ where
         },
     ));
 
-    dcel.vertices.push(VertexEntry {
-        data: vertex,
-        out_edge: Some(not_normalized),
-    });
-    dcel.vertices[0].out_edge = Some(normalized);
+    dcel.vertices[first_vertex.index()].out_edge = Some(normalized);
+    dcel.vertices[second_vertex.index()].out_edge = Some(not_normalized);
     dcel.faces[OUTER_FACE_HANDLE.index()].adjacent_edge = Some(normalized);
-    second_vertex
 }
 
 pub fn insert_into_triangle<V, DE, UE, F>(
     dcel: &mut Dcel<V, DE, UE, F>,
-    vertex: V,
+    v: FixedVertexHandle,
     f0: FixedFaceHandle<InnerTag>,
 ) -> FixedVertexHandle
 where
@@ -943,7 +914,6 @@ where
     let e7 = FixedDirectedEdgeHandle::new_normalized(dcel.edges.len() + 2);
     let e8 = e7.rev();
 
-    let v = FixedVertexHandle::new(dcel.vertices.len());
     let v0 = dcel.half_edge(e0).origin;
     let v1 = dcel.half_edge(e1).origin;
     let v2 = dcel.half_edge(e2).origin;
@@ -964,11 +934,7 @@ where
     dcel.faces.push(face1);
     dcel.faces.push(face2);
 
-    let vertex = VertexEntry {
-        out_edge: Some(e4),
-        data: vertex,
-    };
-    dcel.vertices.push(vertex);
+    dcel.vertices[v.index()].out_edge = Some(e4);
 
     dcel.half_edge_mut(e0).prev = e8;
     dcel.half_edge_mut(e0).next = e3;
@@ -1043,6 +1009,41 @@ where
         edges: Vec::new(),
         faces: vec![outer_face],
     }
+}
+
+pub fn new_with_fixed_vertices<V, DE, UE, F>(
+    vertices: Vec<V>,
+    first_vertex: FixedVertexHandle,
+    second_vertex: FixedVertexHandle,
+) -> Dcel<V, DE, UE, F>
+where
+    DE: Default,
+    UE: Default,
+    F: Default,
+{
+    let vertices_len = vertices.len();
+
+    let mut result = Dcel {
+        vertices: vertices
+            .into_iter()
+            .map(|v| VertexEntry {
+                data: v,
+                out_edge: None,
+            })
+            .collect(),
+        faces: Vec::with_capacity(vertices_len * 2),
+        edges: Vec::with_capacity(vertices_len * 3),
+    };
+
+    let outer_face = FaceEntry {
+        adjacent_edge: None,
+        data: F::default(),
+    };
+    result.faces.push(outer_face);
+
+    setup_initial_two_vertices(&mut result, first_vertex, second_vertex);
+
+    result
 }
 
 /// Flip an edge in cw direction
@@ -1318,7 +1319,10 @@ fn remove_when_all_vertices_on_line<V, DE, UE, F>(
 
 #[cfg(test)]
 mod test {
-    use crate::handles::{InnerTag, VertexHandle};
+    use crate::{
+        delaunay_core::dcel_operations::append_unconnected_vertex,
+        handles::{InnerTag, VertexHandle},
+    };
 
     use super::{Dcel, FixedDirectedEdgeHandle, FixedFaceHandle, FixedVertexHandle};
 
@@ -1430,7 +1434,8 @@ mod test {
     #[test]
     fn test_insert_into_triangle() {
         let mut dcel = default_triangle();
-        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let new_vertex = super::append_unconnected_vertex(&mut dcel, 3);
+        super::insert_into_triangle(&mut dcel, new_vertex, FixedFaceHandle::new(1));
         assert_eq!(dcel.faces.len(), 4);
         assert_eq!(dcel.num_directed_edges(), 12);
         assert_eq!(dcel.vertices.len(), 4);
@@ -1448,8 +1453,9 @@ mod test {
         let mut dcel = default_triangle();
         let face_to_insert = FixedFaceHandle::<InnerTag>::new(1);
 
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
         let new_vertex =
-            super::insert_into_triangle(&mut dcel, 3, face_to_insert.adjust_inner_outer());
+            super::insert_into_triangle(&mut dcel, v3, face_to_insert.adjust_inner_outer());
 
         let vertex_to_remove = FixedVertexHandle::new(3);
         let border_loop = get_border_loop(dcel.vertex(new_vertex));
@@ -1468,14 +1474,16 @@ mod test {
     fn test_insert_into_and_remove_from_quad() {
         let mut dcel = default_triangle();
 
-        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::insert_into_triangle(&mut dcel, v3, FixedFaceHandle::new(1));
 
         let e_split = dcel
             .get_edge_from_neighbors(FixedVertexHandle::new(0), FixedVertexHandle::new(3))
             .unwrap()
             .fix();
 
-        let (vertex_to_remove, _) = super::split_edge(&mut dcel, e_split, 3);
+        let vertex_to_remove = super::append_unconnected_vertex(&mut dcel, 4);
+        super::split_edge(&mut dcel, e_split, vertex_to_remove);
         let border_loop = get_border_loop(dcel.vertex(vertex_to_remove));
 
         let mut result =
@@ -1491,7 +1499,8 @@ mod test {
     #[test]
     fn test_cw_iterator() {
         let mut dcel = default_triangle();
-        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::insert_into_triangle(&mut dcel, v3, FixedFaceHandle::new(1));
         let vertex = dcel.vertices().next().unwrap();
         assert_eq!(vertex.out_edges().count(), 3);
         assert_eq!(vertex.out_edges().rev().count(), 3);
@@ -1507,7 +1516,8 @@ mod test {
     #[test]
     fn test_swap() {
         let mut dcel = default_triangle();
-        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::insert_into_triangle(&mut dcel, v3, FixedFaceHandle::new(1));
         let v = FixedVertexHandle::new;
         for (i0, i1) in [(0, 1), (0, 2), (1, 2), (3, 2), (3, 0), (0, 0), (1, 1)] {
             dcel.swap_vertices(v(i0), v(i1));
@@ -1518,7 +1528,8 @@ mod test {
     #[test]
     fn test_flip() {
         let mut dcel = default_triangle();
-        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::insert_into_triangle(&mut dcel, v3, FixedFaceHandle::new(1));
 
         let e_flip = dcel
             .get_edge_from_neighbors(FixedVertexHandle::new(0), FixedVertexHandle::new(3))
@@ -1536,7 +1547,8 @@ mod test {
     fn test_half_edge_split() {
         let mut dcel = default_triangle();
         let edge_handle = FixedDirectedEdgeHandle::new(0);
-        super::split_half_edge(&mut dcel, edge_handle, 3);
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::split_half_edge(&mut dcel, edge_handle, v3);
 
         assert_eq!(dcel.num_directed_edges(), 10);
         assert_eq!(dcel.faces.len(), 3);
@@ -1547,14 +1559,17 @@ mod test {
     #[test]
     fn test_split() {
         let mut dcel = default_triangle();
-        super::insert_into_triangle(&mut dcel, 3, FixedFaceHandle::new(1));
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::insert_into_triangle(&mut dcel, v3, FixedFaceHandle::new(1));
 
         let e_split = dcel
             .get_edge_from_neighbors(FixedVertexHandle::new(0), FixedVertexHandle::new(3))
             .unwrap()
             .fix();
         dcel.sanity_check();
-        super::split_edge(&mut dcel, e_split, 3);
+
+        let v4 = super::append_unconnected_vertex(&mut dcel, 4);
+        super::split_edge(&mut dcel, e_split, v4);
         dcel.sanity_check();
 
         assert!(dcel
@@ -1568,8 +1583,14 @@ mod test {
     #[test]
     fn test_insert_first_and_second() {
         let mut dcel = Dcel::<_>::default();
-        super::insert_first_vertex(&mut dcel, 0);
-        super::insert_second_vertex(&mut dcel, 1);
+        super::append_unconnected_vertex(&mut dcel, 0);
+        super::append_unconnected_vertex(&mut dcel, 1);
+
+        super::setup_initial_two_vertices(
+            &mut dcel,
+            FixedVertexHandle::new(0),
+            FixedVertexHandle::new(1),
+        );
 
         dcel.sanity_check();
     }
@@ -1577,14 +1598,16 @@ mod test {
     #[test]
     fn test_split_non_triangle_edge() {
         let mut dcel = Dcel::<_>::default();
-        let v0 = super::insert_first_vertex(&mut dcel, 0);
-        let v1 = super::insert_second_vertex(&mut dcel, 1);
+        let v0 = super::append_unconnected_vertex(&mut dcel, 0);
+        let v1 = append_unconnected_vertex(&mut dcel, 1);
+        super::setup_initial_two_vertices(&mut dcel, v0, v1);
 
         dcel.sanity_check();
         let edge = dcel.directed_edges().next().unwrap().fix();
 
         // Test split isolated edge
-        let (_, v2) = super::split_edge_when_all_vertices_on_line(&mut dcel, edge, 2);
+        let v2 = super::append_unconnected_vertex(&mut dcel, 2);
+        super::split_edge_when_all_vertices_on_line(&mut dcel, edge, v2);
 
         dcel.sanity_check();
 
@@ -1594,7 +1617,8 @@ mod test {
         assert!(dcel.get_edge_from_neighbors(v1, v2).is_some());
 
         let non_isolated_edge = dcel.get_edge_from_neighbors(v0, v2).unwrap().fix();
-        super::split_edge_when_all_vertices_on_line(&mut dcel, non_isolated_edge, 3);
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::split_edge_when_all_vertices_on_line(&mut dcel, non_isolated_edge, v3);
 
         dcel.sanity_check();
         assert_eq!(dcel.num_directed_edges(), 6);
@@ -1606,13 +1630,16 @@ mod test {
     fn test_extend_line() {
         let mut dcel = Dcel::<_>::default();
 
-        let v0 = super::insert_first_vertex(&mut dcel, 0);
-        let v1 = super::insert_second_vertex(&mut dcel, 1);
+        let v0 = super::append_unconnected_vertex(&mut dcel, 0);
+        let v1 = append_unconnected_vertex(&mut dcel, 1);
+        super::setup_initial_two_vertices(&mut dcel, v0, v1);
 
-        super::extend_line(&mut dcel, v0, 2);
+        let v2 = super::append_unconnected_vertex(&mut dcel, 2);
+        super::extend_line(&mut dcel, v0, v2);
         dcel.sanity_check();
 
-        super::extend_line(&mut dcel, v1, 3);
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::extend_line(&mut dcel, v1, v3);
         dcel.sanity_check();
 
         assert_eq!(dcel.num_vertices(), 4);
@@ -1623,9 +1650,11 @@ mod test {
     #[test]
     fn test_create_single_face_between_edge_and_next() {
         let mut dcel = Dcel::<_>::default();
-        super::insert_first_vertex(&mut dcel, 0);
-        super::insert_second_vertex(&mut dcel, 1);
-        super::split_edge_when_all_vertices_on_line(&mut dcel, FixedDirectedEdgeHandle::new(0), 2);
+        let v0 = super::append_unconnected_vertex(&mut dcel, 0);
+        let v1 = super::append_unconnected_vertex(&mut dcel, 1);
+        super::setup_initial_two_vertices(&mut dcel, v0, v1);
+        let v2 = super::append_unconnected_vertex(&mut dcel, 2);
+        super::split_edge_when_all_vertices_on_line(&mut dcel, FixedDirectedEdgeHandle::new(0), v2);
 
         super::create_single_face_between_edge_and_next(&mut dcel, FixedDirectedEdgeHandle::new(0));
 
@@ -1636,7 +1665,8 @@ mod test {
     fn test_create_new_face_adjacent_to_edge() {
         let mut dcel = default_triangle();
 
-        super::create_new_face_adjacent_to_edge(&mut dcel, FixedDirectedEdgeHandle::new(0), 3);
+        let v3 = super::append_unconnected_vertex(&mut dcel, 3);
+        super::create_new_face_adjacent_to_edge(&mut dcel, FixedDirectedEdgeHandle::new(0), v3);
         dcel.sanity_check();
     }
 }

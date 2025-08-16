@@ -1,5 +1,9 @@
 use alloc::{collections::VecDeque, vec::Vec};
+
+#[cfg(not(feature = "std"))]
 use hashbrown::HashSet;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
 
 use num_traits::{one, zero, Float};
 use smallvec::smallvec;

@@ -47,7 +47,7 @@ fuzz_target!(|input: (Vec<FuzzPoint>, Vec<[usize; 2]>)| {
     edges.truncate(last_index);
 
     let bulk_loaded =
-        ConstrainedDelaunayTriangulation::<FuzzPoint>::bulk_load_cdt(data, edges).unwrap();
+        ConstrainedDelaunayTriangulation::<FuzzPoint>::bulk_load_cdt(data.clone(), edges).unwrap();
 
     bulk_loaded.cdt_sanity_check();
 });

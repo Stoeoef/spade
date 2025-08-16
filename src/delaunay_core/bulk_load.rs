@@ -1,16 +1,26 @@
+use core::{panic, usize};
+use std::f64;
+
+use crate::delaunay_core::math;
+use crate::delaunay_core::triangulation_ext::VertexToInsert;
 use crate::{
-    ConstrainedDelaunayTriangulation, HasPosition, HintGenerator, InsertionError, Point2,
-    Triangulation, TriangulationExt,
+    ConstrainedDelaunayTriangulation, HasPosition, HintGenerator, InsertionError,
+    LastUsedVertexHintGenerator, Point2, Triangulation, TriangulationExt,
 };
 use core::cmp::{Ordering, Reverse};
+
+#[cfg(not(feature = "std"))]
+use hashbrown::HashSet;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
+
 use num_traits::Zero;
 
 use super::{
     dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle, FixedVertexHandle,
 };
 
-use alloc::vec;
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 /// An `f64` wrapper implementing `Ord` and `Eq`.
 ///
@@ -19,6 +29,14 @@ use alloc::vec::Vec;
 /// `Ord` and `Eq` should always be well-defined.
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 struct FloatOrd<S>(S);
+
+fn bulk_load_distance_fn(center: Point2<f64>, position: Point2<f64>) -> impl Ord {
+    (
+        Reverse(FloatOrd(center.distance_2(position))),
+        FloatOrd(position.x),
+        FloatOrd(position.y),
+    )
+}
 
 #[allow(clippy::derive_ord_xor_partial_ord)]
 impl<S> Ord for FloatOrd<S>
@@ -104,9 +122,7 @@ where
     let mut result = T::with_capacity(elements.len(), elements.len() * 3, elements.len() * 2);
 
     // Sort by distance, smallest values last. This allows to pop values depending on their distance.
-    elements.sort_unstable_by_key(|e| {
-        Reverse(FloatOrd(initial_center.distance_2(e.position().to_f64())))
-    });
+    elements.sort_unstable_by_key(|e| bulk_load_distance_fn(initial_center, e.position().to_f64()));
 
     let mut hull = loop {
         let Some(next) = elements.pop() else {
@@ -115,11 +131,20 @@ where
 
         result.insert(next)?;
 
-        if let Some(hull) = try_get_hull_center(&result)
+        if result.num_vertices() < 3 {
+            continue;
+        }
+
+        let thee_vertices = [
+            FixedVertexHandle::new(result.num_vertices() - 3),
+            FixedVertexHandle::new(result.num_vertices() - 2),
+            FixedVertexHandle::new(result.num_vertices() - 1),
+        ];
+
+        if let Some(hull) = try_get_hull_center(&result, thee_vertices)
             .and_then(|center| Hull::from_triangulation(&result, center))
         {
             hull_sanity_check(&result, &hull);
-
             break hull;
         }
     };
@@ -129,12 +154,16 @@ where
     }
 
     let mut buffer = Vec::new();
-    let mut skipped_elements = Vec::<V>::new();
+    let mut skipped_elements = Vec::new();
 
     while let Some(next) = elements.pop() {
-        skipped_elements.extend(
-            single_bulk_insertion_step(&mut result, false, &mut hull, next, &mut buffer).err(),
-        );
+        skipped_elements.extend(single_bulk_insertion_step(
+            &mut result,
+            false,
+            &mut hull,
+            VertexToInsert::NewVertex(next),
+            &mut buffer,
+        ))
     }
 
     if cfg!(any(fuzzing, test)) {
@@ -143,8 +172,8 @@ where
 
     fix_convexity(&mut result);
 
-    for element in skipped_elements {
-        result.insert(element)?;
+    for skipped in skipped_elements {
+        result.insert_with_hint_option_impl(skipped, None);
     }
 
     Ok(result)
@@ -169,7 +198,7 @@ where
     L: HintGenerator<<V as HasPosition>::Scalar>,
 {
     try_bulk_load_cdt(elements, edges, |e| {
-        panic!("Conflicting edge encountered: {};{}", e[0], e[1])
+        panic!("Conflicting edge encountered: [{}, {}]", e[0], e[1])
     })
 }
 
@@ -179,7 +208,7 @@ where
 /// This function does not panic if any two constraints intersect.
 /// It will instead call `on_conflict_found` on all edges that could not be added as they intersect a previously added constraint.
 pub fn try_bulk_load_cdt<V, DE, UE, F, L>(
-    elements: Vec<V>,
+    mut elements: Vec<V>,
     mut edges: Vec<[usize; 2]>,
     mut on_conflict_found: impl FnMut([usize; 2]),
 ) -> Result<ConstrainedDelaunayTriangulation<V, DE, UE, F, L>, InsertionError>
@@ -194,327 +223,341 @@ where
         return Ok(ConstrainedDelaunayTriangulation::new());
     }
 
-    if edges.is_empty() {
-        return bulk_load(elements);
-    }
+    let element_indices = sort_and_dedup(&mut elements, &mut edges)?;
 
-    let mut point_sum = Point2::<f64>::new(0.0, 0.0);
-
-    for element in &elements {
-        crate::validate_vertex(element)?;
-        let position = element.position();
-
-        point_sum = point_sum.add(position.to_f64());
-    }
-
-    // Set the initial center to the average of all positions. This should be a good choice for most triangulations.
-    //
-    // The research paper uses a different approach by taking the center of the points' bounding box.
-    // However, this position might be far off the center off mass if the triangulation has just a few outliers.
-    // This could lead to a very uneven angle distribution as nearly all points are might be in a very small angle segment
-    // around the center. This degrades the hull-structure's lookup and insertion performance.
-    // For this reason, taking the average appears to be a safer option as most vertices should be distributed around the
-    // initial center.
-    let initial_center = point_sum.mul(1.0 / (elements.len() as f64));
-
-    let mut result = ConstrainedDelaunayTriangulation::with_capacity(
-        elements.len(),
-        elements.len() * 3,
-        elements.len() * 2,
-    );
-
-    let distance_fn = |position: Point2<<V as HasPosition>::Scalar>| {
-        (
-            Reverse(FloatOrd(initial_center.distance_2(position.to_f64()))),
-            FloatOrd(position.x),
-            FloatOrd(position.y),
-        )
-    };
-
-    for edge in &mut edges {
-        let [d1, d2] = edge.map(|vertex| distance_fn(elements[vertex].position()));
-        if d1 > d2 {
-            edge.reverse();
+    if elements.len() < 3 {
+        // Special case for fewer than 3 vertices. Starting the hull calculation requires at least 3 vertices.
+        let mut result = ConstrainedDelaunayTriangulation::new();
+        for elem in elements {
+            result.insert(elem)?;
         }
-    }
 
-    edges.sort_by_cached_key(|[from, _]| distance_fn(elements[*from].position()));
-
-    let mut elements = elements.into_iter().enumerate().collect::<Vec<_>>();
-
-    // Sort by distance, smallest values last. This allows to pop values depending on their distance.
-    elements.sort_unstable_by_key(|(_, e)| distance_fn(e.position()));
-
-    let mut old_to_new = vec![usize::MAX; elements.len()];
-    let mut last_position = None;
-    let mut last_index = 0;
-    for (old_index, e) in elements.iter().rev() {
-        let position = e.position();
-        if last_position.is_some() && Some(position) != last_position {
-            last_index += 1;
+        for &[from, to] in &edges {
+            result.add_constraint(FixedVertexHandle::new(from), FixedVertexHandle::new(to));
         }
-        old_to_new[*old_index] = last_index;
 
-        last_position = Some(position);
+        return Ok(result);
     }
-
-    let mut next_constraint = edges.pop();
 
     let mut buffer = Vec::new();
+
+    let mut skipped_vertices = HashSet::new();
+    let mut skipped_edges = HashSet::new();
+
+    let fix = FixedVertexHandle::new;
+
     let mut add_constraints_for_new_vertex =
-        |result: &mut ConstrainedDelaunayTriangulation<V, DE, UE, F, L>, index| {
-            while let Some([from, to]) = next_constraint {
-                // Check if next creates any constraint edge
-                if old_to_new[from] == old_to_new[index] {
-                    let [new_from, new_to] =
-                        [from, to].map(|v| FixedVertexHandle::new(old_to_new[v]));
+        |result: &mut ConstrainedDelaunayTriangulation<V, DE, UE, F>,
+         edges: &mut Vec<[usize; 2]>,
+         skipped_vertices: &HashSet<usize>,
+         index| {
+            while let Some([from, to]) = edges.last().copied() {
+                if skipped_vertices.contains(&from) || skipped_vertices.contains(&to) {
+                    skipped_edges.insert([from, to]);
+                    edges.pop();
+                    continue;
+                }
+
+                // Check if the next edge creates any constraint edge
+                if from == index {
+                    let [from, to] = [from, to].map(fix);
                     // Insert constraint edge
-                    if result.try_add_constraint(new_from, new_to).is_empty() {
-                        on_conflict_found([from, to]);
+                    if result.try_add_constraint(from, to).is_empty() {
+                        on_conflict_found([from.index(), to.index()]);
                     }
-                    next_constraint = edges.pop();
+                    edges.pop();
                 } else {
                     break;
                 }
             }
         };
 
-    let mut hull = loop {
-        let Some((old_index, next)) = elements.pop() else {
-            return Ok(result);
-        };
-        result.insert(next)?;
-        add_constraints_for_new_vertex(&mut result, old_index);
+    // Goes through all element indices, closest to farthest away
+    let mut elements_iter = element_indices.iter().rev().copied();
 
-        if let Some(hull) = try_get_hull_center(&result)
+    let first = fix(elements_iter.next().unwrap());
+    let second = fix(elements_iter.next().unwrap());
+
+    let mut result = ConstrainedDelaunayTriangulation::<V, DE, UE, F, LastUsedVertexHintGenerator>::create_with_fixed_vertices(
+        elements,
+        first,
+        second,
+    );
+
+    let third = result.insert_with_hint_option_impl(
+        VertexToInsert::ExistingVertex(fix(elements_iter.next().unwrap())),
+        Some(first),
+    );
+
+    add_constraints_for_new_vertex(&mut result, &mut edges, &skipped_vertices, first.index());
+    add_constraints_for_new_vertex(&mut result, &mut edges, &skipped_vertices, second.index());
+    add_constraints_for_new_vertex(&mut result, &mut edges, &skipped_vertices, third.index());
+
+    let mut last_3_vertices = [first, second, third];
+    let mut next_handle_to_drop = 0;
+
+    let mut hull = loop {
+        if let Some(hull) = try_get_hull_center(&result, last_3_vertices)
             .and_then(|center| Hull::from_triangulation(&result, center))
         {
             break hull;
         }
+
+        let Some(index) = elements_iter.next() else {
+            return Ok(result.adjust_hint_generator());
+        };
+
+        let next_handle = result.insert_with_hint_option_impl(
+            VertexToInsert::ExistingVertex(FixedVertexHandle::new(index)),
+            Some(first),
+        );
+
+        add_constraints_for_new_vertex(&mut result, &mut edges, &skipped_vertices, index);
+
+        last_3_vertices[next_handle_to_drop] = next_handle;
+        next_handle_to_drop = (next_handle_to_drop + 1) % 3;
     };
 
-    while let Some((old_index, next)) = elements.pop() {
-        if let Err(skipped) =
-            single_bulk_insertion_step(&mut result, true, &mut hull, next, &mut buffer)
+    let mut require_convexity = true;
+
+    while let Some(next_index) = elements_iter.next() {
+        // Optimization: Once all edges are inserted, convexity isn't required anymore.
+        require_convexity &= !edges.is_empty();
+
+        if single_bulk_insertion_step(
+            &mut result,
+            require_convexity,
+            &mut hull,
+            VertexToInsert::ExistingVertex(FixedVertexHandle::new(next_index)),
+            &mut buffer,
+        )
+        .is_some()
         {
-            // Sometimes the bulk insertion step fails due to floating point inaccuracies.
-            // The easiest way to handle these rare occurrences is by skipping them. However, this doesn't
-            // work as CDT vertices **must** be inserted in their predefined order (after sorting for distance)
-            // to keep `old_to_new` lookup accurate.
-            // Instead, this code leverages that the triangulation for CDTs is always convex: This
-            // means that `result.insert` should work. Unfortunately, using `insert` will invalidate
-            // the hull structure. We'll recreate it with a loop similar to the initial hull creation.
-            //
-            // This process is certainly confusing and inefficient but, luckily, rarely required for real inputs.
-
-            // Push the element again, it will be popped directly. This seems to be somewhat simpler than
-            // the alternatives.
-            elements.push((old_index, skipped));
-            hull = loop {
-                let Some((old_index, next)) = elements.pop() else {
-                    return Ok(result);
-                };
-                result.insert(next)?;
-                add_constraints_for_new_vertex(&mut result, old_index);
-
-                if let Some(hull) = Hull::from_triangulation(&result, hull.center) {
-                    break hull;
-                };
-            };
-        } else {
-            add_constraints_for_new_vertex(&mut result, old_index);
+            skipped_vertices.insert(next_index);
         }
-    }
 
-    assert_eq!(edges.len(), 0);
+        add_constraints_for_new_vertex(&mut result, &mut edges, &skipped_vertices, next_index);
+    }
 
     if cfg!(any(fuzzing, test)) {
         hull_sanity_check(&result, &hull);
     }
 
-    Ok(result)
+    if !require_convexity {
+        fix_convexity(&mut result);
+    }
+
+    for element in skipped_vertices {
+        result.insert_with_hint_option_impl(
+            VertexToInsert::ExistingVertex(FixedVertexHandle::new(element)),
+            Some(first),
+        );
+    }
+
+    for [from, to] in skipped_edges {
+        let [from, to] = [from, to].map(FixedVertexHandle::new);
+        if result.try_add_constraint(from, to).is_empty() {
+            on_conflict_found([from.index(), to.index()]);
+        }
+    }
+
+    assert_eq!(edges, Vec::<[usize; 2]>::new());
+
+    Ok(result.adjust_hint_generator())
 }
 
-fn try_get_hull_center<V, T>(result: &T) -> Option<Point2<f64>>
+fn sort_and_dedup<V>(
+    elements: &mut Vec<V>,
+    edges: &mut [[usize; 2]],
+) -> Result<Vec<usize>, InsertionError>
+where
+    V: HasPosition,
+{
+    let mut point_sum = Point2::<f64>::new(0.0, 0.0);
+    for element in &*elements {
+        crate::validate_vertex(element)?;
+        let position = element.position();
+
+        point_sum = point_sum.add(position.to_f64());
+    }
+    let initial_center = point_sum.mul(1.0 / (elements.len() as f64));
+
+    for edge in edges.iter_mut() {
+        let [d1, d2] = edge.map(|vertex| {
+            bulk_load_distance_fn(initial_center, elements[vertex].position().to_f64())
+        });
+        if d1 > d2 {
+            edge.reverse();
+        }
+    }
+
+    edges.sort_unstable_by_key(|[from, _]| {
+        bulk_load_distance_fn(initial_center, elements[*from].position().to_f64())
+    });
+    let mut element_indices = (0..elements.len()).collect::<Vec<_>>();
+    element_indices.sort_unstable_by_key(|index| {
+        bulk_load_distance_fn(initial_center, elements[*index].position().to_f64())
+    });
+    let mut removed_indices = HashSet::new();
+    let mut last_position = None;
+    let mut duplicate_sets = Vec::new();
+    let mut current_duplicates = Vec::new();
+    let mut current_min_duplicate = element_indices[0];
+    element_indices.retain(|&index| {
+        let position = elements[index].position();
+
+        let mut retain = true;
+        if Some(position) == last_position {
+            retain = false; // Duplicate found - only the first index is kept
+
+            // Check if the index is the smallest index of the current duplicate set
+            let new_duplicate = if index < current_min_duplicate {
+                let previous_min = current_min_duplicate;
+                current_min_duplicate = index;
+                previous_min
+            } else {
+                index
+            };
+
+            removed_indices.insert(new_duplicate);
+            current_duplicates.push(new_duplicate);
+        } else {
+            if !current_duplicates.is_empty() {
+                if duplicate_sets.is_empty() {
+                    // Lazy initialize to avoid allocation. Each element is initially mapped to itself.
+                    duplicate_sets = (0..elements.len()).collect::<Vec<_>>();
+                }
+
+                for dupe in current_duplicates.iter() {
+                    duplicate_sets[*dupe] = current_min_duplicate;
+                }
+            }
+
+            // Reset duplicate information
+            current_duplicates.clear();
+            last_position = Some(position);
+            current_min_duplicate = index;
+        };
+
+        if !current_duplicates.is_empty() {
+            if duplicate_sets.is_empty() {
+                duplicate_sets = (0..elements.len()).collect::<Vec<_>>();
+            }
+
+            for dupe in current_duplicates.iter() {
+                duplicate_sets[*dupe] = current_min_duplicate;
+            }
+        }
+        retain
+    });
+
+    if !removed_indices.is_empty() {
+        let mut old_to_new = vec![usize::MAX; elements.len()];
+        let mut index_counter = 0;
+        let mut i = 0;
+        elements.retain(|_| {
+            old_to_new[i] = index_counter;
+            if removed_indices.contains(&i) {
+                old_to_new[i] = old_to_new[duplicate_sets[i]];
+                i += 1;
+                return false;
+            }
+            old_to_new[i] = index_counter;
+
+            i += 1;
+            index_counter += 1;
+            true
+        });
+
+        for elem in &mut element_indices {
+            *elem = old_to_new[*elem];
+        }
+
+        for &mut [ref mut from, ref mut to] in edges {
+            *from = old_to_new[*from];
+            *to = old_to_new[*to];
+        }
+    }
+    Ok(element_indices)
+}
+
+fn try_get_hull_center<V, T>(
+    result: &T,
+    three_vertices: [FixedVertexHandle; 3],
+) -> Option<Point2<f64>>
 where
     V: HasPosition,
     T: Triangulation<Vertex = V>,
 {
-    let zero = <V as HasPosition>::Scalar::zero();
-    if !result.all_vertices_on_line() && result.num_vertices() >= 4 {
-        // We'll need 4 vertices to calculate a center position with good precision.
-        // Otherwise, dividing by 3.0 can introduce precision loss and errors.
-
-        // Get new center that is usually within the convex hull
-        let center_positions = || result.vertices().rev().take(4).map(|v| v.position());
-
-        let sum_x = center_positions()
-            .map(|p| p.x)
-            .fold(zero, |num, acc| num + acc);
-        let sum_y = center_positions()
-            .map(|p| p.y)
-            .fold(zero, |num, acc| num + acc);
-
-        // Note that we don't re-sort the elements according to their distance to the newest center. This doesn't seem to
-        // be required for the algorithms performance, probably due to the `center` being close to `initial_center`.
-        // As of now, it is unclear how to construct point sets that result in a `center` being farther off
-        // `initial center` and what the impact of this would be.
-        let center = Point2::new(sum_x, sum_y).mul(<V as HasPosition>::Scalar::from(0.25f32));
-
-        if let crate::PositionInTriangulation::OnFace(_) = result.locate(center) {
-            return Some(center.to_f64());
-        }
+    if result.all_vertices_on_line() {
+        return None;
     }
 
+    let zero = <V as HasPosition>::Scalar::zero();
+    // Get new center that is usually within the convex hull
+    let mut sum_x = zero;
+    let mut sum_y = zero;
+
+    for handle in three_vertices.iter() {
+        let position = result.vertex(*handle).position();
+        sum_x = sum_x + position.x;
+        sum_y = sum_y + position.y;
+    }
+
+    // Note that we don't re-sort the elements according to their distance to the newest center. This doesn't seem to
+    // be required for the algorithms performance, probably due to the `center` being close to `initial_center`.
+    // As of now, it is unclear how to construct point sets that result in a `center` being farther off
+    // `initial center` and what the impact of this would be.
+    let center = Point2::new(sum_x, sum_y).mul(<V as HasPosition>::Scalar::from(1f32 / 3f32));
+
+    if let crate::PositionInTriangulation::OnFace(_) =
+        result.locate_with_hint(center, three_vertices[0])
+    {
+        return Some(center.to_f64());
+    }
     None
 }
 
-pub(crate) struct PointWithIndex<V> {
-    data: V,
-    index: usize,
-}
-
-impl<V> HasPosition for PointWithIndex<V>
-where
-    V: HasPosition,
-{
-    type Scalar = V::Scalar;
-    fn position(&self) -> Point2<V::Scalar> {
-        self.data.position()
-    }
-}
-
-pub fn bulk_load_stable<V, T, T2, Constructor>(
-    constructor: Constructor,
-    elements: Vec<V>,
-) -> Result<T, InsertionError>
-where
-    V: HasPosition,
-    T: Triangulation<Vertex = V>,
-    T2: Triangulation<
-        Vertex = PointWithIndex<V>,
-        DirectedEdge = T::DirectedEdge,
-        UndirectedEdge = T::UndirectedEdge,
-        Face = T::Face,
-        HintGenerator = T::HintGenerator,
-    >,
-    Constructor: FnOnce(Vec<PointWithIndex<V>>) -> Result<T2, InsertionError>,
-{
-    let elements = elements
-        .into_iter()
-        .enumerate()
-        .map(|(index, data)| PointWithIndex { index, data })
-        .collect::<Vec<_>>();
-
-    let num_original_elements = elements.len();
-
-    let mut with_indices = constructor(elements)?;
-
-    if with_indices.num_vertices() != num_original_elements {
-        // Handling duplicates is more complicated - we cannot simply swap the elements into
-        // their target position indices as these indices may contain gaps. The following code
-        // fills those gaps.
-        //
-        // Running example: The original indices in with_indices could look like
-        //
-        // [3, 0, 1, 4, 6]
-        //
-        // which indicates that the original elements at indices 2 and 5 were duplicates.
-        let mut no_gap = (0usize..with_indices.num_vertices()).collect::<Vec<_>>();
-
-        // This will be sorted by their original index:
-        // no_gap (before sorting): [0, 1, 2, 3, 4]
-        // keys for sorting       : [3, 0, 1, 4, 6]
-        // no_gap (after sorting) : [1, 2, 0, 3, 4]
-        // sorted keys            : [0, 1, 3, 4, 6]
-        no_gap.sort_unstable_by_key(|elem| {
-            with_indices
-                .vertex(FixedVertexHandle::new(*elem))
-                .data()
-                .index
-        });
-
-        // Now, the sequential target index for FixedVertexHandle(no_gap[i]) is i
-        //
-        // Example:
-        // Vertex index in with_indices: [0, 1, 2, 3, 4]
-        // Original target indices     : [3, 0, 1, 4, 6]
-        // Sequential target index     : [2, 0, 1, 3, 4]
-        for (sequential_index, vertex) in no_gap.into_iter().enumerate() {
-            with_indices
-                .vertex_data_mut(FixedVertexHandle::new(vertex))
-                .index = sequential_index;
-        }
-    }
-
-    // Swap elements until the target order is restored.
-    // The attached indices for each vertex are guaranteed to form a permutation over all index
-    // since gaps are eliminated in the step above.
-    let mut current_index = 0;
-    loop {
-        if current_index >= with_indices.num_vertices() {
-            break;
-        }
-
-        // Example: The permutation [0 -> 2, 1 -> 0, 2 -> 1, 3 -> 3, 4 -> 4]
-        // (written as [2, 0, 1, 3, 4]) will lead to the following swaps:
-        // Swap 2, 0 (leading to [1, 0, 2, 3, 4])
-        // Swap 1, 0 (leading to [0, 1, 2, 3, 4])
-        // Done
-        let new_index = FixedVertexHandle::new(current_index);
-        let old_index = with_indices.vertex(new_index).data().index;
-        if current_index == old_index {
-            current_index += 1;
-        } else {
-            with_indices
-                .s_mut()
-                .swap_vertices(FixedVertexHandle::new(old_index), new_index);
-        }
-    }
-
-    let (dcel, hint_generator, num_constraints) = with_indices.into_parts();
-    let dcel = dcel.map_vertices(|point_with_index| point_with_index.data);
-
-    Ok(T::from_parts(dcel, hint_generator, num_constraints))
-}
-
+/// Returns `handle` if it couldn't be inserted due to precision issues.
 #[inline(never)] // Prevent inlining for better profiling data
 fn single_bulk_insertion_step<TR, T>(
     result: &mut TR,
     require_convexity: bool,
     hull: &mut Hull,
-    element: T,
+    handle: VertexToInsert<TR::Vertex>,
     buffer_for_edge_legalization: &mut Vec<FixedUndirectedEdgeHandle>,
-) -> Result<(), T>
+) -> Option<VertexToInsert<TR::Vertex>>
 where
     T: HasPosition,
     TR: Triangulation<Vertex = T>,
 {
-    let next_position = element.position();
+    let next_position = handle.position(result.s());
+
     let current_angle = pseudo_angle(next_position.to_f64(), hull.center);
 
-    let edge_hint = hull.get(current_angle);
-
-    let edge = result.directed_edge(edge_hint);
+    let edge = result.directed_edge(hull.get(current_angle));
 
     let [from, to] = edge.positions();
     if next_position == from || next_position == to {
-        return Ok(());
+        return None;
     }
 
     if edge.side_query(next_position).is_on_right_side_or_on_line() {
         // The position is, for some reason, not on the left side of the edge. This can e.g. happen
         // if the vertices have the same angle. The safest way to include these elements appears to
         // skip them and insert them individually at the end (albeit that's very slow)
-        return Err(element);
+        return Some(handle);
     }
 
     assert!(edge.is_outer_edge());
 
     let edge = edge.fix();
 
+    let handle = handle.resolve(result.s_mut());
+
     let new_vertex =
-        dcel_operations::create_new_face_adjacent_to_edge(result.s_mut(), edge, element);
+        dcel_operations::create_new_face_adjacent_to_edge(result.s_mut(), edge, handle);
+
     let ccw_walk_start = result.directed_edge(edge).prev().rev().fix();
     let cw_walk_start = result.directed_edge(edge).next().rev().fix();
 
@@ -552,22 +595,17 @@ where
         let prev = handle.prev();
         let handle = handle.fix();
 
-        let [prev_from, prev_to] = prev.positions();
+        let [prev_from, prev_to] = prev.positions().map(|p| p.to_f64());
         // `!point_projection.is_behind_edge` is used to identify if the new face's angle will be less
         // than 90°
         let angle_condition = require_convexity
-            || !super::math::project_point(next_position, prev_to, prev_from).is_behind_edge();
+            || !math::is_behind_edge(next_position.to_f64(), prev_to, prev_from)
+            // Prevents inserting the same angle twice into the hull which can cause issues
+            || current_angle == pseudo_angle(prev_to, hull.center);
 
         current_edge = prev.fix();
 
         if angle_condition && prev.side_query(next_position).is_on_left_side() {
-            let prev_prev = prev.prev();
-            if prev
-                .side_query(prev_prev.from().position())
-                .is_on_left_side_or_on_line()
-            {
-                assert!(prev_prev.side_query(next_position).is_on_left_side());
-            }
             let new_edge = dcel_operations::create_single_face_between_edge_and_next(
                 result.s_mut(),
                 current_edge,
@@ -592,17 +630,18 @@ where
         let next = handle.next();
         let handle = handle.fix();
 
+        let middle_position = next.from().position().to_f64();
+
         let angle_condition = require_convexity
-            || !super::math::project_point(
-                next.from().position(),
-                next_position,
-                next.to().position(),
+            || !super::math::is_behind_edge(
+                middle_position,
+                next_position.to_f64(),
+                next.to().position().to_f64(),
             )
-            .is_behind_edge();
+            || current_angle == pseudo_angle(middle_position, hull.center);
 
         let next_fix = next.fix();
         let is_on_left_side = next.side_query(next_position).is_on_left_side();
-
         if angle_condition && is_on_left_side {
             let new_edge = dcel_operations::create_single_face_between_edge_and_next(
                 result.s_mut(),
@@ -637,8 +676,13 @@ where
             first_edge.fix(),
             second_edge.fix(),
         );
+
+        if cfg!(any(fuzzing, test)) {
+            hull_sanity_check(result, &hull);
+        }
     }
-    Ok(())
+
+    None
 }
 
 /// Makes the outer hull convex. Similar to a graham scan.
@@ -884,27 +928,22 @@ impl Hull {
             left_index = current_node.right;
         }
 
-        let mut right_index;
-        if left_angle == right_angle {
-            right_index = left_index;
-        } else {
-            right_index = self.data[left_index].right;
-            loop {
-                let current_node = self.data[right_index];
-                if current_node.angle == right_angle {
-                    break;
-                }
-
-                if cfg!(any(fuzzing, test)) {
-                    assert!(!self.empty.contains(&right_index));
-                }
-
-                // Remove current_node - it is completely overlapped by the new segment
-                self.empty.push(right_index);
-                self.data[current_node.left].right = current_node.right;
-                self.data[current_node.right].left = current_node.left;
-                right_index = current_node.right;
+        let mut right_index = self.data[left_index].right;
+        loop {
+            let current_node = self.data[right_index];
+            if current_node.angle == right_angle {
+                break;
             }
+
+            if cfg!(any(fuzzing, test)) {
+                assert!(!self.empty.contains(&right_index));
+            }
+
+            // Remove current_node - it is completely overlapped by the new segment
+            self.empty.push(right_index);
+            self.data[current_node.left].right = current_node.right;
+            self.data[current_node.right].left = current_node.left;
+            right_index = current_node.right;
         }
 
         let new_index = self.get_next_index();
@@ -1048,9 +1087,7 @@ impl Hull {
 #[inline]
 fn pseudo_angle(a: Point2<f64>, center: Point2<f64>) -> FloatOrd<f64> {
     let diff = a.sub(center);
-
     let p = diff.x / (diff.x.abs() + diff.y.abs());
-
     FloatOrd(1.0 - (if diff.y > 0.0 { 3.0 - p } else { 1.0 + p }) * 0.25)
 }
 
@@ -1096,6 +1133,7 @@ mod test {
     use float_next_after::NextAfter;
     use rand::{seq::SliceRandom, SeedableRng};
 
+    use crate::delaunay_core::triangulation_ext::VertexToInsert;
     use crate::handles::FixedVertexHandle;
     use crate::test_utilities::{random_points_with_seed, SEED2};
 
@@ -1170,8 +1208,7 @@ mod test {
 
     #[test]
     fn test_bulk_load_on_epsilon_grid() -> Result<(), InsertionError> {
-        // TODO: Setting this to 20 currently generates an inexplicably failing test case. Investigate!
-        const GRID_SIZE: usize = 18;
+        const GRID_SIZE: usize = 20;
 
         let mut rng = rand::rngs::StdRng::from_seed(*SEED2);
         const TEST_REPETITIONS: usize = 30;
@@ -1197,8 +1234,7 @@ mod test {
         // Creates a zig zag pattern
         let edges = (0..vertices.len() - 1).map(|i| [i, i + 1]).collect();
 
-        let triangulation =
-            ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices, edges)?;
+        let triangulation = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices, edges)?;
 
         triangulation.cdt_sanity_check();
         assert_eq!(triangulation.num_vertices(), GRID_SIZE * GRID_SIZE);
@@ -1259,8 +1295,7 @@ mod test {
 
         let num_constraints = edges.len();
         let num_vertices = vertices.len();
-        let cdt =
-            ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices, edges.clone())?;
+        let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices, edges.clone())?;
 
         cdt.cdt_sanity_check();
         assert_eq!(cdt.num_vertices(), num_vertices);
@@ -1299,7 +1334,7 @@ mod test {
         let edges = vec![[0, 1], [9, 3], [11, 2], [10, 0]];
 
         let num_constraints = edges.len();
-        let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices, edges)?;
+        let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices, edges)?;
         assert_eq!(cdt.num_constraints(), num_constraints);
         Ok(())
     }
@@ -1355,10 +1390,8 @@ mod test {
 
     #[test]
     fn test_empty() -> Result<(), InsertionError> {
-        let cdt = ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load_cdt_stable(
-            Vec::new(),
-            Vec::new(),
-        )?;
+        let cdt =
+            ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load_cdt(Vec::new(), Vec::new())?;
         assert_eq!(cdt.num_vertices(), 0);
         assert_eq!(cdt.num_constraints(), 0);
 
@@ -1429,14 +1462,15 @@ mod test {
         ];
 
         for (index, element) in additional_elements.iter().enumerate() {
-            super::single_bulk_insertion_step(
+            assert!(super::single_bulk_insertion_step(
                 &mut triangulation,
                 false,
                 &mut hull,
-                *element,
+                VertexToInsert::NewVertex(*element),
                 &mut Vec::new(),
             )
-            .unwrap();
+            .is_none());
+
             if index != 0 {
                 super::hull_sanity_check(&triangulation, &hull)
             }

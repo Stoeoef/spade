@@ -9,8 +9,9 @@ use alloc::vec::Vec;
 use num_traits::Float;
 
 use crate::{
-    delaunay_core::math, CdtEdge, ConstrainedDelaunayTriangulation, HasPosition, HintGenerator,
-    Point2, PositionInTriangulation, SpadeNum, Triangulation,
+    delaunay_core::{dcel_operations::append_unconnected_vertex, math},
+    CdtEdge, ConstrainedDelaunayTriangulation, HasPosition, HintGenerator, Point2,
+    PositionInTriangulation, SpadeNum, Triangulation,
 };
 
 use super::{
@@ -829,7 +830,10 @@ where
         let segment = segment.fix();
         let (v0, v1) = (v0.fix(), v1.fix());
 
-        let (new_vertex, [e1, e2]) = self.insert_on_edge(segment, final_position.into());
+        let new_vertex = append_unconnected_vertex(self.s_mut(), final_position.into());
+        let [e1, e2] = self.insert_on_edge(segment, new_vertex);
+        self.hint_generator_mut()
+            .notify_vertex_inserted(new_vertex, final_position);
 
         let original_vertices = v0_constraint_vertex
             .or(v1_constraint_vertex)

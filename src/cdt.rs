@@ -6,8 +6,10 @@ use num_traits::{Float, NumCast};
 use serde::{Deserialize, Serialize};
 
 use crate::cdt::ConflictRegionEnd::{EdgeOverlap, Existing};
-use crate::delaunay_core::dcel_operations::flip_cw;
-use crate::delaunay_core::{bulk_load_cdt, bulk_load_stable, try_bulk_load_cdt};
+use crate::delaunay_core::dcel_operations::{
+    append_unconnected_vertex, flip_cw, new_with_fixed_vertices,
+};
+use crate::delaunay_core::{bulk_load_cdt, try_bulk_load_cdt};
 use crate::{
     delaunay_core::Dcel, intersection_iterator::LineIntersectionIterator, PositionInTriangulation,
     SpadeNum,
@@ -60,6 +62,10 @@ impl<UE> CdtEdge<UE> {
     /// Returns the wrapped undirected edge data type.
     pub fn data_mut(&mut self) -> &mut UE {
         &mut self.1
+    }
+
+    pub(crate) fn deconstruct(self) -> (bool, UE) {
+        (self.0, self.1)
     }
 }
 
@@ -311,13 +317,12 @@ where
     ///
     /// The edges are given as pairs of vertex indices.
     ///
-    /// Note that the vertex order is not preserved by this function - iterating through all vertices will not result in
-    /// the same sequence as the input vertices. Use [ConstrainedDelaunayTriangulation::bulk_load_cdt_stable] for a
-    /// slower but order preserving variant.
+    /// The vertex order is preserved by this function.
     ///
     /// Input vertices may have the same position. However, only one vertex for each position will be kept. Edges
     /// that go to a discarded vertex are rerouted and still inserted.
-    /// It is arbitrary which duplicated vertex remains.
+    /// For each set of duplicate vertices, the vertex with the smallest index is kept. Any resulting gap is filled
+    /// by shifting the remaining vertices down.
     ///
     /// # Example
     /// ```
@@ -328,15 +333,18 @@ where
     ///     Point2::new(1.0, 2.0),
     ///     Point2::new(3.0, -3.0),
     ///     Point2::new(-1.0, -2.0),
+    ///     Point2::new(3.0, -3.0), // Duplicate
     ///     Point2::new(-4.0, -5.0),
     /// ];
-    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [3, 4]];
+    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [4, 5]];
     /// let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices.clone(), edges)?;
     ///
-    /// assert_eq!(cdt.num_vertices(), 5);
+    /// assert_ne!(cdt.num_vertices(), vertices.len()); // Duplicates are removed
     /// assert_eq!(cdt.num_constraints(), 4);
-    /// // The order will usually change
-    /// assert_ne!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
+    ///
+    /// // The order is preserved (excluding duplicates):
+    /// vertices.remove(4);
+    /// assert_eq!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
     /// # Ok(())
     /// # }
     /// ```
@@ -345,13 +353,17 @@ where
     ///
     /// Panics if any constraint edges overlap. Panics if the edges contain an invalid index (out of range).
     pub fn bulk_load_cdt(vertices: Vec<V>, edges: Vec<[usize; 2]>) -> Result<Self, InsertionError> {
-        let mut result = bulk_load_cdt(vertices, edges).unwrap();
-        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
-        Ok(result)
+        bulk_load_cdt(vertices, edges)
     }
 
-    /// Same behaviour as [bulk_load_cdt], but rather than panicking,
-    /// ignores and calls the parameter function `on_conflict_found` for each conflicting edges encountered.
+    /// Same behavior as [bulk_load_cdt], but rather than panicking,
+    /// skips and calls the parameter function `on_conflict_found` whenever a conflict occurs.
+    ///
+    /// For any conflicting pair of constraint edges it is unspecified which constraint is reported.
+    ///
+    /// `on_conflict_found` is called with the edge indices _after_ potential duplicates were removed.
+    /// Consider checking for removed duplicates by comparing the size of the triangulation with the
+    /// input vertices.
     ///
     /// # Example
     /// ```
@@ -361,17 +373,24 @@ where
     ///     Point2::new(0.0, 1.0),
     ///     Point2::new(1.0, 2.0),
     ///     Point2::new(3.0, -3.0),
-    ///     Point2::new(-1.0, -2.0),
+    ///     Point2::new(-4.0, -2.0),
+    ///     Point2::new(3.0, -3.0), // Duplicate
     ///     Point2::new(-4.0, -5.0),
     /// ];
     /// let mut conflicting_edges = Vec::new();
-    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [3, 4]];
+    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [4, 5], [5, 0]];
     /// let cdt = ConstrainedDelaunayTriangulation::<_>::try_bulk_load_cdt(vertices.clone(), edges, |e| conflicting_edges.push(e))?;
     ///
     /// assert_eq!(cdt.num_vertices(), 5);
-    /// assert_eq!(cdt.num_constraints(), 4);
-    /// // The order will usually change
-    /// assert_ne!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
+    /// assert_eq!(cdt.num_constraints(), 4); // One constraint was not generated
+    ///
+    /// // The third and last edge generate a conflict. One of them will be reported via `on_conflict_found`.
+    /// // In this case, the last edge is returned. Note the index change from v5 to v4 due to the duplicate removal.
+    /// assert_eq!(conflicting_edges, [[4, 0]]);
+    ///
+    /// // The order is preserved (excluding duplicates):
+    /// vertices.remove(4);
+    /// assert_eq!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
     /// # Ok(())
     /// # }
     /// ```
@@ -380,92 +399,32 @@ where
         edges: Vec<[usize; 2]>,
         on_conflict_found: impl FnMut([usize; 2]),
     ) -> Result<Self, InsertionError> {
-        let mut result = try_bulk_load_cdt(vertices, edges, on_conflict_found)?;
-        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
-        Ok(result)
+        try_bulk_load_cdt(vertices, edges, on_conflict_found)
     }
 
-    /// Stable bulk load variant that preserves the input vertex order
-    ///
-    /// The resulting vertex set will be equal to the input vertex set if their positions are all distinct.
-    /// See [ConstrainedDelaunayTriangulation::bulk_load_cdt] for additional details like panic behavior and duplicate
-    /// handling.
-    ///
-    /// # Example
-    /// ```
-    /// # fn main() -> Result<(), spade::InsertionError> {
-    /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
-    /// let mut vertices = vec![
-    ///     Point2::new(0.0, 1.0),
-    ///     Point2::new(1.0, 2.0),
-    ///     Point2::new(3.0, -3.0),
-    ///     Point2::new(-1.0, -2.0),
-    ///     Point2::new(-4.0, -5.0),
-    /// ];
-    /// let mut edges = vec![[0, 1], [1, 2], [2, 3], [3, 4]];
-    /// let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices.clone(), edges)?;
-    ///
-    /// // The ordered will be preserved:
-    /// assert_eq!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), vertices);
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// It is fine to include vertex positions multiple times. The resulting order will be the same as if
-    /// the duplicates were removed prior to insertion. However, it is unclear *which* duplicates are
-    /// removed - e.g. do not assume that always the first duplicated vertex remains.
-    ///
-    /// ```
-    /// # fn main() -> Result<(), spade::InsertionError> {
-    /// use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
-    /// let mut vertices = vec![
-    ///     Point2::new(0.0, 1.0),
-    ///     Point2::new(1.0, 2.0), // Duplicate
-    ///     Point2::new(1.0, 2.0),
-    ///     Point2::new(3.0, -3.0),
-    ///     Point2::new(3.0, -3.0), // Duplicate
-    ///     Point2::new(-4.0, -5.0),
-    /// ];
-    /// let mut edges = vec![[0, 1], [2, 3], [4, 5]];
-    /// let cdt = ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices.clone(), edges)?;
-    ///
-    /// // The choice of deduplicated vertices is arbitrary. In this example, dedup[1] and dedup[2] could
-    /// // have been swapped
-    /// let dedup = [
-    ///     Point2::new(0.0, 1.0),
-    ///     Point2::new(1.0, 2.0),
-    ///     Point2::new(3.0, -3.0),
-    ///     Point2::new(-4.0, -5.0),
-    /// ];
-    /// assert_eq!(cdt.vertices().map(|v| v.position()).collect::<Vec<_>>(), dedup);
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// # See also
-    ///
-    /// See also [Self::try_bulk_load_cdt_stable]
+    /// Deprecated. Use [Self::bulk_load_cdt] instead which is now stable by default.
+    #[deprecated(
+        since = "1.15.0",
+        note = "Use bulk_load_cdt instead. It is now stable by default."
+    )]
     pub fn bulk_load_cdt_stable(
         vertices: Vec<V>,
         edges: Vec<[usize; 2]>,
     ) -> Result<Self, InsertionError> {
-        Self::try_bulk_load_cdt_stable(vertices, edges, |e| {
-            panic!("Conflicting edge encountered: {};{}", e[0], e[1])
-        })
+        Self::bulk_load_cdt(vertices, edges)
     }
 
-    /// See [Self::bulk_load_cdt_stable]
+    /// Deprecated. [Self::try_bulk_load_cdt] instead which is now stable by default.
+    #[deprecated(
+        since = "1.15.0",
+        note = "Use try_bulk_load_cdt instead. It is now stable by default."
+    )]
     pub fn try_bulk_load_cdt_stable(
         vertices: Vec<V>,
         edges: Vec<[usize; 2]>,
         on_conflict_found: impl FnMut([usize; 2]),
     ) -> Result<Self, InsertionError> {
-        let mut result: Self = bulk_load_stable(
-            |vertices| try_bulk_load_cdt(vertices, edges, on_conflict_found),
-            vertices,
-        )?;
-        *result.hint_generator_mut() = L::initialize_from_triangulation(&result);
-        Ok(result)
+        try_bulk_load_cdt(vertices, edges, on_conflict_found)
     }
 
     /// # Handle invalidation
@@ -1015,7 +974,8 @@ where
                             alternative_vertex
                         } else {
                             let edge = edge.fix();
-                            let (new_vertex, [e0, e1]) = self.insert_on_edge(edge, new_vertex);
+                            let new_vertex = append_unconnected_vertex(self.s_mut(), new_vertex);
+                            let [e0, e1] = self.insert_on_edge(edge, new_vertex);
                             self.handle_legal_edge_split([e0, e1]);
                             self.legalize_vertex(new_vertex);
                             new_vertex
@@ -1166,6 +1126,32 @@ where
         }
 
         constraint_edges
+    }
+
+    pub(crate) fn create_with_fixed_vertices(
+        elements: Vec<V>,
+        first_vertex: FixedVertexHandle,
+        second_vertex: FixedVertexHandle,
+    ) -> Self {
+        Self {
+            dcel: new_with_fixed_vertices(elements, first_vertex, second_vertex),
+            num_constraints: 0,
+            // Doesn't make sense to initialize with fixed vertices. Bulk loading will initialize
+            // and replace this afterwards anyway.
+            hint_generator: Default::default(),
+        }
+    }
+
+    /// Swaps out and re-initializes the hint generator.
+    pub(crate) fn adjust_hint_generator<L2>(
+        self,
+    ) -> ConstrainedDelaunayTriangulation<V, DE, UE, F, L2>
+    where
+        L2: HintGenerator<<V as HasPosition>::Scalar>,
+    {
+        let hint_generator = L2::initialize_from_triangulation(&self);
+        let (dcel, _, num_constraints) = self.into_parts();
+        ConstrainedDelaunayTriangulation::from_parts(dcel, hint_generator, num_constraints)
     }
 }
 
@@ -1349,6 +1335,8 @@ pub fn get_edge_intersections<S: SpadeNum + Float>(
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashSet;
+
     use approx::assert_abs_diff_eq;
     use proptest::prelude::*;
 
@@ -1546,7 +1534,7 @@ mod test {
         for p in delaunay_points {
             d.insert(p)?;
         }
-        let mut used_vertices = hashbrown::HashSet::new();
+        let mut used_vertices = HashSet::new();
 
         let mut inserted_constraints = Vec::new();
         for v in d.vertices() {
@@ -2044,7 +2032,7 @@ mod test {
             Point2::new(50.0, -34.0),
         ];
 
-        Cdt::bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]])
+        Cdt::bulk_load_cdt(vertices, vec![[3, 2], [5, 4], [7, 6]])
     }
 
     #[test]
@@ -2061,11 +2049,11 @@ mod test {
             Point2::new(50.0, -34.0),
         ];
         let mut conflicting_edges = Vec::new();
-        let cdt = Cdt::try_bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]], |e| {
+        let cdt = Cdt::try_bulk_load_cdt(vertices, vec![[3, 2], [5, 4], [7, 6]], |e| {
             conflicting_edges.push(e)
         })?;
         // Hardcoded values, may change if CDT algorithm change
-        assert_eq!(&conflicting_edges, &[[6, 7,], [4, 5,]]);
+        assert_eq!(&conflicting_edges, &[[5, 6,], [3, 4,]]);
         assert_eq!(cdt.num_constraints, 1);
         Ok(())
     }
@@ -2079,7 +2067,7 @@ mod test {
             Point2::new(0.0, 1.0),
         ];
 
-        let mut cdt = Cdt::bulk_load_cdt_stable(vertices, vec![[2, 3]])?;
+        let mut cdt = Cdt::bulk_load_cdt(vertices, vec![[2, 3]])?;
 
         let initial_num_vertices = cdt.num_vertices();
         let from = FixedVertexHandle::from_index(0);
@@ -2139,16 +2127,15 @@ mod test {
 
     #[test]
     fn test_remove_vertex_respects_constraints() -> Result<(), InsertionError> {
-        let mut triangulation =
-            ConstrainedDelaunayTriangulation::<Point2<f32>>::bulk_load_cdt_stable(
-                vec![
-                    Point2::new(-1.0, 0.0),
-                    Point2::new(0.0, 0.0),
-                    Point2::new(0.0, 1.0),
-                    Point2::new(1.0, 1.0),
-                ],
-                vec![[0, 1], [1, 2], [2, 3]],
-            )?;
+        let mut triangulation = ConstrainedDelaunayTriangulation::<Point2<f32>>::bulk_load_cdt(
+            vec![
+                Point2::new(-1.0, 0.0),
+                Point2::new(0.0, 0.0),
+                Point2::new(0.0, 1.0),
+                Point2::new(1.0, 1.0),
+            ],
+            vec![[0, 1], [1, 2], [2, 3]],
+        )?;
 
         let mut copy = triangulation.clone();
 
@@ -2287,7 +2274,7 @@ mod test {
             (68.78571, 71.541046),
         ];
 
-        run_proptest(&points)
+        run_bulk_load_proptest(&points)
     }
 
     #[test]
@@ -2299,7 +2286,7 @@ mod test {
             (6.3033395, 32.111538),
             (89.09958, 1.0720834),
         ];
-        run_proptest(&points)
+        run_bulk_load_proptest(&points)
     }
 
     #[test]
@@ -2313,7 +2300,7 @@ mod test {
             (6.3033395, 32.111538),
             (89.09958, 1.0720834),
         ];
-        run_proptest(&points)
+        run_bulk_load_proptest(&points)
     }
 
     #[test]
@@ -2371,7 +2358,7 @@ mod test {
     }
 
     #[test]
-    fn foo() -> Result<(), InsertionError> {
+    fn cdt_test_inserting_few_points() -> Result<(), InsertionError> {
         let vertices = [
             Point2::new(43.44877, 78.04408),
             Point2::new(43.498154, 81.00147),
@@ -2418,10 +2405,10 @@ mod test {
             (75.59119, 42.91933),
             (25.808325, 97.32154),
         ];
-        run_proptest(&points)
+        run_bulk_load_proptest(&points)
     }
 
-    fn run_proptest(points: &[(f32, f32)]) -> Result<(), InsertionError> {
+    fn run_bulk_load_proptest(points: &[(f32, f32)]) -> Result<(), InsertionError> {
         let mut cdt = ConstrainedDelaunayTriangulation::<Point2<f32>>::new();
 
         let mut last_handle = None;
@@ -2451,7 +2438,7 @@ mod test {
             (38.64656, 24.732662),
         ];
 
-        run_proptest(&points)
+        run_bulk_load_proptest(&points)
     }
 
     #[test]
@@ -2473,7 +2460,167 @@ mod test {
             (27.416088, 88.37326),
         ];
 
-        run_proptest(&points)
+        run_bulk_load_proptest(&points)
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(200))]
+        #[test]
+        #[ignore]
+        fn
+        prop_test_bulk_load_cdt_stable(
+            points in proptest::collection::vec((1.0f32..100.0f32, 1.0f32..100.0f32), 1..100),
+            edges in proptest::collection::vec((0usize..100, 0usize..100), 1..100)) {
+            prop_test_bulk_load_cdt_stable_impl(points, edges);
+        }
+    }
+
+    #[test]
+    fn fuzz_test_bulk_load_cdt() {
+        let points = vec![
+            Point2::new(-2.7049442424493675e-11, -2.704772938494617e-11),
+            Point2::new(-2.7049442424493675e-11, -2.2374774353910703e-35),
+            Point2::new(-2.704944241771741e-11, -2.704922037988875e-11),
+            Point2::new(-2.7049442424493675e-11, -2.7049442424493572e-11),
+            Point2::new(-2.7049442424493675e-11, 0.0),
+        ];
+
+        let cdt =
+            ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load_cdt(points, Vec::new())
+                .unwrap();
+
+        cdt.cdt_sanity_check();
+    }
+
+    #[test]
+    fn fuzz_test_bulk_load_cdt_2() {
+        {
+            let points = vec![
+                Point2::new(0.11617647291654172, -2.7049442424493675e-11),
+                Point2::new(-3.684373062283352e-14, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493268e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.704943949713427e-11, -2.7049442424493856e-11),
+            ];
+            let edges = vec![[3, 0]];
+
+            let cdt = ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load_cdt(points, edges)
+                .unwrap();
+
+            cdt.cdt_sanity_check();
+        }
+    }
+
+    #[test]
+    fn fuzz_test_bulk_load_cdt_3() {
+        {
+            let points = vec![
+                Point2::new(-2.7049442424378697e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049434889184558e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442395058873e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424546208e-11, -2.7049442424493675e-11),
+                Point2::new(0.0004538143382352941, -2.705036194996328e-11),
+                Point2::new(-2.704944239484691e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424546615e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493882e-11, -2.70494406897702e-11),
+                Point2::new(0.11617551691391888, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493572e-11, -2.7049442424493675e-11),
+                Point2::new(-2.704944241771741e-11, -2.704944242438945e-11),
+                Point2::new(-2.7049442424493678e-11, -2.7049442424493662e-11),
+                Point2::new(-2.704944241771741e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424467205e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049441611342046e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.704944241771741e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.704944242448623e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.6502324517958398e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442423646642e-11),
+                Point2::new(-2.704944242437787e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493675e-11, -2.7049442424493675e-11),
+                Point2::new(-2.7049442424493646e-11, -2.6375537048546205e-11),
+            ];
+            let edges = vec![];
+
+            let cdt = ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load_cdt(points, edges)
+                .unwrap();
+
+            cdt.cdt_sanity_check();
+        }
+    }
+
+    #[test]
+    fn fuzz_test_bulk_load_cdt_4() {
+        {
+            let points = vec![
+                Point2::new(5.532608426405843e-5, -2.705000112790462e-11),
+                Point2::new(-2.7049442384471368e-11, -2.6555608406219246e-11),
+                Point2::new(-4.6189490530823523e-10, -2.7049442424337338e-11),
+                Point2::new(-2.688601759526906e-11, -2.7049442424517663e-11),
+                Point2::new(-2.704944242448623e-11, -2.7049442424493675e-11),
+                Point2::new(-2.704944240840005e-11, -2.7049442424493675e-11),
+                Point2::new(-1.1276731182827942e-13, -2.7049442424493675e-11),
+            ];
+
+            let edges = vec![];
+
+            ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load(points.clone()).unwrap();
+
+            let cdt = ConstrainedDelaunayTriangulation::<Point2<f64>>::bulk_load_cdt(points, edges)
+                .unwrap();
+
+            cdt.cdt_sanity_check();
+        }
+    }
+
+    fn prop_test_bulk_load_cdt_stable_impl(points: Vec<(f32, f32)>, edges: Vec<(usize, usize)>) {
+        let max_index = points.len() - 1;
+        let edges = edges
+            .iter()
+            .copied()
+            .map(|(from, to)| [from.min(max_index), to.min(max_index)])
+            .collect::<Vec<_>>();
+
+        let vertices = points
+            .iter()
+            .copied()
+            .map(|(x, y)| Point2::new(x, y))
+            .collect::<Vec<_>>();
+        let result = ConstrainedDelaunayTriangulation::<Point2<f32>>::try_bulk_load_cdt(
+            vertices,
+            edges,
+            |_| {},
+        )
+        .unwrap();
+
+        result.cdt_sanity_check();
+    }
+
+    #[test]
+    fn bulk_load_cdt_stable_proptest_1() {
+        let points = vec![(1.0, 1.0), (61.541332, 1.0), (1.0, 69.54), (1.0, 19.13391)];
+        let edges = vec![(3, 3)];
+        prop_test_bulk_load_cdt_stable_impl(points, edges)
+    }
+
+    #[test]
+    fn bulk_load_cdt_stable_proptest_2() {
+        let points = vec![
+            (1.0, 98.26258),
+            (61.541332, 59.135162),
+            (1.0, 1.0),
+            (57.31029, 1.0),
+        ];
+        let edges = vec![(0, 3)];
+
+        prop_test_bulk_load_cdt_stable_impl(points, edges)
     }
 
     fn check_returned_edges<S: crate::SpadeNum>(

@@ -385,6 +385,18 @@ where
     let c = v2.sub(v0);
     (b.x * c.y - b.y * c.x).abs() * 0.5.into()
 }
+/// Same as `project_point(e1, e2, query_point).is_behind_edge()` but with an added factor against
+/// floating point inaccuracies. This doesn't use precise floating point arithmetics but rather errs
+/// by incorrectly returning `false` if precision issues are detected.
+pub(crate) fn is_behind_edge(e1: Point2<f64>, e2: Point2<f64>, query_point: Point2<f64>) -> bool {
+    let projection = project_point(e1, e2, query_point);
+    // There is probably an exact computational method for this. However, I'm not smart enough to
+    // figure that out. It shouldn't be an issue as this method is allowed to err on the safe side
+    // (returning false).
+    // But if you, dear reader, are into exact floating point computation and are looking for an
+    // exercise: This is your chance!
+    projection.factor > projection.length_2 + f64::EPSILON
+}
 
 #[cfg(test)]
 mod test {

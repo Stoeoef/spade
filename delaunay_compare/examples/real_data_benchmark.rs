@@ -67,7 +67,7 @@ fn load_with_spade(vertices: Vec<Point2<f64>>, edges: Vec<[usize; 2]>) -> anyhow
     let edges_clone = edges.clone();
 
     let now = Instant::now();
-    ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt_stable(vertices_clone, edges_clone)?;
+    ConstrainedDelaunayTriangulation::<_>::bulk_load_cdt(vertices_clone, edges_clone)?;
 
     println!(
         "loading time (spade cdt bulk load stable): {}ms",

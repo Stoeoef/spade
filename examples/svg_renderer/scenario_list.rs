@@ -1576,6 +1576,6 @@ fn get_cdt_for_try_add_constraint() -> Result<Cdt> {
         VertexType::new(50.0, -34.0),
     ];
 
-    let result = Cdt::bulk_load_cdt_stable(vertices, vec![[3, 2], [5, 4], [7, 6]])?;
+    let result = Cdt::bulk_load_cdt(vertices, vec![[3, 2], [5, 4], [7, 6]])?;
     Ok(result)
 }
