@@ -144,7 +144,7 @@ impl<UE> AsMut<UE> for CdtEdge<UE> {
 /// Refer to [DelaunayTriangulation](DelaunayTriangulation) for general
 /// information about using Delaunay triangulations.
 #[doc(alias = "CDT")]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
