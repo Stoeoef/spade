@@ -22,7 +22,7 @@ std = []
 smallvec = "1.15.1"
 robust = "1.2.0"
 num-traits = "0.2.19"
-hashbrown = "0.15.5"
+hashbrown = "0.16.1"
 
 [dependencies.serde]
 package = "serde"
