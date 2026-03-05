@@ -174,6 +174,7 @@ pub struct RefinementParameters<S: SpadeNum + Float> {
     angle_limit: AngleLimit,
     min_area: Option<S>,
     max_area: Option<S>,
+    proximity_tolerance: f64,
     keep_constraint_edges: bool,
     exclude_outer_faces: bool,
 }
@@ -185,6 +186,7 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
             angle_limit: AngleLimit::from_radius_to_shortest_edge_ratio(1.0),
             min_area: None,
             max_area: None,
+            proximity_tolerance: default_proximity_tolerance(),
             exclude_outer_faces: false,
             keep_constraint_edges: false,
         }
@@ -200,6 +202,7 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// * `min_required_area`: disabled - no lower area limit is used
     /// * `max_allowed_area`: disabled - no upper area limit is used
     /// * `angle_limit`: 30 degrees by default.
+    /// * `proximity_tolerance`: `1e-10` (relative to coordinate scale)
     /// * `num_additional_vertices`: 10 times the number of vertices in the triangulation
     pub fn new() -> Self {
         Self::default()
@@ -277,6 +280,17 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// Use [RefinementResult::refinement_complete] to check if the number of additional vertices was sufficient.
     pub fn with_max_additional_vertices(mut self, max_additional_vertices: usize) -> Self {
         self.max_additional_vertices = Some(max_additional_vertices);
+        self
+    }
+
+    /// Sets the relative tolerance used to reject insertion points too close to existing vertices.
+    ///
+    /// The effective epsilon is `proximity_tolerance * max_abs_coord`, where `max_abs_coord` is
+    /// the maximum absolute coordinate among the two compared points (with a minimum scale of `1`).
+    ///
+    /// Use `0.0` to disable this guard.
+    pub fn with_proximity_tolerance(mut self, proximity_tolerance: f64) -> Self {
+        self.proximity_tolerance = proximity_tolerance.max(0.0);
         self
     }
 
@@ -546,6 +560,7 @@ where
                     &mut constraint_edge_map,
                     forcibly_split_segment,
                     &mut excluded_faces,
+                    parameters.proximity_tolerance,
                 );
                 continue;
             }
@@ -579,6 +594,7 @@ where
                                 &mut constraint_edge_map,
                                 segment_candidate,
                                 &mut excluded_faces,
+                                parameters.proximity_tolerance,
                             );
                         }
                     }
@@ -647,6 +663,22 @@ where
                 match self.locate_with_hint(circumcenter, locate_hint) {
                     OnEdge(edge) => {
                         let edge = self.directed_edge(edge);
+                        if points_too_close(
+                            circumcenter,
+                            edge.from().position(),
+                            parameters.proximity_tolerance,
+                        ) || points_too_close(
+                            circumcenter,
+                            edge.to().position(),
+                            parameters.proximity_tolerance,
+                        ) || edge.opposite_position().is_some_and(|p| {
+                            points_too_close(circumcenter, p, parameters.proximity_tolerance)
+                        }) || edge.rev().opposite_position().is_some_and(|p| {
+                            points_too_close(circumcenter, p, parameters.proximity_tolerance)
+                        }) {
+                            continue;
+                        }
+
                         if parameters.keep_constraint_edges && edge.is_constraint_edge() {
                             continue;
                         }
@@ -669,11 +701,18 @@ where
                         if excluded_faces.contains(&face_under_circumcenter) {
                             continue;
                         }
-                        legalize_edges_buffer.extend(
-                            self.face(face_under_circumcenter)
-                                .adjacent_edges()
-                                .map(|edge| edge.fix()),
-                        );
+                        let face_under = self.face(face_under_circumcenter);
+                        if face_under.vertices().iter().any(|v| {
+                            points_too_close(
+                                circumcenter,
+                                v.position(),
+                                parameters.proximity_tolerance,
+                            )
+                        }) {
+                            continue;
+                        }
+                        legalize_edges_buffer
+                            .extend(face_under.adjacent_edges().map(|edge| edge.fix()));
                     }
                     OutsideOfConvexHull(_) => continue,
                     OnVertex(_) => continue,
@@ -758,6 +797,7 @@ where
         constraint_edge_map: &mut HashMap<FixedVertexHandle, [FixedVertexHandle; 2]>,
         encroached_edge: FixedUndirectedEdgeHandle,
         excluded_faces: &mut HashSet<FixedFaceHandle<InnerTag>>,
+        proximity_tolerance: f64,
     ) {
         // Resolves an encroachment by splitting the encroached edge. Since this reduces the diametral circle, this will
         // eventually get rid of the encroachment completely.
@@ -813,6 +853,18 @@ where
         };
 
         let final_position = v0.position().mul(weight0).add(v1.position().mul(weight1));
+        if points_too_close(final_position, v0.position(), proximity_tolerance)
+            || points_too_close(final_position, v1.position(), proximity_tolerance)
+            || segment
+                .opposite_position()
+                .is_some_and(|p| points_too_close(final_position, p, proximity_tolerance))
+            || segment
+                .rev()
+                .opposite_position()
+                .is_some_and(|p| points_too_close(final_position, p, proximity_tolerance))
+        {
+            return;
+        }
 
         if !validate_constructed_vertex(final_position, segment) {
             return;
@@ -941,6 +993,28 @@ fn is_encroaching_edge<S: SpadeNum + Float>(
     let radius_2 = edge_from.distance_2(edge_to) * 0.25.into();
 
     query_point.distance_2(edge_center) < radius_2
+}
+
+fn default_proximity_tolerance() -> f64 {
+    1.0e-10
+}
+
+fn points_too_close<S: SpadeNum + Float>(
+    a: Point2<S>,
+    b: Point2<S>,
+    proximity_tolerance: f64,
+) -> bool {
+    let dx = (a.x - b.x).abs().into();
+    let dy = (a.y - b.y).abs().into();
+    let max_abs =
+        a.x.into()
+            .abs()
+            .max(a.y.into().abs())
+            .max(b.x.into().abs())
+            .max(b.y.into().abs())
+            .max(1.0);
+    let eps = max_abs * proximity_tolerance;
+    dx < eps && dy < eps
 }
 
 fn nearest_power_of_two<S: Float + SpadeNum>(input: S) -> S {
