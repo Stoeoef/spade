@@ -174,7 +174,6 @@ pub struct RefinementParameters<S: SpadeNum + Float> {
     angle_limit: AngleLimit,
     min_area: Option<S>,
     max_area: Option<S>,
-    proximity_tolerance: f64,
     keep_constraint_edges: bool,
     exclude_outer_faces: bool,
 }
@@ -186,7 +185,6 @@ impl<S: SpadeNum + Float> Default for RefinementParameters<S> {
             angle_limit: AngleLimit::from_radius_to_shortest_edge_ratio(1.0),
             min_area: None,
             max_area: None,
-            proximity_tolerance: default_proximity_tolerance(),
             exclude_outer_faces: false,
             keep_constraint_edges: false,
         }
@@ -202,7 +200,6 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// * `min_required_area`: disabled - no lower area limit is used
     /// * `max_allowed_area`: disabled - no upper area limit is used
     /// * `angle_limit`: 30 degrees by default.
-    /// * `proximity_tolerance`: `1e-10` (relative to coordinate scale)
     /// * `num_additional_vertices`: 10 times the number of vertices in the triangulation
     pub fn new() -> Self {
         Self::default()
@@ -280,17 +277,6 @@ impl<S: SpadeNum + Float> RefinementParameters<S> {
     /// Use [RefinementResult::refinement_complete] to check if the number of additional vertices was sufficient.
     pub fn with_max_additional_vertices(mut self, max_additional_vertices: usize) -> Self {
         self.max_additional_vertices = Some(max_additional_vertices);
-        self
-    }
-
-    /// Sets the relative tolerance used to reject insertion points too close to existing vertices.
-    ///
-    /// The effective epsilon is `proximity_tolerance * max_abs_coord`, where `max_abs_coord` is
-    /// the maximum absolute coordinate among the two compared points (with a minimum scale of `1`).
-    ///
-    /// Use `0.0` to disable this guard.
-    pub fn with_proximity_tolerance(mut self, proximity_tolerance: f64) -> Self {
-        self.proximity_tolerance = proximity_tolerance.max(0.0);
         self
     }
 
@@ -554,14 +540,18 @@ where
 
             // Step 1: Check for forcibly split segments.
             if let Some(forcibly_split_segment) = forcibly_split_segments_buffer.pop() {
-                self.resolve_encroachment(
+                if !self.resolve_encroachment(
                     &mut encroached_segment_candidates,
                     &mut skinny_triangle_candidates,
                     &mut constraint_edge_map,
                     forcibly_split_segment,
                     &mut excluded_faces,
-                    parameters.proximity_tolerance,
-                );
+                ) {
+                    // Re-processing the last skinny triangle only makes sense if the encroachment
+                    // could actually be resolved. Otherwise, we'd retry the same failed split and
+                    // potentially loop forever.
+                    skinny_triangle_candidates.pop_back();
+                }
                 continue;
             }
 
@@ -588,13 +578,12 @@ where
                             opposite_position,
                         ) {
                             // The edge is encroaching
-                            self.resolve_encroachment(
+                            let _ = self.resolve_encroachment(
                                 &mut encroached_segment_candidates,
                                 &mut skinny_triangle_candidates,
                                 &mut constraint_edge_map,
                                 segment_candidate,
                                 &mut excluded_faces,
-                                parameters.proximity_tolerance,
                             );
                         }
                     }
@@ -663,22 +652,6 @@ where
                 match self.locate_with_hint(circumcenter, locate_hint) {
                     OnEdge(edge) => {
                         let edge = self.directed_edge(edge);
-                        if points_too_close(
-                            circumcenter,
-                            edge.from().position(),
-                            parameters.proximity_tolerance,
-                        ) || points_too_close(
-                            circumcenter,
-                            edge.to().position(),
-                            parameters.proximity_tolerance,
-                        ) || edge.opposite_position().is_some_and(|p| {
-                            points_too_close(circumcenter, p, parameters.proximity_tolerance)
-                        }) || edge.rev().opposite_position().is_some_and(|p| {
-                            points_too_close(circumcenter, p, parameters.proximity_tolerance)
-                        }) {
-                            continue;
-                        }
-
                         if parameters.keep_constraint_edges && edge.is_constraint_edge() {
                             continue;
                         }
@@ -701,18 +674,11 @@ where
                         if excluded_faces.contains(&face_under_circumcenter) {
                             continue;
                         }
-                        let face_under = self.face(face_under_circumcenter);
-                        if face_under.vertices().iter().any(|v| {
-                            points_too_close(
-                                circumcenter,
-                                v.position(),
-                                parameters.proximity_tolerance,
-                            )
-                        }) {
-                            continue;
-                        }
-                        legalize_edges_buffer
-                            .extend(face_under.adjacent_edges().map(|edge| edge.fix()));
+                        legalize_edges_buffer.extend(
+                            self.face(face_under_circumcenter)
+                                .adjacent_edges()
+                                .map(|edge| edge.fix()),
+                        );
                     }
                     OutsideOfConvexHull(_) => continue,
                     OnVertex(_) => continue,
@@ -797,8 +763,7 @@ where
         constraint_edge_map: &mut HashMap<FixedVertexHandle, [FixedVertexHandle; 2]>,
         encroached_edge: FixedUndirectedEdgeHandle,
         excluded_faces: &mut HashSet<FixedFaceHandle<InnerTag>>,
-        proximity_tolerance: f64,
-    ) {
+    ) -> bool {
         // Resolves an encroachment by splitting the encroached edge. Since this reduces the diametral circle, this will
         // eventually get rid of the encroachment completely.
         //
@@ -853,21 +818,8 @@ where
         };
 
         let final_position = v0.position().mul(weight0).add(v1.position().mul(weight1));
-        if points_too_close(final_position, v0.position(), proximity_tolerance)
-            || points_too_close(final_position, v1.position(), proximity_tolerance)
-            || segment
-                .opposite_position()
-                .is_some_and(|p| points_too_close(final_position, p, proximity_tolerance))
-            || segment
-                .rev()
-                .opposite_position()
-                .is_some_and(|p| points_too_close(final_position, p, proximity_tolerance))
-        {
-            return;
-        }
-
         if !validate_constructed_vertex(final_position, segment) {
-            return;
+            return false;
         }
 
         let [is_left_side_excluded, is_right_side_excluded] =
@@ -934,6 +886,8 @@ where
         // Update encroachment candidates - any of the resulting edges may still be in an encroaching state.
         encroached_segments_buffer.push_back(e1.as_undirected());
         encroached_segments_buffer.push_back(e2.as_undirected());
+
+        true
     }
 }
 
@@ -993,28 +947,6 @@ fn is_encroaching_edge<S: SpadeNum + Float>(
     let radius_2 = edge_from.distance_2(edge_to) * 0.25.into();
 
     query_point.distance_2(edge_center) < radius_2
-}
-
-fn default_proximity_tolerance() -> f64 {
-    1.0e-10
-}
-
-fn points_too_close<S: SpadeNum + Float>(
-    a: Point2<S>,
-    b: Point2<S>,
-    proximity_tolerance: f64,
-) -> bool {
-    let dx = (a.x - b.x).abs().into();
-    let dy = (a.y - b.y).abs().into();
-    let max_abs =
-        a.x.into()
-            .abs()
-            .max(a.y.into().abs())
-            .max(b.x.into().abs())
-            .max(b.y.into().abs())
-            .max(1.0);
-    let eps = max_abs * proximity_tolerance;
-    dx < eps && dy < eps
 }
 
 fn nearest_power_of_two<S: Float + SpadeNum>(input: S) -> S {
@@ -1080,8 +1012,10 @@ where
 #[cfg(test)]
 mod test {
     use super::HashSet;
+    use alloc::{vec, vec::Vec};
 
     use crate::{
+        handles::FixedVertexHandle,
         test_utilities::{random_points_with_seed, SEED},
         AngleLimit, ConstrainedDelaunayTriangulation, InsertionError, Point2, RefinementParameters,
         Triangulation as _,
@@ -1311,5 +1245,181 @@ mod test {
         cdt.cdt_sanity_check();
 
         Ok(())
+    }
+
+    #[test]
+    fn repro_refine_hang_regression() -> Result<(), InsertionError> {
+        let points = repro_refine_hang_points();
+        let constraints = repro_refine_hang_constraints();
+
+        let mut cdt = Cdt::bulk_load_cdt(points, vec![])?;
+
+        for edge in &constraints {
+            cdt.add_constraint_and_split(
+                FixedVertexHandle::from_index(edge[0]),
+                FixedVertexHandle::from_index(edge[1]),
+                |v| v,
+            );
+        }
+
+        let result = cdt.refine(
+            RefinementParameters::<f64>::new()
+                .keep_constraint_edges()
+                .with_max_allowed_area(0.4 * 0.32 * 0.32)
+                .with_max_additional_vertices(1_000_000),
+        );
+
+        assert!(
+            result.refinement_complete,
+            "Refinement ran out of additional vertices for regression input"
+        );
+        cdt.cdt_sanity_check();
+
+        Ok(())
+    }
+
+    fn repro_refine_hang_points() -> Vec<Point2<f64>> {
+        vec![
+            Point2::new(0.0, 0.0),
+            Point2::new(1.0, 0.0),
+            Point2::new(1.0, 1.0),
+            Point2::new(0.0, 1.0),
+            Point2::new(0.5, 0.5),
+            Point2::new(0.5040435515666191, 0.48484848484848486),
+            Point2::new(0.5080871031332381, 0.4696969696969697),
+            Point2::new(0.5121306546998572, 0.45454545454545453),
+            Point2::new(0.5161742062664761, 0.4393939393939394),
+            Point2::new(0.5202177578330952, 0.42424242424242425),
+            Point2::new(0.5242613093997143, 0.40909090909090906),
+            Point2::new(0.5283048609663333, 0.3939393939393939),
+            Point2::new(0.5323484125329524, 0.3787878787878788),
+            Point2::new(0.5363919640995715, 0.36363636363636365),
+            Point2::new(0.5404355156661904, 0.3484848484848485),
+            Point2::new(0.5444790672328095, 0.33333333333333337),
+            Point2::new(0.5485226187994285, 0.3181818181818182),
+            Point2::new(0.5525661703660476, 0.30303030303030304),
+            Point2::new(0.5566097219326667, 0.2878787878787879),
+            Point2::new(0.5606532734992857, 0.2727272727272727),
+            Point2::new(0.5646968250659048, 0.25757575757575757),
+            Point2::new(0.5687403766325237, 0.24242424242424243),
+            Point2::new(0.5727839281991428, 0.2272727272727273),
+            Point2::new(0.5768274797657619, 0.2121212121212121),
+            Point2::new(0.5808710313323809, 0.19696969696969702),
+            Point2::new(0.584914582899, 0.18181818181818188),
+            Point2::new(0.5889581344656191, 0.16666666666666669),
+            Point2::new(0.593001686032238, 0.15151515151515155),
+            Point2::new(0.5970452375988571, 0.13636363636363635),
+            Point2::new(0.6010887891654761, 0.12121212121212122),
+            Point2::new(0.6051323407320952, 0.10606060606060608),
+            Point2::new(0.6091758922987143, 0.09090909090909088),
+            Point2::new(0.6132194438653333, 0.0757575757575758),
+            Point2::new(0.6172629954319524, 0.06060606060606066),
+            Point2::new(0.6213065469985714, 0.04545454545454547),
+            Point2::new(0.6253500985651904, 0.030303030303030387),
+            Point2::new(0.6289250162663348, 0.01690752419363295),
+            Point2::new(0.6334372016984285, 5.551115123125783e-17),
+            Point2::new(0.5156817958365265, 0.5),
+            Point2::new(0.531363591673053, 0.5),
+            Point2::new(0.5470453875095795, 0.5),
+            Point2::new(0.562727183346106, 0.5),
+            Point2::new(0.5784089791826326, 0.5),
+            Point2::new(0.5940907750191591, 0.5),
+            Point2::new(0.6097725708556856, 0.5),
+            Point2::new(0.6254543666922121, 0.5),
+            Point2::new(0.6411361625287386, 0.5),
+            Point2::new(0.6568179583652651, 0.5),
+            Point2::new(0.6724997542017918, 0.5),
+            Point2::new(0.6881815500383183, 0.5),
+            Point2::new(0.7038633458748448, 0.5),
+            Point2::new(0.7195451417113713, 0.5),
+            Point2::new(0.7352269375478978, 0.5),
+            Point2::new(0.7509087333844243, 0.5),
+            Point2::new(0.7665905292209508, 0.5),
+            Point2::new(0.7822723250574773, 0.5),
+            Point2::new(0.797954120894004, 0.5),
+            Point2::new(0.8136359167305304, 0.5),
+            Point2::new(0.8293177125670569, 0.5),
+            Point2::new(0.8449995084035835, 0.5),
+            Point2::new(0.86068130424011, 0.5),
+            Point2::new(0.8763631000766365, 0.5),
+            Point2::new(0.892044895913163, 0.5),
+            Point2::new(0.9077266917496896, 0.5),
+            Point2::new(0.9234084875862161, 0.5),
+            Point2::new(0.9390902834227426, 0.5),
+            Point2::new(0.9547720792592691, 0.5),
+            Point2::new(0.9704538750957956, 0.5),
+            Point2::new(0.9861356709323221, 0.5),
+            Point2::new(1.0, 0.5),
+        ]
+    }
+
+    fn repro_refine_hang_constraints() -> Vec<[usize; 2]> {
+        vec![
+            [4, 5],
+            [5, 6],
+            [6, 7],
+            [7, 8],
+            [8, 9],
+            [9, 10],
+            [10, 11],
+            [11, 12],
+            [12, 13],
+            [13, 14],
+            [14, 15],
+            [15, 16],
+            [16, 17],
+            [17, 18],
+            [18, 19],
+            [19, 20],
+            [20, 21],
+            [21, 22],
+            [22, 23],
+            [23, 24],
+            [24, 25],
+            [25, 26],
+            [26, 27],
+            [27, 28],
+            [28, 29],
+            [29, 30],
+            [30, 31],
+            [31, 32],
+            [32, 33],
+            [33, 34],
+            [34, 35],
+            [35, 36],
+            [36, 37],
+            [4, 38],
+            [38, 39],
+            [39, 40],
+            [40, 41],
+            [41, 42],
+            [42, 43],
+            [43, 44],
+            [44, 45],
+            [45, 46],
+            [46, 47],
+            [47, 48],
+            [48, 49],
+            [49, 50],
+            [50, 51],
+            [51, 52],
+            [52, 53],
+            [53, 54],
+            [54, 55],
+            [55, 56],
+            [56, 57],
+            [57, 58],
+            [58, 59],
+            [59, 60],
+            [60, 61],
+            [61, 62],
+            [62, 63],
+            [63, 64],
+            [64, 65],
+            [65, 66],
+            [66, 67],
+            [67, 68],
+            [68, 69],
+        ]
     }
 }
