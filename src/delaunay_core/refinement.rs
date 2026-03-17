@@ -546,6 +546,7 @@ where
                     &mut constraint_edge_map,
                     forcibly_split_segment,
                     &mut excluded_faces,
+                    parameters.keep_constraint_edges,
                 ) {
                     // Re-processing the last skinny triangle only makes sense if the encroachment
                     // could actually be resolved. Otherwise, we'd retry the same failed split and
@@ -584,6 +585,7 @@ where
                                 &mut constraint_edge_map,
                                 segment_candidate,
                                 &mut excluded_faces,
+                                parameters.keep_constraint_edges,
                             );
                         }
                     }
@@ -763,6 +765,7 @@ where
         constraint_edge_map: &mut HashMap<FixedVertexHandle, [FixedVertexHandle; 2]>,
         encroached_edge: FixedUndirectedEdgeHandle,
         excluded_faces: &mut HashSet<FixedFaceHandle<InnerTag>>,
+        keep_constraint_edges: bool,
     ) -> bool {
         // Resolves an encroachment by splitting the encroached edge. Since this reduces the diametral circle, this will
         // eventually get rid of the encroachment completely.
@@ -822,13 +825,16 @@ where
             return false;
         }
 
+        let is_constraint_edge = segment.is_constraint_edge();
+        if keep_constraint_edges && is_constraint_edge {
+            return false;
+        }
+
         let [is_left_side_excluded, is_right_side_excluded] =
             [segment.face(), segment.rev().face()].map(|face| {
                 face.as_inner()
                     .is_some_and(|face| excluded_faces.contains(&face.fix()))
             });
-
-        let is_constraint_edge = segment.is_constraint_edge();
 
         // Perform the actual split!
         let segment = segment.fix();
@@ -1262,6 +1268,8 @@ mod test {
             );
         }
 
+        let initial_num_constraints = cdt.num_constraints();
+
         let result = cdt.refine(
             RefinementParameters::<f64>::new()
                 .keep_constraint_edges()
@@ -1274,6 +1282,8 @@ mod test {
             "Refinement ran out of additional vertices for regression input"
         );
         cdt.cdt_sanity_check();
+
+        assert_eq!(initial_num_constraints, cdt.num_constraints());
 
         Ok(())
     }
