@@ -7,26 +7,26 @@
 </defs>
 <rect height="100%" style="fill: url(#add_constraint_and_split_added_pattern0001)" width="100%" x="-10" y="-43.4"/>
 <g>
-<path d="M20,20 L20,-7.375 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M45,25 L20,20 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
 <path d="M60,20 L45,25 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
 <path d="M38.525,-4.925 L60,-2.1 L45,25 z" style="fill: rgb(211 211 211)"/>
-<path d="M50,-34 L60,-2.1 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
-<path d="M45,25 L20,20 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M50,-34 L60,-30 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M20,-7.375 L38.525,-4.925 L20,20 z" style="fill: rgb(211 211 211)"/>
 <path d="M76,0 L60,20 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
 <path d="M20,20 L0,-10 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
 <path d="M0,-10 L20,-30 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
-<path d="M20,-30 L32,-35 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
-<path d="M32,-35 L38.525,-4.925 L20,-7.375 z" style="fill: rgb(211 211 211)"/>
+<path d="M20,-7.375 L20,-30 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
+<path d="M32,-35 L38.525,-4.925 L20,-30 z" style="fill: rgb(211 211 211)"/>
 <path d="M32,-35 L50,-34 L38.525,-4.925 z" style="fill: rgb(211 211 211)"/>
-<path d="M50,-34 L60,-30 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
+<path d="M38.525,-4.925 L60,-30 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
 <path d="M60,-30 L76,0 L60,-2.1 z" style="fill: rgb(211 211 211)"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="32" y1="-34" y2="-35"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="60" y1="-34" y2="-30"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="38.525" x2="45" y1="-4.925" y2="25"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="45" x2="60" y1="25" y2="-2.1"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="32" y1="-30" y2="-35"/>
-<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="38.525" x2="60" y1="-4.925" y2="-2.1"/>
-<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="20" x2="38.525" y1="-7.375" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="38.525" x2="60" y1="-4.925" y2="-30"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="38.525" y1="20" y2="-4.925"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="60" x2="60" y1="-2.1" y2="20"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="60" x2="45" y1="20" y2="25"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="45" x2="20" y1="25" y2="20"/>
@@ -37,11 +37,11 @@
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="0" x2="20" y1="-10" y2="-30"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="0" x2="20" y1="-10" y2="-7.375"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="20" x2="20" y1="-30" y2="-7.375"/>
-<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="32" x2="20" y1="-35" y2="-7.375"/>
-<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="38.525" y1="20" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="20" x2="38.525" y1="-30" y2="-4.925"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="20" x2="38.525" y1="-7.375" y2="-4.925"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="32" x2="38.525" y1="-35" y2="-4.925"/>
 <line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="38.525" y1="-34" y2="-4.925"/>
-<line style="stroke-width: 1; stroke: rgb(0 0 0); fill: none" x1="50" x2="60" y1="-34" y2="-2.1"/>
+<line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="38.525" x2="60" y1="-4.925" y2="-2.1"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="60" x2="60" y1="-30" y2="-2.1"/>
 <line style="stroke-width: 1; stroke: rgb(139 0 0); fill: none" x1="76" x2="60" y1="0" y2="-2.1"/>
 <circle cx="0" cy="-10" r="2" style="stroke-width: 0.5; stroke: rgb(0 0 0); fill: rgb(105 105 105)"/>
