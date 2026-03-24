@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.15.1] - 2026-03-24
+
+### Fixed
+ - Prevents undesired splitting of inner constraint edges when `RefinementParameters::keep_constraint_edges` was used (#134)
+ - Prevents potential endless loop during refinement (#134)
+
 ## [2.15.0] - 2025-08-16
 
 ### Added
@@ -503,6 +509,8 @@ A lot has changed for the 1.0. release, only larger changes are shown.
 ## 0.1.0 - 2016-09-23
 
 Initial commit
+
+[2.15.1]: https://github.com/Stoeoef/spade/compare/v2.15.0...v2.15.1
 
 [2.15.0]: https://github.com/Stoeoef/spade/compare/v2.14.0...v2.15.0
 
