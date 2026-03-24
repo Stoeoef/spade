@@ -1331,7 +1331,7 @@ mod test {
 
     use rand::distr::{Distribution, Uniform};
     use rand::seq::IndexedRandom as _;
-    use rand::{Rng, SeedableRng};
+    use rand::{Rng, RngExt as _, SeedableRng};
 
     use crate::delaunay_core::{FixedDirectedEdgeHandle, TriangulationExt};
     use crate::handles::FixedVertexHandle;

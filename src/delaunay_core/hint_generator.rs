@@ -313,7 +313,7 @@ impl<S: SpadeNum, const BRANCH_FACTOR: u32> HintGenerator<S>
 
 #[cfg(test)]
 mod test {
-    use rand::{seq::IndexedRandom as _, RngCore, SeedableRng};
+    use rand::{seq::IndexedRandom as _, Rng, SeedableRng};
 
     use crate::{
         handles::FixedVertexHandle, test_utilities, DelaunayTriangulation, InsertionError, Point2,

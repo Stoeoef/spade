@@ -1,6 +1,8 @@
 use num_traits::Float;
+use rand::distr::uniform::SampleUniform;
+use rand::distr::Uniform;
 use rand::rngs::StdRng;
-use rand::{distributions::uniform::SampleUniform, Rng, SeedableRng};
+use rand::{Rng, SeedableRng};
 
 pub const SEED: &[u8; 32] = b"\xfb\xdc\x4e\xa0\x30\xde\x82\xba\x69\x97\x3c\x52\x49\x4d\x00\xca
 \x5c\x21\xa3\x8d\x5c\xf2\x34\x4e\x58\x7d\x80\x16\x66\x23\x30";
@@ -12,7 +14,7 @@ where
     S: SampleUniform + Float,
     S::Sampler: Copy,
 {
-    let range = rand::distributions::Uniform::new_inclusive(-range, range);
+    let range = Uniform::new_inclusive(-range, range).unwrap();
     let mut rng = StdRng::from_seed(seed);
     core::iter::from_fn(move || Some([rng.sample(range), rng.sample(range)]))
 }
@@ -30,7 +32,7 @@ where
     S: SampleUniform + Float,
     S::Sampler: Copy,
 {
-    let range = rand::distributions::Uniform::new_inclusive(-step_size, step_size);
+    let range = Uniform::new_inclusive(-step_size, step_size).unwrap();
     let mut last_x = S::zero();
     let mut last_y = S::one();
 

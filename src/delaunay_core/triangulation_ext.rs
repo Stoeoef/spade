@@ -922,7 +922,8 @@ mod test {
     };
     use rand::distr::Distribution;
     use rand::distr::Uniform;
-    use rand::{seq::SliceRandom, Rng, SeedableRng};
+    use rand::RngExt;
+    use rand::{seq::SliceRandom, SeedableRng};
 
     use alloc::{vec, vec::Vec};
 
@@ -1496,7 +1497,7 @@ mod test {
         }
         let mut rng = rand::rngs::StdRng::from_seed(*SEED);
         while triangulation.num_vertices() > 3 {
-            if rng.random() {
+            if rng.random_bool(0.5) {
                 triangulation.remove(FixedVertexHandle::new(1));
             } else {
                 triangulation.remove(FixedVertexHandle::new(2));

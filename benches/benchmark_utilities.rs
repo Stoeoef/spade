@@ -1,7 +1,7 @@
 use core::fmt::{self, Display, Formatter};
 
 use criterion::{measurement::WallTime, BenchmarkGroup, BenchmarkId, Throughput};
-use rand::{distr::uniform::SampleUniform, Rng, SeedableRng};
+use rand::{distr::uniform::SampleUniform, RngExt, SeedableRng};
 use spade::{
     DelaunayTriangulation, HierarchyHintGenerator, LastUsedVertexHintGenerator, Point2, SpadeNum,
     Triangulation,
