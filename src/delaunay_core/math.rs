@@ -481,13 +481,11 @@ mod test {
 
     #[test]
     fn test_mitigate_underflow() {
-        use float_next_after::NextAfter;
-
         for number_under_test in [
-            0.0.next_after(f64::NEG_INFINITY),
-            0.0.next_after(f64::INFINITY),
-            super::MIN_ALLOWED_VALUE.next_after(f64::NEG_INFINITY),
-            (-super::MIN_ALLOWED_VALUE).next_after(f64::INFINITY),
+            0.0f64.next_down(),
+            0.0f64.next_up(),
+            super::MIN_ALLOWED_VALUE.next_down(),
+            (-super::MIN_ALLOWED_VALUE).next_up(),
         ] {
             assert!(validate_coordinate(number_under_test).is_err());
             let mitigated = mitigate_underflow_for_coordinate(number_under_test);

@@ -1137,7 +1137,6 @@ fn hull_sanity_check(triangulation: &impl Triangulation, hull: &Hull) {
 
 #[cfg(test)]
 mod test {
-    use float_next_after::NextAfter;
     use rand::{seq::SliceRandom, SeedableRng};
 
     use crate::delaunay_core::triangulation_ext::VertexToInsert;
@@ -1198,7 +1197,7 @@ mod test {
         for _ in 0..grid_size / 2 {
             possible_f64.push(current_float);
             possible_f64.push(-current_float);
-            current_float = current_float.next_after(f64::INFINITY);
+            current_float = current_float.next_up();
         }
 
         possible_f64.sort_by(|l, r| l.partial_cmp(r).unwrap());
