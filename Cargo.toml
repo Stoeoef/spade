@@ -46,11 +46,11 @@ rand = "0.10.0"
 cgmath = "0.18.0"
 svg = "0.18.0"
 image = "0.25.6"
-tiny-skia = "0.11.4"
-criterion = { version = "0.7.0", features = ["html_reports"] }
+tiny-skia = "0.12.0"
+criterion = { version = "0.8.2", features = ["html_reports"] }
 base64 = "0.22.1"
 anyhow = "1.0.99"
-shapefile = "0.7.0"
+shapefile = "0.8.0"
 proptest = "1.7.0"
 
 [[bench]]
