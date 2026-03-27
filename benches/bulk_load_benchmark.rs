@@ -13,6 +13,8 @@ pub fn bulk_load_benchmark(c: &mut Criterion) {
         (LastUsedVertex, Uniform),
         (Hierarchy, Uniform),
         (Hierarchy, RandomWalk),
+        (JumpAndWalk, Uniform),
+        (JumpAndWalk, RandomWalk),
     ] {
         let config = CreationBenchConfig {
             creation_method: CreationMethod::BulkLoad,

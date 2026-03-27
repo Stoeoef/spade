@@ -22,7 +22,7 @@ pub use triangulation_ext::{RemovalResult, TriangulationExt};
 pub use dcel::Dcel;
 pub use hint_generator::{
     HierarchyHintGenerator, HierarchyHintGeneratorWithBranchFactor, HintGenerator,
-    LastUsedVertexHintGenerator,
+    JumpAndWalkHintGenerator, LastUsedVertexHintGenerator,
 };
 
 pub use refinement::{AngleLimit, RefinementParameters, RefinementResult};
