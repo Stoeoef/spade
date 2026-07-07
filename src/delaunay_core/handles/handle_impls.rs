@@ -765,7 +765,7 @@ impl<'a, V, DE, UE, F> VertexHandle<'a, V, DE, UE, F> {
     }
 
     /// Returns the data associated with this vertex.
-    pub fn data(&self) -> &V {
+    pub fn data(&self) -> &'a V {
         self.dcel.vertex_data(self.handle)
     }
 
@@ -796,9 +796,9 @@ where
     }
 }
 
-impl<V, DE, UE, F, InnerOuter: InnerOuterMarker> FaceHandle<'_, InnerOuter, V, DE, UE, F> {
+impl<'a, V, DE, UE, F, InnerOuter: InnerOuterMarker> FaceHandle<'a, InnerOuter, V, DE, UE, F> {
     /// Returns a reference to the data associated with this face.
-    pub fn data(&self) -> &F {
+    pub fn data(&self) -> &'a F {
         self.dcel.face_data(self.handle)
     }
 }
