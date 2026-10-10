@@ -981,29 +981,43 @@ where
     let mut return_outer_faces = true;
 
     loop {
-        // Every iteration of the outer while loop will peel of the outmost layer and pre-populate the
-        // next, inner layer.
+        // Every iteration of the outer while loop will peel of the outmost layer. Constraint edges
+        // are only recorded here: the faces behind them seed the next layer once this layer is
+        // complete, so a face that this layer can reach without crossing a constraint edge (e.g.
+        // around the end of an open constraint edge, or across a constraint edge between two
+        // regions of the same layer) is never assigned to the next layer as well.
         while let Some(next_edge) = current_todo_list.pop() {
-            let (list, face_set) = if next_edge.is_constraint_edge() {
-                // We're crossing a constraint edge - add that face to the *next* todo list
-                (&mut next_todo_list, &mut inner_faces)
-            } else {
-                (&mut current_todo_list, &mut outer_faces)
-            };
+            if next_edge.is_constraint_edge() {
+                next_todo_list.push(next_edge);
+                continue;
+            }
 
             if let Some(inner) = next_edge.face().as_inner() {
-                if face_set.insert(inner.fix()) {
-                    list.push(next_edge.prev().rev());
-                    list.push(next_edge.next().rev());
+                let face = inner.fix();
+                if !inner_faces.contains(&face) && outer_faces.insert(face) {
+                    current_todo_list.push(next_edge.prev().rev());
+                    current_todo_list.push(next_edge.next().rev());
                 }
             }
         }
 
-        if next_todo_list.is_empty() {
+        // Faces behind a crossed constraint edge that no layer holds yet start the next layer.
+        let mut seeded = false;
+        for edge in next_todo_list.drain(..) {
+            if let Some(inner) = edge.face().as_inner() {
+                let face = inner.fix();
+                if !outer_faces.contains(&face) && inner_faces.insert(face) {
+                    seeded = true;
+                    current_todo_list.push(edge.prev().rev());
+                    current_todo_list.push(edge.next().rev());
+                }
+            }
+        }
+
+        if !seeded {
             break;
         }
         core::mem::swap(&mut inner_faces, &mut outer_faces);
-        core::mem::swap(&mut next_todo_list, &mut current_todo_list);
 
         return_outer_faces = !return_outer_faces;
     }
@@ -1219,6 +1233,89 @@ mod test {
 
         cdt.refine(RefinementParameters::new().exclude_outer_faces(true));
 
+        Ok(())
+    }
+
+    fn constrained_square(
+        cdt: &mut Cdt,
+        x0: f64,
+        y0: f64,
+        size: f64,
+    ) -> Result<(), InsertionError> {
+        cdt.add_constraint_edges(
+            [
+                Point2::new(x0, y0),
+                Point2::new(x0 + size, y0),
+                Point2::new(x0 + size, y0 + size),
+                Point2::new(x0, y0 + size),
+            ],
+            true,
+        )
+    }
+
+    #[test]
+    fn test_exclude_outer_faces_with_open_constraint_edge_inside_shape(
+    ) -> Result<(), InsertionError> {
+        // An open constraint edge inside a closed shape does not separate the shape into regions:
+        // no face is outer.
+        let mut cdt = Cdt::new();
+        constrained_square(&mut cdt, 0.0, 0.0, 10.0)?;
+        cdt.add_constraint_edge(Point2::new(3.0, 5.0), Point2::new(7.0, 5.0))?;
+
+        assert!(cdt.num_inner_faces() > 2);
+        assert!(super::calculate_outer_faces(&cdt).is_empty());
+
+        let result = cdt.refine(
+            RefinementParameters::new()
+                .exclude_outer_faces(true)
+                .with_max_allowed_area(4.0),
+        );
+        assert!(result.excluded_faces.is_empty());
+        assert!(cdt.num_vertices() > 8);
+        Ok(())
+    }
+
+    #[test]
+    fn test_exclude_outer_faces_with_constraint_edge_splitting_shape(
+    ) -> Result<(), InsertionError> {
+        // A constraint edge that runs from one side of a closed shape to the other cuts it in two
+        // cells that are both inside.
+        let mut cdt = Cdt::new();
+        constrained_square(&mut cdt, 0.0, 0.0, 10.0)?;
+        cdt.add_constraint_edge(Point2::new(5.0, 0.0), Point2::new(5.0, 10.0))?;
+
+        assert!(super::calculate_outer_faces(&cdt).is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn test_exclude_outer_faces_with_two_shapes_sharing_an_edge() -> Result<(), InsertionError> {
+        // Two closed squares that share an edge: the winding number is 1 in both.
+        let mut cdt = Cdt::new();
+        constrained_square(&mut cdt, 0.0, 0.0, 10.0)?;
+        constrained_square(&mut cdt, 10.0, 0.0, 10.0)?;
+
+        assert!(super::calculate_outer_faces(&cdt).is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn test_exclude_outer_faces_with_hole_and_open_constraint_edge() -> Result<(), InsertionError>
+    {
+        // The hole is still excluded, and only the hole, when there is also an open constraint edge.
+        let mut cdt = Cdt::new();
+        constrained_square(&mut cdt, 0.0, 0.0, 10.0)?;
+        constrained_square(&mut cdt, 6.0, 6.0, 2.0)?;
+        cdt.add_constraint_edge(Point2::new(1.0, 2.0), Point2::new(4.0, 2.0))?;
+
+        let excluded = super::calculate_outer_faces(&cdt);
+        assert!(!excluded.is_empty());
+        for face in cdt.inner_faces() {
+            let [a, b, c] = face.positions();
+            let (x, y) = ((a.x + b.x + c.x) / 3.0, (a.y + b.y + c.y) / 3.0);
+            let in_hole = x > 6.0 && x < 8.0 && y > 6.0 && y < 8.0;
+            assert_eq!(excluded.contains(&face.fix()), in_hole);
+        }
         Ok(())
     }
 
