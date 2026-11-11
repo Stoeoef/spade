@@ -367,6 +367,7 @@ where
                 // Attempt to find an overlapping edge by iterating over the convex hull and
                 // minimizing the edge distance
                 let mut current_edge = t.directed_edge(edge);
+                let start_edge = current_edge.fix();
                 let [from_distance, to_distance] = current_edge
                     .positions()
                     .map(|p| metric.distance_to_point(p));
@@ -396,6 +397,15 @@ where
                     if next_distance > min_distance {
                         // Advancing the convex hull is increasing the distance to the convex
                         // shape we won't find an intersection.
+                        break None;
+                    }
+
+                    if current_edge.fix() == start_edge {
+                        // The walk goes around the convex hull, which is a closed loop, and
+                        // the distance to the hull vertices does not have to increase along
+                        // it. When the hull vertices are all at the same distance from the
+                        // center - as they are when the center is the circumcenter of the
+                        // triangulation - the walk would never end.
                         break None;
                     }
 
@@ -780,6 +790,86 @@ mod test {
         let [s0, s1] = sut(v0, v1, Point2::new(1.0, 3.0), Point2::new(20.0, 3.0));
         assert!(s0.is_infinite());
         assert!(s1.is_infinite());
+    }
+
+    /// Runs a query on its own thread and returns its result, or `None` if it
+    /// did not finish within the deadline.
+    ///
+    /// The hull walk that finds the first edge of a shape used to loop forever
+    /// when all hull vertices were at the same distance from the shape's
+    /// center - which is the case when the center is the circumcenter of the
+    /// triangulation. That walk happens while the iterator is constructed, so
+    /// the query cannot be bounded with `take`. Running it on its own thread
+    /// lets an endless loop fail the test instead of hanging the test suite.
+    #[cfg(feature = "std")]
+    fn count_with_deadline<F>(query: F) -> Option<usize>
+    where
+        F: FnOnce() -> usize + Send + 'static,
+    {
+        use std::sync::mpsc;
+        use std::time::Duration;
+
+        let (sender, receiver) = mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = sender.send(query());
+        });
+
+        receiver.recv_timeout(Duration::from_secs(30)).ok()
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_shape_query_at_the_circumcenter_terminates() {
+        fn triangulation() -> DelaunayTriangulation<Point2<f64>> {
+            DelaunayTriangulation::<Point2<f64>>::bulk_load(vec![
+                Point2::new(0.0, 0.0),
+                Point2::new(4.0, 0.0),
+                Point2::new(2.0, 1.0),
+            ])
+            .unwrap()
+        }
+
+        // (2, -1.5) is the circumcenter of the three points. All vertices are
+        // 2.5 away from it, so no vertex is inside a circle of radius 1.
+        let count = count_with_deadline(move || {
+            triangulation()
+                .get_vertices_in_circle(Point2::new(2.0, -1.5), 1.0)
+                .count()
+        });
+        assert_eq!(
+            count,
+            Some(0),
+            "the query did not terminate or returned an unexpected number of vertices"
+        );
+
+        // The same center as a degenerate rectangle ends the same way.
+        let count = count_with_deadline(move || {
+            triangulation()
+                .get_vertices_in_rectangle(Point2::new(2.0, -1.5), Point2::new(2.0, -1.5))
+                .count()
+        });
+        assert_eq!(
+            count,
+            Some(0),
+            "the query did not terminate or returned an unexpected number of vertices"
+        );
+
+        // A center far outside of the triangulation hangs the same way.
+        let count = count_with_deadline(move || {
+            DelaunayTriangulation::<Point2<f64>>::bulk_load(vec![
+                Point2::new(0.0, 0.0),
+                Point2::new(1.0, 0.0),
+                Point2::new(0.0, 1.0),
+            ])
+            .unwrap()
+            .get_vertices_in_circle(Point2::new(0.5, crate::MAX_ALLOWED_VALUE), 1.0)
+            .count()
+        });
+        assert_eq!(
+            count,
+            Some(0),
+            "the query did not terminate or returned an unexpected number of vertices"
+        );
     }
 
     #[test]
