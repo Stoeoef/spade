@@ -20,6 +20,7 @@ use super::{
     dcel_operations, FixedDirectedEdgeHandle, FixedUndirectedEdgeHandle, FixedVertexHandle,
 };
 
+use alloc::collections::BTreeSet;
 use alloc::{vec, vec::Vec};
 
 /// An `f64` wrapper implementing `Ord` and `Eq`.
@@ -248,15 +249,17 @@ where
 
     let mut buffer = Vec::new();
 
-    let mut skipped_vertices = HashSet::new();
-    let mut skipped_edges = HashSet::new();
+    // Ordered sets: the skipped vertices and edges are inserted at the end in their order, and
+    // a hash set's order would change from one load of the same input to the next.
+    let mut skipped_vertices = BTreeSet::new();
+    let mut skipped_edges = BTreeSet::new();
 
     let fix = FixedVertexHandle::new;
 
     let mut add_constraints_for_new_vertex =
         |result: &mut ConstrainedDelaunayTriangulation<V, DE, UE, F>,
          edges: &mut Vec<[usize; 2]>,
-         skipped_vertices: &HashSet<usize>,
+         skipped_vertices: &BTreeSet<usize>,
          index| {
             while let Some([from, to]) = edges.last().copied() {
                 if skipped_vertices.contains(&from) || skipped_vertices.contains(&to) {

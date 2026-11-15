@@ -2641,6 +2641,57 @@ mod test {
         assert_eq!(last.to().fix(), last_vertex);
     }
 
+    /// The triangulation as a caller reads it: each inner face's vertices in face order, and
+    /// each constraint edge's vertices in edge order.
+    fn faces_and_constraints(cdt: &Cdt) -> (Vec<[usize; 3]>, Vec<[usize; 2]>) {
+        let faces = cdt
+            .inner_faces()
+            .map(|face| face.vertices().map(|v| v.fix().index()))
+            .collect();
+        let constraints = cdt
+            .undirected_edges()
+            .filter(|edge| edge.is_constraint_edge())
+            .map(|edge| edge.vertices().map(|v| v.fix().index()))
+            .collect();
+        (faces, constraints)
+    }
+
+    #[test]
+    fn bulk_load_cdt_is_deterministic() -> Result<(), InsertionError> {
+        // A rectangle with points along its sides, some of the bottom ones a hair below the
+        // line. The circle sweep skips some of these points (they fall on or behind the hull
+        // edge it finds for them) and inserts them, and their constraints, at the end.
+        let vertices = [
+            (0.0, 0.0),
+            (2.03125, 0.0),
+            (2.4375, 0.0),
+            (3.453125, 0.0),
+            (4.875, -1e-15),
+            (8.53125, -1e-15),
+            (9.140625, -1e-15),
+            (10.96875, 0.0),
+            (11.578125, 0.0),
+            (12.1875, 0.0),
+            (13.0, 0.0),
+            (13.0, 5.0),
+            (11.171875, 5.0),
+            (4.671875, 5.0),
+            (0.0, 5.0),
+            (0.0, 2.5),
+        ];
+        let vertices: Vec<_> = vertices.iter().map(|&(x, y)| Point2::new(x, y)).collect();
+        let n = vertices.len();
+        let edges: Vec<[usize; 2]> = (0..n).map(|i| [i, (i + 1) % n]).collect();
+
+        let first = Cdt::bulk_load_cdt(vertices.clone(), edges.clone())?;
+        first.cdt_sanity_check();
+        for _ in 0..16 {
+            let again = Cdt::bulk_load_cdt(vertices.clone(), edges.clone())?;
+            assert_eq!(faces_and_constraints(&again), faces_and_constraints(&first));
+        }
+        Ok(())
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(1000))]
         #[test]
