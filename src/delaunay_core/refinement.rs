@@ -748,8 +748,11 @@ where
             }
         }
 
+        // In face order, not the hash set's, which changes from one refinement to the next.
+        let mut excluded_faces: Vec<_> = excluded_faces.iter().copied().collect();
+        excluded_faces.sort_unstable();
         RefinementResult {
-            excluded_faces: excluded_faces.iter().copied().collect(),
+            excluded_faces,
             refinement_complete,
         }
     }
